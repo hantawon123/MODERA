@@ -11,13 +11,11 @@ import com.ssafy.modera.domain.user.dto.response.ReissueResponse;
 import com.ssafy.modera.domain.user.entity.Provider;
 import com.ssafy.modera.domain.user.entity.RefreshToken;
 import com.ssafy.modera.domain.user.entity.User;
-import com.ssafy.modera.domain.user.exception.DuplicateEmailException;
-import com.ssafy.modera.domain.user.exception.DuplicateLoginIdException;
-import com.ssafy.modera.domain.user.exception.InvalidRefreshTokenException;
-import com.ssafy.modera.domain.user.exception.LoginFailedException;
+import com.ssafy.modera.domain.user.exception.UserErrorCode;
 import com.ssafy.modera.domain.user.repository.RefreshTokenRepository;
 import com.ssafy.modera.domain.user.repository.UserRepository;
 import com.ssafy.modera.global.exception.AuthorizationException;
+import com.ssafy.modera.global.exception.BusinessException;
 import com.ssafy.modera.global.security.jwt.JwtProperties;
 import com.ssafy.modera.global.security.jwt.JwtTokenProvider;
 import com.ssafy.modera.global.security.jwt.JwtTokenValidator;
@@ -67,10 +65,10 @@ public class AuthService {
     @Transactional
     public RegisterResponse register(RegisterRequest request) {
         if (userRepository.existsByLoginId(request.loginId())) {
-            throw new DuplicateLoginIdException();
+            throw new BusinessException(UserErrorCode.DUPLICATE_LOGIN_ID);
         }
         if (userRepository.existsByEmail(request.email())) {
-            throw new DuplicateEmailException();
+            throw new BusinessException(UserErrorCode.DUPLICATE_EMAIL);
         }
 
         User user = userRepository.save(User.ofLocal(
@@ -91,11 +89,11 @@ public class AuthService {
     @Transactional
     public LoginResponse login(LoginRequest request) {
         User user = userRepository.findByLoginIdAndProvider(request.loginId(), Provider.LOCAL)
-                .orElseThrow(LoginFailedException::new);
+                .orElseThrow(() -> new BusinessException(UserErrorCode.LOGIN_FAILED));
 
         if (!StringUtils.hasText(user.getPasswordHash())
                 || !passwordEncoder.matches(request.password(), user.getPasswordHash())) {
-            throw new LoginFailedException();
+            throw new BusinessException(UserErrorCode.LOGIN_FAILED);
         }
 
         String deviceId = resolveDeviceId(request.deviceId());
@@ -123,11 +121,11 @@ public class AuthService {
         validateSignature(request.refreshToken());
 
         RefreshToken stored = refreshTokenRepository.findByTokenHash(hash(request.refreshToken()))
-                .orElseThrow(InvalidRefreshTokenException::new);
+                .orElseThrow(() -> new BusinessException(UserErrorCode.INVALID_REFRESH_TOKEN));
 
         if (stored.isExpired(Instant.now())) {
             refreshTokenRepository.delete(stored);
-            throw new InvalidRefreshTokenException();
+            throw new BusinessException(UserErrorCode.INVALID_REFRESH_TOKEN);
         }
 
         User user = stored.getUser();
@@ -149,11 +147,11 @@ public class AuthService {
         String deviceId = resolveDeviceId(request.deviceId());
 
         RefreshToken stored = refreshTokenRepository.findByUser_UserIdAndDeviceId(userId, deviceId)
-                .orElseThrow(InvalidRefreshTokenException::new);
+                .orElseThrow(() -> new BusinessException(UserErrorCode.INVALID_REFRESH_TOKEN));
 
         // 다른 기기의 토큰으로 이 기기를 로그아웃시킬 수 없도록 제시된 토큰이 실제 저장된 것인지 확인한다.
         if (!stored.matches(hash(request.refreshToken()))) {
-            throw new InvalidRefreshTokenException();
+            throw new BusinessException(UserErrorCode.INVALID_REFRESH_TOKEN);
         }
 
         refreshTokenRepository.delete(stored);
@@ -188,7 +186,7 @@ public class AuthService {
             jwtTokenValidator.validateToken(refreshToken);
         } catch (AuthorizationException e) {
             log.warn("Refresh Token 검증 실패: {}", e.getErrorCode().getCode());
-            throw new InvalidRefreshTokenException();
+            throw new BusinessException(UserErrorCode.INVALID_REFRESH_TOKEN);
         }
     }
 

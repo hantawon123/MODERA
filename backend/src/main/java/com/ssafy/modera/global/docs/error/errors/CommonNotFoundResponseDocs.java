@@ -26,7 +26,7 @@ import java.lang.annotation.Target;
                         value = """
                                 {
                                     "result": "FAIL",
-                                    "code": "G005",
+                                    "code": "G006",
                                     "message": "요청하신 리소스를 찾을 수 없습니다.",
                                     "timestamp": "2026-01-17 12:00:00"
                                 }

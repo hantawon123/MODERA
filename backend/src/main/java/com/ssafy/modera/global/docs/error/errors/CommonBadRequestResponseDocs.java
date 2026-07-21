@@ -26,8 +26,8 @@ import java.lang.annotation.Target;
                         value = """
                                 {
                                     "result": "FAIL",
-                                    "code": "G002",
-                                    "message": "잘못된 요청입니다.",
+                                    "code": "G004",
+                                    "message": "잘못된 입력입니다.",
                                     "timestamp": "2026-01-17 12:00:00"
                                 }
                                 """

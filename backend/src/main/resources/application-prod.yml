@@ -1,0 +1,90 @@
+server:
+  # Swagger 서버 목록(SwaggerConfig)에 표시될 실제 배포 도메인. 배포 환경에서 SERVER_URL로 주입
+  url: ${SERVER_URL:https://api.example.com}
+
+# [Security] 운영에서는 application.yml의 로컬 더미 시크릿을 쓰지 않도록 fallback 없이 필수값으로 강제
+jwt:
+  secret: ${JWT_SECRET}
+
+spring:
+  config:
+    activate:
+      on-profile: prod
+
+  # [Modern Java] Virtual Threads Enable (?? ?? ??)
+  threads:
+    virtual:
+      enabled: true
+
+  # [Lifecycle] Zero Downtime Deployment? ?? ??
+  lifecycle:
+    timeout-per-shutdown-phase: 30s # Graceful shutdown ?? ?? ??
+
+  # [Data Source] 운영 PostgreSQL. 같은 docker network 의 컨테이너명으로 접속.
+  datasource:
+    driver-class-name: org.postgresql.Driver
+    url: jdbc:postgresql://${DB_HOST:postgres}:${DB_PORT:5432}/${DB_NAME}?reWriteBatchedInserts=true
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+
+    hikari:
+      pool-name: modera-hikari-prod
+      maximum-pool-size: ${DB_POOL_MAX:20}
+      minimum-idle: ${DB_POOL_MIN:10}
+      # ?? ??? 3?? ?? (?? ?? ??: Fail-Fast)
+      connection-timeout: 3000
+      # DB ??? wait_timeout?? 2~3? ?? ?? (30? ??)
+      max-lifetime: 1800000
+      # ?? ??? ?? ??
+      validation-timeout: 2000
+
+  # [JPA & Hibernate] ?? ???
+  jpa:
+    hibernate:
+      ddl-auto: validate # ??? ?? ??
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: false
+        highlight_sql: false
+        default_batch_fetch_size: 100 # N+1 ?? ??? ?? ?? ???
+
+  # [Redis] 같은 docker network 의 컨테이너명으로 접속
+  data:
+    redis:
+      host: ${REDIS_HOST:redis}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD}
+      # ?? ????? ?? ???? ?? ??
+      connect-timeout: 2000
+      timeout: 1000
+
+# [Object Storage] S3 호환 스토리지(MinIO). presigned URL 발급용.
+# 엔드포인트/자격증명 전부 환경변수. fallback 없음 — 미주입 시 기동 실패.
+storage:
+  s3:
+    endpoint: ${S3_ENDPOINT}
+    region: ${S3_REGION:us-east-1}
+    bucket: ${S3_BUCKET}
+    access-key: ${S3_ACCESS_KEY}
+    secret-key: ${S3_SECRET_KEY}
+    path-style-access: true # MinIO 는 path-style 필요
+
+# [Observability] ???? ? ?? ?? (?? ??)
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, metrics, prometheus
+  endpoint:
+    health:
+      show-details: always # K8s Readiness/Liveness Probe?? ??
+      probes:
+        enabled: true
+
+# [Logging] ??? ?? ?? ????, ?? ???? ??
+logging:
+  level:
+    root: INFO
+    org.hibernate.SQL: ERROR # SQL? ?? ?? ??? ??
+    com.ssafy.modera: INFO

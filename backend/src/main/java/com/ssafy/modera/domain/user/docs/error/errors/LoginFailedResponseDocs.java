@@ -1,4 +1,4 @@
-package com.ssafy.modera.global.docs.error.errors;
+package com.ssafy.modera.domain.user.docs.error.errors;
 
 import com.ssafy.modera.global.domain.dto.CommonResponse;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -16,23 +16,23 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 @Inherited
 @ApiResponse(
-        responseCode = "404",
-        description = "리소스를 찾을 수 없음",
+        responseCode = "401",
+        description = "로그인 실패 - 존재하지 않는 ID 와 비밀번호 불일치를 구분하지 않는다(계정 열거 방지)",
         content = @Content(
                 mediaType = "application/json",
                 schema = @Schema(implementation = CommonResponse.class),
                 examples = @ExampleObject(
-                        name = "리소스 없음 응답 예시",
+                        name = "LOGIN_FAILED",
                         value = """
                                 {
                                     "result": "FAIL",
-                                    "code": "G006",
-                                    "message": "요청하신 리소스를 찾을 수 없습니다.",
+                                    "code": "U008",
+                                    "message": "아이디 또는 비밀번호가 올바르지 않습니다.",
                                     "timestamp": "2026-01-17 12:00:00"
                                 }
                                 """
                 )
         )
 )
-public @interface CommonNotFoundResponseDocs {
+public @interface LoginFailedResponseDocs {
 }

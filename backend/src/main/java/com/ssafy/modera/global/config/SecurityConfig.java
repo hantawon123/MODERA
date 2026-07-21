@@ -34,7 +34,10 @@ public class SecurityConfig {
             "/v3/api-docs/**",
             "/swagger-ui/**",
             "/swagger-ui.html",
-            "/api/auth/login"
+            // 3-1·3-2·3-3 은 인증 불필요. 3-4 로그아웃은 Bearer 필요이므로 제외한다.
+            "/api/v1/auth/register",
+            "/api/v1/auth/login",
+            "/api/v1/auth/refresh"
     };
 
     private static final String[] API_URLS = {

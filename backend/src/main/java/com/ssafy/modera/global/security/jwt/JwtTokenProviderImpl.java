@@ -14,6 +14,7 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Collection;
 import java.util.Date;
+import java.util.UUID;
 
 @Component
 @RequiredArgsConstructor
@@ -21,6 +22,7 @@ import java.util.Date;
 public class JwtTokenProviderImpl implements JwtTokenProvider {
     private static final String AUTHORITIES_KEY = "auth";
     private static final String USER_ID_KEY = "uid";
+    private static final String DEVICE_ID_KEY = "did";
 
     private final JwtProperties jwtProperties;
     private SecretKey key;
@@ -55,16 +57,20 @@ public class JwtTokenProviderImpl implements JwtTokenProvider {
     }
 
     @Override
-    public String createRefreshToken(String email) {
-        log.info("Refresh Token 생성 요청: email={}", email);
+    public String createRefreshToken(Long userId, String email, String deviceId) {
+        log.info("Refresh Token 생성 요청: userId={}, deviceId={}", userId, deviceId);
 
         Instant now = Instant.now();
         Instant refreshTokenExpiresIn = now.plus(jwtProperties.refreshTokenValidityInSeconds(), ChronoUnit.SECONDS);
 
-        log.info("Refresh Token 생성 완료: email={}, RefreshExp={}", email, refreshTokenExpiresIn);
+        log.info("Refresh Token 생성 완료: userId={}, RefreshExp={}", userId, refreshTokenExpiresIn);
 
         return Jwts.builder()
+                .id(UUID.randomUUID().toString())
                 .subject(email)
+                .claim(USER_ID_KEY, userId)
+                .claim(DEVICE_ID_KEY, deviceId)
+                .issuedAt(Date.from(now))
                 .expiration(Date.from(refreshTokenExpiresIn))
                 .signWith(key)
                 .compact();

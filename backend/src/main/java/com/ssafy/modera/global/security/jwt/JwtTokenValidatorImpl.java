@@ -1,6 +1,6 @@
 package com.ssafy.modera.global.security.jwt;
 
-import com.ssafy.modera.global.domain.ErrorCode;
+import com.ssafy.modera.global.domain.GlobalErrorCode;
 import com.ssafy.modera.global.exception.AuthorizationException;
 import com.ssafy.modera.global.security.dto.AuthUser;
 import com.ssafy.modera.global.security.principal.PrincipalDetails;
@@ -50,13 +50,13 @@ public class JwtTokenValidatorImpl implements JwtTokenValidator {
         try {
             parseClaims(token);
         } catch (SecurityException | MalformedJwtException e) {
-            throw new AuthorizationException(ErrorCode.JWT_MALFORMED);
+            throw new AuthorizationException(GlobalErrorCode.JWT_MALFORMED);
         } catch (ExpiredJwtException e) {
-            throw new AuthorizationException(ErrorCode.JWT_EXPIRED);
+            throw new AuthorizationException(GlobalErrorCode.JWT_EXPIRED);
         } catch (UnsupportedJwtException e) {
-            throw new AuthorizationException(ErrorCode.JWT_INVALID);
+            throw new AuthorizationException(GlobalErrorCode.JWT_INVALID);
         } catch (IllegalArgumentException e) {
-            throw new AuthorizationException(ErrorCode.JWT_MISSING);
+            throw new AuthorizationException(GlobalErrorCode.JWT_MISSING);
         }
     }
 
@@ -65,7 +65,7 @@ public class JwtTokenValidatorImpl implements JwtTokenValidator {
         Claims claims = parseClaims(token);
 
         if (claims.get(AUTHORITIES_KEY) == null || claims.get(USER_ID_KEY) == null) {
-            throw new AuthorizationException(ErrorCode.UNAUTHORIZED);
+            throw new AuthorizationException(GlobalErrorCode.UNAUTHORIZED);
         }
 
         Collection<? extends GrantedAuthority> authorities =
@@ -99,7 +99,7 @@ public class JwtTokenValidatorImpl implements JwtTokenValidator {
         Claims claims = parseClaims(token);
 
         if (claims.getSubject() == null) {
-            throw new AuthorizationException(ErrorCode.UNAUTHORIZED);
+            throw new AuthorizationException(GlobalErrorCode.UNAUTHORIZED);
         }
 
         return Optional.ofNullable(claims.getSubject());

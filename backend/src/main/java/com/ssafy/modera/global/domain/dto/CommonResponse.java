@@ -14,7 +14,6 @@ public record CommonResponse<T>(
         Result result,
         String code,
         String message,
-        @JsonInclude(JsonInclude.Include.NON_NULL)
         T data,
         @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd HH:mm:ss")
         LocalDateTime timestamp

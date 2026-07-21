@@ -27,7 +27,7 @@ import java.lang.annotation.Target;
                                 value = """
                                         {
                                             "result": "FAIL",
-                                            "code": "A021",
+                                            "code": "U009",
                                             "message": "유효하지 않은 리프레시 토큰입니다.",
                                             "timestamp": "2026-01-17 12:00:00"
                                         }

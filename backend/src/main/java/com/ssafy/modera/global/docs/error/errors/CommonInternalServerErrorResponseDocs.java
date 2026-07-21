@@ -27,7 +27,7 @@ import java.lang.annotation.Target;
                                 {
                                     "result": "FAIL",
                                     "code": "G001",
-                                    "message": "서버 내부 오류가 발생했습니다. 잠시 후 다시 시도해주세요.",
+                                    "message": "예상치 못한 서버 오류입니다. 관리자에게 문의해주세요.",
                                     "timestamp": "2026-01-17 12:00:00"
                                 }
                                 """

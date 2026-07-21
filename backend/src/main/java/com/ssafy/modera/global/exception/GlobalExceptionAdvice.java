@@ -1,6 +1,7 @@
 package com.ssafy.modera.global.exception;
 
 import com.ssafy.modera.global.domain.ErrorCode;
+import com.ssafy.modera.global.domain.GlobalErrorCode;
 import com.ssafy.modera.global.domain.dto.CommonResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
@@ -42,8 +43,8 @@ public class GlobalExceptionAdvice {
         log.warn("[VAL] {} {} | Msg: {}", request.getMethod(), request.getRequestURI(), errorMessage);
 
         return ResponseEntity
-                .status(ErrorCode.INVALID_INPUT_VALUE.getStatus())
-                .body(CommonResponse.onFailure(ErrorCode.INVALID_INPUT_VALUE, ex.getBindingResult()));
+                .status(GlobalErrorCode.INVALID_INPUT_VALUE.getStatus())
+                .body(CommonResponse.onFailure(GlobalErrorCode.INVALID_INPUT_VALUE, ex.getBindingResult()));
     }
 
     @ExceptionHandler(ConstraintViolationException.class)
@@ -58,8 +59,8 @@ public class GlobalExceptionAdvice {
                 .collect(Collectors.toList());
 
         return ResponseEntity
-                .status(ErrorCode.INVALID_INPUT_VALUE.getStatus())
-                .body(CommonResponse.onFailure(ErrorCode.INVALID_INPUT_VALUE, details));
+                .status(GlobalErrorCode.INVALID_INPUT_VALUE.getStatus())
+                .body(CommonResponse.onFailure(GlobalErrorCode.INVALID_INPUT_VALUE, details));
     }
 
     @ExceptionHandler({
@@ -74,11 +75,11 @@ public class GlobalExceptionAdvice {
         log.warn("[BAD] {} {} | {}: {}", request.getMethod(), request.getRequestURI(), ex.getClass().getSimpleName(), ex.getMessage());
 
         ErrorCode errorCode = switch (ex) {
-            case NoHandlerFoundException ignored -> ErrorCode.NOT_FOUND;
-            case NoResourceFoundException ignored -> ErrorCode.NOT_FOUND;
-            case HttpRequestMethodNotSupportedException ignored -> ErrorCode.METHOD_NOT_ALLOWED;
-            case IllegalArgumentException ignored -> ErrorCode.INVALID_INPUT_VALUE;
-            default -> ErrorCode.BAD_REQUEST;
+            case NoHandlerFoundException ignored -> GlobalErrorCode.NOT_FOUND;
+            case NoResourceFoundException ignored -> GlobalErrorCode.NOT_FOUND;
+            case HttpRequestMethodNotSupportedException ignored -> GlobalErrorCode.METHOD_NOT_ALLOWED;
+            case IllegalArgumentException ignored -> GlobalErrorCode.INVALID_INPUT_VALUE;
+            default -> GlobalErrorCode.BAD_REQUEST;
         };
 
         return ResponseEntity
@@ -90,16 +91,16 @@ public class GlobalExceptionAdvice {
     public ResponseEntity<CommonResponse<Void>> handleAuthenticationException(AuthenticationException ex, HttpServletRequest request) {
         log.warn("[AUTH] {} {} | {}", request.getMethod(), request.getRequestURI(), ex.getMessage());
         return ResponseEntity
-                .status(ErrorCode.UNAUTHORIZED.getStatus())
-                .body(CommonResponse.onFailure(ErrorCode.UNAUTHORIZED));
+                .status(GlobalErrorCode.UNAUTHORIZED.getStatus())
+                .body(CommonResponse.onFailure(GlobalErrorCode.UNAUTHORIZED));
     }
 
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<CommonResponse<Void>> handleAccessDeniedException(AccessDeniedException ex, HttpServletRequest request) {
         log.warn("[DENY] {} {} | {}", request.getMethod(), request.getRequestURI(), ex.getMessage());
         return ResponseEntity
-                .status(ErrorCode.FORBIDDEN.getStatus())
-                .body(CommonResponse.onFailure(ErrorCode.FORBIDDEN));
+                .status(GlobalErrorCode.FORBIDDEN.getStatus())
+                .body(CommonResponse.onFailure(GlobalErrorCode.FORBIDDEN));
     }
 
     @ExceptionHandler(Exception.class)
@@ -107,7 +108,7 @@ public class GlobalExceptionAdvice {
         log.error("[ERR] {} {} | Exception: ", request.getMethod(), request.getRequestURI(), ex);
 
         return ResponseEntity
-                .status(ErrorCode.INTERNAL_SERVER_ERROR.getStatus())
-                .body(CommonResponse.onFailure(ErrorCode.INTERNAL_SERVER_ERROR));
+                .status(GlobalErrorCode.INTERNAL_SERVER_ERROR.getStatus())
+                .body(CommonResponse.onFailure(GlobalErrorCode.INTERNAL_SERVER_ERROR));
     }
 }

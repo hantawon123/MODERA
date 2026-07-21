@@ -26,7 +26,7 @@ import java.lang.annotation.Target;
                         value = """
                                 {
                                     "result": "FAIL",
-                                    "code": "A020",
+                                    "code": "U008",
                                     "message": "아이디 또는 비밀번호가 올바르지 않습니다.",
                                     "timestamp": "2026-01-17 12:00:00"
                                 }

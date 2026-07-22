@@ -1,0 +1,83 @@
+services:
+  api-db:
+    build:
+      context: ./api-db
+    container_name: modera-api-db
+    environment:
+      POSTGRES_DB: modera_api
+      POSTGRES_USER: api_admin
+      POSTGRES_PASSWORD: localdev
+    ports:
+      - "5433:5432"
+    volumes:
+      - api-db-data:/var/lib/postgresql/data
+      - ./api-db/init:/docker-entrypoint-initdb.d
+    networks:
+      - modera-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U api_admin -d modera_api"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  analysis-db:
+    image: pgvector/pgvector:pg16
+    container_name: modera-analysis-db
+    environment:
+      POSTGRES_DB: modera_analysis
+      POSTGRES_USER: analysis_admin
+      POSTGRES_PASSWORD: localdev
+    ports:
+      - "5434:5432"
+    volumes:
+      - analysis-db-data:/var/lib/postgresql/data
+      - ./analysis-db/init:/docker-entrypoint-initdb.d
+    networks:
+      - modera-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U analysis_admin -d modera_analysis"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: modera-redis
+    ports:
+      - "6380:6379"
+    networks:
+      - modera-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  minio:
+    image: minio/minio
+    container_name: modera-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports:
+      - "9002:9000"
+      - "19001:9001"
+    volumes:
+      - minio-data:/data
+    networks:
+      - modera-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+networks:
+  modera-network:
+    driver: bridge
+
+volumes:
+  api-db-data:
+  analysis-db-data:
+  minio-data:

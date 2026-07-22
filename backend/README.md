@@ -4,6 +4,9 @@ MODERA 백엔드. `api-server`와 `analysis-worker` 2개의 독립 Spring Boot �
 SOA(서비스 지향 아키텍처) 구조다. 두 서버는 Redis Streams 이벤트로만 통신하고,
 각자 자신이 소유한 PostgreSQL 데이터베이스만 접근한다.
 
+> **이 저장소가 처음이라면** 아래 개요보다 [SETUP.md](./SETUP.md)를 먼저 보는 걸
+> 추천한다 — 사전 설치부터 전체 스택 기동, curl로 직접 확인까지 순서대로 되어 있다.
+
 ## 구조
 
 ```

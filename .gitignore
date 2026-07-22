@@ -1,0 +1,81 @@
+# ── 환경변수 / 비밀키 / 커밋 금지 문서 ──────────────────────────────────
+.env
+.env.*
+!.env.example
+HELP.md
+
+# ── Java / Spring / Gradle ────────────────────────────────────────────────
+.gradle/
+build/
+bin/
+out/
+!gradle/wrapper/gradle-wrapper.jar
+!**/src/main/**/build/
+!**/src/test/**/build/
+!**/src/main/**/bin/
+!**/src/test/**/bin/
+!**/src/main/**/out/
+!**/src/test/**/out/
+
+# Liquibase (검증용 JDBC 드라이버)
+liquibase-lib/
+
+# ── Python / 가상환경 ─────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+*.tar.gz
+dist/
+
+# 가상환경
+.venv/
+/.venv*
+venv/
+env/
+ENV/
+
+# 테스트 / 타입 / 린트 캐시
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# ── IDE / 개발 도구 ───────────────────────────────────────────────────────
+# IntelliJ IDEA
+.idea/
+*.iws
+*.iml
+*.ipr
+
+# STS / Eclipse
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+
+# NetBeans
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+
+# VS Code & 기타 에디터
+.vscode/
+*.swp
+*.swo
+
+# ── OS ────────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+
+# ── 로그 / 런타임 / 로컬 데이터 ──────────────────────────────────────────
+*.log
+logs/
+opensearch-data/

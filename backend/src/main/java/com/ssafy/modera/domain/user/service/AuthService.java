@@ -36,7 +36,7 @@ import java.util.HexFormat;
 import java.util.List;
 
 /**
- * 인증 API (3-1 회원가입 / 3-2 로그인 / 3-3 토큰 재발급 / 3-4 로그아웃).
+ * 인증 API (3-1 회원가입 / 3-2 로그인 / 3-3 토큰 재발급 / 3-4 로그아웃)...
  * <p>
  * ROLE 개념이 없는 서비스이므로 모든 사용자에게 {@link #ROLE_USER} 를 고정 부여한다.
  */

@@ -1,17 +1,15 @@
 """Gemini 호출 래퍼.
 
-SDK 의존성을 이 파일에만 가둔다. google-genai(신 SDK)를 쓰며,
-응답 JSON 은 response_schema 로 구조를 강제한다.
-(프롬프트로만 JSON 을 요구하는 것보다 파싱 실패가 적다.)
+SDK 의존성을 이 파일에만 가둔다. 현재는 google-generativeai 를 쓰지만
+지원 종료 예고가 있으므로, 이후 google-genai 로 옮길 때 이 파일만 고치면 된다.
 """
 
+import io
 import json
 import logging
-from functools import lru_cache
-from typing import Any
-
-from google import genai
-from google.genai import types
+import random
+import time
+from typing import Any, Callable
 
 from .config import get_settings
 
@@ -22,17 +20,60 @@ class GeminiError(RuntimeError):
     pass
 
 
-@lru_cache(maxsize=1)
-def _client() -> genai.Client:
-    return genai.Client(api_key=get_settings().gemini_api_key)
+def _is_rate_limit(exc: Exception) -> bool:
+    """429(rate limit / quota) 성격의 예외인지 판별한다.
+
+    SDK·전송 계층에 따라 예외 타입이 제각각이라, 상태코드·클래스명·메시지를
+    폭넓게 본다. (google.api_core.exceptions.ResourceExhausted 등)
+    """
+    if getattr(exc, "status_code", None) == 429 or getattr(exc, "code", None) == 429:
+        return True
+    if type(exc).__name__ in ("ResourceExhausted", "TooManyRequests"):
+        return True
+    msg = str(exc).lower()
+    return any(
+        token in msg
+        for token in ("429", "resource_exhausted", "rate limit", "rate-limit", "quota exceeded")
+    )
+
+
+def _call_with_retry(label: str, fn: Callable[[], Any]) -> Any:
+    """Gemini 호출을 429에 한해 지수 백오프로 재시도한다.
+
+    429가 아닌 예외(잘못된 요청·인증 오류 등)는 재시도 없이 즉시 올린다.
+    동기 함수라 asyncio.to_thread 안에서 그대로 호출된다.
+    """
+    settings = get_settings()
+    attempts = max(1, settings.gemini_max_attempts)
+    for attempt in range(1, attempts + 1):
+        try:
+            return fn()
+        except Exception as exc:
+            if attempt >= attempts or not _is_rate_limit(exc):
+                raise
+            delay = min(
+                settings.gemini_backoff_base * (2 ** (attempt - 1)),
+                settings.gemini_backoff_max,
+            )
+            delay += random.uniform(0, settings.gemini_backoff_base)  # 지터로 동시 재시도 분산
+            logger.warning(
+                "Gemini rate limit(%s) 재시도 %s/%s, %.1fs 대기: %s",
+                label, attempt, attempts, delay, str(exc)[:200],
+            )
+            time.sleep(delay)
+
+
+def _genai():
+    try:
+        import google.generativeai as genai
+    except ImportError as e:  # pragma: no cover
+        raise GeminiError("google-generativeai 가 설치되지 않았습니다.") from e
+    genai.configure(api_key=get_settings().gemini_api_key)
+    return genai
 
 
 def parse_json_response(text: str) -> dict[str, Any]:
-    """모델 응답에서 JSON 을 추출한다.
-
-    response_schema 를 쓰면 보통 순수 JSON 이 오지만, 모델이 코드펜스나
-    잡문을 섞는 경우가 남아 있어 복구 경로를 유지한다.
-    """
+    """모델 응답에서 JSON 을 추출한다. 코드펜스·잡문이 섞여도 복구를 시도한다."""
     cleaned = (text or "").strip()
     if cleaned.startswith("```"):
         parts = cleaned.split("```")
@@ -49,36 +90,39 @@ def parse_json_response(text: str) -> dict[str, Any]:
         raise GeminiError(f"모델 응답을 JSON 으로 해석하지 못했습니다: {cleaned[:200]!r}")
 
 
-def generate_json(
-    model_name: str, parts: list[Any], schema: dict[str, Any] | None = None
-) -> dict[str, Any]:
+def generate_json(model_name: str, parts: list[Any]) -> dict[str, Any]:
     """텍스트(또는 텍스트+이미지) 프롬프트를 보내고 JSON 응답을 받는다."""
-    config = types.GenerateContentConfig(
-        response_mime_type="application/json",
-        response_schema=schema,
+    genai = _genai()
+    model = genai.GenerativeModel(model_name)
+    response = _call_with_retry(
+        f"generate_content:{model_name}", lambda: model.generate_content(parts)
     )
-    response = _client().models.generate_content(
-        model=model_name, contents=parts, config=config
-    )
-    if response.text is None:
-        raise GeminiError(f"{model_name} 이 빈 응답을 반환했습니다.")
     return parse_json_response(response.text)
 
 
-def image_part(image_bytes: bytes, mime_type: str = "image/jpeg"):
-    """이미지 바이트를 비전 입력 파트로 변환한다."""
-    return types.Part.from_bytes(data=image_bytes, mime_type=mime_type)
+def image_part(image_bytes: bytes):
+    """S3 에서 받은 바이트를 비전 입력으로 변환한다."""
+    try:
+        from PIL import Image
+    except ImportError as e:  # pragma: no cover
+        raise GeminiError("pillow 가 설치되지 않았습니다.") from e
+    return Image.open(io.BytesIO(image_bytes))
 
 
 def embed(texts: list[str], purpose: str = "DOCUMENT") -> tuple[str, list[list[float]]]:
-    """텍스트 배치를 한 번의 호출로 임베딩한다. (모델명, 벡터 목록)을 돌려준다."""
+    """텍스트 배치를 임베딩한다. (모델명, 벡터 목록)을 돌려준다."""
     settings = get_settings()
-    task_type = "RETRIEVAL_QUERY" if purpose == "QUERY" else "RETRIEVAL_DOCUMENT"
-    # 빈 문자열은 API 가 거부하므로 공백으로 대체한다.
-    contents = [t if t and t.strip() else " " for t in texts]
-    response = _client().models.embed_content(
-        model=settings.embedding_model_name,
-        contents=contents,
-        config=types.EmbedContentConfig(task_type=task_type),
-    )
-    return settings.embedding_model_name, [list(e.values) for e in response.embeddings]
+    genai = _genai()
+    task_type = "retrieval_query" if purpose == "QUERY" else "retrieval_document"
+    vectors: list[list[float]] = []
+    for text in texts:
+        response = _call_with_retry(
+            "embed_content",
+            lambda text=text: genai.embed_content(
+                model=settings.embedding_model_name,
+                content=text,
+                task_type=task_type,
+            ),
+        )
+        vectors.append(list(response["embedding"]))
+    return settings.embedding_model_name, vectors

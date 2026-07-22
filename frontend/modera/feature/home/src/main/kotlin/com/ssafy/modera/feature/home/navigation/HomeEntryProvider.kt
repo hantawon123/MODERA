@@ -6,9 +6,14 @@ import com.ssafy.modera.core.model.Category
 import com.ssafy.modera.core.navigation.Navigator
 import com.ssafy.modera.feature.home.CategorySortType
 import com.ssafy.modera.feature.home.HomeScreen
+import com.ssafy.modera.feature.home.LocalHomeAnalysisState
 
-fun EntryProviderScope<NavKey>.homeEntry(navigator: Navigator) {
+fun EntryProviderScope<NavKey>.homeEntry(
+    navigator: Navigator,
+) {
     entry<HomeNavKey> {
+        val analysisState = LocalHomeAnalysisState.current
+
         // TODO : 추후 더미데이터 삭제
         val previewCategories = listOf(
             Category(
@@ -74,6 +79,9 @@ fun EntryProviderScope<NavKey>.homeEntry(navigator: Navigator) {
             selectedSortType = CategorySortType.NAME,
             onSortTypeChange = {},
             onCategoryClick = {},
+            showAnalysisBanner = analysisState.showBanner,
+            analysisImageCount = analysisState.imageCount,
+            onDismissAnalysisBanner = analysisState::dismissBanner,
         )
     }
 }

@@ -44,6 +44,9 @@ import com.ssafy.modera.core.designsystem.component.Text
 import com.ssafy.modera.core.designsystem.theme.ModeraTheme
 import com.ssafy.modera.core.navigation.Navigator
 import com.ssafy.modera.core.navigation.toEntries
+import com.ssafy.modera.feature.home.HomeAnalysisState
+import com.ssafy.modera.feature.home.LocalHomeAnalysisState
+import com.ssafy.modera.feature.home.navigation.HomeNavKey
 import com.ssafy.modera.feature.home.navigation.homeEntry
 import com.ssafy.modera.media.SelectedImage
 import com.ssafy.modera.media.rememberGalleryPickerLauncher
@@ -87,51 +90,61 @@ internal fun ModeraApp(
 ) {
 //    val snackbarHostState = LocalSnackbarHostState.current
     val navigator = remember { Navigator(appState.navigationState) }
+    val homeAnalysisState = remember { HomeAnalysisState() }
     val selectedImages = remember { mutableStateOf<List<SelectedImage>>(emptyList()) }
     val launchGalleryPicker = rememberGalleryPickerLauncher(
-        onImagesPicked = { images -> selectedImages.value = images },
-    )
-
-    ModeraNavigationSuiteScaffold(
-        navigationSuiteItems = {
-            TOP_LEVEL_NAV_ITEMS.forEach { (navKey, navItem) ->
-                val selected = navKey != RegisterNavKey &&
-                    navKey == appState.navigationState.currentTopLevelKey
-
-                item(
-                    selected = selected,
-                    onClick = {
-                        if (navKey == RegisterNavKey) {
-                            launchGalleryPicker()
-                        } else {
-                            navigator.navigate(navKey)
-                        }
-                    },
-                    icon = {
-                        Icon(
-                            imageVector = ImageVector.vectorResource(navItem.unselectedIcon),
-                            contentDescription = null,
-                        )
-                    },
-                    selectedIcon = {
-                        Icon(
-                            imageVector = ImageVector.vectorResource(navItem.selectedIcon),
-                            contentDescription = null,
-                        )
-                    },
-                    label = { Text(stringResource(navItem.iconTextId)) },
-                    modifier = Modifier,
-                )
+        onImagesPicked = { images ->
+            selectedImages.value = images
+            if (images.isNotEmpty()) {
+                homeAnalysisState.onImagesSelected(images.size)
+                navigator.navigate(HomeNavKey)
             }
         },
-        windowAdaptiveInfo = windowAdaptiveInfo,
+    )
+
+    CompositionLocalProvider(
+        LocalHomeAnalysisState provides homeAnalysisState
     ) {
-        Scaffold(
-            modifier = modifier,
-            containerColor = Color.Transparent,
-            contentColor = Color.Gray, // TODO : 추후 컬러 변경
-            contentWindowInsets = WindowInsets(0, 0, 0, 0),
-            snackbarHost = {
+        ModeraNavigationSuiteScaffold(
+            navigationSuiteItems = {
+                TOP_LEVEL_NAV_ITEMS.forEach { (navKey, navItem) ->
+                    val selected = navKey != RegisterNavKey &&
+                            navKey == appState.navigationState.currentTopLevelKey
+
+                    item(
+                        selected = selected,
+                        onClick = {
+                            if (navKey == RegisterNavKey) {
+                                launchGalleryPicker()
+                            } else {
+                                navigator.navigate(navKey)
+                            }
+                        },
+                        icon = {
+                            Icon(
+                                imageVector = ImageVector.vectorResource(navItem.unselectedIcon),
+                                contentDescription = null,
+                            )
+                        },
+                        selectedIcon = {
+                            Icon(
+                                imageVector = ImageVector.vectorResource(navItem.selectedIcon),
+                                contentDescription = null,
+                            )
+                        },
+                        label = { Text(stringResource(navItem.iconTextId)) },
+                        modifier = Modifier,
+                    )
+                }
+            },
+            windowAdaptiveInfo = windowAdaptiveInfo,
+        ) {
+            Scaffold(
+                modifier = modifier,
+                containerColor = Color.Transparent,
+                contentColor = Color.Gray, // TODO : 추후 컬러 변경
+                contentWindowInsets = WindowInsets(0, 0, 0, 0),
+                snackbarHost = {
 //                SnackbarHost(
 //                    snackbarHostState,
 //                    modifier = Modifier.windowInsetsPadding(
@@ -140,52 +153,54 @@ internal fun ModeraApp(
 //                        ),
 //                    ),
 //                )
-            },
-        ) { padding ->
-            Column(
-                Modifier
-                    .fillMaxSize()
-                    .padding(padding)
-                    .consumeWindowInsets(padding)
-                    .windowInsetsPadding(
-                        WindowInsets.safeDrawing.only(
-                            WindowInsetsSides.Horizontal,
+                },
+            ) { padding ->
+                Column(
+                    Modifier
+                        .fillMaxSize()
+                        .padding(padding)
+                        .consumeWindowInsets(padding)
+                        .windowInsetsPadding(
+                            WindowInsets.safeDrawing.only(
+                                WindowInsetsSides.Horizontal,
+                            ),
                         ),
-                    ),
-            ) {
-                // Only show the top app bar on top level destinations.
-                var shouldShowTopAppBar = false
-
-                if (appState.navigationState.currentKey in appState.navigationState.topLevelKeys) {
-                    shouldShowTopAppBar = true
-
-                    val destination = TOP_LEVEL_NAV_ITEMS[appState.navigationState.currentTopLevelKey]
-                        ?: error("Top level nav item not found for ${appState.navigationState.currentTopLevelKey}")
-
-                }
-
-                Box(
-                    modifier = Modifier.consumeWindowInsets(
-                        if (shouldShowTopAppBar) {
-                            WindowInsets.safeDrawing.only(WindowInsetsSides.Top)
-                        } else {
-                            WindowInsets(0, 0, 0, 0)
-                        },
-                    ),
                 ) {
-                    val listDetailStrategy = rememberListDetailSceneStrategy<NavKey>()
+                    // Only show the top app bar on top level destinations.
+                    var shouldShowTopAppBar = false
 
-                    val entryProvider = entryProvider {
-                        homeEntry(navigator)
-                        registerEntry(navigator)
-                        searchEntry(navigator)
+                    if (appState.navigationState.currentKey in appState.navigationState.topLevelKeys) {
+                        shouldShowTopAppBar = true
+
+                        val destination =
+                            TOP_LEVEL_NAV_ITEMS[appState.navigationState.currentTopLevelKey]
+                                ?: error("Top level nav item not found for ${appState.navigationState.currentTopLevelKey}")
+
                     }
 
-                    NavDisplay(
-                        entries = appState.navigationState.toEntries(entryProvider),
+                    Box(
+                        modifier = Modifier.consumeWindowInsets(
+                            if (shouldShowTopAppBar) {
+                                WindowInsets.safeDrawing.only(WindowInsetsSides.Top)
+                            } else {
+                                WindowInsets(0, 0, 0, 0)
+                            },
+                        ),
+                    ) {
+                        val listDetailStrategy = rememberListDetailSceneStrategy<NavKey>()
+
+                        val entryProvider = entryProvider {
+                            homeEntry(navigator)
+                            registerEntry(navigator)
+                            searchEntry(navigator)
+                        }
+
+                        NavDisplay(
+                            entries = appState.navigationState.toEntries(entryProvider),
 //                        sceneStrategy = listDetailStrategy,
-                        onBack = { navigator.goBack() },
-                    )
+                            onBack = { navigator.goBack() },
+                        )
+                    }
                 }
             }
         }
@@ -214,5 +229,5 @@ fun EntryProviderScope<NavKey>.registerEntry(navigator: Navigator) {
 }
 
 fun EntryProviderScope<NavKey>.searchEntry(navigator: Navigator) {
-    entry< SearchNavKey> {}
+    entry<SearchNavKey> {}
 }

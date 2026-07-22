@@ -98,19 +98,37 @@ DTO(`XxxResponse`, record)로 변환해서 내려준다 — 이유는 옛 문서
 
 ## 4. 에러 처리
 
-**⚠️ 컨벤션 없음 - 팀 결정 필요**: 옛 `ErrorCode`/`BusinessException`/
-`GlobalExceptionAdvice`(전역 예외 처리 + 코드값 체계)는 전부 삭제되었고 아직
-다시 만들지 않았습니다. 지금 코드는 상황에 맞는 표준 예외(`IllegalStateException`,
-`IllegalArgumentException` 등)를 그때그때 던지고 있어(`ImageRegistrationService`,
-`AnalysisResultEventHandler` 참고), 처리되지 않은 예외는 Spring 기본 500 응답으로
-나갑니다. API가 늘어나기 시작하면 이 부분부터 팀이 정해야 합니다(옛 문서의
-`ErrorCode` 접두어 체계, `BusinessException` 단일화, `@RestControllerAdvice` 패턴을
-그대로 부활시킬지, 다른 방식을 쓸지).
+`/api/v1/**`은 `ErrorCode`(인터페이스) + `BusinessException` + `GlobalExceptionHandler`
+(`@RestControllerAdvice(annotations = ApiV1Controller.class)`)로 처리한다.
+`BusinessException(errorCode, message?, detail?)`을 던지면 해당 `ErrorCode.getStatus()`
++ `ApiResponse.fail(...)` envelope로 자동 변환된다. `MethodArgumentNotValidException`은
+400 + `data`에 `[{"field","message"}]` 배열로, 그 외 처리되지 않은 예외는 500
+`INTERNAL_ERROR`로(스택트레이스는 로그에만) 변환된다.
 
-이벤트 컨슈머(`AnalysisResultConsumer`, `ImageAnalysisConsumer`)는 레코드 단위로
-try-catch해서 한 이벤트 처리 실패가 스트림 전체를 막지 않게 한다 — 실패해도 로그만
-남기고 `finally`에서 XACK한다(재시도 큐 같은 정교한 처리는 아직 없다는 뜻이기도
-하다. 실패 이벤트 재처리는 지금은 수동이다).
+**`ErrorCode`는 인터페이스, 실제 코드는 소유 도메인의 enum에 둔다**(2026-07 개정 —
+처음엔 단일 flat enum으로 만들었다가, 도메인이 늘어날 걸 감안해 옛 프로젝트에 있던
+인터페이스+도메인별 enum 구조로 전환했다):
+
+- `GlobalErrorCode`(`global/exception`) — 어느 도메인에도 속하지 않는 공통/인프라
+  오류만(`INVALID_PARAMETER`, `UNAUTHORIZED`, `FORBIDDEN`, `NOT_FOUND`, `CONFLICT`,
+  `INTERNAL_ERROR`).
+- 도메인 비즈니스 오류는 그 도메인 패키지 밑 `exception/`에 자기 enum을 만든다
+  (예: `domain/user/exception/UserErrorCode`, `domain/image/exception/ImageErrorCode`).
+  **다른 도메인의 enum에 코드를 얹지 않는다.**
+- **`code` 문자열은 전체 enum을 통틀어 유일해야 한다.** enum이 분리되어 있어
+  컴파일러가 중복을 못 잡아준다 — 새 코드를 추가하기 전에 관련 enum들을 직접 훑어서
+  겹치지 않는지 확인할 것(옛 문서에도 있던, `ErrorCode` 코드값 중복 사고의 재발 방지
+  규칙).
+- 지금 `code` 값은 `DUPLICATE_LOGIN_ID`처럼 의미가 드러나는 이름 그대로다. 옛
+  프로젝트의 `U001`류 prefix+번호 레지스트리(도메인별 prefix를 미리 할당하고 순번을
+  영구 결번 처리하는 체계)는 **이번 semantic 이름 체계에서는 승계하지 않았다** —
+  prefix 복귀 여부는 안드로이드와의 API 명세 회의에서 별도로 정한다. 그때 가서
+  바뀌어도 각 enum 상수의 `code` 문자열 값만 고치면 되고, 인터페이스 계약이나
+  호출부(`ApiResponse.fail`, `GlobalExceptionHandler`, `BusinessException`)는 전혀
+  건드릴 필요가 없는 구조다.
+
+이벤트 컨슈머의 예외 처리(HTTP 요청이 아니라 Redis Streams 메시지 처리 중 예외)는
+전혀 다른 정책을 쓴다 — [8절](#8-이벤트-컨슈머-예외-처리) 참고.
 
 ---
 

@@ -9,6 +9,7 @@ import com.ssafy.modera.core.designsystem.R
 @Immutable
 data class ModeraColors(
     val white: Color,
+    val gray: Color,
     val typo: Color,
 ) {
     companion object {
@@ -18,6 +19,7 @@ data class ModeraColors(
         @Composable
         fun defaultColors(): ModeraColors = ModeraColors(
             white = colorResource(id = R.color.white),
+            gray = colorResource(id = R.color.gray),
             typo = colorResource(id = R.color.typo),
         )
     }

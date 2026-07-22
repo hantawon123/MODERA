@@ -18,6 +18,8 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.ssafy.modera.core.designsystem.R
+import com.ssafy.modera.core.designsystem.R.*
 import com.ssafy.modera.core.designsystem.theme.LocalModeraContentColor
 import com.ssafy.modera.core.designsystem.theme.ModeraTheme
 
@@ -114,7 +116,7 @@ private fun ModeraIconButtonPreview() {
     ModeraTheme {
         IconButton(
             onClick = {},
-            painter = painterResource(android.R.drawable.btn_star),
+            painter = painterResource(R.drawable.ic_arrow_left),
         )
     }
 }

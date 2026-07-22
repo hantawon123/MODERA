@@ -12,7 +12,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * 3-3 토큰 재발급 / 3-4 로그아웃 공통 에러 문서.
+ * 3-3 토큰 재발급 / 3-4 로그아웃 공통 에러 문서...
  */
 @Inherited
 @Documented

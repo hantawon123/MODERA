@@ -3,6 +3,7 @@ package com.ssafy.modera.navigation
 import androidx.annotation.StringRes
 import androidx.navigation3.runtime.NavKey
 import com.ssafy.modera.R
+import com.ssafy.modera.feature.home.navigation.HomeNavKey
 import kotlinx.serialization.Serializable
 
 /**
@@ -51,9 +52,6 @@ val TOP_LEVEL_NAV_ITEMS = mapOf(
 )
 
 // TODO : 추후 각 화면으로 이동
-@Serializable
-object HomeNavKey : NavKey
-
 @Serializable
 object RegisterNavKey : NavKey
 

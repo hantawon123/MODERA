@@ -1,0 +1,31 @@
+plugins {
+    id 'org.springframework.boot' version "${SPRING_BOOT_VERSION}" apply false
+    id 'io.spring.dependency-management' version "${SPRING_BOOT_DEPENDENCY_MANAGEMENT_VERSION}" apply false
+}
+
+subprojects {
+    apply plugin: 'java'
+
+    group = 'com.ssafy.modera'
+    version = '0.0.1-SNAPSHOT'
+
+    java {
+        toolchain {
+            languageVersion = JavaLanguageVersion.of(Integer.parseInt(JAVA_VERSION))
+        }
+    }
+
+    repositories {
+        mavenCentral()
+    }
+
+    configurations {
+        compileOnly {
+            extendsFrom annotationProcessor
+        }
+    }
+
+    tasks.withType(Test).configureEach {
+        useJUnitPlatform()
+    }
+}

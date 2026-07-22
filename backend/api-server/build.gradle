@@ -1,0 +1,11 @@
+apply plugin: 'org.springframework.boot'
+apply plugin: 'io.spring.dependency-management'
+
+// 실제 애플리케이션 클래스는 4단계에서 생성된다.
+springBoot {
+    mainClass = 'com.ssafy.modera.api.ApiServerApplication'
+}
+
+dependencies {
+    implementation project(':event-contract')
+}

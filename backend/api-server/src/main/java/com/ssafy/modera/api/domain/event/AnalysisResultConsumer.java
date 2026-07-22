@@ -33,6 +33,7 @@ import java.util.UUID;
 public class AnalysisResultConsumer {
 
     private static final String PROCESSED_EVENTS_KEY = "modera:processed-events:analysis-result";
+    private static final Duration PROCESSED_EVENTS_TTL = Duration.ofDays(7);
 
     private final StringRedisTemplate redisTemplate;
     private final ObjectMapper objectMapper;
@@ -124,6 +125,9 @@ public class AnalysisResultConsumer {
 
     private boolean markProcessedIfNew(String eventId) {
         Long added = redisTemplate.opsForSet().add(PROCESSED_EVENTS_KEY, eventId);
+        // SET은 멤버 단위 TTL이 없어 키 전체에 건다. 쓸 때마다 갱신되는 슬라이딩 TTL이라
+        // 계속 트래픽이 있으면 오래된 eventId도 같이 남지만, 최소한 무한정 쌓이지는 않는다.
+        redisTemplate.expire(PROCESSED_EVENTS_KEY, PROCESSED_EVENTS_TTL);
         return added != null && added > 0;
     }
 

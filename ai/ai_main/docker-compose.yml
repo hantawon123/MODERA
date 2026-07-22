@@ -2,6 +2,7 @@
 # 15GB RAM 인스턴스 기준. OpenSearch 힙 2GB 로 잡아도 여유롭다.
 services:
   opensearch:
+    image: ai-opensearch-nori:latest   # docker load 로 올린 이미지를 그대로 사용(빌드 생략)
     build:
       context: .
       dockerfile: opensearch.Dockerfile
@@ -22,6 +23,7 @@ services:
       - "127.0.0.1:9200:9200"
 
   ai-service:
+    image: ai-main:latest              # docker load 로 올린 이미지를 그대로 사용(빌드 생략)
     build:
       context: .
       dockerfile: Dockerfile

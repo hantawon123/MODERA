@@ -13,71 +13,70 @@ import org.jetbrains.kotlin.gradle.dsl.KotlinJvmProjectExtension
  * Configure base Kotlin with Android options
  */
 internal fun Project.configureKotlinAndroid(
-  commonExtension: CommonExtension,
+    commonExtension: CommonExtension,
 ) {
-  commonExtension.apply {
-    compileSdk = 36
+    commonExtension.apply {
+        compileSdk = 36
 
-    defaultConfig.minSdk = 26
+        defaultConfig.minSdk = 26
 
-    compileOptions.apply {
-      sourceCompatibility = JavaVersion.VERSION_17
-      targetCompatibility = JavaVersion.VERSION_17
+        compileOptions.apply {
+            sourceCompatibility = JavaVersion.VERSION_17
+            targetCompatibility = JavaVersion.VERSION_17
+        }
+
+        lint.abortOnError = false
     }
-
-    lint.abortOnError = false
-  }
 }
 
 internal fun Project.configureKotlinAndroid(
-  extension: KotlinAndroidProjectExtension,
+    extension: KotlinAndroidProjectExtension,
 ) {
-  extension.apply {
-    compilerOptions {
-      // Treat all Kotlin warnings as errors (disabled by default)
-      allWarningsAsErrors.set(
-        properties["warningsAsErrors"] as? Boolean ?: false
-      )
+    extension.apply {
+        compilerOptions {
+            // Treat all Kotlin warnings as errors (disabled by default)
+            allWarningsAsErrors.set(
+                properties["warningsAsErrors"] as? Boolean ?: false
+            )
 
-      freeCompilerArgs.set(
-        freeCompilerArgs.getOrElse(emptyList()) + listOf(
-          "-Xexplicit-backing-fields",
-          "-Xopt-in=kotlin.RequiresOptIn",
-          // Enable experimental coroutines APIs, including Flow
-          "-Xopt-in=kotlinx.coroutines.ExperimentalCoroutinesApi",
-          // Enable experimental compose APIs
-          "-Xopt-in=androidx.compose.material3.ExperimentalMaterial3Api",
-          "-Xopt-in=androidx.lifecycle.compose.ExperimentalLifecycleComposeApi",
-          "-Xopt-in=androidx.compose.animation.ExperimentalSharedTransitionApi",
-        )
-      )
+            freeCompilerArgs.set(
+                freeCompilerArgs.getOrElse(emptyList()) + listOf(
+                    "-Xexplicit-backing-fields",
+                    "-Xopt-in=kotlin.RequiresOptIn",
+                    // Enable experimental coroutines APIs, including Flow
+                    "-Xopt-in=kotlinx.coroutines.ExperimentalCoroutinesApi",
+                    // Enable experimental compose APIs
+                    "-Xopt-in=androidx.lifecycle.compose.ExperimentalLifecycleComposeApi",
+                    "-Xopt-in=androidx.compose.animation.ExperimentalSharedTransitionApi",
+                )
+            )
 
-      // Set JVM target to 17
-      jvmTarget.set(JvmTarget.JVM_17)
+            // Set JVM target to 17
+            jvmTarget.set(JvmTarget.JVM_17)
+        }
     }
-  }
 }
 
 internal fun Project.configureKotlinJvm() {
-  extensions.configure<JavaPluginExtension> {
-    sourceCompatibility = JavaVersion.VERSION_17
-    targetCompatibility = JavaVersion.VERSION_17
-  }
-
-  extensions.configure<KotlinJvmProjectExtension> {
-    compilerOptions {
-      allWarningsAsErrors.set(
-        providers.gradleProperty("warningsAsErrors")
-          .map(String::toBoolean)
-          .orElse(false)
-      )
-
-      freeCompilerArgs.addAll(
-        "-opt-in=kotlin.RequiresOptIn",
-        "-opt-in=kotlinx.coroutines.ExperimentalCoroutinesApi",
-      )
-
-      jvmTarget.set(JvmTarget.JVM_17)
+    extensions.configure<JavaPluginExtension> {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
-  }
+
+    extensions.configure<KotlinJvmProjectExtension> {
+        compilerOptions {
+            allWarningsAsErrors.set(
+                providers.gradleProperty("warningsAsErrors")
+                    .map(String::toBoolean)
+                    .orElse(false)
+            )
+
+            freeCompilerArgs.addAll(
+                "-opt-in=kotlin.RequiresOptIn",
+                "-opt-in=kotlinx.coroutines.ExperimentalCoroutinesApi",
+            )
+
+            jvmTarget.set(JvmTarget.JVM_17)
+        }
+    }
 }

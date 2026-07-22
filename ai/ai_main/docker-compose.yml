@@ -7,7 +7,9 @@ services:
       dockerfile: opensearch.Dockerfile
     environment:
       - discovery.type=single-node
-      - plugins.security.disabled=true          # 내부망 전제: 보안 플러그인 끔(HTTP)
+      # 보안 플러그인 활성화(HTTPS + 인증). 비밀번호는 .env 에서 주입되어
+      # 이 파일에는 남지 않는다. 2.12+ 는 대소문자·숫자·특수문자 포함을 요구한다.
+      - OPENSEARCH_INITIAL_ADMIN_PASSWORD=${OPENSEARCH_INITIAL_ADMIN_PASSWORD}
       - OPENSEARCH_JAVA_OPTS=-Xms2g -Xmx2g
       - bootstrap.memory_lock=true
     ulimits:

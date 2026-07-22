@@ -15,14 +15,10 @@ from .category import CategoryResolution, resolve_category
 from .config import get_settings
 from .jobs import job_registry
 from .schemas import (
-    AnalyzeInput,
-    AnalyzeOptions,
     AnalyzeRequest,
     CallbackError,
     CallbackRequest,
     CategoryCandidate,
-    ImageAnalysisInput,
-    OcrInput,
 )
 
 logger = logging.getLogger(__name__)
@@ -34,49 +30,6 @@ DEFAULT_CATEGORIES = [
     "뷰티·미용", "학습·공부", "채용·취업", "IT·개발", "뉴스·시사", "부동산",
     "건강·운동", "엔터·콘텐츠", "자동차", "반려동물", "기타",
 ]
-
-FALLBACK_CATEGORY = "기타"
-
-# 모델 응답 구조를 스키마로 강제한다(프롬프트만으로 강제하는 것보다 파싱 실패가 적다).
-_LLM_SCHEMA = {
-    "type": "object",
-    "properties": {
-        "informative": {"type": "boolean"},
-        "confidence": {"type": "number"},
-        "reason": {"type": "string"},
-    },
-    "required": ["informative", "confidence", "reason"],
-}
-
-_IMAGE_ANALYSIS_SCHEMA = {
-    "type": "object",
-    "properties": {
-        "description": {"type": "string"},
-        "detected_texts": {"type": "array", "items": {"type": "string"}},
-        "objects": {"type": "array", "items": {"type": "string"}},
-    },
-    "required": ["description", "detected_texts", "objects"],
-}
-
-_AGENT_SCHEMA = {
-    "type": "object",
-    "properties": {
-        "title": {"type": "string"},
-        "summary": {"type": "string"},
-        "tags": {"type": "array", "items": {"type": "string"}},
-        "categories": {"type": "array", "items": {"type": "string"}},
-        "key_information": {"type": "array", "items": {"type": "string"}},
-        "analysis_confidence": {"type": "number"},
-    },
-    "required": ["title", "summary", "tags", "categories",
-                 "key_information", "analysis_confidence"],
-}
-
-_OCR_SCHEMA = {
-    "type": "object",
-    "properties": {"text": {"type": "string"}},
-    "required": ["text"],
-}
 
 
 def _now_iso() -> str:
@@ -103,7 +56,7 @@ def run_llm(ocr_text: str) -> tuple[str, dict[str, Any]]:
         '{"informative": true, "confidence": 0.0, "reason": "간단한 근거"}\n\n'
         f"OCR 텍스트:\n{ocr_text}"
     )
-    parsed = gemini_client.generate_json(settings.llm_model_name, [prompt], _LLM_SCHEMA)
+    parsed = gemini_client.generate_json(settings.llm_model_name, [prompt])
     return "COMPLETED", {
         "informative": bool(parsed.get("informative", False)),
         "confidence": float(parsed.get("confidence", 0.0)),
@@ -112,9 +65,9 @@ def run_llm(ocr_text: str) -> tuple[str, dict[str, Any]]:
 
 
 # ── 2) 서버 이미지 분석 ───────────────────────────────────────────────────
-def analyze_image_bytes(image_bytes: bytes, mime_type: str = "image/jpeg") -> dict[str, Any]:
-    """이미지 바이트를 비전 모델로 분석한다(S3 조회와 분리해 업로드 경로에서도 쓴다)."""
+def run_image_analysis(s3_key: str) -> dict[str, Any]:
     settings = get_settings()
+    image_bytes = storage.fetch_image_bytes(s3_key)
     prompt = (
         "이미지를 분석하라. 콘텐츠 유형을 한 문장으로 설명하고(description), "
         "눈에 보이는 주요 객체(objects)와 화면에서 읽히는 핵심 텍스트/브랜드/가격/날짜"
@@ -123,40 +76,13 @@ def analyze_image_bytes(image_bytes: bytes, mime_type: str = "image/jpeg") -> di
         '{"description":"...","detected_texts":["..."],"objects":["..."]}'
     )
     parsed = gemini_client.generate_json(
-        settings.vision_model_name,
-        [prompt, gemini_client.image_part(image_bytes, mime_type)],
-        _IMAGE_ANALYSIS_SCHEMA,
+        settings.vision_model_name, [prompt, gemini_client.image_part(image_bytes)]
     )
     return {
         "description": parsed.get("description", ""),
         "detectedTexts": parsed.get("detected_texts", []),
         "objects": parsed.get("objects", []),
     }
-
-
-def run_image_analysis(s3_key: str) -> dict[str, Any]:
-    return analyze_image_bytes(storage.fetch_image_bytes(s3_key))
-
-
-# ── 2-1) 서버 사이드 OCR (테스트 전용) ────────────────────────────────────
-def run_server_ocr(image_bytes: bytes, mime_type: str = "image/jpeg") -> str:
-    """운영에서는 모바일 온디바이스 OCR 을 쓴다.
-
-    /analyze/upload 로 OCR 텍스트 없이 이미지만 올라온 경우에만 사용한다.
-    """
-    settings = get_settings()
-    prompt = (
-        "이 이미지에 보이는 모든 텍스트를 있는 그대로 추출하라. 설명·해석을 덧붙이지 말고 "
-        "이미지 속 글자만 원문 순서대로 옮겨라. 텍스트가 없으면 빈 문자열.\n"
-        "반드시 아래 JSON만 출력. 마크다운·설명 금지.\n"
-        '{"text":"..."}'
-    )
-    parsed = gemini_client.generate_json(
-        settings.vision_model_name,
-        [prompt, gemini_client.image_part(image_bytes, mime_type)],
-        _OCR_SCHEMA,
-    )
-    return (parsed.get("text") or "").strip()
 
 
 # ── 3) AGENT (OCR + 이미지 분석 종합) ─────────────────────────────────────
@@ -189,7 +115,7 @@ def run_agent_generation(
         f"OCR: {ocr_text}\n"
         f"이미지 분석: {image_analysis}"
     )
-    return gemini_client.generate_json(settings.llm_model_name, [prompt], _AGENT_SCHEMA)
+    return gemini_client.generate_json(settings.llm_model_name, [prompt])
 
 
 def _build_candidates(candidates: list[CategoryCandidate]) -> list[CategoryCandidate]:
@@ -250,74 +176,14 @@ async def run_agent(request: AnalyzeRequest) -> dict[str, Any]:
         "analysisConfidence": float(generated.get("analysis_confidence", 0.0)),
         # 구조화 데이터는 MVP 범위에서 제외. 형태만 유지한다.
         "structuredData": {"type": None, "fields": {}},
-        # ── 명세 외 필드. 카테고리 판정 근거를 Spring 에 그대로 넘긴다.
-        #    (팀 합의: 일단 유지하고 불필요해지면 제거)
+        # 신규 카테고리 여부(스프링이 생성 판단에 사용). 계약 확정 필요.
         "categoryCreated": resolution.created,
-        "categoryId": resolution.category_id,
-        "categorySimilarity": round(resolution.similarity, 4),
-        "categoryMatchedBy": resolution.matched_by,
         # 검색용 문서 임베딩. Spring 이 pgvector 등에 그대로 적재한다.
         # (요약 텍스트 기준. purpose=DOCUMENT 로 생성)
         "documentVector": vectors[0],
         "embeddingModel": embedding_model,
         "embeddingDimension": len(vectors[0]),
     }
-
-
-# ── 업로드 테스트 파이프라인 (명세 외, MVP 수동 테스트 전용) ──────────────
-async def run_upload_pipeline(
-    image_bytes: bytes,
-    mime_type: str,
-    ocr_text: str,
-    user_id: int,
-    max_tags: int,
-    language: str,
-) -> dict[str, Any]:
-    """이미지 한 장으로 LLM → IMAGE_ANALYSIS → AGENT 를 한 번에 실행한다.
-
-    운영 경로(모바일 → Spring → 단계별 /analyze)와 달리 Spring 오케스트레이션 없이
-    돌려보기 위한 것이다. 결과는 콜백 없이 그대로 응답한다.
-    """
-    if not ocr_text.strip():
-        ocr_text = await asyncio.to_thread(run_server_ocr, image_bytes, mime_type)
-    logger.info("업로드 파이프라인 OCR %d자", len(ocr_text))
-
-    status, llm_result = await asyncio.to_thread(run_llm, ocr_text)
-    logger.info("업로드 파이프라인 LLM status=%s informative=%s",
-                status, llm_result.get("informative"))
-
-    common = {"ocrText": ocr_text, "llm": {"status": status, **llm_result}}
-
-    # 정보성이 없으면 비전·AGENT 를 돌리지 않고 '기타' 로 끝낸다(프로토타입 분기와 동일).
-    if status == "EMPTY" or not llm_result.get("informative"):
-        return {
-            "title": ocr_text[:30] or "정보 없는 스크린샷",
-            "summary": llm_result.get("reason") or "정보성 콘텐츠가 아님",
-            "tags": [],
-            "categories": [FALLBACK_CATEGORY],
-            "keyInformation": [],
-            "analysisConfidence": float(llm_result.get("confidence", 0.0)),
-            "structuredData": {"type": None, "fields": {}},
-            "categoryCreated": False,
-            "categoryId": None,
-            "categorySimilarity": None,
-            "categoryMatchedBy": "skip(비정보성)",
-            **common,
-        }
-
-    analysis = await asyncio.to_thread(analyze_image_bytes, image_bytes, mime_type)
-    logger.info("업로드 파이프라인 IMAGE_ANALYSIS: %s", analysis.get("description"))
-
-    request = AnalyzeRequest(
-        job_id=0, image_id=0, user_id=user_id, stage="AGENT",
-        input=AnalyzeInput(
-            ocr=OcrInput(raw_text=ocr_text),
-            image_analysis=ImageAnalysisInput.model_validate(analysis),
-        ),
-        options=AnalyzeOptions(max_tags=max_tags, language=language),
-    )
-    result = await run_agent(request)
-    return {**result, **common, "imageAnalysis": analysis}
 
 
 # ── 단계 실행 + 콜백 ──────────────────────────────────────────────────────

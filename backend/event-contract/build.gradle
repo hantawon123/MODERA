@@ -1,0 +1,4 @@
+apply plugin: 'java-library'
+
+// Spring Boot 플러그인을 적용하지 않는 순수 Java 라이브러리 모듈이므로
+// bootJar 태스크 자체가 존재하지 않는다(=비활성). java-library의 기본 jar 태스크만 활성화된다.

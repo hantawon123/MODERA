@@ -110,23 +110,56 @@ public class ImageAnalysisConsumer {
         }
     }
 
+    /**
+     * 이벤트 컨슈머 예외 정책(api-server의 AnalysisResultConsumer와 동일 기준):
+     *  - envelope/payload 파싱 실패(영구 오류)는 eventId를 로그에 남기고 XACK해서 스킵한다.
+     *  - "AI 분석 자체의 실패"(AnalysisClient 호출 실패 등)는 이 클래스의 기존 정책대로
+     *    처리한다 — job을 FAILED로 기록하고 ANALYSIS_FAILED를 발행한 뒤 정상 처리로
+     *    취급해 XACK한다({@link #handleImageUploaded} 내부 catch 참고).
+     *  - 그 외(예: job 생성 자체가 DB 오류로 실패)는 일시 오류로 간주해 XACK하지 않고
+     *    PEL에 남긴다. TODO: XAUTOCLAIM 기반 재처리 배치 추가.
+     */
     private void processRecord(MapRecord<String, String, String> record) {
+        EventEnvelope envelope;
         try {
-            EventEnvelope envelope = EventEnvelope.fromFieldMap(record.getValue());
-            if (EventTypes.IMAGE_UPLOADED.equals(envelope.eventType())) {
-                ImageUploadedPayload payload = envelope.readPayload(ImageUploadedPayload.class, objectMapper);
-                handleImageUploaded(payload);
-            } else {
-                log.warn("알 수 없는 eventType이라 무시한다: {}", envelope.eventType());
-            }
+            envelope = EventEnvelope.fromFieldMap(record.getValue());
         } catch (Exception e) {
-            log.error("image-analysis 이벤트 처리 실패: recordId={}", record.getId(), e);
-        } finally {
-            redisTemplate.opsForStream().acknowledge(Streams.IMAGE_ANALYSIS, Streams.GROUP_ANALYSIS_WORKERS, record.getId().getValue());
+            log.error("image-analysis envelope 파싱 실패(영구 오류로 판단, 스킵): recordId={}", record.getId(), e);
+            acknowledge(record);
+            return;
+        }
+
+        try {
+            if (EventTypes.IMAGE_UPLOADED.equals(envelope.eventType())) {
+                ImageUploadedPayload payload = readPayload(envelope, ImageUploadedPayload.class);
+                handleImageUploaded(envelope, payload);
+            } else {
+                log.warn("알 수 없는 eventType이라 무시한다: eventId={}, eventType={}", envelope.eventId(), envelope.eventType());
+            }
+            acknowledge(record);
+        } catch (PayloadParseException e) {
+            log.error("image-analysis payload 파싱 실패(영구 오류로 판단, 스킵): eventId={}, eventType={}",
+                    envelope.eventId(), envelope.eventType(), e.getCause());
+            acknowledge(record);
+        } catch (Exception e) {
+            log.error("image-analysis 이벤트 처리 중 일시 오류로 판단, XACK 보류(재전달 대기): eventId={}, eventType={}",
+                    envelope.eventId(), envelope.eventType(), e);
         }
     }
 
-    private void handleImageUploaded(ImageUploadedPayload payload) {
+    private <T> T readPayload(EventEnvelope envelope, Class<T> type) {
+        try {
+            return envelope.readPayload(type, objectMapper);
+        } catch (Exception e) {
+            throw new PayloadParseException(e);
+        }
+    }
+
+    private void acknowledge(MapRecord<String, String, String> record) {
+        redisTemplate.opsForStream().acknowledge(Streams.IMAGE_ANALYSIS, Streams.GROUP_ANALYSIS_WORKERS, record.getId().getValue());
+    }
+
+    private void handleImageUploaded(EventEnvelope envelope, ImageUploadedPayload payload) {
         UUID imageId = UUID.fromString(payload.imageId());
 
         AnalysisJob job = AnalysisJob.builder()
@@ -182,6 +215,13 @@ public class ImageAnalysisConsumer {
             Thread.sleep(Duration.ofSeconds(1));
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
+        }
+    }
+
+    /** payload JSON 자체가 깨진 경우를 "일시 오류"와 구분하기 위한 내부 마커 예외. */
+    private static final class PayloadParseException extends RuntimeException {
+        PayloadParseException(Throwable cause) {
+            super(cause);
         }
     }
 }

@@ -100,26 +100,72 @@ public class AnalysisResultConsumer {
         }
     }
 
+    /**
+     * 이벤트 컨슈머 예외 정책:
+     *  - envelope/payload 파싱 실패(영구 오류 — 재시도해도 항상 똑같이 실패)는
+     *    eventId를 로그에 남기고 XACK해서 스킵한다.
+     *  - 그 외(핸들러 처리 중 DB 등 일시 오류로 간주)는 eventId를 로그에 남기되
+     *    XACK하지 않는다 — PEL(Pending Entries List)에 남아 재전달을 기다린다.
+     *    PEL에 오래 남은 메시지를 자동으로 재할당/재처리하는 배치(XAUTOCLAIM)는
+     *    아직 없다. TODO: XAUTOCLAIM 기반 재처리 배치 추가.
+     */
     private void processRecord(MapRecord<String, String, String> record) {
+        EventEnvelope envelope;
         try {
-            EventEnvelope envelope = EventEnvelope.fromFieldMap(record.getValue());
+            envelope = EventEnvelope.fromFieldMap(record.getValue());
+        } catch (Exception e) {
+            log.error("analysis-result envelope 파싱 실패(영구 오류로 판단, 스킵): recordId={}", record.getId(), e);
+            acknowledge(record);
+            return;
+        }
+
+        try {
             if (!markProcessedIfNew(envelope.eventId())) {
                 log.info("이미 처리한 이벤트라 건너뛴다: eventId={}", envelope.eventId());
-            } else if (EventTypes.ANALYSIS_COMPLETED.equals(envelope.eventType())) {
-                AnalysisCompletedPayload payload = envelope.readPayload(AnalysisCompletedPayload.class, objectMapper);
-                eventHandler.handleCompleted(payload);
-                log.info("ANALYSIS_COMPLETED 처리 완료: imageId={}", payload.imageId());
-            } else if (EventTypes.ANALYSIS_FAILED.equals(envelope.eventType())) {
-                AnalysisFailedPayload payload = envelope.readPayload(AnalysisFailedPayload.class, objectMapper);
-                eventHandler.handleFailed(payload);
-                log.info("ANALYSIS_FAILED 처리 완료: imageId={}", payload.imageId());
             } else {
-                log.warn("알 수 없는 eventType이라 무시한다: {}", envelope.eventType());
+                dispatch(envelope);
             }
+            acknowledge(record);
+        } catch (PayloadParseException e) {
+            log.error("analysis-result payload 파싱 실패(영구 오류로 판단, 스킵): eventId={}, eventType={}",
+                    envelope.eventId(), envelope.eventType(), e.getCause());
+            acknowledge(record);
         } catch (Exception e) {
-            log.error("analysis-result 이벤트 처리 실패: recordId={}", record.getId(), e);
-        } finally {
-            redisTemplate.opsForStream().acknowledge(Streams.ANALYSIS_RESULT, Streams.GROUP_API_CONSUMERS, record.getId().getValue());
+            log.error("analysis-result 이벤트 처리 중 일시 오류로 판단, XACK 보류(재전달 대기): eventId={}, eventType={}",
+                    envelope.eventId(), envelope.eventType(), e);
+        }
+    }
+
+    private void dispatch(EventEnvelope envelope) {
+        if (EventTypes.ANALYSIS_COMPLETED.equals(envelope.eventType())) {
+            AnalysisCompletedPayload payload = readPayload(envelope, AnalysisCompletedPayload.class);
+            eventHandler.handleCompleted(payload);
+            log.info("ANALYSIS_COMPLETED 처리 완료: eventId={}, imageId={}", envelope.eventId(), payload.imageId());
+        } else if (EventTypes.ANALYSIS_FAILED.equals(envelope.eventType())) {
+            AnalysisFailedPayload payload = readPayload(envelope, AnalysisFailedPayload.class);
+            eventHandler.handleFailed(payload);
+            log.info("ANALYSIS_FAILED 처리 완료: eventId={}, imageId={}", envelope.eventId(), payload.imageId());
+        } else {
+            log.warn("알 수 없는 eventType이라 무시한다: eventId={}, eventType={}", envelope.eventId(), envelope.eventType());
+        }
+    }
+
+    private <T> T readPayload(EventEnvelope envelope, Class<T> type) {
+        try {
+            return envelope.readPayload(type, objectMapper);
+        } catch (Exception e) {
+            throw new PayloadParseException(e);
+        }
+    }
+
+    private void acknowledge(MapRecord<String, String, String> record) {
+        redisTemplate.opsForStream().acknowledge(Streams.ANALYSIS_RESULT, Streams.GROUP_API_CONSUMERS, record.getId().getValue());
+    }
+
+    /** payload JSON 자체가 깨진 경우를 "일시 오류"와 구분하기 위한 내부 마커 예외. */
+    private static final class PayloadParseException extends RuntimeException {
+        PayloadParseException(Throwable cause) {
+            super(cause);
         }
     }
 

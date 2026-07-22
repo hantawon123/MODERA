@@ -59,6 +59,11 @@ storage:
     secret-key: ${S3_SECRET_KEY:minioadmin}
     path-style-access: true
 
+# [Internal] MinIO ObjectCreated webhook 인증 토큰
+internal:
+  storage:
+    webhook-token: ${MINIO_WEBHOOK_TOKEN:local-dev-webhook-token}
+
 logging:
   level:
     root: INFO

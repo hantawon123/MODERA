@@ -13,10 +13,14 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-liquibase'
     implementation 'org.springframework.boot:spring-boot-starter-data-redis'
 
+    // FastApiAnalysisClient가 AI 서버 HTTP 호출에 RestClient를 쓴다(전체 web 스타터는 필요 없음).
+    implementation 'org.springframework:spring-web'
+
     implementation 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
 
-    runtimeOnly 'org.postgresql:postgresql'
+    // JSONB/vector 바인딩에 org.postgresql.util.PGobject를 직접 쓰므로 컴파일 타임에도 필요하다.
+    implementation 'org.postgresql:postgresql'
 
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'

@@ -16,7 +16,7 @@ pipeline {
         stage('Backend Build') {
             when { changeset "backend/**" }
             steps {
-                echo 'Docker 이미지 빌드'
+                echo 'Docker image build'
                 dir('backend') {
                     sh 'docker build -t modera-backend:${BUILD_NUMBER} -t modera-backend:latest .'
                 }
@@ -26,14 +26,27 @@ pipeline {
         stage('Deploy') {
             when { changeset "backend/**" }
             steps {
-                echo '새 이미지로 컨테이너 교체'
+                echo 'Recreate container with new image'
                 dir('/home/ubuntu/app') {
                     sh 'docker compose up -d --force-recreate'
                 }
-                echo 'Spring 기동 대기'
+                echo 'Wait for Spring startup'
                 sh 'sleep 15'
-                echo '헬스체크'
+                echo 'Health check'
                 sh 'docker exec infra-nginx-1 wget -qO- http://modera-spring:8080/actuator/health'
             }
         }
     }
+
+    post {
+        always {
+            echo 'Pipeline finished.'
+        }
+        success {
+            echo 'Build and Deploy succeeded.'
+        }
+        failure {
+            echo 'Build or Deploy failed.'
+        }
+    }
+}

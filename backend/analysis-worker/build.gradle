@@ -5,6 +5,10 @@ springBoot {
     mainClass = 'com.ssafy.modera.worker.AnalysisWorkerApplication'
 }
 
+bootJar {
+    archiveFileName = 'analysis-worker.jar'
+}
+
 dependencies {
     implementation project(':event-contract')
 

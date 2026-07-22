@@ -5,6 +5,10 @@ springBoot {
     mainClass = 'com.ssafy.modera.api.ApiServerApplication'
 }
 
+bootJar {
+    archiveFileName = 'api-server.jar'
+}
+
 dependencies {
     implementation project(':event-contract')
 

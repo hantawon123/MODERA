@@ -7,13 +7,6 @@ API 키·내부 토큰은 기본값을 두지 않는다. 미설정 시 즉시 �
 import os
 from functools import lru_cache
 
-from dotenv import load_dotenv
-
-# 로컬 개발 편의: .env 가 있으면 읽는다.
-# 운영(Docker)은 컨테이너 환경변수를 쓰므로 파일이 없어도 그대로 동작한다.
-# 이미 설정된 환경변수를 덮어쓰지 않는다(override=False 가 기본).
-load_dotenv()
-
 
 def _required(name: str) -> str:
     value = os.environ.get(name)
@@ -35,6 +28,14 @@ class Settings:
         self.s3_bucket = os.environ.get("S3_BUCKET", "")
         self.aws_region = os.environ.get("AWS_REGION", "ap-northeast-2")
 
+        # OpenSearch (검색 색인/조회 — FastAPI 전담, 한글 nori analyzer)
+        self.opensearch_host = os.environ.get("OPENSEARCH_HOST", "localhost")
+        self.opensearch_port = int(os.environ.get("OPENSEARCH_PORT", "9200"))
+        self.opensearch_use_ssl = os.environ.get("OPENSEARCH_USE_SSL", "false").lower() == "true"
+        self.opensearch_user = os.environ.get("OPENSEARCH_USER", "")
+        self.opensearch_password = os.environ.get("OPENSEARCH_PASSWORD", "")
+        self.opensearch_index = os.environ.get("OPENSEARCH_INDEX", "screenshot_kb")
+
         # 모델
         self.llm_model_name = os.environ.get("LLM_MODEL_NAME", "gemini-3.5-flash")
         self.vision_model_name = os.environ.get("VISION_MODEL_NAME", "gemini-3.5-flash")
@@ -48,6 +49,15 @@ class Settings:
 
         # 외부 호출 타임아웃(초)
         self.http_timeout = float(os.environ.get("HTTP_TIMEOUT", "30"))
+
+        # 동시 실행 단계 수 제한.
+        # 수백 장이 한꺼번에 들어와도 Gemini 호출이 폭주(429)하지 않게 막는다.
+        self.max_concurrent_stages = int(os.environ.get("MAX_CONCURRENT_STAGES", "4"))
+
+        # Gemini 429(rate limit) 재시도. 지수 백오프 + 지터로 재시도한다.
+        self.gemini_max_attempts = int(os.environ.get("GEMINI_MAX_ATTEMPTS", "5"))
+        self.gemini_backoff_base = float(os.environ.get("GEMINI_BACKOFF_BASE", "1.0"))
+        self.gemini_backoff_max = float(os.environ.get("GEMINI_BACKOFF_MAX", "30"))
 
 
 @lru_cache(maxsize=1)

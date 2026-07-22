@@ -149,3 +149,25 @@ class KnowledgeCandidates(CamelModel):
     user_id: int
     tags: list[TagCandidate] = []
     categories: list[CategoryCandidate] = []
+
+
+# ── 검색 (OpenSearch 키워드/BM25) ─────────────────────────────────────────
+class SearchRequest(CamelModel):
+    user_id: int
+    query: str
+    category: str | None = None      # 카테고리명으로 필터 (선택)
+    size: int = 10
+
+
+class SearchHit(CamelModel):
+    image_id: int
+    title: str = ""
+    summary: str = ""
+    tags: list[str] = []
+    category: str | None = None
+    score: float = 0.0
+
+
+class SearchResponse(CamelModel):
+    total: int
+    hits: list[SearchHit] = []

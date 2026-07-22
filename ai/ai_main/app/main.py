@@ -7,13 +7,11 @@
 import logging
 from typing import Any
 
-from fastapi import (
-    BackgroundTasks, Depends, FastAPI, File, Form, Header, Request, UploadFile,
-)
+from fastapi import BackgroundTasks, Depends, FastAPI, Header, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
-from . import gemini_client
+from . import gemini_client, search
 from .config import get_settings
 from .jobs import job_registry
 from .schemas import (
@@ -25,8 +23,11 @@ from .schemas import (
     ParsedConditions,
     QueryParseRequest,
     QueryParseResponse,
+    SearchHit,
+    SearchRequest,
+    SearchResponse,
 )
-from .stages import execute_stage, run_upload_pipeline
+from .stages import execute_stage
 
 logging.basicConfig(
     level=logging.INFO,
@@ -66,18 +67,17 @@ async def health() -> dict[str, str]:
 
 
 # ── 10-1 단계별 분석 실행 요청 ────────────────────────────────────────────
-# (파이썬 속성명, 응답에 노출할 camelCase 이름)
 _REQUIRED_INPUT = {
-    "LLM": (("ocr", "ocr"),),
-    "IMAGE_ANALYSIS": (("image", "image"),),
-    "AGENT": (("ocr", "ocr"), ("image_analysis", "imageAnalysis")),
+    "LLM": ("ocr",),
+    "IMAGE_ANALYSIS": ("image",),
+    "AGENT": ("ocr", "image_analysis"),
 }
 
 
 @app.post("/internal/v1/analyze", dependencies=[Depends(require_internal_token)])
 async def analyze(request: AnalyzeRequest, background_tasks: BackgroundTasks):
     missing = [
-        alias for field, alias in _REQUIRED_INPUT[request.stage]
+        field for field in _REQUIRED_INPUT[request.stage]
         if getattr(request.input, field, None) is None
     ]
     if missing:
@@ -101,32 +101,6 @@ async def analyze(request: AnalyzeRequest, background_tasks: BackgroundTasks):
     )
     return JSONResponse(status_code=202,
                         content=accepted.model_dump(by_alias=True))
-
-
-# ── (명세 외) 이미지 업로드 분석 — MVP 수동 테스트 전용 ───────────────────
-# 운영 경로는 모바일 → Spring → S3(s3Key) → 위의 stage 별 /analyze 다.
-# 이 엔드포인트는 Spring·S3 없이 Postman 으로 파이프라인을 확인하기 위한 것이며,
-# 콜백도 멱등 처리도 하지 않고 결과를 동기로 돌려준다.
-@app.post("/internal/v1/analyze/upload", dependencies=[Depends(require_internal_token)])
-async def analyze_upload(
-    image: UploadFile = File(..., description="분석할 스크린샷 파일"),
-    ocrText: str = Form("", description="모바일 OCR 텍스트. 비우면 서버가 직접 OCR"),
-    userId: int = Form(0, description="10-5 후보 조회 대상 사용자"),
-    maxTags: int = Form(10),
-    language: str = Form("ko"),
-):
-    image_bytes = await image.read()
-    if not image_bytes:
-        return _error("INVALID_REQUEST", "빈 이미지 파일입니다.", http_status=400)
-    try:
-        result = await run_upload_pipeline(
-            image_bytes, image.content_type or "image/jpeg",
-            ocrText, userId, maxTags, language,
-        )
-    except Exception as e:
-        logger.exception("업로드 분석 실패")
-        return _error("AGENT_FAILED", str(e)[:500], http_status=502)
-    return JSONResponse(status_code=200, content=result)
 
 
 # ── 10-2 텍스트 임베딩 생성 ───────────────────────────────────────────────
@@ -187,4 +161,23 @@ async def query_parse(request: QueryParseRequest):
             parsed_conditions=None,
             confidence=0.0,
         )
+    return JSONResponse(status_code=200, content=response.model_dump(by_alias=True))
+
+
+# ── 키워드 검색 (OpenSearch BM25) ─────────────────────────────────────────
+@app.post("/internal/v1/search", dependencies=[Depends(require_internal_token)])
+async def keyword_search(request: SearchRequest):
+    if not request.query or not request.query.strip():
+        return _error("INVALID_REQUEST", "query 가 비어 있습니다.", http_status=400)
+    try:
+        import asyncio
+        hits, total = await asyncio.to_thread(
+            search.keyword_search,
+            request.user_id, request.query, request.category, request.size,
+        )
+    except Exception as e:
+        logger.exception("검색 실패")
+        return _error("SEARCH_FAILED", str(e)[:500], http_status=502)
+
+    response = SearchResponse(total=total, hits=[SearchHit(**h) for h in hits])
     return JSONResponse(status_code=200, content=response.model_dump(by_alias=True))

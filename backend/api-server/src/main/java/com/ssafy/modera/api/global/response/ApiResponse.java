@@ -1,6 +1,7 @@
 package com.ssafy.modera.api.global.response;
 
 import com.ssafy.modera.api.global.exception.ErrorCode;
+import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -10,11 +11,11 @@ import java.time.format.DateTimeFormatter;
  * /api/v1/** 응답 envelope. /internal/**, actuator, swagger에는 적용하지 않는다.
  */
 public record ApiResponse<T>(
-        String result,
-        String code,
-        String message,
-        T data,
-        String timestamp
+        @Schema(description = "성공 여부", example = "SUCCESS", allowableValues = {"SUCCESS", "FAIL"}) String result,
+        @Schema(description = "성공은 SUCCESS 고정, 실패는 에러코드 문자열(예: IMAGE_NOT_FOUND)", example = "SUCCESS") String code,
+        @Schema(description = "사람이 읽는 메시지", example = "요청이 성공했습니다.") String message,
+        @Schema(description = "성공 시 실제 응답 데이터, 실패 시 보통 null(검증 실패 400은 필드 오류 배열)") T data,
+        @Schema(description = "ISO-8601 UTC", example = "2026-07-23T06:00:00.000Z") String timestamp
 ) {
     private static final String RESULT_SUCCESS = "SUCCESS";
     private static final String RESULT_FAIL = "FAIL";

@@ -182,7 +182,38 @@ JWT 인증을 다시 만들 때 최소 확인할 것:
 
 ---
 
-## 8. PR 리뷰 체크리스트
+## 8. 이벤트 컨슈머 예외 처리
+
+컨슈머(`AnalysisResultConsumer`, `ImageAnalysisConsumer`)가 레코드 하나를 처리하다
+마주치는 예외는 두 갈래로 나눠서 다르게 반응한다.
+
+**영구 오류(재시도해도 항상 같은 결과)** — envelope 자체가 필드맵에서 못 만들어지거나
+(`EventEnvelope.fromFieldMap`), payload JSON이 깨져서 역직렬화가 안 되는 경우.
+eventId와 함께 ERROR 로그를 남기고 **XACK해서 스킵**한다 — 큐에 남겨봐야 다음에도
+똑같이 실패해서 스트림만 막힌다.
+
+**일시 오류(DB/Redis 등 인프라 문제로 추정)** — 그 외 모든 예외(핸들러가 DB에 쓰다가
+실패하는 경우 등). eventId와 함께 ERROR 로그만 남기고 **XACK하지 않는다** — 메시지가
+Consumer Group의 PEL(Pending Entries List)에 남아 재전달을 기다린다.
+- **TODO**: 지금은 PEL에 쌓인 메시지를 자동으로 재할당·재처리하는 배치가 없다.
+  `XAUTOCLAIM`으로 일정 시간 이상 대기 중인 PEL 항목을 주기적으로 걷어 재처리하는
+  스케줄러를 추가해야 "재전달을 기다린다"가 실제로 의미를 가진다. 그 전까지는 일시
+  오류가 나면 `XPENDING`으로 확인하고 사람이 수동 개입해야 한다.
+
+worker의 `handleImageUploaded` 안에서 **AI 분석 자체의 실패**(`AnalysisClient`가
+예외를 던지는 경우)는 위 두 갈래와 별개로, 원래부터 있던 정책을 그대로 유지한다 —
+job을 FAILED로 기록하고 `ANALYSIS_FAILED`를 발행한 뒤 "정상 처리됨"으로 취급해
+XACK한다. 인프라 오류가 아니라 도메인상 실패라 재시도 대상이 아니기 때문이다.
+
+**구현**: `processRecord()`를 envelope 파싱(실패 시 즉시 스킵) → payload 파싱
+(실패 시 `PayloadParseException`으로 감싸 "영구 오류"로 구분) → 핸들러 호출(그 외
+예외는 전부 "일시 오류") 3단계로 나눈다. `PayloadParseException`은 두 모듈에 각각
+있는 private static 내부 클래스다 — event-contract 밖에서는 코드를 공유하지 않는
+규칙 때문에 의도적으로 중복이다.
+
+---
+
+## 9. PR 리뷰 체크리스트
 
 - [ ] Entity를 그대로 응답에 쓰지 않고 응답 DTO로 변환했는가
 - [ ] schema 경계를 넘는 FK·JOIN·JPA 연관관계를 만들지 않았는가 ([CLAUDE.md](./CLAUDE.md))

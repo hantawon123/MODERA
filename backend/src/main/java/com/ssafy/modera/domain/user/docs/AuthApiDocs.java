@@ -36,7 +36,7 @@ public interface AuthApiDocs {
     @Operation(
             summary = "[3-2] 로그인",
             description = """
-                    loginId·password 를 검증하고 Access/Refresh Token 을 발급한다.
+                    loginId·password 를 검증하고 Access/Refresh Token 을 발급한다..
 
                     - refreshToken 은 쿠키가 아닌 응답 body 로 전달한다.
                     - deviceId 를 함께 보내면 기기 단위로 refreshToken 이 관리되어 3-4 로그아웃 시 해당 기기만 폐기된다.

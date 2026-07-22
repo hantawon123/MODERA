@@ -7,14 +7,15 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.time.OffsetDateTime;
 
 /**
- * user_schema.users. 6단계(이벤트 소비 시 nickname 조회)가 필요로 하는 최소 매핑.
- * 회원가입/인증 로직은 이 재구성 범위 밖이라 여기서 다루지 않는다.
+ * user_schema.users. 6단계에서는 이벤트 소비 시 nickname 조회용 최소 매핑이었고,
+ * 규약3(인증)에서 회원가입/로그인에 필요한 필드를 채우는 빌더가 추가됐다.
  */
 @Entity
 @Table(name = "users", schema = "user_schema")
@@ -50,4 +51,16 @@ public class User {
 
     @Column(name = "updated_at", nullable = false)
     private OffsetDateTime updatedAt;
+
+    @Builder
+    public User(String provider, String loginId, String passwordHash, String email, String nickname,
+                OffsetDateTime createdAt, OffsetDateTime updatedAt) {
+        this.provider = provider;
+        this.loginId = loginId;
+        this.passwordHash = passwordHash;
+        this.email = email;
+        this.nickname = nickname;
+        this.createdAt = createdAt;
+        this.updatedAt = updatedAt;
+    }
 }

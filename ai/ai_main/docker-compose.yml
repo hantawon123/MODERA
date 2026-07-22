@@ -23,7 +23,7 @@ services:
       - "127.0.0.1:9200:9200"
 
   ai-service:
-    image: ai-main:latest              # docker load 로 올린 이미지를 그대로 사용(빌드 생략)
+    image: ai-main:latest              # Jenkins 'AI Build' 단계에서 이 태그로 빌드됨
     build:
       context: .
       dockerfile: Dockerfile

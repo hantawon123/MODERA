@@ -1,6 +1,5 @@
-package com.ssafy.modera.core.network.model
+package com.ssafy.modera.core.model
 
-// Todo: core:model 모듈로 이동?
 enum class CategorySortType(
     val queryValue: String,
 ) {

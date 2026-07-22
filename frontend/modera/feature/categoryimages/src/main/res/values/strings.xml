@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="top_app_bar_back">뒤로가기</string>
+    <string name="category_image_list_select">선택</string>
+    <string name="category_image_list_cancel">취소</string>
+    <string name="category_image_list_delete">삭제</string>
+    <string name="category_image_list_delete_count">%1$d개 삭제</string>
+    <string name="category_image_content_description">%1$s 이미지</string>
+    <string name="analyzed_image_hashtag">#%1$s</string>
+</resources>

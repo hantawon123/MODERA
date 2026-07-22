@@ -73,6 +73,52 @@ services:
       timeout: 5s
       retries: 10
 
+  # 앱 컨테이너 2개. 인프라만 띄우는 기존 사용성(docker compose up -d)을 지키기 위해
+  # profiles: ["app"]으로 분리했다 — 이 둘은 `docker compose --profile app up`에서만 뜬다.
+  # jar는 gradle이 먼저 만들어야 한다: ./gradlew bootJar (외부 빌드 방식).
+  api-server:
+    build:
+      context: ../api-server
+    container_name: modera-api-server
+    profiles: ["app"]
+    depends_on:
+      api-db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      JWT_SECRET: ${JWT_SECRET:-local-dev-jwt-secret-change-me}
+      MINIO_WEBHOOK_TOKEN: local-dev-webhook-token
+      DB_HOST: api-db
+      REDIS_HOST: redis
+      S3_INTERNAL_ENDPOINT: http://minio:9000
+      S3_PUBLIC_ENDPOINT: http://localhost:9002
+    ports:
+      - "8090:8080"
+    networks:
+      - modera-network
+
+  analysis-worker:
+    build:
+      context: ../analysis-worker
+    container_name: modera-analysis-worker
+    profiles: ["app"]
+    depends_on:
+      analysis-db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      DB_HOST: analysis-db
+      REDIS_HOST: redis
+      ANALYSIS_CLIENT: mock
+    networks:
+      - modera-network
+
 networks:
   modera-network:
     driver: bridge

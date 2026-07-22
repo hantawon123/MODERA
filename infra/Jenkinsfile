@@ -2,6 +2,7 @@ pipeline {
     agent any
 
     triggers {
+        // 3분마다 Git 변경사항을 확인
         pollSCM('H/3 * * * *')
     }
 
@@ -13,20 +14,23 @@ pipeline {
             }
         }
 
+        // ==========================================
+        // 1. Backend (Spring) 배포 단계 (기존 코드)
+        // ==========================================
         stage('Backend Build') {
             when { changeset "backend/**" }
             steps {
-                echo 'Docker image build'
+                echo 'Docker image build for Backend'
                 dir('backend') {
                     sh 'docker build -t modera-backend:${BUILD_NUMBER} -t modera-backend:latest .'
                 }
             }
         }
 
-        stage('Deploy') {
+        stage('Backend Deploy') {
             when { changeset "backend/**" }
             steps {
-                echo 'Recreate container with new image'
+                echo 'Recreate Backend container with new image'
                 sh '''
                     cd /home/ubuntu/app
                     echo "=== whoami: $(whoami) ==="
@@ -40,6 +44,40 @@ pipeline {
                 sh 'sleep 15'
                 echo 'Health check'
                 sh 'docker exec infra-nginx-1 wget -qO- http://modera-spring:8080/actuator/health || true'
+            }
+        }
+
+        // ==========================================
+        // 2. AI Server 배포 단계 (신규 추가)
+        // ==========================================
+        stage('AI Build') {
+            // Git 레포지토리 내 'ai/**' 폴더 안의 파일이 수정/커밋되었을 때만 실행
+            when { changeset "ai/**" }
+            steps {
+                echo 'Docker image build for AI Server'
+                // 실제 Dockerfile 및 소스가 위치한 폴더는 ai/ai_main
+                // docker-compose.yml(/home/ubuntu/app/AI)이 참조하는 이미지명(ai-main)과 태그를 맞춘다
+                dir('ai/ai_main') {
+                    sh 'docker build -t ai-main:${BUILD_NUMBER} -t ai-main:latest .'
+                }
+            }
+        }
+
+        stage('AI Deploy') {
+            when { changeset "ai/**" }
+            steps {
+                echo 'Recreate AI Server container with new image'
+                sh '''
+                    cd /home/ubuntu/app/AI
+                    echo "=== AI Container Deploy Start ==="
+                    # opensearch는 그대로 두고 ai-service 컨테이너만 재생성
+                    docker compose up -d --force-recreate ai-service 2>&1
+                    echo "=== compose up exit code: $? ==="
+                '''
+                echo 'Wait for AI Server startup'
+                sh 'sleep 5'
+                echo 'AI Server Health check'
+                sh 'curl -f http://localhost:8000/docs || true'
             }
         }
     }

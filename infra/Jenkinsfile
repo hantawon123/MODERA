@@ -15,39 +15,6 @@ pipeline {
         }
 
         // ==========================================
-        // 1. Backend (Spring) 배포 단계 (기존 코드)
-        // ==========================================
-        stage('Backend Build') {
-            when { changeset "backend/**" }
-            steps {
-                echo 'Docker image build for Backend'
-                dir('backend') {
-                    sh 'docker build -t modera-backend:${BUILD_NUMBER} -t modera-backend:latest .'
-                }
-            }
-        }
-
-        stage('Backend Deploy') {
-            when { changeset "backend/**" }
-            steps {
-                echo 'Recreate Backend container with new image'
-                sh '''
-                    cd /home/ubuntu/app
-                    echo "=== whoami: $(whoami) ==="
-                    echo "=== compose version ==="
-                    docker compose version
-                    echo "=== compose up start ==="
-                    docker compose up -d --force-recreate 2>&1
-                    echo "=== compose up exit code: $? ==="
-                '''
-                echo 'Wait for Spring startup'
-                sh 'sleep 15'
-                echo 'Health check'
-                sh 'docker exec infra-nginx-1 wget -qO- http://modera-spring:8080/actuator/health || true'
-            }
-        }
-
-        // ==========================================
         // 2. AI Server 배포 단계 (신규 추가)
         // ==========================================
         stage('AI Build') {
@@ -66,6 +33,10 @@ pipeline {
         stage('AI Deploy') {
             when { changeset "ai/**" }
             steps {
+                echo 'Sync .env from Jenkins credential'
+                withCredentials([file(credentialsId: 'ai-server-dotenv', variable: 'AI_DOTENV')]) {
+                    sh 'cp "$AI_DOTENV" /home/ubuntu/app/AI/.env'
+                }
                 echo 'Recreate AI Server container with new image'
                 sh '''
                     cd /home/ubuntu/app/AI

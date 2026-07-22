@@ -37,10 +37,3 @@ pipeline {
             }
         }
     }
-
-    post {
-        always { echo 'Pipeline finished.' }
-        success { echo 'Build & Deploy succeeded.' }
-        failure { echo 'Build or Deploy failed.' }
-    }
-}

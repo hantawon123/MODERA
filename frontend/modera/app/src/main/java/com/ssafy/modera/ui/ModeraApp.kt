@@ -44,6 +44,8 @@ import com.ssafy.modera.core.designsystem.component.Text
 import com.ssafy.modera.core.designsystem.theme.ModeraTheme
 import com.ssafy.modera.core.navigation.Navigator
 import com.ssafy.modera.core.navigation.toEntries
+import com.ssafy.modera.media.SelectedImage
+import com.ssafy.modera.media.rememberGalleryPickerLauncher
 import com.ssafy.modera.navigation.HomeNavKey
 import com.ssafy.modera.navigation.RegisterNavKey
 import com.ssafy.modera.navigation.SearchNavKey
@@ -85,19 +87,30 @@ internal fun ModeraApp(
 ) {
 //    val snackbarHostState = LocalSnackbarHostState.current
     val navigator = remember { Navigator(appState.navigationState) }
+    val selectedImages = remember { mutableStateOf<List<SelectedImage>>(emptyList()) }
+    val launchGalleryPicker = rememberGalleryPickerLauncher(
+        onImagesPicked = { images -> selectedImages.value = images },
+    )
 
     ModeraNavigationSuiteScaffold(
         navigationSuiteItems = {
             TOP_LEVEL_NAV_ITEMS.forEach { (navKey, navItem) ->
-                val selected = navKey == appState.navigationState.currentTopLevelKey
+                val selected = navKey != RegisterNavKey &&
+                    navKey == appState.navigationState.currentTopLevelKey
+
                 item(
                     selected = selected,
-                    onClick = { navigator.navigate(navKey) },
+                    onClick = {
+                        if (navKey == RegisterNavKey) {
+                            launchGalleryPicker()
+                        } else {
+                            navigator.navigate(navKey)
+                        }
+                    },
                     icon = {
                         Icon(
                             imageVector = ImageVector.vectorResource(navItem.unselectedIcon),
                             contentDescription = null,
-
                         )
                     },
                     selectedIcon = {

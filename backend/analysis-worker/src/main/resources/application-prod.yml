@@ -42,6 +42,13 @@ spring:
       connect-timeout: 2000
       timeout: 1000
 
+# [Analysis] 운영은 실제 AI 서버를 호출한다. fallback 없음 — 미주입 시 기동 실패.
+analysis:
+  client: ${ANALYSIS_CLIENT:fastapi}
+
+analysis-worker:
+  ai-server-url: ${AI_SERVER_URL}
+
 logging:
   level:
     root: INFO

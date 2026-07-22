@@ -19,7 +19,8 @@ dependencies {
     implementation 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
 
-    runtimeOnly 'org.postgresql:postgresql'
+    // JSONB 바인딩에 org.postgresql.util.PGobject를 직접 쓰므로 컴파일 타임에도 필요하다.
+    implementation 'org.postgresql:postgresql'
 
     implementation platform("software.amazon.awssdk:bom:${AWS_SDK_VERSION}")
     implementation 'software.amazon.awssdk:s3'

@@ -40,7 +40,7 @@ public interface AuthApiDocs {
 
                     - refreshToken 은 쿠키가 아닌 응답 body 로 전달한다.
                     - deviceId 를 함께 보내면 기기 단위로 refreshToken 이 관리되어 3-4 로그아웃 시 해당 기기만 폐기된다.
-                    - 존재하지 않는 ID 와 비밀번호 불일치는 구분하지 않는다.
+                    - 존재하지 않는 ID 와 비밀번호 불일치는 구분하지 않는다,
                     """
     )
     @ApiResponse(responseCode = "200", description = "로그인 성공")

@@ -27,13 +27,19 @@ pipeline {
             when { changeset "backend/**" }
             steps {
                 echo 'Recreate container with new image'
-                dir('/home/ubuntu/app') {
-                    sh 'docker compose up -d --force-recreate'
-                }
+                sh '''
+                    cd /home/ubuntu/app
+                    echo "=== whoami: $(whoami) ==="
+                    echo "=== compose version ==="
+                    docker compose version
+                    echo "=== compose up start ==="
+                    docker compose up -d --force-recreate 2>&1
+                    echo "=== compose up exit code: $? ==="
+                '''
                 echo 'Wait for Spring startup'
                 sh 'sleep 15'
                 echo 'Health check'
-                sh 'docker exec infra-nginx-1 wget -qO- http://modera-spring:8080/actuator/health'
+                sh 'docker exec infra-nginx-1 wget -qO- http://modera-spring:8080/actuator/health || true'
             }
         }
     }

@@ -9,7 +9,7 @@ RUN ./gradlew dependencies --no-daemon
 COPY src src
 RUN ./gradlew bootJar --no-daemon
 
-FROM amazoncorretto:21-jre
+FROM amazoncorretto:21-alpine-jdk
 WORKDIR /app
 
 COPY --from=build /app/build/libs/*.jar app.jar

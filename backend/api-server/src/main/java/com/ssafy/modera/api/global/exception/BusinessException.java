@@ -9,7 +9,7 @@ public class BusinessException extends RuntimeException {
     private final transient Object detail;
 
     public BusinessException(ErrorCode errorCode) {
-        this(errorCode, errorCode.getDefaultMessage(), null);
+        this(errorCode, errorCode.getMessage(), null);
     }
 
     public BusinessException(ErrorCode errorCode, String message) {

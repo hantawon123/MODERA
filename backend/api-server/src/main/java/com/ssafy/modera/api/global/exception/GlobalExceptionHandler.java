@@ -22,7 +22,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiResponse<Object>> handleBusinessException(BusinessException e) {
         ErrorCode errorCode = e.getErrorCode();
         log.warn("BusinessException: code={}, message={}", errorCode.getCode(), e.getMessage());
-        return ResponseEntity.status(errorCode.getHttpStatus())
+        return ResponseEntity.status(errorCode.getStatus())
                 .body(ApiResponse.fail(errorCode, e.getMessage(), e.getDetail()));
     }
 
@@ -32,15 +32,15 @@ public class GlobalExceptionHandler {
                 .map(fieldError -> new FieldErrorResponse(fieldError.getField(), fieldError.getDefaultMessage()))
                 .toList();
         log.warn("요청 검증 실패: {}", fieldErrors);
-        return ResponseEntity.status(ErrorCode.INVALID_PARAMETER.getHttpStatus())
-                .body(ApiResponse.fail(ErrorCode.INVALID_PARAMETER, ErrorCode.INVALID_PARAMETER.getDefaultMessage(), fieldErrors));
+        return ResponseEntity.status(GlobalErrorCode.INVALID_PARAMETER.getStatus())
+                .body(ApiResponse.fail(GlobalErrorCode.INVALID_PARAMETER, GlobalErrorCode.INVALID_PARAMETER.getMessage(), fieldErrors));
     }
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Object>> handleException(Exception e) {
         // 스택트레이스는 로그에만 남기고 응답에는 내부 정보를 노출하지 않는다.
         log.error("처리되지 않은 예외", e);
-        return ResponseEntity.status(ErrorCode.INTERNAL_ERROR.getHttpStatus())
-                .body(ApiResponse.fail(ErrorCode.INTERNAL_ERROR, ErrorCode.INTERNAL_ERROR.getDefaultMessage(), null));
+        return ResponseEntity.status(GlobalErrorCode.INTERNAL_ERROR.getStatus())
+                .body(ApiResponse.fail(GlobalErrorCode.INTERNAL_ERROR, GlobalErrorCode.INTERNAL_ERROR.getMessage(), null));
     }
 }

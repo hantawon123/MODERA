@@ -1,8 +1,8 @@
 package com.ssafy.modera.core.network.service
 
 import com.skydoves.sandwich.ApiResponse
+import com.ssafy.modera.core.model.CategorySortType
 import com.ssafy.modera.core.network.model.CategoriesResponse
-import com.ssafy.modera.core.network.model.CategorySortType
 import javax.inject.Inject
 
 class CategoryClient @Inject constructor(

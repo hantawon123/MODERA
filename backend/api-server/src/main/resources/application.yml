@@ -31,6 +31,12 @@ server:
   port: 8080
   forward-headers-strategy: native
 
+# [Logging] requestId(RequestIdFilter)·eventId(이벤트 컨슈머/퍼블리셔가 MDC에 심음)를
+# 모든 로그 라인에 붙인다. 둘 다 없으면 빈 문자열로 찍힌다(%X는 MDC 키가 없으면 공백).
+logging:
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} ${LOG_LEVEL_PATTERN:-%5p} ${PID:- } --- [%15.15t] [reqId=%X{requestId} eventId=%X{eventId}] %-40.40logger{39} : %m%n${LOG_EXCEPTION_CONVERSION_WORD:-%wEx}"
+
 # [Security] JWT 설정. 모든 환경에서 JWT_SECRET 환경변수 주입 필수 (fallback 없음 — 미주입 시 기동 실패).
 jwt:
   secret: ${JWT_SECRET}

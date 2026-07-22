@@ -24,3 +24,10 @@ spring:
 # [Analysis] mock | fastapi. local 기본은 mock(AI 서버 없이 파이프라인 검증용).
 analysis:
   client: mock
+
+# [Logging] eventId(이벤트 컨슈머/퍼블리셔가 MDC에 심음)를 모든 로그 라인에 붙인다.
+# worker는 web이 없어 requestId는 항상 해당 없음(빈 문자열) — api-server와 같은 패턴을
+# 써서 로그 형태를 통일해뒀다.
+logging:
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} ${LOG_LEVEL_PATTERN:-%5p} ${PID:- } --- [%15.15t] [eventId=%X{eventId}] %-40.40logger{39} : %m%n${LOG_EXCEPTION_CONVERSION_WORD:-%wEx}"

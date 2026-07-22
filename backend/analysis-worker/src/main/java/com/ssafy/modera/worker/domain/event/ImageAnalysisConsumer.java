@@ -18,6 +18,7 @@ import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.slf4j.MDC;
 import org.springframework.data.redis.connection.stream.Consumer;
 import org.springframework.data.redis.connection.stream.MapRecord;
 import org.springframework.data.redis.connection.stream.ReadOffset;
@@ -40,6 +41,8 @@ import java.util.UUID;
 @Component
 @RequiredArgsConstructor
 public class ImageAnalysisConsumer {
+
+    private static final String MDC_KEY_EVENT_ID = "eventId";
 
     private final StringRedisTemplate redisTemplate;
     private final ObjectMapper objectMapper;
@@ -129,6 +132,7 @@ public class ImageAnalysisConsumer {
             return;
         }
 
+        MDC.put(MDC_KEY_EVENT_ID, envelope.eventId());
         try {
             if (EventTypes.IMAGE_UPLOADED.equals(envelope.eventType())) {
                 ImageUploadedPayload payload = readPayload(envelope, ImageUploadedPayload.class);
@@ -144,6 +148,8 @@ public class ImageAnalysisConsumer {
         } catch (Exception e) {
             log.error("image-analysis 이벤트 처리 중 일시 오류로 판단, XACK 보류(재전달 대기): eventId={}, eventType={}",
                     envelope.eventId(), envelope.eventType(), e);
+        } finally {
+            MDC.remove(MDC_KEY_EVENT_ID);
         }
     }
 

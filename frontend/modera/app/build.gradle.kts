@@ -57,7 +57,6 @@ dependencies {
     implementation(projects.core.model)
 
     implementation(libs.androidx.activity.compose)
-    implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.navigation3.ui)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.core.splashscreen)

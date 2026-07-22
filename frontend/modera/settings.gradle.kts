@@ -136,7 +136,7 @@ include(":core:domain")
 //
 //include(":feature:auth")
 include(":feature:home")
-//include(":feature:coupon")
+include(":feature:categoryimages")
 //include(":feature:gift")
 //include(":feature:gifticon")
 //include(":feature:history")

@@ -44,9 +44,9 @@ import com.ssafy.modera.core.designsystem.component.Text
 import com.ssafy.modera.core.designsystem.theme.ModeraTheme
 import com.ssafy.modera.core.navigation.Navigator
 import com.ssafy.modera.core.navigation.toEntries
+import com.ssafy.modera.feature.home.navigation.homeEntry
 import com.ssafy.modera.media.SelectedImage
 import com.ssafy.modera.media.rememberGalleryPickerLauncher
-import com.ssafy.modera.navigation.HomeNavKey
 import com.ssafy.modera.navigation.RegisterNavKey
 import com.ssafy.modera.navigation.SearchNavKey
 import com.ssafy.modera.navigation.TOP_LEVEL_NAV_ITEMS
@@ -209,10 +209,6 @@ private fun Modifier.notificationDot(): Modifier =
     }
 
 // TODO : 추후 각 NavigationProvider에 추가
-fun EntryProviderScope<NavKey>.homeEntry(navigator: Navigator) {
-    entry<HomeNavKey> {}
-}
-
 fun EntryProviderScope<NavKey>.registerEntry(navigator: Navigator) {
     entry<RegisterNavKey> {}
 }

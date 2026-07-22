@@ -6,7 +6,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import com.ssafy.modera.core.navigation.NavigationState
 import com.ssafy.modera.core.navigation.rememberNavigationState
-import com.ssafy.modera.navigation.HomeNavKey
+import com.ssafy.modera.feature.home.navigation.HomeNavKey
 import com.ssafy.modera.navigation.TOP_LEVEL_NAV_ITEMS
 import kotlinx.coroutines.CoroutineScope
 

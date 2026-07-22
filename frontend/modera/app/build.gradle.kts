@@ -58,6 +58,8 @@ dependencies {
     implementation(projects.core.model)
     implementation(projects.core.navigation)
 
+    implementation(projects.feature.home)
+
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.navigation3.ui)
     implementation(libs.androidx.core.ktx)

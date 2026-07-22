@@ -76,8 +76,12 @@ docker compose --profile app down   # 앱 포함 전부 정지
 | minio 콘솔 | 9001 | 19001 |
 | api-server (app profile) | 8080 | 8090 |
 
-다른 환경에서 포트 충돌이 없다면 `local-infra/docker-compose.yml`의 포트 매핑을
-표준값(5432, 6379, 9000 등)으로 되돌려도 무방하다.
+**이 포트 목록은 이 저장소나 프로젝트의 표준이 아니라 이 개발 PC 하나의 사정이다.**
+다른 팀원 PC에 표준 포트(5432, 6379, 9000/9001, 8080)가 비어 있다면 그대로 표준값을
+써도 되고, 실제로 그게 더 정상적인 상태다. `local-infra/docker-compose.yml`의 각
+서비스 `ports:` 항목은 `호스트포트:컨테이너포트` 형식이므로, 콜론 왼쪽(호스트포트)만
+자기 PC 사정에 맞게 바꾸면 된다 — 오른쪽(컨테이너포트)은 절대 건드리지 말 것
+(애플리케이션 yml의 컨테이너 내부 기본값과 어긋나면 `docker` 프로필이 깨진다).
 
 ## 이벤트 흐름
 
@@ -141,6 +145,18 @@ docker compose --profile app down   # 앱 포함 전부 정지
 | `ANALYSIS_CLIENT` | analysis-worker | `mock` \| `fastapi` | local/docker는 `mock` |
 | `AI_SERVER_URL` | analysis-worker | `analysis.client=fastapi`일 때 호출할 AI 서버 주소 | 없음(fastapi 선택 시 필수) |
 | `SERVER_URL` | api-server (prod) | Swagger 서버 목록에 표시할 배포 도메인 | `https://api.example.com` |
+
+## 개선 TODO
+
+- **webhook 재전송 시 `analysis_job`이 매번 새로 생긴다.** 같은 이미지에 대해 MinIO
+  ObjectCreated webhook이 재전송되면(네트워크 재시도 등) `image-analysis` 이벤트가
+  다시 발행되고, analysis-worker는 그때마다 새 `analysis_job` 행을 만든다.
+  `analysis_result`는 `UNIQUE(image_id, model_version)`로 중복 저장을 막지만
+  `analysis_job` 자체에는 그런 방어가 없어, 같은 이미지의 job 이력이 계속 쌓인다.
+  당장 기능 문제는 아니지만(각 job이 독립적으로 완료 처리됨) 장기적으로는 정리가
+  필요하다 — webhook 쪽에서 이미 `UPLOADED`인 image_asset은 재발행을 skip할지,
+  아니면 job 쪽에 자체 dedup(예: image_id + 최근 PENDING/PROCESSING 상태 체크)을
+  둘지 결정 필요.
 
 ## 하지 않는 것 / 주의
 

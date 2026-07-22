@@ -6,6 +6,9 @@ SOA(서비스 지향 아키텍처) 구조다. 두 서버는 Redis Streams 이벤
 
 > **이 저장소가 처음이라면** 아래 개요보다 [SETUP.md](./SETUP.md)를 먼저 보는 걸
 > 추천한다 — 사전 설치부터 전체 스택 기동, curl로 직접 확인까지 순서대로 되어 있다.
+> 프론트엔드/안드로이드 팀이라면 [API-CHANGES.md](./API-CHANGES.md)에서 기존
+> API 명세와 달라진 점(응답 envelope, login의 deviceId 등)을 먼저 확인하는 걸
+> 추천한다.
 
 ## 구조
 

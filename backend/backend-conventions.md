@@ -83,12 +83,32 @@ PK는 `{테이블명 단수}_id`.
 
 ## 3. 응답 규칙
 
-**⚠️ 컨벤션 없음 - 팀 결정 필요**: 옛 `CommonResponse<T>`/`PageResponse`/`SliceResponse`
-래퍼는 삭제되었고 아직 다시 만들지 않았습니다. 지금 있는 API(`POST /api/v1/images`,
-`POST /internal/storage/events`)는 `ResponseEntity<T>`에 응답 전용 record를 그대로
-담아 반환합니다(`ImageController`, `ImageRegisterResponse` 참고). 목록/검색 API가
-생기면 이때 페이지네이션 응답 형태(`PageResponse` 부활, 아니면 다른 방식)를
-팀이 정해야 합니다.
+**`/api/v1/**`의 모든 응답은 `ApiResponse<T>`(`global/response`)로 감싼다.**
+
+```json
+{ "result": "SUCCESS|FAIL", "code": "...", "message": "...", "data": {...}, "timestamp": "ISO-8601 UTC" }
+```
+
+- 성공: `ApiResponse.success(data)` 또는 `ApiResponse.success(message, data)`
+- 실패: `GlobalExceptionHandler`가 `BusinessException`/검증 실패/그 외 예외를 잡아서
+  자동으로 `ApiResponse.fail(...)`로 변환한다 — **컨트롤러가 직접 fail을 만들 일은
+  거의 없다.** 그냥 `BusinessException(errorCode)`를 던지면 된다(4절).
+- `/internal/**`, actuator, swagger에는 이 envelope를 적용하지 않는다(기존 형태 유지).
+
+**적용 범위는 `@ApiV1Controller` 마커 애노테이션으로 잡는다** — `@RestControllerAdvice`가
+URL 패턴을 직접 못 봐서 만든 우회다. **새 `/api/v1/**` 컨트롤러를 만들면 클래스에
+`@ApiV1Controller`를 반드시 붙인다.** 안 붙이면 그 컨트롤러의 예외가
+`GlobalExceptionHandler`를 안 타고 Spring 기본 오류 응답(빈 바디)으로 나간다.
+
+**자동 래핑이 아니라 컨트롤러가 명시적으로 `ApiResponse.success(...)`를 반환한다**
+(2026-07, 대상이 API 몇 개뿐인 시점에 `ResponseBodyAdvice` 전역 인터셉터는 과하다고
+판단). 그래서 **모든 `/api/v1/**` 컨트롤러 메서드는 반드시 `ApiResponse<T>`를 리턴
+타입으로 써야 한다** — 빠뜨리면 컴파일은 되지만 그 엔드포인트만 envelope 없이 나가서
+클라이언트 파싱이 깨진다. 자동 강제 장치가 없으니 PR 리뷰(10절 체크리스트)로 잡는다.
+
+**목록/페이지네이션**: `PageResponse<T>`(`global/response`, Spring Data `Page`에서
+변환하는 `from(Page<T>)` 포함)가 이미 있다. 아직 실제로 쓰는 목록 API는 없다
+(`ImageDetailResponse`는 단건 조회).
 
 **유지되는 규칙**: Entity를 그대로 컨트롤러 응답으로 반환하지 않는다. 응답 전용
 DTO(`XxxResponse`, record)로 변환해서 내려준다 — 이유는 옛 문서와 동일
@@ -160,17 +180,62 @@ DTO(`XxxResponse`, record)로 변환해서 내려준다 — 이유는 옛 문서
 
 ## 6. 인증 규칙
 
-**⚠️ 미구현**: 옛 `PrincipalDetails`/`JwtAuthenticationFilter`/`@AuthenticationPrincipal`은
-전부 삭제되었고 아직 다시 만들지 않았습니다. `POST /api/v1/images`는 지금 `X-User-Id`
-헤더로 userId를 임시로 받고 있고(`ImageController` 참고), `SecurityConfig`의
-permitAll 목록에 이 경로가 임시로 들어가 있습니다. 코드에 `// TODO: JWT 인증 도입 후...`
-주석으로 표시해뒀습니다.
+**2026-07 구현 완료**(`global/security/`, `domain/user/`). 옛 `PrincipalDetails`/
+`AuthUser`/역할(role) 개념은 없다 — 이 서비스는 역할 구분이 없어서 principal을
+**`Long userId` 그 자체**로 단순화했다.
 
-JWT 인증을 다시 만들 때 최소 확인할 것:
-- `SecurityConfig.PERMIT_ALL_PATHS`에서 `/api/v1/images` 제거
-- `ImageController`의 `X-User-Id` 헤더 파라미터를 `@AuthenticationPrincipal` 등으로 교체
-- `/internal/storage/events`는 JWT가 아니라 `X-Webhook-Token` 헤더로 별도 인증하므로
-  이 경로는 그대로 permitAll + 컨트롤러 자체 토큰 비교를 유지한다.
+**외부 = JWT, 내부 = 공유 토큰 — 절대 섞지 않는다**:
+- `/api/v1/**`(로그아웃 등 인증 필요 API)는 `Authorization: Bearer {accessToken}`.
+- `/internal/**`(MinIO webhook 수신)는 `X-Webhook-Token` 헤더 + 컨트롤러 자체 문자열
+  비교. `JwtAuthenticationFilter.shouldNotFilter()`가 `/internal/` 접두어를 아예
+  건너뛰어서 이 필터를 타지도 않는다. 새 내부 전용 API를 추가해도 JWT를 걸지 말고
+  이 패턴을 따를 것.
+
+**컨트롤러에서 로그인 사용자를 받는 표준 패턴**:
+```java
+@PostMapping
+public ResponseEntity<ApiResponse<X>> foo(@AuthenticationPrincipal Long userId, ...) { ... }
+```
+`JwtAuthenticationFilter`가 유효한 토큰이면
+`new UsernamePasswordAuthenticationToken(userId, null, authorities)`를
+`SecurityContext`에 넣어서 `getPrincipal()`이 `Long`을 바로 돌려주기 때문에 별도
+UserDetails 래퍼가 필요 없다.
+
+**JwtAuthenticationFilter는 `@Component`가 아니다.** `SecurityConfig.
+securityFilterChain()`에서 `new JwtAuthenticationFilter(jwtTokenProvider)`로 직접
+만들어 `addFilterBefore(...)`로 끼워 넣는다 — `@Component`로 등록하면 Spring Boot가
+필터 빈을 모든 요청에 자동으로 한 번 더 걸어버려서(FilterRegistrationBean 자동구성)
+Security 체인의 `addFilterBefore`와 이중 실행될 수 있다.
+
+**401/403도 envelope로 나가야 한다.** Spring Security 필터 체인은
+`@RestControllerAdvice`(`GlobalExceptionHandler`)보다 앞단이라 그게 못 잡는다 —
+`JsonAuthenticationEntryPoint`(401)/`JsonAccessDeniedHandler`(403)를 따로 만들어
+`SecurityConfig`의 `exceptionHandling(...)`에 등록해뒀다. 새로 Security 관련 코드를
+만질 때 이 둘을 빠뜨리면 401/403이 빈 바디로 나가는 회귀가 생긴다.
+
+**JWT/비밀번호**:
+- `JwtTokenProvider`(`global/security/jwt`)가 발급·검증을 모두 담당(JJWT 0.13
+  fluent API, `Jwts.builder()...signWith(key)`/`Jwts.parser()...parseSignedClaims(...)`).
+  `jwt.secret`은 반드시 **base64**여야 한다(`Decoders.BASE64.decode`로 키를 만든다 —
+  일반 문자열을 넣으면 기동이 실패한다).
+  accessToken 30분 / refreshToken 14일(`application.yml`의 `jwt.*`, 옛 문서와 동일 값).
+- refreshToken도 JWT다(jti 포함, 128비트+ 엔트로피). **원문은 DB에 저장하지 않고
+  SHA-256 해시(64자 hex)만 저장한다**(`AuthService.hash()`, `RefreshToken.tokenHash`).
+  재발급(RTR)마다 해시를 교체하므로, 회전 전 옛 refreshToken을 다시 써도 이제 어떤
+  DB 행과도 해시가 안 맞아서 자연히 막힌다 — 별도의 "폐기된 토큰" 테이블이 없다.
+- 비밀번호는 `PasswordEncoderConfig`의 `DelegatingPasswordEncoder`로 인코딩한다.
+  저장값 앞에 `{bcrypt}` 접두어가 붙는다 — `users.password_hash`가 bcrypt 해시
+  길이(60자)가 아니라 72자인 이유가 이 접두어 때문이다. 나중에 인코딩 방식을 바꿔도
+  접두어로 기존 값과 공존할 수 있다.
+- 비밀번호·토큰 원문은 어떤 `log.*` 호출에도 넣지 않는다(userId/deviceId 등
+  식별자만). PR 리뷰 때마다 새로 추가한 로그 문에 이게 없는지 확인할 것.
+
+**`SecurityConfig.PERMIT_ALL_PATHS`**: `/api/v1/auth/register`·`/login`·`/refresh`만
+permitAll이다(토큰이 아직 없는 시점에 부르는 API라서). **`logout`은 Bearer가
+필수라 permitAll에 넣지 않았다** — 지시문 원문은 "`/api/v1/auth/**` permitAll"이었지만
+logout의 "Bearer 필수" 요구사항과 모순되어 좁혔다(명세 변경점, `SETUP.md`/PR 설명
+참고). 새 인증 불필요 API를 추가할 때 이 배열에 정확한 경로만 추가할 것 — 와일드카드로
+상위 경로를 통째로 열면 의도치 않게 인증이 필요한 하위 API까지 뚫릴 수 있다.
 
 ---
 
@@ -231,7 +296,40 @@ XACK한다. 인프라 오류가 아니라 도메인상 실패라 재시도 대�
 
 ---
 
-## 9. PR 리뷰 체크리스트
+## 9. 로깅 규칙
+
+**MDC로 요청/이벤트를 추적한다.** 로그 패턴(`application.yml`의
+`logging.pattern.console`)에 `[reqId=%X{requestId} eventId=%X{eventId}]`가 붙어
+있어서, MDC에 심은 값이 그 스코프 안의 **모든** 로그 라인(직접 안 건드린 라이브러리
+로그 포함)에 자동으로 찍힌다.
+
+- **requestId**(api-server만, `RequestIdFilter`): `X-Request-Id` 헤더가 있으면 그대로,
+  없으면 UUID 앞 8자리를 생성해 MDC에 심고 응답 헤더로도 돌려준다. `@Order
+  (HIGHEST_PRECEDENCE)`로 Security 필터 체인 전체를 감싸서 401/403 응답에도 붙는다.
+  같은 필터가 액세스 로그(`method path status 소요ms`, actuator 제외)도 남긴다.
+- **eventId**(api·worker 양쪽): 컨슈머가 레코드 처리를 시작할 때 `MDC.put`, 끝나면
+  (성공/영구오류/일시오류 전부) `finally`에서 `MDC.remove` — 8절의 컨슈머 예외
+  처리 3단계 구조에서 두 번째 try 블록을 감싸는 형태로 들어간다. `EventPublisher`는
+  발행 시 `eventId`/`eventType`/`stream`을 로그 **메시지**에 남긴다(MDC에는 안 심음
+  — 발행은 "처리 스코프"가 아니라서). worker가 하나의 IMAGE_UPLOADED를 처리하며
+  ANALYSIS_COMPLETED를 새로 발행하면, 그 발행 로그 줄에는 "MDC의 들어온 eventId"와
+  "메시지 속 나간 eventId"가 함께 찍혀서 두 이벤트가 인과관계로 이어진다 — 새
+  컨슈머를 만들 때도 이 패턴(들어온 이벤트를 MDC에, 나간 이벤트는 메시지에)을
+  유지하면 추적이 끊기지 않는다.
+- analysis-worker는 web이 없어 requestId가 항상 빈 문자열이다 — 정상이다.
+
+**로그 레벨**: local은 자유(`com.ssafy.modera: DEBUG` 등). prod는
+`root: INFO` + `org.hibernate.SQL: ERROR`(각 모듈 `application-prod.yml`, 4단계부터
+고정) — 새 프로필을 만들어도 이 기준을 벗어나지 않는다.
+
+**민감정보를 로그에 남기지 않는다.** 비밀번호, JWT(access/refresh 둘 다), 토큰 해시
+원문, `Authorization`/`X-Webhook-Token` 헤더 값을 통째로 찍는 `log.*` 호출을 만들지
+않는다 — userId, deviceId, eventId, imageId 같은 식별자만 남긴다. `AuthService`가
+`log.info("로그인 성공: userId={}, deviceId={}", ...)`처럼 하는 걸 기준으로 삼을 것.
+
+---
+
+## 10. PR 리뷰 체크리스트
 
 - [ ] Entity를 그대로 응답에 쓰지 않고 응답 DTO로 변환했는가
 - [ ] schema 경계를 넘는 FK·JOIN·JPA 연관관계를 만들지 않았는가 ([CLAUDE.md](./CLAUDE.md))
@@ -239,19 +337,26 @@ XACK한다. 인프라 오류가 아니라 도메인상 실패라 재시도 대�
 - [ ] `event-contract` 이외의 코드를 두 서버가 공유하지 않는가
 - [ ] Liquibase changeset을 새로 추가했다면 이미 적용된 changeset을 수정하지 않았는가,
       author:id가 그 모듈 안에서 유일한가
-- [ ] 새 컨슈머를 추가했다면 at-least-once 중복 수신을 가정하고 dedup/멱등 저장을
-      넣었는가, TTL이 필요한 캐시성 키에 TTL을 걸었는가
+- [ ] 새 컨슈머를 추가했다면 at-least-once 중복 수신을 가정하고 dedup/멱등 저장 +
+      영구/일시 오류 구분(8절)을 넣었는가, TTL이 필요한 캐시성 키에 TTL을 걸었는가
 - [ ] 비밀값(시크릿, 토큰, 자격증명)을 하드코딩하지 않고 환경변수로 뺐는가
       (더미값은 `local-infra/` 안에서만 허용)
 - [ ] Presigned URL을 DB에 저장하지 않고 `s3_key`만 저장했는가
-- [ ] 새 API의 인증/인가가 필요한지 확인했는가 — 지금은 JWT가 없어 임시 우회
-      패턴(`X-User-Id`)이 남아있다면 반드시 TODO로 표시했는가
+- [ ] **새 `/api/v1/**` 컨트롤러/메서드가 `@ApiV1Controller` + `ApiResponse<T>` 리턴을
+      빠짐없이 쓰는가**(하나라도 빠지면 그 엔드포인트만 envelope 없이 나가거나
+      예외가 envelope 없이 나간다 — 3절)
+- [ ] 새 에러 코드를 소유 도메인 enum에 추가했는가(`GlobalErrorCode`에 도메인 코드를
+      끼워넣지 않았는가), `code` 문자열이 다른 enum과 안 겹치는가(4절)
+- [ ] 새 API의 인증 경계를 확인했는가 — `/api/v1/**`면 JWT(permitAll 와일드카드로
+      상위 경로를 통째로 열지 않기), `/internal/**`면 공유 토큰 방식을 그대로
+      따랐는가(6절)
+- [ ] 새로 추가한 `log.*` 호출에 비밀번호·토큰 원문이 안 찍히는가, 이벤트 컨슈머라면
+      MDC eventId 패턴을 따랐는가(9절)
 
-**⚠️ 컨벤션 없음 - 팀 결정 필요** (다시 정해야 하는 것들):
-- 응답 래퍼(`CommonResponse` 부활 여부), 페이지네이션 응답 형태
-- 전역 예외 처리 체계(`ErrorCode`/`BusinessException` 부활 여부)
-- 인증/인가 재구현(JWT 발급·검증, `@AuthenticationPrincipal` 바인딩)
+**⚠️ 컨벤션 없음 - 팀 결정 필요** (아직 안 정한 것들):
 - 테스트 작성 스타일(현재 도메인 테스트 예시 없음, "각 단계 최소 스모크 수준" 정도만
   수동 검증됨)
 - Service 계층 인터페이스+구현 분리 여부
 - `@Transactional` 부착 위치/전략
+- 에러 코드 `U001`류 prefix+번호 레지스트리 복귀 여부(4절 — 안드로이드와의 API
+  명세 회의에서 결정 예정)

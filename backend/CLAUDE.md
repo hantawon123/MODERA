@@ -70,6 +70,47 @@ MODERA 백엔드는 2서버 SOA다. 이 파일은 이 저장소에서 코드를 
   `AnalysisResultRepository`의 `UNIQUE(image_id, model_version)` + `ON CONFLICT DO
   NOTHING` 패턴 참고).
 
+## 응답 규약
+
+`/api/v1/**`의 모든 응답은 `ApiResponse<T>` envelope로 감싼다
+(`{result, code, message, data, timestamp}`) — `/internal/**`·actuator·swagger는
+예외. 새 `/api/v1/**` 컨트롤러는 클래스에 `@ApiV1Controller`를 붙이고 메서드는
+`ApiResponse<T>`를 리턴해야 한다(둘 다 빠뜨리면 그 엔드포인트만 envelope가 깨진다).
+실패는 `BusinessException(errorCode)`를 던지면 `GlobalExceptionHandler`가 알아서
+변환한다 — 컨트롤러에서 직접 `ApiResponse.fail(...)`을 만들 일은 거의 없다.
+자세한 건 [backend-conventions.md](./backend-conventions.md) 3·4절.
+
+## 인증 경계 — 외부는 JWT, 내부는 공유 토큰
+
+- `/api/v1/**`(인증 필요 API): `Authorization: Bearer {accessToken}`,
+  `@AuthenticationPrincipal Long userId`로 받는다(역할/권한 개념 없음, principal이
+  `Long` 그 자체).
+- `/internal/**`(서버 간 내부 API, 예: MinIO webhook): `X-Webhook-Token` 헤더 +
+  컨트롤러 자체 비교. JWT 필터가 아예 안 탄다. **이 경계를 섞지 않는다** — 내부
+  API에 JWT를 걸거나, 외부 API에 공유 토큰 방식을 쓰지 않는다.
+- 자세한 건 [backend-conventions.md](./backend-conventions.md) 6절.
+
+## 이벤트 컨슈머 예외 정책
+
+컨슈머가 레코드 하나를 처리하다 만나는 예외는 두 갈래다: **영구 오류**(envelope/
+payload 파싱 실패 — 재시도해도 똑같이 실패) → eventId 로그 + XACK으로 스킵.
+**일시 오류**(그 외, DB/Redis 등 인프라 문제로 추정) → eventId 로그만 남기고
+XACK 안 함(PEL에 남아 재전달 대기, 지금은 자동 재처리 배치가 없어 수동 확인 필요).
+worker의 "AI 분석 자체 실패 → job FAILED + ANALYSIS_FAILED 발행"은 이 분류와
+별개로 기존 정책을 유지한다(도메인 실패라 재시도 대상 아님).
+자세한 건 [backend-conventions.md](./backend-conventions.md) 8절.
+
+## 로깅
+
+`X-Request-Id`(api-server, 없으면 자동 생성)와 이벤트 `eventId`(양쪽 컨슈머)를
+MDC에 심어서 로그 패턴에 자동으로 붙인다 — 새 코드를 추가해도 이 MDC 값을 직접
+조작할 필요는 없고, 컨슈머를 새로 만들 때만 "처리 시작 시 MDC.put, 종료 시
+finally에서 MDC.remove" 패턴을 따르면 된다. prod 로그 레벨은
+`root: INFO` + `org.hibernate.SQL: ERROR` 고정. **비밀번호·JWT·토큰 해시·
+Authorization/X-Webhook-Token 헤더 값을 통째로 로그에 남기지 않는다** — userId,
+deviceId, eventId 같은 식별자만 남긴다. 자세한 건
+[backend-conventions.md](./backend-conventions.md) 9절.
+
 ## 하지 말 것
 
 - schema 경계를 넘는 JPA 연관관계·FK·JOIN 생성
@@ -78,6 +119,11 @@ MODERA 백엔드는 2서버 SOA다. 이 파일은 이 저장소에서 코드를 
 - **비밀값(비밀번호, 시크릿, 토큰, 액세스 키)을 코드나 커밋되는 파일에 하드코딩하는 것.**
   전부 환경변수로 주입한다. 로컬 개발용 더미 값(`localdev` 등)은 `local-infra/` 안에서만
   허용한다(운영 프로필 yml은 fallback 없이 `${VAR}`만 쓴다).
+- **비밀번호·JWT·토큰 해시·Authorization/X-Webhook-Token 헤더 값을 `log.*`에 통째로 찍는 것**
+  (하드코딩 금지와는 별개 문제 — 코드엔 안 적어도 런타임에 로그로 새면 마찬가지다)
 - Presigned URL을 DB에 저장하는 것(`s3_key`만 저장하고 URL은 요청 시 매번 생성)
 - 운영 배포 관련 파일(운영 compose, `Jenkinsfile`, Nginx 설정)을 건드리는 것 — 인프라 담당 영역
 - 이미 적용된 Liquibase changeset을 수정하는 것(새 changeset을 추가할 것)
+- `/api/v1/**` 컨트롤러에 `@ApiV1Controller`를 안 붙이거나 `ApiResponse<T>`가 아닌
+  타입을 리턴하는 것(응답 규약 위반)
+- `/internal/**`에 JWT를, `/api/v1/**`에 공유 토큰 방식을 쓰는 것(인증 경계 위반)

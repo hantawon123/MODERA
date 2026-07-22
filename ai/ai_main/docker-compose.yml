@@ -1,0 +1,38 @@
+# 개발/시연용 단일 노드 구성: nori 포함 OpenSearch + AI 서비스.
+# 15GB RAM 인스턴스 기준. OpenSearch 힙 2GB 로 잡아도 여유롭다.
+services:
+  opensearch:
+    build:
+      context: .
+      dockerfile: opensearch.Dockerfile
+    environment:
+      - discovery.type=single-node
+      # 보안 플러그인 활성화(HTTPS + 인증). 비밀번호는 .env 에서 주입되어
+      # 이 파일에는 남지 않는다. 2.12+ 는 대소문자·숫자·특수문자 포함을 요구한다.
+      - OPENSEARCH_INITIAL_ADMIN_PASSWORD=${OPENSEARCH_INITIAL_ADMIN_PASSWORD}
+      - OPENSEARCH_JAVA_OPTS=-Xms2g -Xmx2g
+      - bootstrap.memory_lock=true
+    ulimits:
+      memlock: { soft: -1, hard: -1 }
+      nofile: { soft: 65536, hard: 65536 }
+    volumes:
+      - opensearch-data:/usr/share/opensearch/data
+    ports:
+      # 9200 을 외부에 열지 않는다. 같은 호스트의 FastAPI 만 접근.
+      - "127.0.0.1:9200:9200"
+
+  ai-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file: .env
+    environment:
+      - OPENSEARCH_HOST=opensearch
+      - OPENSEARCH_PORT=9200
+    depends_on:
+      - opensearch
+    ports:
+      - "8000:8000"
+
+volumes:
+  opensearch-data:

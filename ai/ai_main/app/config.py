@@ -113,7 +113,7 @@ class Settings:
         self.similarity_threshold = float(os.environ.get("SIMILARITY_THRESHOLD", "0.80"))
 
         # AGENT 태그 최대 개수 (10-1 options.maxTags 로 요청별 덮어쓰기 가능)
-        self.default_max_tags = int(os.environ.get("DEFAULT_MAX_TAGS", "10"))
+        self.default_max_tags = int(os.environ.get("DEFAULT_MAX_TAGS", "5"))
 
         # 로그인 미구현 구간용 고정 userId.
         # MVP 는 회원가입·로그인이 없어서 요청이 보내는 userId 를 신뢰할 수 없다.

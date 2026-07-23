@@ -9,18 +9,17 @@ import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.TextRecognizer
 import com.google.mlkit.vision.text.korean.KoreanTextRecognizerOptions
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions
+import com.ssafy.modera.core.model.image.SelectedImage
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
+import androidx.core.net.toUri
 
 /**
  * ML Kit Text Recognition으로 이미지에서 텍스트를 추출한다.
- *
- * 라틴·한글·중문·일문·데바나가리 스크립트 모델을 병렬로 돌린 뒤
- * 라인 단위로 합친다.
  */
 class ImageTextRecognizer : AutoCloseable {
 
@@ -38,10 +37,10 @@ class ImageTextRecognizer : AutoCloseable {
     }
 
     /**
-     * [SelectedImage]의 Uri에서 텍스트를 추출한다.
+     * [SelectedImage]의 uri 문자열에서 텍스트를 추출한다.
      */
     suspend fun recognize(context: Context, selectedImage: SelectedImage): String =
-        recognize(context, selectedImage.uri)
+        recognize(context, selectedImage.uri.toUri())
 
     /**
      * [Bitmap]에서 텍스트를 추출한다.

@@ -27,6 +27,12 @@ class Settings:
         # 그 상태로 10-5 를 매 건 호출하면 연결 실패까지 약 4초를 그냥 버린다.
         # false 로 두면 조회를 시도하지 않고 기본 후보로 바로 진행한다.
         self.spring_enabled = os.environ.get("SPRING_ENABLED", "true").lower() == "true"
+        # ponytail: Spring 완성 전까지의 임시 스위치. 지금은 Android 가 /api/v1 을
+        # 직접 부르는데 앱에는 X-Internal-Token 을 넣을 수 없어 인증을 끈다.
+        # Spring 이 앞단에 서면 APP_API_AUTH=true 로 되돌리고, 실제 로그인이
+        # 붙으면 이 스위치와 require_internal_token 의 분기를 함께 지운다.
+        # /internal/v1/* 은 이 값과 무관하게 항상 토큰을 요구한다.
+        self.app_api_auth = os.environ.get("APP_API_AUTH", "false").lower() == "true"
         # Spring 내부 호출 타임아웃(초). Gemini 용 http_timeout(30) 과 분리한다.
         # 같은 네트워크 안의 내부 호출이라 길게 잡을 이유가 없다.
         self.spring_timeout = float(os.environ.get("SPRING_TIMEOUT", "3"))

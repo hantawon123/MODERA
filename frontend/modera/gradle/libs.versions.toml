@@ -48,6 +48,9 @@ protobuf = "4.35.1"
 # Image
 coil = "2.7.0"
 
+# ML Kit OCR (스크립트별 모델, 동일 버전)
+textRecognition = "16.0.1"
+
 # Test
 junit = "4.13.2"
 turbine = "1.1.0"
@@ -146,6 +149,13 @@ androidx-dataStore = { group = "androidx.datastore", name = "datastore", version
 # Protobuf
 protobuf-protoc = { group = "com.google.protobuf", name = "protoc", version.ref = "protobuf" }
 protobuf-kotlin-lite = { group = "com.google.protobuf", name = "protobuf-kotlin-lite", version.ref = "protobuf" }
+
+# ML Kit OCR
+text-recognition = { module = "com.google.mlkit:text-recognition", version.ref = "textRecognition" }
+text-recognition-korean = { module = "com.google.mlkit:text-recognition-korean", version.ref = "textRecognition" }
+text-recognition-chinese = { module = "com.google.mlkit:text-recognition-chinese", version.ref = "textRecognition" }
+text-recognition-japanese = { module = "com.google.mlkit:text-recognition-japanese", version.ref = "textRecognition" }
+text-recognition-devanagari = { module = "com.google.mlkit:text-recognition-devanagari", version.ref = "textRecognition" }
 
 # Unit Test
 junit = { group = "junit", name = "junit", version.ref = "junit" }

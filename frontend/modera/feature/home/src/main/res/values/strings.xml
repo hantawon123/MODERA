@@ -8,4 +8,5 @@
     <string name="home_analysis_status">AI 분석 진행중</string>
     <string name="home_analysis_message">사진 %1$d장을 분석하고 있습니다</string>
     <string name="home_analysis_dismiss_content_description">분석 배너 닫기</string>
+    <string name="home_error_message">카테고리를 불러오지 못했어요.\n잠시 후 다시 시도해 주세요.</string>
 </resources>

@@ -1,50 +1,29 @@
 package com.ssafy.modera.feature.categoryimages.navigation
 
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation3.runtime.EntryProviderScope
 import androidx.navigation3.runtime.NavKey
-import com.ssafy.modera.core.model.AnalyzedImageSummary
 import com.ssafy.modera.core.navigation.Navigator
 import com.ssafy.modera.feature.categoryimages.CategoryImagesScreen
-import com.ssafy.modera.feature.imagedetail.navigation.ImageDetailNavKey
+import com.ssafy.modera.feature.categoryimages.CategoryImagesViewModel
+import com.ssafy.modera.feature.categoryimages.CategoryImagesViewModel.Factory
 
 fun EntryProviderScope<NavKey>.categoryImagesEntry(
     navigator: Navigator,
 ) {
-    entry<CategoryImagesNavKey> { key ->
+    entry<CategoryImagesNavKey> { navKey ->
+        val categoryName = navKey.category.title
+        val categoryId = navKey.category.id
+
         CategoryImagesScreen(
-            categoryName = key.categoryName,
-            images = previewCategoryImages[key.categoryId] ?: emptyList(),
+            categoryName = categoryName,
             onBackClick = navigator::goBack,
-            onImageClick = { imageId ->
-                navigator.navigate(ImageDetailNavKey(imageId = imageId))
+            onImageClick = {},
+            viewModel = hiltViewModel<CategoryImagesViewModel, Factory>(
+                key = categoryId.toString(),
+            ) { factory ->
+                factory.create(categoryId)
             },
-            onDeleteImages = { /* TODO: 이미지 삭제 API 연동 */ },
         )
     }
 }
-
-// TODO: 추후 API 연동 시 삭제
-private val previewCategoryImages = mapOf(
-    3L to listOf(
-        AnalyzedImageSummary(
-            id = 1L,
-            title = "ASCII HACKATHON",
-            imageUrl = "https://picsum.photos/seed/hackathon/400/600",
-            hashtags = listOf("해커톤", "SW"),
-        ),
-        AnalyzedImageSummary(
-            id = 2L,
-            title = "삼성전자 주가 전망 및 투자 분석",
-            imageUrl = "https://picsum.photos/seed/stock/400/600",
-            hashtags = listOf("주식", "삼성전자"),
-        ),
-    ),
-    7L to listOf(
-        AnalyzedImageSummary(
-            id = 2L,
-            title = "삼성전자 주가 전망 및 투자 분석",
-            imageUrl = "https://picsum.photos/seed/stock/400/600",
-            hashtags = listOf("주식", "삼성전자"),
-        ),
-    ),
-)

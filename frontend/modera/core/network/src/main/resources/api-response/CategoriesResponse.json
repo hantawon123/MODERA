@@ -1,31 +1,36 @@
 {
-  "list": [
-    {
-      "categoryId": 3,
-      "name": "공부",
-      "thumbnailUrl": "https://cdn.example.com/thumbnails/1024.jpg",
-      "imageCount": 42,
-      "tags": [
-        {
-          "tagId": 11,
-          "name": "C++",
-          "imageCount": 14
-        },
-        {
-          "tagId": 21,
-          "name": "프로그래밍",
-          "imageCount": 9
-        }
-      ],
-      "updatedAt": "2026-07-17T06:00:00.000Z"
-    },
-    {
-      "categoryId": 4,
-      "name": "여행",
-      "thumbnailUrl": null,
-      "imageCount": 0,
-      "tags": [],
-      "updatedAt": "2026-07-18T06:00:00.000Z"
-    }
-  ]
+  "code": "SUCCESS",
+  "message": "요청이 성공했습니다.",
+  "data": {
+    "list": [
+      {
+        "categoryId": 3,
+        "name": "공부",
+        "thumbnailUrl": "https://cdn.example.com/thumbnails/1024.jpg",
+        "imageCount": 42,
+        "tags": [
+          {
+            "tagId": 11,
+            "name": "C++",
+            "imageCount": 14
+          },
+          {
+            "tagId": 21,
+            "name": "프로그래밍",
+            "imageCount": 9
+          }
+        ],
+        "updatedAt": "2026-07-17T06:00:00.000Z"
+      },
+      {
+        "categoryId": 4,
+        "name": "여행",
+        "thumbnailUrl": null,
+        "imageCount": 0,
+        "tags": [],
+        "updatedAt": "2026-07-18T06:00:00.000Z"
+      }
+    ]
+  },
+  "timestamp": "2026-07-23T23:43:42.000Z"
 }

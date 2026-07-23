@@ -30,8 +30,9 @@ import com.ssafy.modera.core.designsystem.component.HorizontalDivider
 import com.ssafy.modera.core.designsystem.component.Icon
 import com.ssafy.modera.core.designsystem.component.Text
 import com.ssafy.modera.core.designsystem.theme.ModeraTheme
-import com.ssafy.modera.feature.home.CategorySortType
+import com.ssafy.modera.core.model.category.CategorySortType
 import com.ssafy.modera.feature.home.R
+import com.ssafy.modera.feature.home.label
 import kotlin.math.roundToInt
 
 @Composable
@@ -181,7 +182,7 @@ private fun CategorySortPopupNamePreview() {
             modifier = Modifier.padding(24.dp),
         ) {
             CategorySortPopupContent(
-                selectedSortType = CategorySortType.NAME,
+                selectedSortType = CategorySortType.NAME_ASC,
                 onSortTypeClick = {},
             )
         }
@@ -200,7 +201,7 @@ private fun CategorySortPopupLatestPreview() {
             modifier = Modifier.padding(24.dp),
         ) {
             CategorySortPopupContent(
-                selectedSortType = CategorySortType.LATEST,
+                selectedSortType = CategorySortType.UPDATED_AT_DESC,
                 onSortTypeClick = {},
             )
         }
@@ -219,7 +220,7 @@ private fun CategorySortPopupImageCountPreview() {
             modifier = Modifier.padding(24.dp),
         ) {
             CategorySortPopupContent(
-                selectedSortType = CategorySortType.IMAGE_COUNT,
+                selectedSortType = CategorySortType.IMAGE_COUNT_DESC,
                 onSortTypeClick = {},
             )
         }
@@ -243,7 +244,7 @@ private fun CategorySortPopupPreview() {
                 right = 400f,
                 bottom = 140f,
             ),
-            selectedSortType = CategorySortType.NAME,
+            selectedSortType = CategorySortType.NAME_ASC,
             onDismissRequest = {},
             onSortTypeClick = {},
         )

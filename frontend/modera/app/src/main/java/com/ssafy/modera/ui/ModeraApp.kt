@@ -5,17 +5,21 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.foundation.layout.exclude
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.Icon
+import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
 import androidx.compose.material3.adaptive.WindowAdaptiveInfo
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import androidx.compose.material3.adaptive.navigation3.rememberListDetailSceneStrategy
+import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteType
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -41,10 +45,6 @@ import androidx.navigation3.runtime.EntryProviderScope
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.ui.NavDisplay
-import androidx.compose.foundation.layout.exclude
-import androidx.compose.foundation.layout.ime
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteType
 import com.ssafy.modera.MainViewModel
 import com.ssafy.modera.core.designsystem.component.ModeraNavigationSuiteScaffold
 import com.ssafy.modera.core.designsystem.component.Scaffold
@@ -58,8 +58,8 @@ import com.ssafy.modera.feature.home.HomeAnalysisState
 import com.ssafy.modera.feature.home.LocalHomeAnalysisState
 import com.ssafy.modera.feature.home.navigation.HomeNavKey
 import com.ssafy.modera.feature.home.navigation.homeEntry
-import com.ssafy.modera.feature.categoryimages.navigation.categoryImagesEntry
 import com.ssafy.modera.feature.imagedetail.navigation.imageDetailEntry
+import com.ssafy.modera.feature.imagedetail.navigation.navigateToImageDetail
 import com.ssafy.modera.media.rememberGalleryPickerLauncher
 import com.ssafy.modera.navigation.RegisterNavKey
 import com.ssafy.modera.navigation.SearchNavKey
@@ -146,7 +146,7 @@ internal fun ModeraApp(
                 if (isTopLevelDestination) {
                     TOP_LEVEL_NAV_ITEMS.forEach { (navKey, navItem) ->
                         val selected = navKey != RegisterNavKey &&
-                            navKey == appState.navigationState.currentTopLevelKey
+                                navKey == appState.navigationState.currentTopLevelKey
 
                         item(
                             selected = selected,
@@ -183,14 +183,14 @@ internal fun ModeraApp(
                 contentColor = Color.Gray, // TODO : 추후 컬러 변경
                 contentWindowInsets = WindowInsets(0, 0, 0, 0),
                 snackbarHost = {
-                SnackbarHost(
-                    snackbarHostState,
-                    modifier = Modifier.windowInsetsPadding(
-                        WindowInsets.safeDrawing.exclude(
-                            WindowInsets.ime,
+                    SnackbarHost(
+                        snackbarHostState,
+                        modifier = Modifier.windowInsetsPadding(
+                            WindowInsets.safeDrawing.exclude(
+                                WindowInsets.ime,
+                            ),
                         ),
-                    ),
-                )
+                    )
                 },
             ) { padding ->
                 Column(
@@ -231,7 +231,10 @@ internal fun ModeraApp(
                                 navigator = navigator,
                                 onCategoryClick = navigator::navigateToCategoryImages,
                             )
-                            categoryImagesEntry(navigator)
+                            categoryImagesEntry(
+                                navigator = navigator,
+                                onImageClick = navigator::navigateToImageDetail
+                            )
                             imageDetailEntry(navigator)
                             registerEntry(navigator)
                             searchEntry(navigator)

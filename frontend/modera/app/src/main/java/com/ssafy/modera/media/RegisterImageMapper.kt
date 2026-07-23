@@ -1,8 +1,9 @@
 package com.ssafy.modera.media
 
 import android.content.Context
-import com.ssafy.modera.core.model.ImageOcr
-import com.ssafy.modera.core.model.RegisterImage
+import com.ssafy.modera.core.model.image.ImageOcr
+import com.ssafy.modera.core.model.image.RegisterImage
+import com.ssafy.modera.core.model.image.SelectedImage
 import java.util.UUID
 
 private const val DEFAULT_OCR_LANG = "ko"

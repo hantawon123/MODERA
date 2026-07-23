@@ -2,8 +2,8 @@ package com.ssafy.modera.core.data.repository
 
 import com.ssafy.modera.core.common.network.Dispatcher
 import com.ssafy.modera.core.common.network.ModeraDispatcher
-import com.ssafy.modera.core.model.RegisterImage
-import com.ssafy.modera.core.model.RegisterImagesResult
+import com.ssafy.modera.core.model.image.RegisterImage
+import com.ssafy.modera.core.model.image.RegisterImagesResult
 import com.ssafy.modera.core.network.model.image.RegisterImagesRequest
 import com.ssafy.modera.core.network.model.image.asExternalModel
 import com.ssafy.modera.core.network.model.image.asNetworkModel

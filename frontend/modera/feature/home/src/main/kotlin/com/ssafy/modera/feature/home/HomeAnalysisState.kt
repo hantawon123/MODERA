@@ -6,17 +6,22 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 
-class HomeAnalysisState {
+class HomeAnalysisState(
+    private val onDismissRequest: () -> Unit = {},
+) {
     var showBanner by mutableStateOf(false)
+        private set
     var imageCount by mutableIntStateOf(0)
+        private set
 
-    fun onImagesSelected(count: Int) {
-        imageCount = count
-        showBanner = count > 0
+    fun sync(showBanner: Boolean, imageCount: Int) {
+        this.imageCount = imageCount
+        this.showBanner = showBanner
     }
 
     fun dismissBanner() {
         showBanner = false
+        onDismissRequest()
     }
 }
 

@@ -18,6 +18,7 @@ import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import androidx.compose.material3.adaptive.navigation3.rememberListDetailSceneStrategy
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -34,10 +35,13 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.unit.dp
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation3.runtime.EntryProviderScope
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.ui.NavDisplay
+import com.ssafy.modera.MainViewModel
 import com.ssafy.modera.core.designsystem.component.ModeraNavigationSuiteScaffold
 import com.ssafy.modera.core.designsystem.component.Scaffold
 import com.ssafy.modera.core.designsystem.component.Text
@@ -48,7 +52,6 @@ import com.ssafy.modera.feature.home.HomeAnalysisState
 import com.ssafy.modera.feature.home.LocalHomeAnalysisState
 import com.ssafy.modera.feature.home.navigation.HomeNavKey
 import com.ssafy.modera.feature.home.navigation.homeEntry
-import com.ssafy.modera.media.SelectedImage
 import com.ssafy.modera.media.rememberGalleryPickerLauncher
 import com.ssafy.modera.navigation.RegisterNavKey
 import com.ssafy.modera.navigation.SearchNavKey
@@ -59,6 +62,7 @@ fun ModeraApp(
     appState: ModeraAppState,
     modifier: Modifier = Modifier,
     windowAdaptiveInfo: WindowAdaptiveInfo = currentWindowAdaptiveInfo(),
+    viewModel: MainViewModel = hiltViewModel(),
 ) {
 //    val shouldShowGradientBackground = appState.navigationState.currentTopLevelKey == ForYouNavKey
     var showSettingsDialog by rememberSaveable { mutableStateOf(false) }
@@ -71,8 +75,10 @@ fun ModeraApp(
     CompositionLocalProvider(localSnackbarHostState provides snackbarHostState) {
         ModeraApp(
             appState = appState,
+            viewModel = viewModel,
             onSettingsDismissed = { showSettingsDialog = false },
             windowAdaptiveInfo = windowAdaptiveInfo,
+            modifier = modifier,
         )
     }
 }
@@ -84,32 +90,40 @@ fun ModeraApp(
 )
 internal fun ModeraApp(
     appState: ModeraAppState,
+    viewModel: MainViewModel,
     onSettingsDismissed: () -> Unit,
     modifier: Modifier = Modifier,
     windowAdaptiveInfo: WindowAdaptiveInfo = currentWindowAdaptiveInfo(),
 ) {
-//    val snackbarHostState = LocalSnackbarHostState.current
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val navigator = remember { Navigator(appState.navigationState) }
-    val homeAnalysisState = remember { HomeAnalysisState() }
-    val selectedImages = remember { mutableStateOf<List<SelectedImage>>(emptyList()) }
+    val homeAnalysisState = remember(viewModel) {
+        HomeAnalysisState(onDismissRequest = viewModel::dismissAnalysisBanner)
+    }
+
+    LaunchedEffect(uiState.showAnalysisBanner, uiState.analysisImageCount) {
+        homeAnalysisState.sync(
+            showBanner = uiState.showAnalysisBanner,
+            imageCount = uiState.analysisImageCount,
+        )
+    }
+
     val launchGalleryPicker = rememberGalleryPickerLauncher(
         onImagesPicked = { images ->
-            selectedImages.value = images
-            if (images.isNotEmpty()) {
-                homeAnalysisState.onImagesSelected(images.size)
-                navigator.navigate(HomeNavKey)
-            }
+            if (images.isEmpty()) return@rememberGalleryPickerLauncher
+            viewModel.onImagesPicked(images)
+            navigator.navigate(HomeNavKey)
         },
     )
 
     CompositionLocalProvider(
-        LocalHomeAnalysisState provides homeAnalysisState
+        LocalHomeAnalysisState provides homeAnalysisState,
     ) {
         ModeraNavigationSuiteScaffold(
             navigationSuiteItems = {
                 TOP_LEVEL_NAV_ITEMS.forEach { (navKey, navItem) ->
                     val selected = navKey != RegisterNavKey &&
-                            navKey == appState.navigationState.currentTopLevelKey
+                        navKey == appState.navigationState.currentTopLevelKey
 
                     item(
                         selected = selected,
@@ -175,7 +189,6 @@ internal fun ModeraApp(
                         val destination =
                             TOP_LEVEL_NAV_ITEMS[appState.navigationState.currentTopLevelKey]
                                 ?: error("Top level nav item not found for ${appState.navigationState.currentTopLevelKey}")
-
                     }
 
                     Box(

@@ -65,7 +65,9 @@ dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.core.splashscreen)
     implementation(libs.androidx.lifecycle.runtimeCompose)
+    implementation(libs.androidx.lifecycle.viewModelCompose)
     implementation(libs.androidx.lifecycle.viewModel.navigation3)
+    implementation(libs.androidx.hilt.lifecycle.viewModelCompose)
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.kotlinx.serialization.json)
 
@@ -76,6 +78,10 @@ dependencies {
     implementation(libs.androidx.compose.material3.adaptive.navigation)
     implementation(libs.androidx.compose.material3.adaptive.navigation3)
     implementation(libs.androidx.compose.material3.windowSizeClass)
+
+    // ML Kit OCR
+    implementation(libs.text.recognition)
+    implementation(libs.text.recognition.korean)
 
     ksp(libs.hilt.compiler)
 

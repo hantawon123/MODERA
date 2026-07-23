@@ -3,6 +3,7 @@ package com.ssafy.modera.media
 import android.content.ContentResolver
 import android.net.Uri
 import android.provider.OpenableColumns
+import com.ssafy.modera.core.model.image.SelectedImage
 
 private const val FALLBACK_FILE_NAME = "image"
 private const val UNKNOWN_FILE_SIZE_BYTES = -1L

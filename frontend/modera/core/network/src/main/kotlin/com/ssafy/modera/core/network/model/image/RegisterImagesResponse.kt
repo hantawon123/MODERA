@@ -1,6 +1,6 @@
 package com.ssafy.modera.core.network.model.image
 
-import com.ssafy.modera.core.model.RegisterImagesResult
+import com.ssafy.modera.core.model.image.RegisterImagesResult
 import kotlinx.serialization.Serializable
 
 @Serializable

@@ -1,6 +1,4 @@
-package com.ssafy.modera.media
-
-import android.net.Uri
+package com.ssafy.modera.core.model.image
 
 data class SelectedImage(
     val uri: Uri,

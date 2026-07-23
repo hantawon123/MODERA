@@ -9,6 +9,7 @@ import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.TextRecognizer
 import com.google.mlkit.vision.text.korean.KoreanTextRecognizerOptions
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions
+import com.ssafy.modera.core.model.image.SelectedImage
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
@@ -18,9 +19,6 @@ import kotlin.coroutines.resumeWithException
 
 /**
  * ML Kit Text Recognition으로 이미지에서 텍스트를 추출한다.
- *
- * 라틴·한글·중문·일문·데바나가리 스크립트 모델을 병렬로 돌린 뒤
- * 라인 단위로 합친다.
  */
 class ImageTextRecognizer : AutoCloseable {
 

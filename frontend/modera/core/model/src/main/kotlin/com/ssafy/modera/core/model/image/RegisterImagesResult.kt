@@ -1,4 +1,4 @@
-package com.ssafy.modera.core.model
+package com.ssafy.modera.core.model.image
 
 data class RegisterImagesResult(
     val registered: List<RegisteredImage>,

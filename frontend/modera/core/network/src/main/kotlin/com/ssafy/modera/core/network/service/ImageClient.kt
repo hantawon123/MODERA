@@ -3,6 +3,7 @@ package com.ssafy.modera.core.network.service
 import com.skydoves.sandwich.getOrThrow
 import com.ssafy.modera.core.network.model.image.RegisterImagesRequest
 import com.ssafy.modera.core.network.model.image.RegisterImagesResponse
+import com.ssafy.modera.core.network.model.image.UploadCompleteResponse
 import javax.inject.Inject
 
 class ImageClient @Inject constructor(
@@ -12,6 +13,13 @@ class ImageClient @Inject constructor(
         request: RegisterImagesRequest,
     ): RegisterImagesResponse {
         val response = imageService.registerImages(request).getOrThrow()
+        return response.data
+    }
+
+    suspend fun notifyUploadComplete(
+        imageId: Long,
+    ): UploadCompleteResponse {
+        val response = imageService.notifyUploadComplete(imageId).getOrThrow()
         return response.data
     }
 }

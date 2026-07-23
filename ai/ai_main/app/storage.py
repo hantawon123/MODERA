@@ -29,12 +29,20 @@ def _build_client(endpoint: str):
         raise ImageFetchError("boto3 가 설치되지 않았습니다.") from e
 
     settings = get_settings()
+    # 스토리지가 죽었을 때 요청이 무한정 매달리지 않게 타임아웃을 건다.
+    # 기본값(연결 60초 × 재시도)이면 MinIO 가 잠깐 내려가도 앱 화면이 통째로 멈춘다.
+    common = {
+        "connect_timeout": settings.s3_connect_timeout,
+        "read_timeout": settings.s3_read_timeout,
+        "retries": {"max_attempts": settings.s3_max_attempts, "mode": "standard"},
+    }
     kwargs: dict = {"region_name": settings.aws_region}
     if endpoint:
         # MinIO 등 S3 호환 스토리지. path-style 로 붙어야 버킷이 경로로 해석된다.
         kwargs["endpoint_url"] = endpoint
-        kwargs["config"] = Config(s3={"addressing_style": "path"}) \
-            if settings.s3_path_style else Config()
+        if settings.s3_path_style:
+            common["s3"] = {"addressing_style": "path"}
+    kwargs["config"] = Config(**common)
     if settings.s3_access_key:
         kwargs["aws_access_key_id"] = settings.s3_access_key
         kwargs["aws_secret_access_key"] = settings.s3_secret_key
@@ -105,6 +113,28 @@ def presigned_put_url(key: str, expires_in: int | None = None) -> tuple[str, int
     except Exception as e:
         raise ImageFetchError(f"업로드 URL 을 발급하지 못했습니다: {key}") from e
     return url, expires
+
+
+def presigned_get_url(
+    key: str, bucket: str | None = None, expires_in: int = 3600
+) -> str | None:
+    """앱이 이미지를 직접 받을 presigned GET URL 을 발급한다.
+
+    S3_PUBLIC_ENDPOINT 가 없으면 앱이 닿을 수 없는 주소가 만들어지므로 None 을
+    돌려주고, 호출 측이 서버 경유 경로로 대체하게 한다.
+    """
+    settings = get_settings()
+    if not settings.s3_public_endpoint:
+        return None
+    try:
+        return _public_client().generate_presigned_url(
+            "get_object",
+            Params={"Bucket": bucket or settings.s3_bucket, "Key": key},
+            ExpiresIn=expires_in,
+        )
+    except Exception as e:
+        logger.warning("조회 URL 발급 실패 key=%s: %s", key, e)
+        return None
 
 
 def object_exists(key: str) -> bool:

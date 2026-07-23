@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="image_detail_back">뒤로가기</string>
+    <string name="image_detail_reanalyze">재분석</string>
+    <string name="image_detail_related_materials">연관 자료 보러 가기</string>
+    <string name="image_detail_summary_title">요약</string>
+    <string name="image_detail_key_info_title">주요정보</string>
+    <string name="image_detail_ocr_title">이미지 속 텍스트</string>
+    <string name="image_detail_copy_text">이미지 속 텍스트 복사</string>
+    <string name="image_detail_view_info">이미지 정보 보기</string>
+    <string name="image_detail_delete">삭제하기</string>
+    <string name="image_detail_more_menu">더보기</string>
+    <string name="image_detail_reanalyze_action">재분석</string>
+    <string name="image_detail_sync">동기화</string>
+    <string name="image_detail_favorite">즐겨찾기</string>
+    <string name="image_detail_copy_ocr">텍스트 복사</string>
+    <string name="image_detail_uploaded_at">%1$s 업로드</string>
+    <string name="image_detail_hashtag">#%1$s</string>
+    <string name="image_detail_hero_content_description">%1$s 이미지</string>
+</resources>

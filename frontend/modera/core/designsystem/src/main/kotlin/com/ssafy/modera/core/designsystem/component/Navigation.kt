@@ -14,6 +14,7 @@ import androidx.compose.material3.adaptive.WindowAdaptiveInfo
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteDefaults
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteItemColors
+import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteType
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffold
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffoldDefaults
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScope
@@ -166,11 +167,12 @@ fun ModeraNavigationRail(
 fun ModeraNavigationSuiteScaffold(
     navigationSuiteItems: ModeraNavigationSuiteScope.() -> Unit,
     modifier: Modifier = Modifier,
+    layoutType: NavigationSuiteType? = null,
     windowAdaptiveInfo: WindowAdaptiveInfo = currentWindowAdaptiveInfo(),
     content: @Composable () -> Unit,
 ) {
-    val layoutType = NavigationSuiteScaffoldDefaults
-        .calculateFromAdaptiveInfo(windowAdaptiveInfo)
+    val resolvedLayoutType = layoutType
+        ?: NavigationSuiteScaffoldDefaults.calculateFromAdaptiveInfo(windowAdaptiveInfo)
     val navigationSuiteItemColors = NavigationSuiteItemColors(
         navigationBarItemColors = NavigationBarItemDefaults.colors(
             selectedIconColor = ModeraNavigationDefaults.navigationSelectedItemColor(),
@@ -201,7 +203,7 @@ fun ModeraNavigationSuiteScaffold(
                 navigationSuiteItemColors = navigationSuiteItemColors,
             ).run(navigationSuiteItems)
         },
-        layoutType = layoutType,
+        layoutType = resolvedLayoutType,
         containerColor = Color.Transparent,
         navigationSuiteColors = NavigationSuiteDefaults.colors(
             navigationBarContentColor = ModeraNavigationDefaults.navigationContentColor(),

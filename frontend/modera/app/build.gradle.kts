@@ -59,6 +59,8 @@ dependencies {
     implementation(projects.core.navigation)
 
     implementation(projects.feature.home)
+    implementation(projects.feature.categoryimages)
+    implementation(projects.feature.imagedetail)
 
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.navigation3.ui)
@@ -78,6 +80,7 @@ dependencies {
     implementation(libs.androidx.compose.material3.adaptive.layout)
     implementation(libs.androidx.compose.material3.adaptive.navigation)
     implementation(libs.androidx.compose.material3.adaptive.navigation3)
+    implementation(libs.androidx.compose.material3.adaptive.navigation.suite)
     implementation(libs.androidx.compose.material3.windowSizeClass)
 
     // ML Kit OCR

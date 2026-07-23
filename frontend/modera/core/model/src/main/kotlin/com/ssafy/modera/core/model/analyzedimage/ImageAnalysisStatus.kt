@@ -1,7 +1,7 @@
 package com.ssafy.modera.core.model.analyzedimage
 
 enum class ImageAnalysisStatus {
-    PENDING,
+    QUEUED,
     PROCESSING,
     COMPLETED,
     FAILED,

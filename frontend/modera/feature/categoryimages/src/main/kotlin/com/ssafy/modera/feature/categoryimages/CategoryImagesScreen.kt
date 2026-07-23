@@ -21,6 +21,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.ssafy.modera.core.designsystem.theme.ModeraTheme
 import com.ssafy.modera.core.model.analyzedimage.AnalyzedImageSummary
+import com.ssafy.modera.core.model.analyzedimage.ImageAnalysisStatus
 import com.ssafy.modera.feature.categoryimages.component.AnalyzedImageItem
 import com.ssafy.modera.feature.categoryimages.component.CategoryImagesTopAppBar
 import com.ssafy.modera.feature.categoryimages.component.SelectedImagesDeleteBar
@@ -153,5 +154,7 @@ private val previewAnalyzedImageSummaries = List(12) { index ->
             "삼성전자",
             "투자",
         ),
+        status = ImageAnalysisStatus.COMPLETED,
+        favorite = index % 3 == 0,
     )
 }

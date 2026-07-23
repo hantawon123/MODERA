@@ -55,9 +55,13 @@ abstract class ApiAbstract<T> {
     }
 
     fun createService(clazz: Class<T>): T {
+        val json = Json {
+            ignoreUnknownKeys = true
+        }
+
         return Retrofit.Builder()
             .baseUrl(mockWebServer.url("/"))
-            .addConverterFactory(Json.asConverterFactory("application/json".toMediaType()))
+            .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))
             .addCallAdapterFactory(
                 ApiResponseCallAdapterFactory.create(
                     coroutineScope = coroutinesRule.testScope,

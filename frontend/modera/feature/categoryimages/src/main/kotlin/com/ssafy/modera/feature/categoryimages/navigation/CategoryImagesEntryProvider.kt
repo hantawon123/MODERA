@@ -12,8 +12,11 @@ fun EntryProviderScope<NavKey>.categoryImagesEntry(
 ) {
     // Todo: mock data 삭제
     entry<CategoryImagesNavKey> { navKey ->
+        val categoryName = navKey.category.title
+        val categoryId = navKey.category.id
+
         CategoryImagesScreen(
-            categoryName = "주식${navKey.id}",
+            categoryName = categoryName,
             images = List(12) { index ->
                 AnalyzedImageSummary(
                     id = index.toLong(),

@@ -44,7 +44,7 @@ import com.ssafy.modera.feature.home.component.SortSection
 
 @Composable
 fun HomeScreen(
-    onCategoryClick: (Long) -> Unit,
+    onCategoryClick: (Category) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
@@ -89,11 +89,11 @@ fun HomeScreen(
     categories: List<Category>,
     selectedSortType: CategorySortType,
     onSortTypeChange: (CategorySortType) -> Unit,
-    onCategoryClick: (Long) -> Unit,
+    onCategoryClick: (Category) -> Unit,
+    modifier: Modifier = Modifier,
     showAnalysisBanner: Boolean = false,
     analysisImageCount: Int = 0,
     onDismissAnalysisBanner: () -> Unit = {},
-    modifier: Modifier = Modifier,
 ) {
     var sortMenuExpanded by remember { mutableStateOf(false) }
     var sortButtonBounds by remember { mutableStateOf<Rect?>(null) }
@@ -154,8 +154,7 @@ fun HomeScreen(
                         itemCount = category.itemCount,
                         tags = category.tags,
                         modifier = Modifier.fillMaxWidth(),
-                        onClick = {
-                            onCategoryClick(category.id)
+                        onClick = { onCategoryClick(category)
                         },
                     )
                 }

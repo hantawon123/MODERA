@@ -3,8 +3,10 @@ package com.ssafy.modera.core.network.service
 import com.skydoves.sandwich.ApiResponse
 import com.ssafy.modera.core.model.analyzedimage.ImageAnalysisStatus
 import com.ssafy.modera.core.network.model.BaseResponse
+import com.ssafy.modera.core.network.model.analyzedimage.AnalyzedImageDetailResponse
 import com.ssafy.modera.core.network.model.analyzedimage.AnalyzedImagesResponse
 import retrofit2.http.GET
+import retrofit2.http.Path
 import retrofit2.http.Query
 
 interface AnalyzedImageService {
@@ -21,4 +23,9 @@ interface AnalyzedImageService {
         @Query("size") size: Int,
         @Query("sort") sort: String,
     ): ApiResponse<BaseResponse<AnalyzedImagesResponse>>
+
+    @GET("api/v1/images/{imageId}")
+    suspend fun fetchAnalyzedImageDetail(
+        @Path("imageId") imageId: Long,
+    ): ApiResponse<BaseResponse<AnalyzedImageDetailResponse>>
 }

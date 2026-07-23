@@ -43,7 +43,7 @@ OpenSearch 는 기동에 30~45초 걸립니다. 그 전 요청은 연결 거부�
 | 6-6 | GET | `/api/v1/images/{imageId}/thumbnail` | `{thumbnailUrl, title, tags}` JSON |
 | — | GET | `/api/v1/images/{imageId}/thumbnail/raw` | **JPEG 바이너리** (envelope 아님) |
 | 7-1 | GET | `/api/v1/tags` | `q`·`sort` |
-| 7-2 | GET | `/api/v1/categories` | 카드용 썸네일·태그·개수. `sort` |
+| 7-2 | GET | `/api/v1/categories` | 카드용 썸네일·태그·개수. `sort`. **페이지네이션 없음** |
 | 7-3 | GET | `/api/v1/home` | 홈 1콜 집계(현황·카테고리 8개·최근 4장) |
 | 8-1 | GET | `/api/v1/search` | `q` 필수. `scope`·`sort` |
 
@@ -96,6 +96,16 @@ OCR 이 비었거나 정보성이 없다고 판정되면 분석을 건너뛰고 
 - **`thumbnailUrl` 은 경로만** 내려옵니다(`/api/v1/images/3/thumbnail/raw`).
   베이스 URL 을 앞에 붙이고, 호출할 때 `X-Internal-Token` 헤더가 필요합니다.
   만료가 없으므로 캐시해도 됩니다.
+- **태그·카테고리는 전부 AI 가 자동 생성합니다.** 사람이 직접 만들거나 고치는 경로는
+  없습니다(6-3 수정 API 는 범위 밖). 그래서 `tags[].source` 와 `fieldSources` 는
+  항상 `"AGENT"`, `TagItem.createdBy` 도 항상 `"AGENT"` 입니다.
+  카테고리는 분석 시작 시 기본 17종을 후보로 쓰고, AGENT 가 그중 어디에도
+  못 붙이겠다고 판단하면 새 이름을 만들어 늘어납니다.
+- **카테고리(7-2)만 페이지네이션이 없습니다.** 프론트 요청으로 뺐습니다(명세와 다른 부분).
+  `data.list` 에 전체가 들어오고 `page`·`size`·`totalElements` 등은 없습니다.
+  `page`·`size` 를 보내도 무시됩니다. `sort` 는 그대로 동작합니다.
+  카테고리 수가 적은 이유도 이것입니다 — 사람이 만드는 게 아니라 AI 가 필요할 때만 늘립니다.
+  나머지 목록 API(6-1·7-1·8-1·5-6)는 페이지 형식 그대로입니다.
 - **카테고리 카드 이미지** 는 그 카테고리에 가장 최근 분류된 사진의 썸네일입니다.
   전용 이미지를 따로 만들지 않으므로 새 사진이 분류되면 자동으로 바뀝니다.
 - **`categoryId`·`tagId` 는 이름에서 파생된 해시**입니다. 재시작해도 같은 값이지만
@@ -202,7 +212,7 @@ OpenSearch + AI 서비스를 함께 띄운다.
 ## 팀 확인이 필요한 사항
 
 1. **카테고리 대표 벡터.** 지금은 10-5 응답에 벡터가 없어 카테고리 *이름* 임베딩으로 비교합니다. pgvector 에 카테고리 centroid 를 유지하고 10-5 응답에 `representativeVector` 를 실어주면 정확도가 올라갑니다. 스키마는 이미 이 필드를 받도록 준비돼 있습니다.
-2. **기본 카테고리 위치.** 사용자 카테고리가 하나도 없을 때 `stages.DEFAULT_CATEGORIES` 17개를 후보로 씁니다. 원칙적으로는 Spring DB 시드로 옮기는 편이 낫습니다.
+2. **기본 카테고리 위치.** 쌓인 카테고리가 하나도 없을 때(콜드 스타트) `stages.DEFAULT_CATEGORIES` 17개를 후보로 씁니다. 원칙적으로는 Spring DB 시드로 옮기는 편이 낫습니다.
 3. **`categoryCreated` 필드.** AGENT 결과에 신규 카테고리 여부를 담았습니다. 명세에 없는 필드라 Spring 과 합의가 필요합니다(불필요하면 제거).
 3-1. **`documentVector` 필드.** AGENT 결과에 검색용 문서 임베딩(요약 기준, `DOCUMENT`)을 함께 실어 보냅니다. Spring 은 콜백 한 번으로 메타데이터와 벡터를 같이 받아 pgvector 등에 적재하면 됩니다(임베딩 재호출 불필요). `embeddingModel`·`embeddingDimension` 도 함께 넘어가니 벡터 컬럼 차원과 일치하는지 확인이 필요합니다. 명세 밖 필드라 Spring 과 계약 확정이 필요합니다.
 4. **`keyInformation`.** 명세 10-4·6-2 에 있는 필드라 AGENT 가 생성하도록 넣었습니다. MVP 에서 안 쓸 거면 프롬프트에서 빼면 됩니다.

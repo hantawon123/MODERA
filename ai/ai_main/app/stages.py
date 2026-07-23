@@ -25,7 +25,9 @@ from .schemas import (
 
 logger = logging.getLogger(__name__)
 
-# Spring 에 사용자 카테고리가 하나도 없을 때 쓰는 초기 후보.
+# 아직 쌓인 카테고리가 하나도 없을 때 쓰는 초기 후보(콜드 스타트).
+# 이후 카테고리는 AGENT 가 분석하면서 기존 후보에 못 붙일 때 새로 만든다.
+# 사람이 직접 만드는 경로는 없다.
 # 원칙적으로는 Spring DB 에 시드로 넣고 10-5 로 내려받는 편이 낫다.
 DEFAULT_CATEGORIES = [
     "쇼핑", "음식", "여행", "예약", "할인", "금융",
@@ -153,7 +155,8 @@ def run_agent_generation(
 def _build_candidates(candidates: list[CategoryCandidate]) -> list[CategoryCandidate]:
     if candidates:
         return candidates
-    # 사용자 카테고리가 아직 없으면 기본 후보로 시작한다(categoryId 없음 = 미저장).
+    # 이 사용자에게 쌓인 카테고리가 아직 없으면 기본 후보로 시작한다
+    # (categoryId 없음 = 아직 저장되지 않은 후보).
     return [CategoryCandidate(category_id=None, name=name) for name in DEFAULT_CATEGORIES]
 
 

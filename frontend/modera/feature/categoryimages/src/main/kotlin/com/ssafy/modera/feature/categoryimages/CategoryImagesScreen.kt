@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -17,14 +18,57 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.ssafy.modera.core.designsystem.component.LoadingWheel
+import com.ssafy.modera.core.designsystem.component.Text
 import com.ssafy.modera.core.designsystem.theme.ModeraTheme
 import com.ssafy.modera.core.model.analyzedimage.AnalyzedImageSummary
 import com.ssafy.modera.core.model.analyzedimage.ImageAnalysisStatus
 import com.ssafy.modera.feature.categoryimages.component.AnalyzedImageItem
 import com.ssafy.modera.feature.categoryimages.component.CategoryImagesTopAppBar
 import com.ssafy.modera.feature.categoryimages.component.SelectedImagesDeleteBar
+
+@Composable
+fun CategoryImagesScreen(
+    categoryName: String,
+    onBackClick: () -> Unit,
+    onImageClick: (Long) -> Unit,
+    modifier: Modifier = Modifier,
+    viewModel: CategoryImagesViewModel = hiltViewModel()
+) {
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
+    when (val state = uiState) {
+        is CategoryImagesUiState.Loading -> {
+            CategoryImagesLoadingScreen(
+                modifier = modifier,
+            )
+        }
+
+        is CategoryImagesUiState.Success -> {
+            CategoryImagesScreen(
+                categoryName = categoryName,
+                images = state.images,
+                onBackClick = onBackClick,
+                onImageClick = onImageClick,
+                onDeleteImages = {},
+                modifier = modifier,
+            )
+        }
+
+        is CategoryImagesUiState.Error -> {
+            CategoryImagesErrorScreen(
+                categoryName = categoryName,
+                onBackClick = onBackClick,
+                modifier = modifier,
+            )
+        }
+    }
+}
 
 @Composable
 fun CategoryImagesScreen(
@@ -77,38 +121,48 @@ fun CategoryImagesScreen(
                 .fillMaxSize()
                 .weight(1f),
         ) {
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(2),
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(
-                    start = 12.dp,
-                    end = 12.dp,
-                    top = 8.dp,
-                    bottom = if (selectionMode) 88.dp else 24.dp,
-                ),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                items(
-                    items = images,
-                    key = AnalyzedImageSummary::id,
-                ) { image ->
-                    AnalyzedImageItem(
-                        analyzedImageSummary = image,
-                        selected = image.id in selectedImageIds,
-                        selectionMode = selectionMode,
-                        onClick = {
-                            if (selectionMode) {
-                                if (image.id in selectedImageIds) {
-                                    selectedImageIds.remove(image.id)
-                                } else {
-                                    selectedImageIds.add(image.id)
-                                }
-                            } else {
-                                onImageClick(image.id)
-                            }
+            if (images.isEmpty()) {
+                CategoryImagesEmptyScreen(
+                    modifier = Modifier.fillMaxSize(),
+                )
+            } else {
+                LazyVerticalGrid(
+                    columns = GridCells.Fixed(2),
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(
+                        start = 12.dp,
+                        end = 12.dp,
+                        top = 8.dp,
+                        bottom = if (selectionMode) {
+                            88.dp
+                        } else {
+                            24.dp
                         },
-                    )
+                    ),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    items(
+                        items = images,
+                        key = AnalyzedImageSummary::id,
+                    ) { image ->
+                        AnalyzedImageItem(
+                            analyzedImageSummary = image,
+                            selected = image.id in selectedImageIds,
+                            selectionMode = selectionMode,
+                            onClick = {
+                                if (selectionMode) {
+                                    if (image.id in selectedImageIds) {
+                                        selectedImageIds.remove(image.id)
+                                    } else {
+                                        selectedImageIds.add(image.id)
+                                    }
+                                } else {
+                                    onImageClick(image.id)
+                                }
+                            },
+                        )
+                    }
                 }
             }
 
@@ -127,6 +181,73 @@ fun CategoryImagesScreen(
     }
 }
 
+@Composable
+private fun CategoryImagesLoadingScreen(
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .background(ModeraTheme.colors.gray),
+        contentAlignment = Alignment.Center,
+    ) {
+        LoadingWheel()
+    }
+}
+
+@Composable
+private fun CategoryImagesErrorScreen(
+    categoryName: String,
+    onBackClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .background(ModeraTheme.colors.gray),
+    ) {
+        CategoryImagesTopAppBar(
+            categoryName = categoryName,
+            selectionMode = false,
+            onBackClick = onBackClick,
+            onSelectionClick = {},
+        )
+
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .weight(1f)
+                .padding(horizontal = 24.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                text = "이미지 목록을 불러오지 못했습니다.",
+                style = ModeraTheme.typography.body2Medium,
+                color = ModeraTheme.colors.typo,
+                textAlign = TextAlign.Center,
+            )
+        }
+    }
+}
+
+@Composable
+private fun CategoryImagesEmptyScreen(
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier
+            .background(ModeraTheme.colors.gray),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = "등록된 이미지가 없습니다.",
+            style = ModeraTheme.typography.body2Medium,
+            color = ModeraTheme.colors.typo,
+            textAlign = TextAlign.Center,
+        )
+    }
+}
+
 @Preview(
     name = "Category Image List",
     showBackground = true,
@@ -140,6 +261,48 @@ private fun CategoryImagesScreenPreview() {
             onBackClick = {},
             onImageClick = {},
             onDeleteImages = {},
+        )
+    }
+}
+
+@Preview(
+    name = "Category Image Empty",
+    showBackground = true,
+)
+@Composable
+private fun CategoryImagesEmptyScreenPreview() {
+    ModeraTheme {
+        CategoryImagesScreen(
+            categoryName = "주식",
+            images = emptyList(),
+            onBackClick = {},
+            onImageClick = {},
+            onDeleteImages = {},
+        )
+    }
+}
+
+@Preview(
+    name = "Category Image Loading",
+    showBackground = true,
+)
+@Composable
+private fun CategoryImagesLoadingScreenPreview() {
+    ModeraTheme {
+        CategoryImagesLoadingScreen()
+    }
+}
+
+@Preview(
+    name = "Category Image Error",
+    showBackground = true,
+)
+@Composable
+private fun CategoryImagesErrorScreenPreview() {
+    ModeraTheme {
+        CategoryImagesErrorScreen(
+            categoryName = "주식",
+            onBackClick = {},
         )
     }
 }

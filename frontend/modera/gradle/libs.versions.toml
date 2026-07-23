@@ -1,7 +1,7 @@
 [versions]
 # Build
 agp = "9.2.1"
-kotlin = "2.2.10"
+kotlin = "2.3.0"
 ksp = "2.3.5"
 protobufPlugin = "0.10.0"
 
@@ -39,6 +39,7 @@ hilt = "2.59.2"
 # Network
 okHttp = "5.3.2"
 retrofit = "3.0.0"
+sandwich = "2.3.0"
 
 # Local Data
 room = "2.8.4"
@@ -55,6 +56,12 @@ androidxTestCore = "1.5.0"
 androidxTestRunner = "1.5.2"
 androidxTestExtJunit = "1.1.5"
 espressoCore = "3.5.1"
+androidxArchCore = "2.2.0"
+robolectric = "4.16.1"
+mockito = "5.11.0"
+mockito-kotlin = "6.1.0"
+
+# View / Adaptive
 adaptive = "1.2.0"
 material = "1.10.0"
 appcompat = "1"
@@ -128,6 +135,7 @@ hilt-compiler = { group = "com.google.dagger", name = "hilt-compiler", version.r
 retrofit = { group = "com.squareup.retrofit2", name = "retrofit", version.ref = "retrofit" }
 retrofit-converter-moshi = { group = "com.squareup.retrofit2", name = "converter-moshi", version.ref = "retrofit" }
 retrofit-kotlin-serialization = { group = "com.squareup.retrofit2", name = "converter-kotlinx-serialization", version.ref = "retrofit" }
+sandwich = { module = "com.github.skydoves:sandwich-retrofit", version.ref = "sandwich" }
 
 # OkHttp
 okhttp = { group = "com.squareup.okhttp3", name = "okhttp", version.ref = "okHttp" }
@@ -150,12 +158,16 @@ protobuf-kotlin-lite = { group = "com.google.protobuf", name = "protobuf-kotlin-
 # Unit Test
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 turbine = { group = "app.cash.turbine", name = "turbine", version.ref = "turbine" }
+robolectric = { module = "org.robolectric:robolectric", version.ref = "robolectric" }
+mockito-core = { module = "org.mockito:mockito-core", version.ref = "mockito" }
+mockito-kotlin = { module = "org.mockito.kotlin:mockito-kotlin", version.ref = "mockito-kotlin" }
 
 # Android Test
 androidx-test-core = { group = "androidx.test", name = "core", version.ref = "androidxTestCore" }
 androidx-test-runner = { group = "androidx.test", name = "runner", version.ref = "androidxTestRunner" }
 androidx-test-ext-junit = { group = "androidx.test.ext", name = "junit", version.ref = "androidxTestExtJunit" }
 androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
+androidx-arch-core-testing = { module = "androidx.arch.core:core-testing", version.ref = "androidxArchCore" }
 
 # Coil
 coil-kt = { group = "io.coil-kt", name = "coil", version.ref = "coil" }

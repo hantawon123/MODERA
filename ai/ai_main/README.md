@@ -111,8 +111,10 @@ OCR 이 비었거나 정보성이 없다고 판정되면 분석을 건너뛰고 
 - **둘 다 경로만** 내려옵니다(`/api/v1/images/3/thumbnail/raw`, `/api/v1/images/3/source`).
   베이스 URL 을 앞에 붙여서 쓰면 됩니다. 만료가 없으므로 캐시해도 됩니다.
   **지금은 `APP_API_AUTH=false` 라 헤더 없이 그대로 이미지 로더에 넣으면 됩니다.**
-  (서버에 `S3_PUBLIC_ENDPOINT` 가 설정되면 스토리지 presigned URL 로 바뀝니다.
-  그때는 전체 URL 이 오고, 대신 1시간 만료가 생깁니다.)
+  조회 URL 에는 **만료가 없습니다.** 업로드 URL(4-1 `uploadUrl`)만 presigned 라
+  10분 만료가 있고, 만료되면 4-5 로 재발급받으면 됩니다.
+  (`PRESIGNED_READ_URLS=true` 로 켜면 조회도 스토리지 presigned 로 바뀝니다.
+  서버 트래픽은 줄지만 만료가 생겨 앱 이미지 캐시가 매번 깨지므로 기본은 꺼져 있습니다.)
 - **태그·카테고리는 전부 AI 가 자동 생성합니다.** 사람이 직접 만들거나 고치는 경로는
   없습니다(6-3 수정 API 는 범위 밖). 그래서 `tags[].source` 와 `fieldSources` 는
   항상 `"AGENT"`, `TagItem.createdBy` 도 항상 `"AGENT"` 입니다.

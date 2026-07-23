@@ -74,6 +74,18 @@ class Settings:
         # 비워 두면 S3_ENDPOINT 를 그대로 쓴다(로컬 개발·터널 환경).
         self.s3_public_endpoint = os.environ.get("S3_PUBLIC_ENDPOINT", "")
 
+        # 조회용 이미지 주소를 presigned URL 로 줄지 여부.
+        #
+        # 업로드는 presigned 가 필수다(앱이 스토리지에 직접 올려야 하므로).
+        # 하지만 조회까지 presigned 로 하면 만료 때문에 손해가 크다:
+        #   - 서명이 매번 바뀌어 앱 이미지 캐시가 URL 기준이면 같은 사진을 계속 다시 받는다
+        #   - 목록 응답을 캐시해 두고 나중에 열면 이미지가 깨진다
+        # 그래서 기본은 만료 없는 서버 경유 경로(/thumbnail/raw, /source)다.
+        # 이미지 트래픽을 서버에서 덜어내고 싶어지면 true 로 바꾼다.
+        self.presigned_read_urls = (
+            os.environ.get("PRESIGNED_READ_URLS", "false").lower() == "true"
+        )
+
         # 썸네일을 정사각으로 만들지 여부. 카테고리 카드·격자 목록이 모두 정사각이라
         # 서버에서 잘라 두면 앱이 자를 필요가 없다. false 면 비율을 유지한다.
         self.thumbnail_square = (

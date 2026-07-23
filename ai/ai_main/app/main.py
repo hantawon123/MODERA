@@ -402,12 +402,11 @@ def _category_refs(
 def _thumbnail_url(image_id: int, s3_key: str | None = None) -> str | None:
     """목록 격자용 썸네일 주소(정사각 crop).
 
-    스토리지가 앱에서 직접 접근 가능하면(S3_PUBLIC_ENDPOINT) presigned URL 을 주고,
-    아니면 서버를 경유하는 고정 경로를 준다. 고정 경로는 만료가 없어 캐시하기 좋지만
-    이미지 트래픽이 전부 AI 서버를 통과한다.
+    기본은 만료 없는 서버 경유 경로다. PRESIGNED_READ_URLS=true 로 켜면 스토리지
+    presigned URL 을 준다(트래픽은 줄지만 만료가 생겨 앱 캐시가 매번 깨진다).
     """
     settings = get_settings()
-    if s3_key and settings.s3_public_endpoint:
+    if s3_key and settings.presigned_read_urls and settings.s3_public_endpoint:
         url = storage.presigned_get_url(s3_key, settings.s3_thumbnail_bucket)
         if url:
             return url
@@ -419,11 +418,13 @@ def _image_url(image_id: int, s3_key: str | None = None) -> str | None:
 
     썸네일은 정사각으로 잘려 있어 스크린샷 내용을 다 볼 수 없다. 상세 화면처럼
     전체를 봐야 하는 곳은 이 주소를 쓴다.
+
+    조회 URL 방식은 _thumbnail_url 과 동일하게 PRESIGNED_READ_URLS 로 정한다.
     """
     if not s3_key:
         return None
     settings = get_settings()
-    if settings.s3_public_endpoint:
+    if settings.presigned_read_urls and settings.s3_public_endpoint:
         url = storage.presigned_get_url(s3_key, settings.s3_bucket)
         if url:
             return url

@@ -33,6 +33,15 @@ pipeline {
                 // docker-compose.yml(/home/ubuntu/app/AI)이 참조하는 이미지명(ai-main)과 태그를 맞춘다
                 dir('ai/ai_main') {
                     sh 'docker build -t ai-main:${BUILD_NUMBER} -t ai-main:latest .'
+                    // nori 포함 OpenSearch 이미지는 레지스트리에 없는 로컬 전용 이미지다.
+                    // 없으면 compose 가 pull 을 시도하다 실패하므로 여기서 만들어 둔다.
+                    // 이미 있으면 건너뛴다(재생성되면 opensearch 컨테이너가 함께 재시작된다).
+                    sh '''
+                        if ! docker image inspect ai-opensearch-nori:latest >/dev/null 2>&1; then
+                            echo "ai-opensearch-nori 이미지가 없어 새로 빌드한다"
+                            docker build -t ai-opensearch-nori:latest -f opensearch.Dockerfile .
+                        fi
+                    '''
                 }
                 // 빌드 번호 태그가 계속 쌓여 디스크를 채운다. 최근 3개만 남긴다.
                 // ponytail: 숫자 태그만 훑는 단순 방식. 태그 규칙이 늘면 라벨 기반으로 바꿀 것.

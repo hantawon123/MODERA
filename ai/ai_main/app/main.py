@@ -564,11 +564,24 @@ async def app_image_upload(user_id: CurrentUserId, request: UploadRequest):
 
     logger.info("이미지 등록 userId=%s 성공=%s 중복=%s 실패=%s",
                 user_id, len(registered), len(duplicated), len(failed))
-    return responses.success(
-        UploadResponse(registered=registered, duplicated=duplicated,
-                       failed=failed).model_dump(by_alias=True),
-        "이미지가 등록되었습니다.",
-    )
+
+    body = UploadResponse(registered=registered, duplicated=duplicated,
+                          failed=failed).model_dump(by_alias=True)
+
+    # 한 건도 등록되지 않았는데 실패만 남았으면 성공이 아니다. code 까지 SUCCESS 로
+    # 주면 프론트가 code 만 보고 성공 처리해 사진이 조용히 유실된다.
+    # data 형태(registered/duplicated/failed)는 그대로 두므로 파싱은 깨지지 않는다.
+    if failed and not registered:
+        reasons = [f.reason for f in failed]
+        logger.warning("이미지 등록 전건 실패 userId=%s 사유=%s", user_id, reasons)
+        # URL 발급 실패는 스토리지 장애(서버 탓), 나머지는 요청 값 문제(클라이언트 탓).
+        server_fault = "UPLOAD_URL_ISSUE_FAILED" in reasons
+        return responses.failure(
+            "UPLOAD_REGISTRATION_FAILED", "이미지를 등록하지 못했습니다.",
+            body, http_status=502 if server_fault else 400,
+        )
+
+    return responses.success(body, "이미지가 등록되었습니다.")
 
 
 # ── 4-2 업로드 완료 통지 ─────────────────────────────────────────────────

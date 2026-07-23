@@ -21,6 +21,15 @@ class ImageFetchError(RuntimeError):
     pass
 
 
+def _why(what: str, key: str, e: Exception) -> str:
+    """원인 예외를 메시지에 남긴다.
+
+    래퍼 메시지만 남기면 호출 측이 str(e) 를 응답에 실을 때 '객체 없음'인지
+    '연결 실패'인지 구분할 수 없다. 클래스명과 원문을 함께 붙인다.
+    """
+    return f"{what}: {key} ({e.__class__.__name__}: {e})"
+
+
 def _build_client(endpoint: str):
     try:
         import boto3
@@ -35,6 +44,12 @@ def _build_client(endpoint: str):
         "connect_timeout": settings.s3_connect_timeout,
         "read_timeout": settings.s3_read_timeout,
         "retries": {"max_attempts": settings.s3_max_attempts, "mode": "standard"},
+        # SigV4 를 명시한다. 지정하지 않으면 botocore 가 presigned URL 을 SigV2
+        # (?AWSAccessKeyId=...&Signature=...) 로 만드는데, SigV2 는 Content-Type 까지
+        # 서명 대상이라 발급 시점(빈 값)과 다르면 403 이 난다. OkHttp 는 RequestBody 에
+        # MediaType 이 필수라 항상 Content-Type 을 붙이므로 앱 업로드가 전부 깨진다.
+        # SigV4 는 host 만 서명하므로 Content-Type 을 자유롭게 붙일 수 있다.
+        "signature_version": "s3v4",
     }
     kwargs: dict = {"region_name": settings.aws_region}
     if endpoint:
@@ -74,7 +89,7 @@ def fetch_image_bytes(s3_key: str) -> bytes:
         obj = _client().get_object(Bucket=settings.s3_bucket, Key=s3_key)
         return obj["Body"].read()
     except Exception as e:
-        raise ImageFetchError(f"S3 객체를 읽지 못했습니다: {s3_key}") from e
+        raise ImageFetchError(_why("S3 객체를 읽지 못했습니다", s3_key, e)) from e
 
 
 def put_image(key: str, data: bytes, content_type: str = "application/octet-stream") -> None:
@@ -91,7 +106,7 @@ def put_image(key: str, data: bytes, content_type: str = "application/octet-stre
             Bucket=settings.s3_bucket, Key=key, Body=data, ContentType=content_type
         )
     except Exception as e:
-        raise ImageFetchError(f"이미지를 저장하지 못했습니다: {key}") from e
+        raise ImageFetchError(_why("이미지를 저장하지 못했습니다", key, e)) from e
 
 
 def presigned_put_url(key: str, expires_in: int | None = None) -> tuple[str, int]:
@@ -111,7 +126,7 @@ def presigned_put_url(key: str, expires_in: int | None = None) -> tuple[str, int
             ExpiresIn=expires,
         )
     except Exception as e:
-        raise ImageFetchError(f"업로드 URL 을 발급하지 못했습니다: {key}") from e
+        raise ImageFetchError(_why("업로드 URL 을 발급하지 못했습니다", key, e)) from e
     return url, expires
 
 
@@ -137,13 +152,32 @@ def presigned_get_url(
         return None
 
 
+def _is_not_found(e: Exception) -> bool:
+    """S3 예외가 '객체 없음'인지 판별한다. 연결 실패·권한 오류와 구분하기 위한 것."""
+    status = getattr(e, "response", {}).get("ResponseMetadata", {}).get("HTTPStatusCode")
+    code = getattr(e, "response", {}).get("Error", {}).get("Code")
+    return status == 404 or code in ("404", "NoSuchKey", "NotFound", "NoSuchBucket")
+
+
 def object_exists(key: str) -> bool:
-    """원본이 실제로 올라왔는지 확인한다(명세 4-2 UPLOAD_NOT_FOUND 판정용)."""
+    """원본이 실제로 올라왔는지 확인한다(명세 4-2 UPLOAD_NOT_FOUND 판정용).
+
+    응답(False)은 그대로 두되, '객체 없음'과 스토리지 장애를 로그에서 구분한다.
+    둘 다 False 로 삼키면 MinIO 가 죽은 것과 사용자가 업로드를 안 한 것이 똑같이
+    UPLOAD_NOT_FOUND 로 보여서 원인을 못 찾는다.
+    """
     settings = get_settings()
     try:
         _client().head_object(Bucket=settings.s3_bucket, Key=key)
         return True
-    except Exception:
+    except Exception as e:
+        if _is_not_found(e):
+            logger.info("업로드 미완료 key=%s (객체 없음)", key)
+        else:
+            # ponytail: 응답은 여전히 409 UPLOAD_NOT_FOUND 다. 장애를 별도 코드로
+            # 구분해 주려면 여기서 예외를 올리고 4-2 에서 503 으로 매핑할 것.
+            logger.warning("업로드 확인 실패(스토리지 장애) key=%s: %s: %s",
+                           key, e.__class__.__name__, e)
         return False
 
 
@@ -222,7 +256,7 @@ def put_thumbnail(key: str, data: bytes) -> None:
             CacheControl="public, max-age=86400",
         )
     except Exception as e:
-        raise ImageFetchError(f"썸네일을 저장하지 못했습니다: {key}") from e
+        raise ImageFetchError(_why("썸네일을 저장하지 못했습니다", key, e)) from e
 
 
 def fetch_thumbnail(key: str) -> bytes:
@@ -233,7 +267,7 @@ def fetch_thumbnail(key: str) -> bytes:
         obj = _client().get_object(Bucket=settings.s3_thumbnail_bucket, Key=key)
         return obj["Body"].read()
     except Exception as e:
-        raise ImageFetchError(f"썸네일 객체를 읽지 못했습니다: {key}") from e
+        raise ImageFetchError(_why("썸네일 객체를 읽지 못했습니다", key, e)) from e
 
 
 def store_thumbnail(image_ref: str, image_bytes: bytes | None = None) -> bytes:

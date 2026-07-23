@@ -41,7 +41,6 @@ CREATE TABLE user_schema.refresh_token (
 CREATE TABLE user_schema.user_setting (
     user_id                   BIGINT PRIMARY KEY REFERENCES user_schema.users ON DELETE CASCADE,
     server_analysis_enabled   BOOLEAN NOT NULL DEFAULT true,
-    network_condition         VARCHAR(10) NOT NULL DEFAULT 'WIFI',
     analysis_completion_noti  BOOLEAN NOT NULL DEFAULT true,
     analysis_failure_noti     BOOLEAN NOT NULL DEFAULT true,
     updated_at                TIMESTAMPTZ NOT NULL DEFAULT now()

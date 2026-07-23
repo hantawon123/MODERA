@@ -1,11 +1,10 @@
 package com.ssafy.modera.worker.domain.analysis.repository;
 
 import java.time.Instant;
-import java.util.UUID;
 
 public record AnalysisResultRow(
-        Long jobId,
-        UUID imageId,
+        Integer jobId,
+        Integer imageId,
         String ocrRawText,
         String ocrRefinedText,
         String ocrLang,

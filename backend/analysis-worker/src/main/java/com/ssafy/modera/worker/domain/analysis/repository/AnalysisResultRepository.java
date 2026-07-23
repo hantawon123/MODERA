@@ -36,8 +36,8 @@ public class AnalysisResultRepository {
         int updated = jdbcTemplate.update(con -> {
             PreparedStatement ps = con.prepareStatement(INSERT_SQL);
             int i = 1;
-            ps.setLong(i++, row.jobId());
-            ps.setObject(i++, row.imageId());
+            ps.setInt(i++, row.jobId());
+            ps.setInt(i++, row.imageId());
             ps.setString(i++, row.ocrRawText());
             ps.setString(i++, row.ocrRefinedText());
             ps.setString(i++, row.ocrLang());

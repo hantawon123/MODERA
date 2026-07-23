@@ -21,8 +21,9 @@ import com.ssafy.modera.core.designsystem.component.ClickableSurface
 import com.ssafy.modera.core.designsystem.component.Icon
 import com.ssafy.modera.core.designsystem.component.Text
 import com.ssafy.modera.core.designsystem.theme.ModeraTheme
-import com.ssafy.modera.feature.home.CategorySortType
+import com.ssafy.modera.core.model.category.CategorySortType
 import com.ssafy.modera.feature.home.R
+import com.ssafy.modera.feature.home.label
 
 @Composable
 internal fun SortSection(
@@ -92,7 +93,7 @@ private fun SortSectionPreview() {
                 .padding(horizontal = 12.dp),
         ) {
             SortSection(
-                selectedSortType = CategorySortType.NAME,
+                selectedSortType = CategorySortType.NAME_ASC,
                 onSortClick = {},
                 onPositioned = {},
             )

@@ -12,3 +12,19 @@ plugins {
     alias(libs.plugins.hilt.plugin) apply false
     alias(libs.plugins.androidx.room) apply false
 }
+
+val kotlinVersion = libs.versions.kotlin.get()
+
+subprojects {
+    configurations.configureEach {
+        resolutionStrategy {
+            force(
+                "org.jetbrains.kotlin:kotlin-stdlib:$kotlinVersion",
+                "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlinVersion",
+                "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlinVersion",
+                "org.jetbrains.kotlin:kotlin-reflect:$kotlinVersion",
+                "org.jetbrains.kotlin:kotlin-metadata-jvm:$kotlinVersion",
+            )
+        }
+    }
+}

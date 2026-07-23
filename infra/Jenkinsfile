@@ -13,46 +13,46 @@ pipeline {
             }
         }
 
-        stage('Backend Build') {
+        stage('Gradle Build') {
             when { changeset "backend/**" }
             steps {
-                echo 'Docker image build'
                 dir('backend') {
-                    sh 'docker build -t modera-backend:${BUILD_NUMBER} -t modera-backend:latest .'
+                    sh '''
+                        chmod +x gradlew
+                        ./gradlew clean :api-server:bootJar :analysis-worker:bootJar 2>&1
+                    '''
                 }
+            }
+        }
+
+        stage('Docker Build') {
+            when { changeset "backend/**" }
+            steps {
+                sh 'docker build -t modera-api:${BUILD_NUMBER} -t modera-api:latest backend/api-server 2>&1'
+                sh 'docker build -t modera-worker:${BUILD_NUMBER} -t modera-worker:latest backend/analysis-worker 2>&1'
             }
         }
 
         stage('Deploy') {
             when { changeset "backend/**" }
             steps {
-                echo 'Recreate container with new image'
                 sh '''
                     cd /home/ubuntu/app
-                    echo "=== whoami: $(whoami) ==="
-                    echo "=== compose version ==="
-                    docker compose version
-                    echo "=== compose up start ==="
                     docker compose up -d --force-recreate 2>&1
-                    echo "=== compose up exit code: $? ==="
                 '''
-                echo 'Wait for Spring startup'
-                sh 'sleep 15'
-                echo 'Health check'
-                sh 'docker exec infra-nginx-1 wget -qO- http://modera-spring:8080/actuator/health || true'
+                echo 'Wait for startup'
+                sh 'sleep 20'
+                echo 'Health check: api'
+                sh 'docker exec infra-nginx-1 wget -qO- http://modera-api:8080/actuator/health || true'
+                echo 'Health check: worker'
+                sh 'docker ps --filter name=modera-worker --format "{{.Names}} {{.Status}}" 2>&1'
             }
         }
     }
 
     post {
-        always {
-            echo 'Pipeline finished.'
-        }
-        success {
-            echo 'Build and Deploy succeeded.'
-        }
-        failure {
-            echo 'Build or Deploy failed.'
-        }
+        always { echo 'Pipeline finished.' }
+        success { echo 'Build and Deploy succeeded.' }
+        failure { echo 'Build or Deploy failed.' }
     }
 }

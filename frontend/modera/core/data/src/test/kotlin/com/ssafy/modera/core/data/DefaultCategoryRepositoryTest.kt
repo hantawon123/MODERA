@@ -3,10 +3,10 @@ package com.ssafy.modera.core.data
 import app.cash.turbine.test
 import com.ssafy.modera.core.data.repository.CategoryRepository
 import com.ssafy.modera.core.data.repository.DefaultCategoryRepository
-import com.ssafy.modera.core.model.CategorySortType
-import com.ssafy.modera.core.network.model.CategoriesResponse
-import com.ssafy.modera.core.network.model.CategoryResponse
-import com.ssafy.modera.core.network.model.CategoryTagResponse
+import com.ssafy.modera.core.model.category.CategorySortType
+import com.ssafy.modera.core.network.model.category.CategoriesResponse
+import com.ssafy.modera.core.network.model.category.CategoryResponse
+import com.ssafy.modera.core.network.model.category.CategoryTagResponse
 import com.ssafy.modera.core.network.service.CategoryClient
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.runTest

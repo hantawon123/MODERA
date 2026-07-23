@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -21,7 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.ssafy.modera.core.designsystem.theme.ModeraTheme
-import com.ssafy.modera.core.model.AnalyzedImageSummary
+import com.ssafy.modera.core.model.analyzedimage.AnalyzedImageSummary
 import com.ssafy.modera.feature.categoryimages.component.AnalyzedImageItem
 import com.ssafy.modera.feature.categoryimages.component.CategoryImagesTopAppBar
 import com.ssafy.modera.feature.categoryimages.component.SelectedImagesDeleteBar

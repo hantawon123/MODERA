@@ -1,4 +1,4 @@
-package com.ssafy.modera.core.network.model
+package com.ssafy.modera.core.network.model.category
 
 import kotlinx.serialization.Serializable
 

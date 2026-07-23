@@ -1,7 +1,7 @@
 package com.ssafy.modera.core.network.service
 
 import com.skydoves.sandwich.ApiResponse
-import com.ssafy.modera.core.network.model.CategoriesResponse
+import com.ssafy.modera.core.network.model.category.CategoriesResponse
 import retrofit2.http.GET
 import retrofit2.http.Query
 

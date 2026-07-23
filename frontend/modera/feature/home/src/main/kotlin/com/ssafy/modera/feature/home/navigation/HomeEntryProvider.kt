@@ -2,7 +2,7 @@ package com.ssafy.modera.feature.home.navigation
 
 import androidx.navigation3.runtime.EntryProviderScope
 import androidx.navigation3.runtime.NavKey
-import com.ssafy.modera.core.model.Category
+import com.ssafy.modera.core.model.category.Category
 import com.ssafy.modera.core.navigation.Navigator
 import com.ssafy.modera.feature.home.CategorySortType
 import com.ssafy.modera.feature.home.HomeScreen

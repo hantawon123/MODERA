@@ -1,4 +1,4 @@
-package com.ssafy.modera.core.model
+package com.ssafy.modera.core.model.analyzedimage
 
 enum class ImageAnalysisStatus {
     PENDING,

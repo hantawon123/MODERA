@@ -2,10 +2,11 @@
 # 15GB RAM 인스턴스 기준. OpenSearch 힙 2GB 로 잡아도 여유롭다.
 services:
   opensearch:
-    image: ai-opensearch-nori:latest   # docker load 로 올린 이미지를 그대로 사용(빌드 생략)
-    build:
-      context: .
-      dockerfile: opensearch.Dockerfile
+    # 이미지는 docker load 또는 서버에서 직접 빌드해 올린다(배포 서버에는 소스가 없어
+    # compose 가 빌드할 수 없다). 레시피는 opensearch.Dockerfile 에 있다:
+    #   docker build -t ai-opensearch-nori:latest -f opensearch.Dockerfile .
+    image: ai-opensearch-nori:latest
+    restart: unless-stopped
     environment:
       - discovery.type=single-node
       # 보안 플러그인 활성화(HTTPS + 인증). 비밀번호는 .env 에서 주입되어
@@ -24,9 +25,7 @@ services:
 
   ai-service:
     image: ai-main:latest              # Jenkins 'AI Build' 단계에서 이 태그로 빌드됨
-    build:
-      context: .
-      dockerfile: Dockerfile
+    restart: unless-stopped
     env_file: .env
     environment:
       - OPENSEARCH_HOST=opensearch

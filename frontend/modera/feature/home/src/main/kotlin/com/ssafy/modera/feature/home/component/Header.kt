@@ -21,7 +21,7 @@ internal fun Header(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .padding(vertical = 20.dp),
+            .padding(top = 60.dp)
     ) {
         Text(
             text = title,
@@ -34,7 +34,7 @@ internal fun Header(
         Text(
             text = subtitle,
             style = ModeraTheme.typography.body2,
-            color = ModeraTheme.colors.gray,
+            color = ModeraTheme.colors.typo,
         )
     }
 }

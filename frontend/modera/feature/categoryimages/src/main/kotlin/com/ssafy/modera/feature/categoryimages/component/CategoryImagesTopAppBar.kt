@@ -2,9 +2,14 @@ package com.ssafy.modera.feature.categoryimages.component
 
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -13,12 +18,12 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.ssafy.modera.core.designsystem.R as designSystemR
 import com.ssafy.modera.core.designsystem.component.ClickableSurface
 import com.ssafy.modera.core.designsystem.component.Icon
 import com.ssafy.modera.core.designsystem.component.Text
 import com.ssafy.modera.core.designsystem.theme.ModeraTheme
 import com.ssafy.modera.feature.categoryimages.R
+import com.ssafy.modera.core.designsystem.R as designSystemR
 
 @Composable
 internal fun CategoryImagesTopAppBar(
@@ -31,7 +36,11 @@ internal fun CategoryImagesTopAppBar(
     TopAppBar(
         title = categoryName,
         onBackClick = onBackClick,
-        modifier = modifier,
+        modifier = modifier.windowInsetsPadding(
+            WindowInsets.safeDrawing.only(
+                WindowInsetsSides.Top
+            ),
+        ),
     ) {
         ClickableSurface(
             onClick = onSelectionClick,

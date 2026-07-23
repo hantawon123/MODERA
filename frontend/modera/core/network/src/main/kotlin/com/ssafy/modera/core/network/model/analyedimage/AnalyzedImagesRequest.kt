@@ -1,6 +1,6 @@
-package com.ssafy.modera.core.network.model
+package com.ssafy.modera.core.network.model.analyedimage
 
-import com.ssafy.modera.core.model.ImageAnalysisStatus
+import com.ssafy.modera.core.model.analyzedimage.ImageAnalysisStatus
 
 data class AnalyzedImagesRequest(
     val statuses: List<ImageAnalysisStatus> = emptyList(),

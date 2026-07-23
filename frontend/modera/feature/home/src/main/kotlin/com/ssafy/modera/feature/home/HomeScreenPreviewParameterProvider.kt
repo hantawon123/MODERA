@@ -1,7 +1,7 @@
 package com.ssafy.modera.feature.home
 
 import androidx.compose.ui.tooling.preview.PreviewParameterProvider
-import com.ssafy.modera.core.model.Category
+import com.ssafy.modera.core.model.category.Category
 
 internal data class HomeScreenPreviewData(
     val categories: List<Category>,

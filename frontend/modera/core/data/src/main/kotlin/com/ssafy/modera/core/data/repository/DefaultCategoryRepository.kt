@@ -2,9 +2,9 @@ package com.ssafy.modera.core.data.repository
 
 import com.ssafy.modera.core.common.network.Dispatcher
 import com.ssafy.modera.core.common.network.ModeraDispatcher
-import com.ssafy.modera.core.model.Category
-import com.ssafy.modera.core.model.CategorySortType
-import com.ssafy.modera.core.network.model.asExternalModel
+import com.ssafy.modera.core.model.category.Category
+import com.ssafy.modera.core.model.category.CategorySortType
+import com.ssafy.modera.core.network.model.category.asExternalModel
 import com.ssafy.modera.core.network.service.CategoryClient
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.Flow

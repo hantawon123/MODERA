@@ -1,4 +1,4 @@
-package com.ssafy.modera.core.network.model
+package com.ssafy.modera.core.network.model.analyedimage
 
 import kotlinx.serialization.Serializable
 

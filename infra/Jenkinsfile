@@ -18,8 +18,15 @@ pipeline {
         // 2. AI Server 배포 단계 (신규 추가)
         // ==========================================
         stage('AI Build') {
-            // Git 레포지토리 내 'ai/**' 폴더 안의 파일이 수정/커밋되었을 때만 실행
-            when { changeset "ai/**" }
+            // Git 레포지토리 내 'ai/**' 폴더 안의 파일이 수정/커밋되었을 때만 실행.
+            // 단, 같은 커밋을 재빌드하면 changelog 가 비어 changeset 이 무조건 거짓이 된다
+            // ("Warning, empty changelog"). 수동 실행은 의도가 명확하므로 그대로 진행한다.
+            when {
+                anyOf {
+                    changeset "ai/**"
+                    expression { !currentBuild.getBuildCauses('hudson.model.Cause$UserIdCause').isEmpty() }
+                }
+            }
             steps {
                 echo 'Docker image build for AI Server'
                 // 실제 Dockerfile 및 소스가 위치한 폴더는 ai/ai_main
@@ -38,7 +45,12 @@ pipeline {
         }
 
         stage('AI Deploy') {
-            when { changeset "ai/**" }
+            when {
+                anyOf {
+                    changeset "ai/**"
+                    expression { !currentBuild.getBuildCauses('hudson.model.Cause$UserIdCause').isEmpty() }
+                }
+            }
             steps {
                 echo 'Sync compose file from this repo (레포가 단일 진실 공급원)'
                 sh '''
@@ -48,7 +60,16 @@ pipeline {
                 '''
                 echo 'Sync .env from Jenkins credential'
                 withCredentials([file(credentialsId: 'ai-server-dotenv', variable: 'AI_DOTENV')]) {
-                    sh 'cp "$AI_DOTENV" /home/ubuntu/app/AI/.env'
+                    // 기존 .env 가 다른 계정(ubuntu/root) 소유라 덮어쓰기가 막힌다.
+                    // 디렉터리 쓰기 권한은 있으므로 지우고 새로 만든다(새 파일은 Jenkins 소유).
+                    sh '''
+                        set -e
+                        cp "$AI_DOTENV" /home/ubuntu/app/AI/.env.new
+                        chmod 600 /home/ubuntu/app/AI/.env.new
+                        # mv 는 디렉터리 권한만 있으면 되고(rename), 교체가 원자적이라
+                        # .env 가 잠시라도 사라지는 구간이 없다.
+                        mv -f /home/ubuntu/app/AI/.env.new /home/ubuntu/app/AI/.env
+                    '''
                 }
                 echo 'Recreate AI Server container with new image'
                 sh '''

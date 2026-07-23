@@ -51,11 +51,21 @@ fun HomeScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val analysisState = LocalHomeAnalysisState.current
 
-    LaunchedEffect(analysisState.showBanner) {
-        if (!analysisState.showBanner) {
-            viewModel.updateSortType(CategorySortType.IMAGE_COUNT_DESC)
-        }
+    var previousShowBanner by remember {
+        mutableStateOf(analysisState.showBanner)
     }
+
+    LaunchedEffect(analysisState.showBanner) {
+        val analysisFinished =
+            previousShowBanner && !analysisState.showBanner
+
+        if (analysisFinished) {
+            viewModel.refreshCategories()
+        }
+
+        previousShowBanner = analysisState.showBanner
+    }
+
     when (val state = uiState) {
         is HomeUiState.Loading -> {
             HomeLoadingScreen(
@@ -154,7 +164,8 @@ fun HomeScreen(
                         itemCount = category.itemCount,
                         tags = category.tags,
                         modifier = Modifier.fillMaxWidth(),
-                        onClick = { onCategoryClick(category)
+                        onClick = {
+                            onCategoryClick(category)
                         },
                     )
                 }

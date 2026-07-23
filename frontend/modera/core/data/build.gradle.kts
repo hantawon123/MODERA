@@ -13,6 +13,11 @@ dependencies {
     api(projects.core.datastore)
     api(projects.core.network)
 
+    testImplementation(libs.junit)
+    testImplementation(libs.turbine)
+    testImplementation(libs.androidx.test.core)
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.kotlinx.serialization.json)
+    testImplementation(libs.mockito.core)
+    testImplementation(libs.mockito.kotlin)
 }

@@ -345,24 +345,6 @@ class ThumbnailResponse(CamelModel):
     tags: list[str] = []
 
 
-class AppAnalyzeRequest(CamelModel):
-    # 로그인 미구현 구간에서는 서버가 FIXED_USER_ID 로 덮어쓰므로 없어도 된다.
-    # 필드 자체는 남겨 두어 로그인이 붙었을 때 앱을 고치지 않아도 되게 한다.
-    user_id: int | None = None
-    # 팀 명세 10-1 IMAGE_ANALYSIS 와 동일하게 오브젝트 키로 이미지를 지정한다.
-    # presigned URL 은 만료가 있어 나중에 썸네일을 못 만들기 때문이다.
-    image_id: int
-    s3_key: str
-    ocr: OcrInput = OcrInput()
-
-
-class AppAnalyzeAccepted(CamelModel):
-    image_id: int
-    job_id: int
-    stage: str
-    status: str
-
-
 class AnalysisJob(CamelModel):
     job_id: int
     image_id: int

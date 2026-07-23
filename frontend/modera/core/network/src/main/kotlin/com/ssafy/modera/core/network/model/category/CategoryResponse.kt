@@ -17,7 +17,7 @@ fun CategoryResponse.asExternalModel(): Category =
     Category(
         id = categoryId,
         title = name,
-        thumbnailUrl = thumbnailUrl,
+        thumbnailUrl = "https://i15d207.p.ssafy.io$thumbnailUrl",
         itemCount = imageCount,
         tags = tags.map { tag ->
             tag.name

@@ -125,6 +125,7 @@ internal fun ModeraApp(
                 }
                 selectedImages.value = processed
                 ocrUploadPayloads.value = processed.map { it.toOcrUploadPayload() }
+                logOcrResults(processed)
 
                 delay(2.seconds)
                 homeAnalysisState.dismissBanner()
@@ -237,6 +238,17 @@ internal fun ModeraApp(
     }
 }
 
+private fun logOcrResults(images: List<SelectedImage>) {
+    Log.d(OCR_LOG_TAG, "OCR 완료: ${images.size}장")
+    images.forEachIndexed { index, image ->
+        Log.d(
+            OCR_LOG_TAG,
+            "[$index] file=${image.originalFileName}, size=${image.fileSizeBytes}B\n" +
+                    "rawText=\n${image.ocrText.ifBlank { "(empty)" }}",
+        )
+    }
+}
+
 private fun Modifier.notificationDot(): Modifier =
     composed {
         val tertiaryColor = ModeraTheme.colors.blue
@@ -252,6 +264,8 @@ private fun Modifier.notificationDot(): Modifier =
             )
         }
     }
+
+private const val OCR_LOG_TAG = "MODERA_OCR"
 
 // TODO : 추후 각 NavigationProvider에 추가
 fun EntryProviderScope<NavKey>.registerEntry(navigator: Navigator) {

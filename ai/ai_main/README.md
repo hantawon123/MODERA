@@ -163,6 +163,8 @@ app/
 
 FastAPI 가 색인·검색을 전담한다. AGENT 단계가 끝나면 요약·태그·카테고리·OCR
 원문을 색인하고, `/internal/v1/search` 로 BM25 키워드 검색을 제공한다.
+구조·운영 주의사항은 **[OPENSEARCH.md](OPENSEARCH.md)** 에 따로 정리했다(인프라 참고용).
+
 한글 품질을 위해 **nori** 형태소 분석기를 쓰므로 플러그인이 설치된 이미지가 필요하다
 (`opensearch.Dockerfile` 참고). 로컬/시연은 `docker-compose up -d` 로 nori 포함
 OpenSearch + AI 서비스를 함께 띄운다.

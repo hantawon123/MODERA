@@ -10,6 +10,7 @@ SDK(opensearch-py) 의존성을 이 파일에만 가둔다.
 """
 
 import logging
+import time
 import zlib
 from functools import lru_cache
 from typing import Any
@@ -19,9 +20,13 @@ from .config import get_settings
 logger = logging.getLogger(__name__)
 
 # 한글 형태소 분석기. nori 플러그인이 설치돼 있어야 한다(도커 이미지에 포함).
+# 이 이름의 analyzer 를 title·summary·tags·raw_text 가 쓴다. nori 가 없는
+# OpenSearch 로 바꾸면 인덱스 생성 자체가 실패한다.
 _KOREAN_ANALYZER = "korean"
 
-_index_ready = False
+# 인덱스 존재 확인 캐시. 0 이면 아직 확인 전.
+_index_checked_at = 0.0
+_INDEX_CHECK_TTL = 60.0
 
 
 class SearchError(RuntimeError):
@@ -88,17 +93,32 @@ def _index_body() -> dict[str, Any]:
     }
 
 
-def ensure_index() -> None:
-    """인덱스가 없으면 생성한다(멱등). 최초 색인·검색 직전에 한 번만 수행."""
-    global _index_ready
-    if _index_ready:
+def ensure_index(force: bool = False) -> None:
+    """인덱스가 없으면 **올바른 매핑으로** 만든다(멱등).
+
+    왜 매번 확인하지 않고, 왜 캐시를 영원히 두지도 않는가:
+
+    OpenSearch 는 `action.auto_create_index` 가 기본 true 라, 없는 인덱스에 문서를
+    쓰면 알아서 만들어 준다. 문제는 그때 만들어지는 매핑에는 **nori analyzer 가 없다**는
+    것이다. 한글 검색이 조용히 망가지고, 에러는 아무 데도 안 뜬다.
+
+    이 상황은 OpenSearch 컨테이너를 볼륨까지 지우고 다시 올렸는데 FastAPI 는 계속
+    떠 있을 때 실제로 생긴다. 캐시를 영구히 두면 ensure_index 가 그냥 통과해 버려서
+    다음 색인이 잘못된 매핑을 만든다.
+
+    그래서 캐시에 유효기간을 둔다. exists 는 로컬 HEAD 요청이라 싸고,
+    최악의 경우에도 TTL 안에 스스로 복구된다.
+    """
+    global _index_checked_at
+    now = time.monotonic()
+    if not force and now - _index_checked_at < _INDEX_CHECK_TTL:
         return
     client = _client()
     index = get_settings().opensearch_index
     if not client.indices.exists(index=index):
         client.indices.create(index=index, body=_index_body())
-        logger.info("OpenSearch 인덱스 생성: %s", index)
-    _index_ready = True
+        logger.warning("OpenSearch 인덱스 생성: %s (nori 매핑 적용)", index)
+    _index_checked_at = now
 
 
 def index_document(

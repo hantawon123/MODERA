@@ -1,5 +1,7 @@
 package com.ssafy.modera.core.data.repository
 
+import com.ssafy.modera.core.common.network.Dispatcher
+import com.ssafy.modera.core.common.network.ModeraDispatcher
 import com.ssafy.modera.core.model.analyzedimage.AnalyzedImageDetail
 import com.ssafy.modera.core.model.analyzedimage.AnalyzedImageQuery
 import com.ssafy.modera.core.model.analyzedimage.AnalyzedImageSummary
@@ -13,7 +15,7 @@ import javax.inject.Inject
 
 class DefaultAnalyzedImageRepository @Inject constructor(
     private val analyzedImageClient: AnalyzedImageClient,
-    private val ioDispatcher: CoroutineDispatcher,
+    @Dispatcher(ModeraDispatcher.IO) private val ioDispatcher: CoroutineDispatcher,
 ) : AnalyzedImageRepository {
 
     override fun getAnalyzedImages(

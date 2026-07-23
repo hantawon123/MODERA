@@ -255,6 +255,10 @@ def find_by_content_hash(user_id: int, content_hash: str) -> int | None:
     """같은 사용자가 이미 올린 같은 내용의 이미지를 찾는다(명세 4-1 중복 판정).
 
     같은 사진을 다시 올려도 Gemini 를 또 돌리지 않게 해준다.
+
+    **업로드가 끝난 것만** 중복으로 본다(uploaded_at 존재). 등록만 되고 업로드에
+    실패한 문서까지 중복으로 잡으면 그 사진은 영원히 재시도할 수 없다 —
+    4-1 이 duplicated 로 분류해 uploadUrl 을 주지 않기 때문이다.
     """
     ensure_index()
     resp = _client().search(
@@ -264,6 +268,7 @@ def find_by_content_hash(user_id: int, content_hash: str) -> int | None:
             "query": {"bool": {"filter": [
                 {"term": {"user_id": user_id}},
                 {"term": {"content_hash": content_hash}},
+                {"exists": {"field": "uploaded_at"}},
             ]}},
             "_source": ["image_id"],
         },

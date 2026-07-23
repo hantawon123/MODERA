@@ -4,7 +4,6 @@ import androidx.navigation3.runtime.EntryProviderScope
 import androidx.navigation3.runtime.NavKey
 import com.ssafy.modera.core.model.Category
 import com.ssafy.modera.core.navigation.Navigator
-import com.ssafy.modera.feature.categoryimages.navigation.CategoryImagesNavKey
 import com.ssafy.modera.feature.home.CategorySortType
 import com.ssafy.modera.feature.home.HomeScreen
 import com.ssafy.modera.feature.home.LocalHomeAnalysisState
@@ -79,15 +78,7 @@ fun EntryProviderScope<NavKey>.homeEntry(
             categories = previewCategories,
             selectedSortType = CategorySortType.NAME,
             onSortTypeChange = {},
-            onCategoryClick = { categoryId ->
-                val category = previewCategories.first { it.id == categoryId }
-                navigator.navigate(
-                    CategoryImagesNavKey(
-                        categoryId = category.id,
-                        categoryName = category.title,
-                    ),
-                )
-            },
+            onCategoryClick = {},
             showAnalysisBanner = analysisState.showBanner,
             analysisImageCount = analysisState.imageCount,
             onDismissAnalysisBanner = analysisState::dismissBanner,

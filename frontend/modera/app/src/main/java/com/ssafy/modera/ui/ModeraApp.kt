@@ -44,6 +44,7 @@ import androidx.navigation3.ui.NavDisplay
 import androidx.compose.foundation.layout.exclude
 import androidx.compose.foundation.layout.ime
 import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteType
 import com.ssafy.modera.MainViewModel
 import com.ssafy.modera.core.designsystem.component.ModeraNavigationSuiteScaffold
 import com.ssafy.modera.core.designsystem.component.Scaffold
@@ -134,6 +135,11 @@ internal fun ModeraApp(
         LocalHomeAnalysisState provides homeAnalysisState,
     ) {
         ModeraNavigationSuiteScaffold(
+            layoutType = if (isTopLevelDestination) {
+                null
+            } else {
+                NavigationSuiteType.None
+            },
             navigationSuiteItems = {
                 if (isTopLevelDestination) {
                     TOP_LEVEL_NAV_ITEMS.forEach { (navKey, navItem) ->

@@ -18,7 +18,7 @@ data class AnalyzedImageSummaryResponse(
     val createdAt: String,
 )
 
-internal fun AnalyzedImageSummaryResponse.asExternalModel(): AnalyzedImageSummary =
+fun AnalyzedImageSummaryResponse.asExternalModel(): AnalyzedImageSummary =
     AnalyzedImageSummary(
         id = imageId,
         title = title,

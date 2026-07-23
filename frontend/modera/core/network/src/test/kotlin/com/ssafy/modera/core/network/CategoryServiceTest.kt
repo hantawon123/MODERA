@@ -1,6 +1,6 @@
 package com.ssafy.modera.core.network
 
-import com.skydoves.sandwich.ApiResponse
+import com.skydoves.sandwich.getOrThrow
 import com.ssafy.modera.core.network.service.CategoryService
 import kotlinx.coroutines.test.runTest
 import org.hamcrest.CoreMatchers.`is`
@@ -25,7 +25,11 @@ class CategoryServiceTest : ApiAbstract<CategoryService>() {
             sort = "name,asc",
         )
 
-        val data = (response as ApiResponse.Success).data
+        val baseResponse = response.getOrThrow()
+        val data = baseResponse.data
+
+        assertThat(baseResponse.code, `is`("SUCCESS"))
+        assertThat(baseResponse.message, `is`("요청이 성공했습니다."))
 
         assertThat(data.list.size, `is`(2))
         assertThat(data.list.first().categoryId, `is`(3L))

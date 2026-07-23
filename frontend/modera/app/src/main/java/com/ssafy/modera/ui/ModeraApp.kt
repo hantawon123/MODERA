@@ -52,6 +52,8 @@ import com.ssafy.modera.core.designsystem.component.Text
 import com.ssafy.modera.core.designsystem.theme.ModeraTheme
 import com.ssafy.modera.core.navigation.Navigator
 import com.ssafy.modera.core.navigation.toEntries
+import com.ssafy.modera.feature.categoryimages.navigation.categoryImagesEntry
+import com.ssafy.modera.feature.categoryimages.navigation.navigateToCategoryImages
 import com.ssafy.modera.feature.home.HomeAnalysisState
 import com.ssafy.modera.feature.home.LocalHomeAnalysisState
 import com.ssafy.modera.feature.home.navigation.HomeNavKey
@@ -225,11 +227,15 @@ internal fun ModeraApp(
                         val listDetailStrategy = rememberListDetailSceneStrategy<NavKey>()
 
                         val entryProvider = entryProvider {
-                            homeEntry(navigator)
+                            homeEntry(
+                                navigator = navigator,
+                                onCategoryClick = navigator::navigateToCategoryImages,
+                            )
                             categoryImagesEntry(navigator)
                             imageDetailEntry(navigator)
                             registerEntry(navigator)
                             searchEntry(navigator)
+                            categoryImagesEntry(navigator)
                         }
 
                         NavDisplay(

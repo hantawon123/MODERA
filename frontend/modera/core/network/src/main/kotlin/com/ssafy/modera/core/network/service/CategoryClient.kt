@@ -13,5 +13,7 @@ class CategoryClient @Inject constructor(
     ): CategoriesResponse =
         categoryService.fetchCategories(
             sort = sortType.queryValue,
-        ).getOrThrow()
+        )
+            .getOrThrow()
+            .data
 }

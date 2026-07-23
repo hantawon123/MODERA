@@ -19,7 +19,6 @@ import java.net.URI;
 import java.net.URL;
 import java.time.Duration;
 import java.time.OffsetDateTime;
-import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -33,7 +32,7 @@ public class ImageRegistrationService {
     private final S3Presigner s3Presigner;
 
     @Transactional
-    public ImageRegisterResponse register(Long userId, ImageRegisterRequest request) {
+    public ImageRegisterResponse register(Integer userId, ImageRegisterRequest request) {
         return userImageRepository.findByUserIdAndClientRequestId(userId, request.clientRequestId())
                 .map(this::toResponseForExisting)
                 .orElseGet(() -> createNew(userId, request));
@@ -46,8 +45,8 @@ public class ImageRegistrationService {
         return toResponse(imageAsset);
     }
 
-    private ImageRegisterResponse createNew(Long userId, ImageRegisterRequest request) {
-        UUID imageId = UUID.randomUUID();
+    private ImageRegisterResponse createNew(Integer userId, ImageRegisterRequest request) {
+        Integer imageId = imageAssetRepository.nextImageId();
         String s3Key = "%d/%s-%s".formatted(userId, imageId, request.fileName());
         OffsetDateTime now = OffsetDateTime.now();
 

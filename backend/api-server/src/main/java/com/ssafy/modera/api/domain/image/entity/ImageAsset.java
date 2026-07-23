@@ -12,7 +12,6 @@ import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
 import java.time.OffsetDateTime;
-import java.util.UUID;
 
 @Entity
 @Table(name = "image_asset", schema = "image_schema")
@@ -22,7 +21,7 @@ public class ImageAsset {
 
     @Id
     @Column(name = "image_id")
-    private UUID imageId;
+    private Integer imageId;
 
     @Column(name = "file_name", nullable = false)
     private String fileName;
@@ -33,9 +32,6 @@ public class ImageAsset {
 
     @Column(name = "file_size", nullable = false)
     private Integer fileSize;
-
-    @Column(name = "source_url")
-    private String sourceUrl;
 
     @Column(name = "s3_key", nullable = false, unique = true)
     private String s3Key;
@@ -56,14 +52,13 @@ public class ImageAsset {
     private OffsetDateTime updatedAt;
 
     @Builder
-    public ImageAsset(UUID imageId, String fileName, String contentHash, Integer fileSize,
-                       String sourceUrl, String s3Key, String thumbnailKey, String uploadStatus,
+    public ImageAsset(Integer imageId, String fileName, String contentHash, Integer fileSize,
+                       String s3Key, String thumbnailKey, String uploadStatus,
                        OffsetDateTime createdAt, OffsetDateTime updatedAt) {
         this.imageId = imageId;
         this.fileName = fileName;
         this.contentHash = contentHash;
         this.fileSize = fileSize;
-        this.sourceUrl = sourceUrl;
         this.s3Key = s3Key;
         this.thumbnailKey = thumbnailKey;
         this.uploadStatus = uploadStatus;

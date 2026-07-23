@@ -166,7 +166,7 @@ public class ImageAnalysisConsumer {
     }
 
     private void handleImageUploaded(EventEnvelope envelope, ImageUploadedPayload payload) {
-        UUID imageId = UUID.fromString(payload.imageId());
+        Integer imageId = payload.imageId();
 
         AnalysisJob job = AnalysisJob.builder()
                 .imageId(imageId)

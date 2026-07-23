@@ -34,7 +34,7 @@ public class JwtTokenProvider {
         this.key = Keys.hmacShaKeyFor(keyBytes);
     }
 
-    public String createAccessToken(Long userId) {
+    public String createAccessToken(Integer userId) {
         Instant now = Instant.now();
         return Jwts.builder()
                 .subject(String.valueOf(userId))
@@ -45,7 +45,7 @@ public class JwtTokenProvider {
                 .compact();
     }
 
-    public String createRefreshToken(Long userId, String deviceId) {
+    public String createRefreshToken(Integer userId, String deviceId) {
         Instant now = Instant.now();
         return Jwts.builder()
                 .id(UUID.randomUUID().toString())
@@ -67,8 +67,8 @@ public class JwtTokenProvider {
         }
     }
 
-    public Long getUserId(String token) {
-        return parseClaims(token).get(CLAIM_USER_ID, Long.class);
+    public Integer getUserId(String token) {
+        return parseClaims(token).get(CLAIM_USER_ID, Integer.class);
     }
 
     private Claims parseClaims(String token) {

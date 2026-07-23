@@ -4,9 +4,8 @@ import com.ssafy.modera.api.domain.library.entity.UserImage;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.Optional;
-import java.util.UUID;
 
-public interface UserImageRepository extends JpaRepository<UserImage, UUID> {
+public interface UserImageRepository extends JpaRepository<UserImage, Integer> {
 
-    Optional<UserImage> findByUserIdAndClientRequestId(Long userId, String clientRequestId);
+    Optional<UserImage> findByUserIdAndClientRequestId(Integer userId, String clientRequestId);
 }

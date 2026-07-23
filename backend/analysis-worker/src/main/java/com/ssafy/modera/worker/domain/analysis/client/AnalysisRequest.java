@@ -1,4 +1,4 @@
 package com.ssafy.modera.worker.domain.analysis.client;
 
-public record AnalysisRequest(String imageId, String s3Key) {
+public record AnalysisRequest(Integer imageId, String s3Key) {
 }

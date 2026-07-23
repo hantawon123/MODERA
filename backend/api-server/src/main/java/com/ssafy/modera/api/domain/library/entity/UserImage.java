@@ -10,7 +10,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.time.OffsetDateTime;
-import java.util.UUID;
 
 /**
  * library_schema.user_image. user_id/image_id는 각각 user_schema/image_schema가
@@ -25,16 +24,16 @@ public class UserImage {
 
     @Id
     @Column(name = "image_id")
-    private UUID imageId;
+    private Integer imageId;
 
     @Column(name = "user_id", nullable = false)
-    private Long userId;
+    private Integer userId;
 
     @Column(name = "client_request_id", nullable = false)
     private String clientRequestId;
 
     @Column(name = "category_id")
-    private Long categoryId;
+    private Integer categoryId;
 
     @Column(name = "title")
     private String title;
@@ -55,7 +54,7 @@ public class UserImage {
     private OffsetDateTime updatedAt;
 
     @Builder
-    public UserImage(UUID imageId, Long userId, String clientRequestId, String title,
+    public UserImage(Integer imageId, Integer userId, String clientRequestId, String title,
                       OffsetDateTime createdAt, OffsetDateTime updatedAt) {
         this.imageId = imageId;
         this.userId = userId;

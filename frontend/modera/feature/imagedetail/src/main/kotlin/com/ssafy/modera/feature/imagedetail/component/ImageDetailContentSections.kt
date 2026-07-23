@@ -2,13 +2,11 @@ package com.ssafy.modera.feature.imagedetail.component
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -21,8 +19,10 @@ import com.ssafy.modera.core.designsystem.component.ClickableSurface
 import com.ssafy.modera.core.designsystem.component.Icon
 import com.ssafy.modera.core.designsystem.component.Text
 import com.ssafy.modera.core.designsystem.theme.ModeraTheme
-import com.ssafy.modera.core.model.AnalyzedImageDetail
-import com.ssafy.modera.core.model.KeyInfoItem
+import com.ssafy.modera.core.model.analyzedimage.AnalyzedImageCategory
+import com.ssafy.modera.core.model.analyzedimage.AnalyzedImageDetail
+import com.ssafy.modera.core.model.analyzedimage.AnalyzedImageOcr
+import com.ssafy.modera.core.model.analyzedimage.ImageAnalysisStatus
 import com.ssafy.modera.feature.imagedetail.R
 
 @Composable
@@ -50,44 +50,44 @@ internal fun ImageDetailSummarySection(
     }
 }
 
-@Composable
-internal fun ImageDetailKeyInfoSection(
-    keyInfo: List<KeyInfoItem>,
-    modifier: Modifier = Modifier,
-) {
-    ImageDetailSection(
-        title = stringResource(R.string.image_detail_key_info_title),
-        modifier = modifier,
-    ) {
-        Column(
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            keyInfo.forEach { item ->
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
-                ) {
-                    Text(
-                        text = item.label,
-                        modifier = Modifier.weight(0.35f),
-                        style = ModeraTheme.typography.body2Medium,
-                        color = ModeraTheme.colors.typo.copy(alpha = 0.6f),
-                    )
-                    Text(
-                        text = item.value,
-                        modifier = Modifier.weight(0.65f),
-                        style = ModeraTheme.typography.body2SemiBold,
-                        color = ModeraTheme.colors.typo,
-                    )
-                }
-            }
-        }
-    }
-}
+//@Composable
+//internal fun ImageDetailKeyInfoSection(
+//    keyInfo: List<KeyInfoItem>,
+//    modifier: Modifier = Modifier,
+//) {
+//    ImageDetailSection(
+//        title = stringResource(R.string.image_detail_key_info_title),
+//        modifier = modifier,
+//    ) {
+//        Column(
+//            verticalArrangement = Arrangement.spacedBy(12.dp),
+//        ) {
+//            keyInfo.forEach { item ->
+//                Row(
+//                    modifier = Modifier.fillMaxWidth(),
+//                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+//                ) {
+//                    Text(
+//                        text = item.label,
+//                        modifier = Modifier.weight(0.35f),
+//                        style = ModeraTheme.typography.body2Medium,
+//                        color = ModeraTheme.colors.typo.copy(alpha = 0.6f),
+//                    )
+//                    Text(
+//                        text = item.value,
+//                        modifier = Modifier.weight(0.65f),
+//                        style = ModeraTheme.typography.body2SemiBold,
+//                        color = ModeraTheme.colors.typo,
+//                    )
+//                }
+//            }
+//        }
+//    }
+//}
 
 @Composable
 internal fun ImageDetailOcrSection(
-    ocrText: String,
+    analyzedImageOcr: AnalyzedImageOcr?,
     onCopyClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -111,7 +111,7 @@ internal fun ImageDetailOcrSection(
         modifier = modifier,
     ) {
         Text(
-            text = ocrText,
+            text = analyzedImageOcr?.rawText ?: "",
             style = ModeraTheme.typography.body2,
             color = ModeraTheme.colors.typo,
         )
@@ -165,9 +165,8 @@ private fun ImageDetailContentSectionsPreview() {
     ModeraTheme {
         Column {
             ImageDetailSummarySection(summary = previewImageDetail.summary)
-            ImageDetailKeyInfoSection(keyInfo = previewImageDetail.keyInfo)
             ImageDetailOcrSection(
-                ocrText = previewImageDetail.ocrText,
+                analyzedImageOcr = previewImageDetail.ocr,
                 onCopyClick = {},
             )
         }
@@ -176,18 +175,29 @@ private fun ImageDetailContentSectionsPreview() {
 
 private val previewImageDetail = AnalyzedImageDetail(
     id = 1L,
+    fileName = "ascii_hackathon_poster.jpg",
+    status = ImageAnalysisStatus.COMPLETED,
+    favorite = true,
     title = "ASCII HACKATHON",
-    imageUrl = "https://picsum.photos/seed/hackathon/800/1200",
-    categoryId = 3L,
-    categoryName = "개발",
-    uploadedAt = "2026년 7월 17일 금요일 오후 7:23",
-    hashtags = listOf("해커톤", "SW"),
-    isFavorite = true,
     summary = "2026년도 제1회 대학 연합 해커톤 ASCII HACKATHON 포스터입니다.",
-    keyInfo = listOf(
-        KeyInfoItem("상품명", "C++ 프로그래밍 입문"),
-        KeyInfoItem("판매처", "교보문고"),
-        KeyInfoItem("가격", "32,000원"),
+    ocr = AnalyzedImageOcr(
+        rawText = """
+            ASCII HACKATHON
+            2026. 1. 30. (금) - 1. 31. (토)
+        """.trimIndent(),
+        refinedText = null,
+        language = "ko",
+        confidence = 0.99,
     ),
-    ocrText = "ASCII HACKATHON\n2026. 1. 30. (금) - 1. 31. (토)",
+    tags = listOf(
+        "해커톤",
+        "SW",
+    ),
+    categories = AnalyzedImageCategory(
+        categoryId = 3L,
+        name = "개발",
+    ),
+    imageUrl = "https://picsum.photos/seed/hackathon/800/1200",
+    createdAt = "2026-07-17T19:23:00",
+    updatedAt = "2026-07-17T19:23:00",
 )

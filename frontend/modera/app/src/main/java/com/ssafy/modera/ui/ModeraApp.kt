@@ -18,11 +18,11 @@ import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import androidx.compose.material3.adaptive.navigation3.rememberListDetailSceneStrategy
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.ExperimentalComposeUiApi
@@ -32,15 +32,16 @@ import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.unit.dp
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation3.runtime.EntryProviderScope
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.ui.NavDisplay
-import android.util.Log
+import com.ssafy.modera.MainViewModel
 import com.ssafy.modera.core.designsystem.component.ModeraNavigationSuiteScaffold
 import com.ssafy.modera.core.designsystem.component.Scaffold
 import com.ssafy.modera.core.designsystem.component.Text
@@ -51,25 +52,17 @@ import com.ssafy.modera.feature.home.HomeAnalysisState
 import com.ssafy.modera.feature.home.LocalHomeAnalysisState
 import com.ssafy.modera.feature.home.navigation.HomeNavKey
 import com.ssafy.modera.feature.home.navigation.homeEntry
-import com.ssafy.modera.media.ImageTextRecognizer
-import com.ssafy.modera.media.OcrImageUploadPayload
-import com.ssafy.modera.media.SelectedImage
 import com.ssafy.modera.media.rememberGalleryPickerLauncher
-import com.ssafy.modera.media.toOcrUploadPayload
 import com.ssafy.modera.navigation.RegisterNavKey
 import com.ssafy.modera.navigation.SearchNavKey
 import com.ssafy.modera.navigation.TOP_LEVEL_NAV_ITEMS
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import kotlin.time.Duration.Companion.seconds
+
 @Composable
 fun ModeraApp(
     appState: ModeraAppState,
     modifier: Modifier = Modifier,
     windowAdaptiveInfo: WindowAdaptiveInfo = currentWindowAdaptiveInfo(),
+    viewModel: MainViewModel = hiltViewModel(),
 ) {
 //    val shouldShowGradientBackground = appState.navigationState.currentTopLevelKey == ForYouNavKey
     var showSettingsDialog by rememberSaveable { mutableStateOf(false) }
@@ -82,8 +75,10 @@ fun ModeraApp(
     CompositionLocalProvider(localSnackbarHostState provides snackbarHostState) {
         ModeraApp(
             appState = appState,
+            viewModel = viewModel,
             onSettingsDismissed = { showSettingsDialog = false },
             windowAdaptiveInfo = windowAdaptiveInfo,
+            modifier = modifier,
         )
     }
 }
@@ -95,52 +90,40 @@ fun ModeraApp(
 )
 internal fun ModeraApp(
     appState: ModeraAppState,
+    viewModel: MainViewModel,
     onSettingsDismissed: () -> Unit,
     modifier: Modifier = Modifier,
     windowAdaptiveInfo: WindowAdaptiveInfo = currentWindowAdaptiveInfo(),
 ) {
-//    val snackbarHostState = LocalSnackbarHostState.current
-    val context = LocalContext.current
-    val scope = rememberCoroutineScope()
-
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val navigator = remember { Navigator(appState.navigationState) }
-    val homeAnalysisState = remember { HomeAnalysisState() }
-    var bannerDismissJob by remember { mutableStateOf<Job?>(null) }
+    val homeAnalysisState = remember(viewModel) {
+        HomeAnalysisState(onDismissRequest = viewModel::dismissAnalysisBanner)
+    }
 
-    val selectedImages = remember { mutableStateOf<List<SelectedImage>>(emptyList()) }
-    val ocrUploadPayloads = remember { mutableStateOf<List<OcrImageUploadPayload>>(emptyList()) }
+    LaunchedEffect(uiState.showAnalysisBanner, uiState.analysisImageCount) {
+        homeAnalysisState.sync(
+            showBanner = uiState.showAnalysisBanner,
+            imageCount = uiState.analysisImageCount,
+        )
+    }
+
     val launchGalleryPicker = rememberGalleryPickerLauncher(
         onImagesPicked = { images ->
             if (images.isEmpty()) return@rememberGalleryPickerLauncher
-
-            homeAnalysisState.onImagesSelected(images.size)
+            viewModel.onImagesPicked(images)
             navigator.navigate(HomeNavKey)
-
-            bannerDismissJob?.cancel()
-            bannerDismissJob = scope.launch {
-                val processed = withContext(Dispatchers.IO) {
-                    ImageTextRecognizer().use { ocr ->
-                        ocr.recognizeAll(context, images)
-                    }
-                }
-                selectedImages.value = processed
-                ocrUploadPayloads.value = processed.map { it.toOcrUploadPayload() }
-                logOcrResults(processed)
-
-                delay(2.seconds)
-                homeAnalysisState.dismissBanner()
-            }
         },
     )
 
     CompositionLocalProvider(
-        LocalHomeAnalysisState provides homeAnalysisState
+        LocalHomeAnalysisState provides homeAnalysisState,
     ) {
         ModeraNavigationSuiteScaffold(
             navigationSuiteItems = {
                 TOP_LEVEL_NAV_ITEMS.forEach { (navKey, navItem) ->
                     val selected = navKey != RegisterNavKey &&
-                            navKey == appState.navigationState.currentTopLevelKey
+                        navKey == appState.navigationState.currentTopLevelKey
 
                     item(
                         selected = selected,
@@ -206,7 +189,6 @@ internal fun ModeraApp(
                         val destination =
                             TOP_LEVEL_NAV_ITEMS[appState.navigationState.currentTopLevelKey]
                                 ?: error("Top level nav item not found for ${appState.navigationState.currentTopLevelKey}")
-
                     }
 
                     Box(
@@ -238,17 +220,6 @@ internal fun ModeraApp(
     }
 }
 
-private fun logOcrResults(images: List<SelectedImage>) {
-    Log.d(OCR_LOG_TAG, "OCR 완료: ${images.size}장")
-    images.forEachIndexed { index, image ->
-        Log.d(
-            OCR_LOG_TAG,
-            "[$index] file=${image.originalFileName}, size=${image.fileSizeBytes}B\n" +
-                    "rawText=\n${image.ocrText.ifBlank { "(empty)" }}",
-        )
-    }
-}
-
 private fun Modifier.notificationDot(): Modifier =
     composed {
         val tertiaryColor = ModeraTheme.colors.blue
@@ -264,8 +235,6 @@ private fun Modifier.notificationDot(): Modifier =
             )
         }
     }
-
-private const val OCR_LOG_TAG = "MODERA_OCR"
 
 // TODO : 추후 각 NavigationProvider에 추가
 fun EntryProviderScope<NavKey>.registerEntry(navigator: Navigator) {

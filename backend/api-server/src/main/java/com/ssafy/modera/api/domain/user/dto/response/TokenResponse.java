@@ -6,6 +6,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 public record TokenResponse(
         @Schema(description = "API 호출 시 Authorization: Bearer {accessToken}로 쓴다. 30분 후 만료") String accessToken,
         @Schema(description = "만료 시 /api/v1/auth/refresh에 제시해 재발급받는다. 14일 후 만료, 재발급마다 회전됨") String refreshToken,
-        @Schema(description = "사용자 ID", example = "1") Long userId
+        @Schema(description = "사용자 ID", example = "1") Integer userId
 ) {
 }

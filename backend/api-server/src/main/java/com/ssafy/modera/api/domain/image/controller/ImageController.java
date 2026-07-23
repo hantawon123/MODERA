@@ -23,7 +23,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.UUID;
 
 @Tag(name = "이미지", description = "이미지 등록(presigned URL 발급) · 단건 조회. 목록/검색 API는 아직 없음")
 @ApiV1Controller
@@ -57,7 +56,7 @@ public class ImageController {
     })
     @PostMapping
     public ResponseEntity<ApiResponse<ImageRegisterResponse>> register(
-            @AuthenticationPrincipal Long userId,
+            @AuthenticationPrincipal Integer userId,
             @RequestBody @Valid ImageRegisterRequest request
     ) {
         ImageRegisterResponse response = imageRegistrationService.register(userId, request);
@@ -76,8 +75,8 @@ public class ImageController {
     })
     @GetMapping("/{imageId}")
     public ResponseEntity<ApiResponse<ImageDetailResponse>> getImage(
-            @AuthenticationPrincipal Long userId,
-            @Parameter(description = "조회할 이미지 UUID") @PathVariable UUID imageId
+            @AuthenticationPrincipal Integer userId,
+            @Parameter(description = "조회할 이미지 ID") @PathVariable Integer imageId
     ) {
         ImageDetailResponse response = imageQueryService.getImage(userId, imageId);
         return ResponseEntity.ok(ApiResponse.success(response));

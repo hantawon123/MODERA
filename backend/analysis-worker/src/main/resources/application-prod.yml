@@ -1,0 +1,56 @@
+spring:
+  config:
+    activate:
+      on-profile: prod
+
+  threads:
+    virtual:
+      enabled: true
+
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
+
+  # [Data Source] 운영 PostgreSQL. analysis-db 컨테이너/DB와 같은 docker network의 컨테이너명으로 접속.
+  datasource:
+    driver-class-name: org.postgresql.Driver
+    url: jdbc:postgresql://${DB_HOST}:${DB_PORT:5432}/${DB_NAME}?reWriteBatchedInserts=true
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+
+    hikari:
+      pool-name: modera-analysis-hikari-prod
+      maximum-pool-size: ${DB_POOL_MAX:20}
+      minimum-idle: ${DB_POOL_MIN:10}
+      connection-timeout: 3000
+      max-lifetime: 1800000
+      validation-timeout: 2000
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: false
+        highlight_sql: false
+
+  data:
+    redis:
+      host: ${REDIS_HOST:redis}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD}
+      connect-timeout: 2000
+      timeout: 1000
+
+# [Analysis] 운영은 실제 AI 서버를 호출한다. fallback 없음 — 미주입 시 기동 실패.
+analysis:
+  client: ${ANALYSIS_CLIENT:fastapi}
+
+analysis-worker:
+  ai-server-url: ${AI_SERVER_URL}
+
+logging:
+  level:
+    root: INFO
+    org.hibernate.SQL: ERROR
+    com.ssafy.modera: INFO

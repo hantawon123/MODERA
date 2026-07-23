@@ -1,0 +1,87 @@
+server:
+  # Swagger 서버 목록에 표시될 실제 배포 도메인. 배포 환경에서 SERVER_URL로 주입
+  url: ${SERVER_URL:https://api.example.com}
+
+# [Security] 운영에서는 fallback 없이 필수값으로 강제
+jwt:
+  secret: ${JWT_SECRET}
+
+spring:
+  config:
+    activate:
+      on-profile: prod
+
+  threads:
+    virtual:
+      enabled: true
+
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
+
+  # [Data Source] 운영 PostgreSQL. api-db 컨테이너/DB와 같은 docker network의 컨테이너명으로 접속.
+  datasource:
+    driver-class-name: org.postgresql.Driver
+    url: jdbc:postgresql://${DB_HOST}:${DB_PORT:5432}/${DB_NAME}?reWriteBatchedInserts=true
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+
+    hikari:
+      pool-name: modera-api-hikari-prod
+      maximum-pool-size: ${DB_POOL_MAX:20}
+      minimum-idle: ${DB_POOL_MIN:10}
+      connection-timeout: 3000
+      max-lifetime: 1800000
+      validation-timeout: 2000
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: false
+        highlight_sql: false
+        default_batch_fetch_size: 100
+
+  data:
+    redis:
+      host: ${REDIS_HOST:redis}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD}
+      connect-timeout: 2000
+      timeout: 1000
+
+# [Object Storage] 엔드포인트/자격증명 전부 환경변수. fallback 없음 — 미주입 시 기동 실패.
+storage:
+  s3:
+    internal-endpoint: ${S3_INTERNAL_ENDPOINT}
+    public-endpoint: ${S3_PUBLIC_ENDPOINT}
+    region: ${S3_REGION:us-east-1}
+    bucket:
+      pictures: ${S3_BUCKET_PICTURES:pictures}
+      thumbnails: ${S3_BUCKET_THUMBNAILS:thumbnails}
+    access-key: ${S3_ACCESS_KEY}
+    secret-key: ${S3_SECRET_KEY}
+    path-style-access: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, metrics, prometheus
+  endpoint:
+    health:
+      show-details: always
+      probes:
+        enabled: true
+
+# [Internal] MinIO ObjectCreated webhook 인증 토큰. fallback 없음 — 미주입 시 기동 실패.
+internal:
+  storage:
+    webhook-token: ${MINIO_WEBHOOK_TOKEN}
+
+logging:
+  level:
+    root: INFO
+    org.hibernate.SQL: ERROR
+    com.ssafy.modera: INFO

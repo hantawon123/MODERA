@@ -2,4 +2,8 @@ plugins {
     id 'org.gradle.toolchains.foojay-resolver-convention' version '1.0.0'
 }
 
-rootProject.name = 'modera'
+rootProject.name = 'modera-backend'
+
+include 'api-server'
+include 'analysis-worker'
+include 'event-contract'

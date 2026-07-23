@@ -10,6 +10,8 @@ class ImageClient @Inject constructor(
 ) {
     suspend fun registerImages(
         request: RegisterImagesRequest,
-    ): RegisterImagesResponse =
-        imageService.registerImages(request).getOrThrow()
+    ): RegisterImagesResponse {
+        val response = imageService.registerImages(request).getOrThrow()
+        return response.data
+    }
 }

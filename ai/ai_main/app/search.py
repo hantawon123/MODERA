@@ -85,9 +85,21 @@ def _index_body() -> dict[str, Any]:
                 "category_name": {"type": "keyword"},  # 정확 일치 필터
                 "raw_text": {"type": "text", "analyzer": _KOREAN_ANALYZER},
                 "created_at": {"type": "date"},
-                # 아래 둘은 화면에 돌려주기만 하고 검색 대상은 아니라 색인하지 않는다.
+                # 명세 4-1 등록 시점에 채워지는 필드.
+                "file_name": {"type": "keyword"},
+                "content_hash": {"type": "keyword"},   # 중복 판정 키(SHA-256)
+                "file_size": {"type": "long"},
+                "ocr_lang": {"type": "keyword", "index": False},
+                "ocr_confidence": {"type": "float", "index": False},
+                # 명세 6-1 필터·8-1 정렬용 필드.
+                "status": {"type": "keyword"},        # 명세 1.4 status enum
+                "favorite": {"type": "boolean"},
+                "uploaded_at": {"type": "date"},      # 8-1 uploadedAt,desc
+                "last_viewed_at": {"type": "date"},   # 8-1 lastViewedAt,desc (6-2 조회 시 갱신)
+                # 아래는 화면에 돌려주기만 하고 검색 대상은 아니라 색인하지 않는다.
                 "s3_key": {"type": "keyword", "index": False},
                 "key_information": {"type": "keyword", "index": False},
+                "category_confidence": {"type": "float", "index": False},
             }
         },
     }
@@ -132,6 +144,9 @@ def index_document(
     created_at: str,
     s3_key: str | None = None,
     key_information: list[str] | None = None,
+    status: str = "COMPLETED",
+    category_confidence: float | None = None,
+    uploaded_at: str | None = None,
 ) -> None:
     """AGENT 결과를 검색 인덱스에 저장한다. image_id 를 문서 id 로 써서 재색인은 덮어쓴다."""
     ensure_index()
@@ -147,9 +162,192 @@ def index_document(
         "created_at": created_at,
         "s3_key": s3_key,
         "key_information": key_information or [],
+        "status": status,
+        "category_confidence": category_confidence,
     }
-    # refresh 는 기본값(비동기)로 둔다. 대량 색인 시 건당 강제 refresh 는 느리다.
-    _client().index(index=settings.opensearch_index, id=str(image_id), body=doc)
+    if uploaded_at:
+        doc["uploaded_at"] = uploaded_at
+    # 4-1 등록 때 만들어 둔 문서(fileName·contentHash·uploadedAt 등)를 덮어쓰지 않도록
+    # 통째로 index 하지 않고 부분 병합한다. 문서가 없으면 새로 만든다.
+    _merge_doc(image_id, doc)
+
+
+def _merge_doc(image_id: int, doc: dict[str, Any]) -> None:
+    """부분 갱신(없으면 생성). 색인의 다른 필드를 보존한다."""
+    _client().update(
+        index=get_settings().opensearch_index,
+        id=str(image_id),
+        body={"doc": doc, "doc_as_upsert": True},
+    )
+
+
+def create_pending_document(
+    image_id: int,
+    user_id: int,
+    s3_key: str,
+    file_name: str,
+    content_hash: str,
+    file_size: int,
+    created_at: str,
+    raw_text: str = "",
+    ocr_lang: str | None = None,
+    ocr_confidence: float | None = None,
+) -> None:
+    """4-1 등록 시점의 문서를 만든다. 아직 분석 전이라 status 는 QUEUED 다.
+
+    등록 즉시 색인해 두면 업로드·분석 중인 이미지도 6-1 목록에 status 와 함께 나타난다
+    (명세 6-1 의 status 필터가 QUEUED·PROCESSING 을 거를 수 있어야 한다).
+    """
+    ensure_index()
+    _merge_doc(image_id, {
+        "image_id": image_id,
+        "user_id": user_id,
+        "s3_key": s3_key,
+        "file_name": file_name,
+        "content_hash": content_hash,
+        "file_size": file_size,
+        "raw_text": raw_text,
+        "ocr_lang": ocr_lang,
+        "ocr_confidence": ocr_confidence,
+        "created_at": created_at,
+        "status": "QUEUED",
+        # 즐겨찾기(6-5)는 아직 AI 범위 밖이라 항상 false. 필드를 미리 두면
+        # 6-1 favorite 필터가 계약대로 동작하고, 6-5 가 붙어도 매핑을 안 바꿔도 된다.
+        "favorite": False,
+        "title": "",
+        "summary": "",
+        "tags": [],
+    })
+
+
+def mark_uploaded(image_id: int, uploaded_at: str) -> None:
+    """4-2 업로드 완료 통지 시각을 기록한다."""
+    _merge_doc(image_id, {"uploaded_at": uploaded_at})
+
+
+def set_status(image_id: int, status: str) -> None:
+    _merge_doc(image_id, {"status": status})
+
+
+def save_ocr(
+    image_id: int, raw_text: str, lang: str | None, confidence: float | None
+) -> None:
+    """4-3 OCR 제출 결과를 저장한다."""
+    _merge_doc(image_id, {
+        "raw_text": raw_text, "ocr_lang": lang, "ocr_confidence": confidence,
+    })
+
+
+def refresh_index() -> None:
+    """방금 쓴 문서를 즉시 검색 가능하게 만든다.
+
+    OpenSearch 는 기본적으로 1초 주기로만 색인을 갱신한다(near-real-time). 4-1 등록
+    직후에 목록을 조회하거나 다음 요청에서 중복 판정을 하면 방금 넣은 문서가 안 잡힌다.
+    건당이 아니라 **배치 1회**만 호출하므로 비용은 크지 않다.
+    """
+    try:
+        _client().indices.refresh(index=get_settings().opensearch_index)
+    except Exception as e:
+        logger.warning("인덱스 refresh 실패: %s", e)
+
+
+def find_by_content_hash(user_id: int, content_hash: str) -> int | None:
+    """같은 사용자가 이미 올린 같은 내용의 이미지를 찾는다(명세 4-1 중복 판정).
+
+    같은 사진을 다시 올려도 Gemini 를 또 돌리지 않게 해준다.
+    """
+    ensure_index()
+    resp = _client().search(
+        index=get_settings().opensearch_index,
+        body={
+            "size": 1,
+            "query": {"bool": {"filter": [
+                {"term": {"user_id": user_id}},
+                {"term": {"content_hash": content_hash}},
+            ]}},
+            "_source": ["image_id"],
+        },
+    )
+    hits = resp["hits"]["hits"]
+    return hits[0]["_source"]["image_id"] if hits else None
+
+
+def touch_last_viewed(image_id: int, viewed_at: str) -> None:
+    """6-2 상세 조회 성공 시 lastViewedAt 을 갱신한다(명세 8-1 정렬 규칙).
+
+    명세: "lastViewedAt 은 인증 사용자가 6-2 이미지 상세 조회에 성공했을 때 갱신한다.
+    검색 결과 노출과 썸네일 조회는 조회 이력으로 기록하지 않는다."
+    실패해도 조회 자체를 막지 않는다(정렬 힌트일 뿐이다).
+    """
+    try:
+        _client().update(
+            index=get_settings().opensearch_index,
+            id=str(image_id),
+            body={"doc": {"last_viewed_at": viewed_at}},
+        )
+    except Exception as e:
+        logger.warning("lastViewedAt 갱신 실패 imageId=%s: %s", image_id, e)
+
+
+# ── 정렬 파싱 (명세 8-1 정렬 규칙) ────────────────────────────────────────
+class InvalidSortError(ValueError):
+    """지원하지 않는 정렬 필드·방향. 명세 11 의 INVALID_SORT(400) 로 매핑된다."""
+
+
+# 명세의 camelCase 정렬값 → 색인 필드명
+_SORT_FIELDS = {
+    "createdAt": "created_at",
+    "imageId": "image_id",
+    "uploadedAt": "uploaded_at",
+    "lastViewedAt": "last_viewed_at",
+}
+
+# 최종 동률 해소 기준. 명세: "모든 정렬의 최종 동률 해소 기준은 imageId,desc 로 고정해
+# 페이지 이동 중 결과 순서가 흔들리지 않게 한다."
+_TIE_BREAKER = {"image_id": {"order": "desc"}}
+
+
+def parse_sort(sort: str | None, allowed: set[str], default: str) -> list[dict[str, Any]]:
+    """`createdAt,desc` 형태를 OpenSearch sort 절로 바꾼다.
+
+    allowed 에 없는 값은 InvalidSortError 를 올린다(명세: INVALID_SORT 400).
+    `relevance` 는 BM25 점수 정렬이라 호출 측에서 별도로 처리한다.
+    """
+    value = (sort or default).strip()
+    if value not in allowed:
+        raise InvalidSortError(f"지원하지 않는 정렬입니다: {value}")
+    if value == "relevance":
+        return [{"_score": {"order": "desc"}}, _TIE_BREAKER]
+
+    field_name, _, direction = value.partition(",")
+    direction = direction or "desc"
+    if direction not in ("asc", "desc") or field_name not in _SORT_FIELDS:
+        raise InvalidSortError(f"지원하지 않는 정렬입니다: {value}")
+
+    indexed = _SORT_FIELDS[field_name]
+    clause: dict[str, Any] = {"order": direction}
+    if indexed in ("last_viewed_at", "uploaded_at"):
+        # 명세: "조회 이력이 없는 이미지는 마지막에 배치"
+        clause["missing"] = "_last"
+    order: list[dict[str, Any]] = [{indexed: clause}]
+    if indexed != "image_id":
+        order.append(_TIE_BREAKER)
+    return order
+
+
+# 명세 8-1 scope: 검색 대상 필드를 좁힌다.
+_SCOPE_FIELDS = {
+    "ALL": ["title^2", "summary", "tags", "raw_text"],
+    "OCR": ["raw_text"],
+    "TAG": ["tags"],
+    # 구조화 데이터는 MVP 범위 밖이라 색인된 필드가 없다. 빈 결과가 정상이다.
+    "STRUCTURED": [],
+}
+
+SEARCH_SORTS = {
+    "relevance", "imageId,asc", "lastViewedAt,desc",
+    "uploadedAt,desc", "createdAt,desc",
+}
 
 
 def keyword_search(
@@ -159,21 +357,20 @@ def keyword_search(
     size: int,
     page: int = 0,
     tag: str | None = None,
+    scope: str = "ALL",
+    sort: str | None = None,
 ) -> tuple[list[dict[str, Any]], int]:
     """BM25 키워드 검색. 항상 user_id 로 격리하고, category·tag 가 있으면 추가 필터."""
     ensure_index()
     settings = get_settings()
 
+    fields = _SCOPE_FIELDS.get(scope.upper(), _SCOPE_FIELDS["ALL"])
+    if not fields:
+        # STRUCTURED: 검색할 필드가 없다. 질의를 날리지 않고 빈 결과를 돌려준다.
+        return [], 0
+
     bool_query: dict[str, Any] = {
-        "must": [
-            {
-                "multi_match": {
-                    "query": query,
-                    # 제목 가중치를 높이고, 요약·태그·원문까지 함께 매칭한다.
-                    "fields": ["title^2", "summary", "tags", "raw_text"],
-                }
-            }
-        ],
+        "must": [{"multi_match": {"query": query, "fields": fields}}],
         "filter": [{"term": {"user_id": user_id}}],
     }
     if category:
@@ -187,6 +384,7 @@ def keyword_search(
             "from": max(0, page) * size,
             "size": size,
             "query": {"bool": bool_query},
+            "sort": parse_sort(sort, SEARCH_SORTS, "relevance"),
         },
     )
 
@@ -199,7 +397,10 @@ def keyword_search(
             "category": h["_source"].get("category_name"),
             "s3_key": h["_source"].get("s3_key"),
             "created_at": h["_source"].get("created_at"),
-            "score": h.get("_score", 0.0),
+            "uploaded_at": h["_source"].get("uploaded_at"),
+            "last_viewed_at": h["_source"].get("last_viewed_at"),
+            # relevance 가 아닌 정렬에서는 _score 가 null 로 온다.
+            "score": h.get("_score") or 0.0,
         }
         for h in resp["hits"]["hits"]
     ]
@@ -216,7 +417,21 @@ def _to_image(source: dict[str, Any]) -> dict[str, Any]:
         "category": source.get("category_name"),
         "s3_key": source.get("s3_key"),
         "created_at": source.get("created_at"),
+        # 이 필드들이 없는 문서는 이번 매핑 변경 전에 색인된 것이다.
+        "status": source.get("status", "COMPLETED"),
+        "favorite": source.get("favorite", False),
+        "uploaded_at": source.get("uploaded_at"),
+        "last_viewed_at": source.get("last_viewed_at"),
+        "category_confidence": source.get("category_confidence"),
+        "file_name": source.get("file_name"),
+        "content_hash": source.get("content_hash"),
     }
+
+
+LIST_SORTS = {
+    "createdAt,desc", "createdAt,asc", "imageId,asc", "imageId,desc",
+    "uploadedAt,desc", "lastViewedAt,desc",
+}
 
 
 def list_images(
@@ -225,8 +440,13 @@ def list_images(
     size: int,
     category: str | None = None,
     tag: str | None = None,
+    statuses: list[str] | None = None,
+    favorite: bool | None = None,
+    date_from: str | None = None,
+    date_to: str | None = None,
+    sort: str | None = None,
 ) -> tuple[list[dict[str, Any]], int]:
-    """홈 화면용 목록. 최근 분석순으로 정렬하며 카테고리·태그로 좁힐 수 있다."""
+    """홈 화면용 목록(명세 6-1). 기본 정렬은 createdAt,desc."""
     ensure_index()
     settings = get_settings()
 
@@ -236,6 +456,17 @@ def list_images(
     if tag:
         # 집계·필터는 분석되지 않은 keyword 서브필드를 쓴다.
         filters.append({"term": {"tags.keyword": tag}})
+    if statuses:
+        filters.append({"terms": {"status": statuses}})
+    if favorite is not None:
+        filters.append({"term": {"favorite": favorite}})
+    if date_from or date_to:
+        rng: dict[str, str] = {}
+        if date_from:
+            rng["gte"] = date_from
+        if date_to:
+            rng["lte"] = date_to
+        filters.append({"range": {"created_at": rng}})
 
     resp = _client().search(
         index=settings.opensearch_index,
@@ -243,7 +474,7 @@ def list_images(
             "from": max(0, page) * size,
             "size": size,
             "query": {"bool": {"filter": filters}},
-            "sort": [{"created_at": {"order": "desc"}}],
+            "sort": parse_sort(sort, LIST_SORTS, "createdAt,desc"),
         },
     )
     images = [_to_image(h["_source"]) for h in resp["hits"]["hits"]]
@@ -265,6 +496,9 @@ def get_image(image_id: int) -> dict[str, Any] | None:
     detail["user_id"] = source.get("user_id")
     detail["key_information"] = source.get("key_information", [])
     detail["raw_text"] = source.get("raw_text", "")
+    detail["ocr_lang"] = source.get("ocr_lang")
+    detail["ocr_confidence"] = source.get("ocr_confidence")
+    detail["file_size"] = source.get("file_size")
     return detail
 
 

@@ -49,6 +49,18 @@ class Settings:
         # (원본 pictures/u/1/a.png → 썸네일 thumbnail/u/1/a.png, 내용은 JPEG)
         # 비워 두면 저장하지 않고 요청 때마다 원본을 읽어 즉석 생성한다(기존 동작).
         self.s3_thumbnail_bucket = os.environ.get("S3_THUMBNAIL_BUCKET", "thumbnail")
+        # 업로드 허용 최대 크기(MB). 명세 4-1 fileSize 는 최대 5MB 다.
+        self.max_upload_mb = int(os.environ.get("MAX_UPLOAD_MB", "5"))
+        # presigned 업로드 URL 유효시간(초). 명세 4-1 uploadExpiresIn 예시가 600 이다.
+        self.upload_url_expires_in = int(os.environ.get("UPLOAD_URL_EXPIRES_IN", "600"))
+        # 앱에 건네줄 presigned URL 을 만들 때 쓰는 공개 주소.
+        #
+        # presigned URL 은 S3_ENDPOINT 값을 host 로 그대로 박아서 만들어진다. 그런데
+        # 서버 내부용 주소(http://minio:9000)는 휴대폰에서 접근할 수 없다. 그래서
+        # 읽기·쓰기는 내부 주소로 하고, 앱에 주는 URL 만 이 공개 주소로 만든다.
+        # 비워 두면 S3_ENDPOINT 를 그대로 쓴다(로컬 개발·터널 환경).
+        self.s3_public_endpoint = os.environ.get("S3_PUBLIC_ENDPOINT", "")
+
         # 썸네일을 정사각으로 만들지 여부. 카테고리 카드·격자 목록이 모두 정사각이라
         # 서버에서 잘라 두면 앱이 자를 필요가 없다. false 면 비율을 유지한다.
         self.thumbnail_square = (

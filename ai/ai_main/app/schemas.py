@@ -4,7 +4,7 @@
 Spring 과 주고받는 JSON 은 모두 camelCase 가 된다.
 """
 
-from typing import Any, Literal
+from typing import Any, Generic, List, Literal, TypeVar
 
 from pydantic import BaseModel, ConfigDict
 from pydantic.alias_generators import to_camel
@@ -18,12 +18,56 @@ class CamelModel(BaseModel):
     )
 
 
+# ── 앱 API 공통 응답 (명세 1.1) ───────────────────────────────────────────
+# 실제 응답은 responses.py 가 만들지만, 이 모델을 엔드포인트의 response_model 로
+# 선언해야 Swagger 에 응답 구조가 나온다. 선언이 없으면 스키마가 비어(`{}`) 나와
+# 프론트가 무엇을 받는지 문서만 봐서는 알 수 없다.
+T = TypeVar("T")
+
+
+class ApiResponse(BaseModel, Generic[T]):
+    code: str = "SUCCESS"
+    message: str = "요청이 성공했습니다."
+    data: T | None = None
+    timestamp: str = "2026-07-16T06:00:00.000Z"
+
+
+class PageData(CamelModel, Generic[T]):
+    """명세 1.1 페이지 응답의 data 부분. 구조가 고정이다."""
+
+    # 필드명이 명세상 `list` 라 클래스 안에서 내장 list 를 가린다. pydantic 이
+    # 나중에 타입을 다시 해석할 때 `list` 가 이 필드를 가리켜 깨지므로
+    # 타입은 가려지지 않는 typing.List 로 쓴다.
+    list: List[T] = []
+    page: int = 0
+    size: int = 20
+    total_elements: int = 0
+    total_pages: int = 0
+    first: bool = True
+    last: bool = True
+    has_next: bool = False
+    has_previous: bool = False
+
+
 # ── 10-1 단계별 분석 실행 요청 ────────────────────────────────────────────
 class OcrInput(CamelModel):
     raw_text: str = ""
     refined_text: str | None = None
     lang: str | None = None
     confidence: float | None = None
+
+    model_config = ConfigDict(
+        alias_generator=to_camel,
+        populate_by_name=True,
+        protected_namespaces=(),
+        json_schema_extra={
+            "example": {
+                "rawText": "오후 4:20 85% 교보문고 C++ 프로그래밍 입문 32,000원",
+                "lang": "ko",
+                "confidence": 0.93,
+            }
+        },
+    )
 
 
 class ImageInput(CamelModel):
@@ -182,6 +226,10 @@ class SearchResponse(CamelModel):
 class TagRef(CamelModel):
     tag_id: int
     name: str
+    # 명세 6-2 는 tags[].source 를 요구한다(AGENT/USER). 6-3 수정 API 가 범위 밖이라
+    # 현재 태그는 전부 AGENT 생성이다. 목록(6-1)에는 없는 필드라 기본 None 으로 두고
+    # 상세에서만 채운다.
+    source: str | None = None
 
 
 class TagCount(CamelModel):
@@ -193,6 +241,108 @@ class TagCount(CamelModel):
 class CategoryRef(CamelModel):
     category_id: int
     name: str
+    # 명세 6-2 categories[].confidence. 카테고리 판정 시의 코사인 유사도를 쓴다.
+    # 목록(6-1)에는 없는 필드라 기본 None.
+    confidence: float | None = None
+
+
+# ── 4-1 이미지 등록 및 업로드 URL 발급 ───────────────────────────────────
+class UploadItem(CamelModel):
+    client_request_id: str
+    file_name: str
+    content_hash: str
+    file_size: int
+    # 명세 개정으로 4-3(OCR 제출)이 4-1 요청에 합쳐졌다. 온디바이스 OCR 결과를
+    # 등록 시점에 함께 받아 두면 업로드 완료 즉시 분석을 시작할 수 있다.
+    ocr: OcrInput = OcrInput()
+
+
+class UploadRequest(CamelModel):
+    images: list[UploadItem]
+
+    # Swagger 의 Example Value 를 그대로 복사해 실행할 수 있게 실제 값을 넣는다.
+    # 기본 생성 예시("string"·0)는 그대로 보내면 UNSUPPORTED_FORMAT 으로 떨어져
+    # 프론트가 무엇을 보내야 하는지 알 수 없다.
+    model_config = ConfigDict(
+        alias_generator=to_camel,
+        populate_by_name=True,
+        protected_namespaces=(),
+        json_schema_extra={
+            "example": {
+                "images": [
+                    {
+                        "clientRequestId": "local-001",
+                        "fileName": "Screenshot_20260716_101010.png",
+                        "contentHash": "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4"
+                                       "e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2",
+                        "fileSize": 384211,
+                        "ocr": {
+                            "rawText": "교보문고 C++ 프로그래밍 입문 32,000원",
+                            "lang": "ko",
+                            "confidence": 0.93,
+                        },
+                    }
+                ]
+            }
+        },
+    )
+
+
+class RegisteredUpload(CamelModel):
+    client_request_id: str
+    image_id: int
+    file_name: str
+    upload_url: str
+    upload_expires_in: int
+
+
+class DuplicatedUpload(CamelModel):
+    client_request_id: str
+    file_name: str
+    existing_image_id: int
+
+
+class FailedUpload(CamelModel):
+    client_request_id: str
+    file_name: str
+    reason: str
+
+
+class UploadResponse(CamelModel):
+    registered: list[RegisteredUpload] = []
+    duplicated: list[DuplicatedUpload] = []
+    failed: list[FailedUpload] = []
+
+
+class UploadCompleteResponse(CamelModel):
+    image_id: int
+    upload_completed: bool
+    uploaded_at: str
+
+
+class UploadUrlResponse(CamelModel):
+    image_id: int
+    upload_url: str
+    upload_expires_in: int
+
+
+class OcrStage(CamelModel):
+    stage: str = "OCR"
+    status: str = "COMPLETED"
+
+
+class OcrSubmitResponse(CamelModel):
+    image_id: int
+    ocr: OcrStage = OcrStage()
+
+
+class ThumbnailResponse(CamelModel):
+    """명세 6-6 Response data. 실제 이미지는 thumbnailUrl 이 가리키는 경로가 준다."""
+
+    thumbnail_url: str
+    title: str = ""
+    # 명세 6-6 의 tags 는 이름 배열이다(6-1·6-2 의 객체 배열과 다르다).
+    tags: list[str] = []
 
 
 class AppAnalyzeRequest(CamelModel):
@@ -257,13 +407,16 @@ class ImageDetail(CamelModel):
     tags: list[TagRef] = []
     categories: list[CategoryRef] = []
     structured_data: dict[str, Any] | None = None   # MVP 제외
+    # 명세 6-2 fieldSources: 각 필드를 누가 채웠는지(AGENT/USER).
+    # 6-3 수정 API 가 범위 밖이라 현재는 전부 AGENT 다.
+    field_sources: dict[str, str] = {}
     analysis_confidence: float | None = None
     key_information: list[str] = []
     thumbnail_url: str | None = None
     created_at: str | None = None
-    uploaded_at: str | None = None    # 미제공
+    uploaded_at: str | None = None
     updated_at: str | None = None
-    last_viewed_at: str | None = None  # 미제공
+    last_viewed_at: str | None = None
 
 
 class CategoryCard(CamelModel):
@@ -273,6 +426,56 @@ class CategoryCard(CamelModel):
     image_count: int
     tags: list[TagCount] = []
     updated_at: str | None = None
+
+
+# ── 7-3 홈 대시보드 요약 ─────────────────────────────────────────────────
+class HomeUser(CamelModel):
+    # 로그인 미구현 구간이라 채울 수 없다. 필드는 유지하고 null 로 내려보낸다.
+    nickname: str | None = None
+
+
+class ActiveAnalysis(CamelModel):
+    job_id: int
+    image_id: int
+    file_name: str | None = None
+    title: str = ""
+    thumbnail_url: str | None = None
+    stage: str
+    status: str
+    progress: int
+
+
+class HomeAnalysisStatus(CamelModel):
+    has_active_jobs: bool
+    queued_count: int
+    processing_count: int
+    failed_count: int
+    active_analysis: ActiveAnalysis | None = None
+
+
+class HomeCategory(CamelModel):
+    category_id: int
+    name: str
+    image_count: int
+    tags: list[TagRef] = []
+    updated_at: str | None = None
+
+
+class HomeRecentImage(CamelModel):
+    image_id: int
+    title: str = ""
+    thumbnail_url: str | None = None
+    tags: list[TagRef] = []
+    favorite: bool | None = None
+    analyzed_at: str | None = None
+
+
+class HomeResponse(CamelModel):
+    home_date: str
+    user: HomeUser = HomeUser()
+    analysis_status: HomeAnalysisStatus
+    categories: list[HomeCategory] = []
+    recent_images: list[HomeRecentImage] = []
 
 
 class TagItem(CamelModel):

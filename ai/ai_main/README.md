@@ -30,41 +30,59 @@ OpenSearch 는 기동에 30~45초 걸립니다. 그 전 요청은 연결 거부�
 { "code": "SUCCESS", "message": "...", "data": {...}, "timestamp": "..." }
 ```
 
-| 화면 | Method | Path | 비고 |
+| 명세 | Method | Path | 비고 |
 | --- | --- | --- | --- |
-| 분석 요청 | POST | `/api/v1/analyze` | 202. 즉시 `jobId` 반환, 처리는 백그라운드 |
-| 분석 현황 | GET | `/api/v1/analysis/summary` | 단계별·상태별 집계 |
-| 분석 작업 목록 | GET | `/api/v1/analysis/jobs` | `status`(콤마 구분)·`page`·`size` |
-| 홈 목록 | GET | `/api/v1/images` | `categoryId`·`tagId`·`page`·`size` |
-| 상세 | GET | `/api/v1/images/{imageId}` | |
-| 썸네일 | GET | `/api/v1/images/{imageId}/thumbnail` | **JPEG 바이너리** (envelope 아님) |
-| 태그 목록 | GET | `/api/v1/tags` | `q` 로 이름 필터 |
-| 카테고리 목록 | GET | `/api/v1/categories` | 카드용 썸네일·태그·개수 포함 |
-| 통합 검색 | GET | `/api/v1/search` | `q` 필수. BM25 키워드 검색 |
+| 4-1 | POST | `/api/v1/images/upload` | 등록·중복판정·업로드 URL 발급. **바이너리 안 받음** |
+| 4-2 | POST | `/api/v1/images/{imageId}/upload-complete` | 업로드 완료 통지 → 분석 시작 |
+| 4-3 | POST | `/api/v1/images/{imageId}/ocr` | OCR 제출(4-1 에 함께 보내도 됨) |
+| 4-5 | POST | `/api/v1/images/{imageId}/upload-url` | 만료된 업로드 URL 재발급 |
+| 5-1 | GET | `/api/v1/analysis/summary` | 단계별·상태별 집계 |
+| 5-6 | GET | `/api/v1/analysis/jobs` | `status`(콤마 구분)·`page`·`size` |
+| 6-1 | GET | `/api/v1/images` | `status`·`categoryId`·`tagId`·`favorite`·`dateFrom/To`·`sort` |
+| 6-2 | GET | `/api/v1/images/{imageId}` | 상세. 조회 시 `lastViewedAt` 갱신 |
+| 6-6 | GET | `/api/v1/images/{imageId}/thumbnail` | `{thumbnailUrl, title, tags}` JSON |
+| — | GET | `/api/v1/images/{imageId}/thumbnail/raw` | **JPEG 바이너리** (envelope 아님) |
+| 7-1 | GET | `/api/v1/tags` | `q`·`sort` |
+| 7-2 | GET | `/api/v1/categories` | 카드용 썸네일·태그·개수. `sort` |
+| 7-3 | GET | `/api/v1/home` | 홈 1콜 집계(현황·카테고리 8개·최근 4장) |
+| 8-1 | GET | `/api/v1/search` | `q` 필수. `scope`·`sort` |
 
-### 흐름
+### 흐름 (명세 4-1 → 4-2)
 
 ```
-앱 → Spring 4-1        imageId·key·uploadUrl 발급
-앱 → MinIO             원본 업로드
-앱 → AI  POST /api/v1/analyze   { imageId, s3Key, ocr }   → 202 { jobId }
-앱 → AI  GET  /api/v1/analysis/jobs   폴링으로 진행 확인
-앱 → AI  목록·상세·검색·썸네일 조회
+① 앱 → AI      POST /api/v1/images/upload
+                { images: [{ clientRequestId, fileName, contentHash, fileSize, ocr }] }
+              ← { registered: [{ clientRequestId, imageId, uploadUrl, uploadExpiresIn }],
+                  duplicated: [...], failed: [...] }
+
+② 앱 → 스토리지  PUT <uploadUrl>       원본 바이너리 직접 전송 (AI 서버 안 거침)
+
+③ 앱 → AI      POST /api/v1/images/{imageId}/upload-complete
+              ← { imageId, uploadCompleted, uploadedAt }      ← 여기서 분석 시작
+
+④ 앱 → AI      GET /api/v1/analysis/jobs    폴링으로 진행 확인
+⑤ 앱 → AI      목록·상세·검색·썸네일 조회
 ```
 
-### 분석 요청 예시
+이미지 바이트가 AI 서버를 통과하지 않아 100장을 한꺼번에 올려도 서버가 흔들리지 않습니다.
+`clientRequestId` 는 그대로 되돌려 주므로 앱이 원래 사진과 매칭할 수 있습니다.
+
+### 등록 요청 예시
 
 ```bash
-curl -X POST http://<호스트>:8000/api/v1/analyze \
+curl -X POST http://<호스트>:8000/api/v1/images/upload \
   -H 'X-Internal-Token: <토큰>' \
   -H 'Content-Type: application/json' \
-  -d '{"imageId": 1, "s3Key": "u/1/a.png", "ocr": {"rawText": "OCR 텍스트"}}'
+  -d '{"images":[{"clientRequestId":"local-001","fileName":"a.png",
+       "contentHash":"<SHA-256 64자>","fileSize":384211,
+       "ocr":{"rawText":"OCR 텍스트","lang":"ko","confidence":0.93}}]}'
 ```
 
-```json
-{ "code": "SUCCESS", "message": "분석 요청이 접수되었습니다.",
-  "data": { "imageId": 1, "jobId": 1, "stage": "LLM", "status": "QUEUED" } }
-```
+`contentHash` 로 중복을 판정합니다. 이미 올린 사진이면 `duplicated` 로 분류되고
+새 `imageId` 를 발급하지 않아 Gemini 를 다시 돌리지 않습니다.
+
+형식이 안 맞으면 `failed[].reason = "UNSUPPORTED_FORMAT"`,
+5MB 를 넘으면 `FILE_SIZE_EXCEEDED` 로 항목별로 갈립니다(전체 요청은 실패하지 않습니다).
 
 `status` 는 `QUEUED → PROCESSING → COMPLETED` 로 갑니다.
 `stage` 는 `LLM → IMAGE_ANALYSIS → AGENT → INDEXING` 순입니다.
@@ -75,14 +93,18 @@ OCR 이 비었거나 정보성이 없다고 판정되면 분석을 건너뛰고 
 
 - **`userId` 는 보내지 않아도 됩니다.** 로그인 미구현 구간이라 서버가 `FIXED_USER_ID`(기본 1)로
   고정합니다. 보내도 무시됩니다. 로그인이 붙으면 서버 설정만 바꾸면 되고 앱은 그대로입니다.
-- **`thumbnailUrl` 은 경로만** 내려옵니다(`/api/v1/images/3/thumbnail`).
+- **`thumbnailUrl` 은 경로만** 내려옵니다(`/api/v1/images/3/thumbnail/raw`).
   베이스 URL 을 앞에 붙이고, 호출할 때 `X-Internal-Token` 헤더가 필요합니다.
   만료가 없으므로 캐시해도 됩니다.
 - **카테고리 카드 이미지** 는 그 카테고리에 가장 최근 분류된 사진의 썸네일입니다.
   전용 이미지를 따로 만들지 않으므로 새 사진이 분류되면 자동으로 바뀝니다.
 - **`categoryId`·`tagId` 는 이름에서 파생된 해시**입니다. 재시작해도 같은 값이지만
   Spring 복귀 시 DB 실제 ID 로 바뀝니다. **저장하지 말고 매번 응답값을 쓰세요.**
-- **채우지 못하는 필드는 `null`** 로 내려갑니다(`favorite`, `fileName`, `structuredData` 등).
+- **즐겨찾기(6-5)·삭제(6-4)는 AI 범위 밖입니다.** `favorite` 은 **항상 `false`** 로
+  내려가고, 6-1 의 `favorite=true` 필터는 언제나 빈 결과입니다.
+  필드와 필터는 나중에 6-5 가 붙어도 계약을 안 고치게 남겨 둔 것이니,
+  **지금은 앱에서 즐겨찾기 UI 를 숨기는 편이 맞습니다.**
+- **채우지 못하는 필드는 `null`** 로 내려갑니다(`structuredData`, `matchedIn`, `highlight` 등).
   필드 자체는 유지되므로 Spring 복귀 시 앱 모델을 고칠 필요가 없습니다.
 - 에러는 `{"code": "INVALID_PARAMETER"|"IMAGE_NOT_FOUND"|..., "message": ..., "data": ...}` 입니다.
 
@@ -108,13 +130,18 @@ Spring 이 아직 안 떠 있으면 `SPRING_ENABLED=false` 로 두세요.
 사진 1장당 1개입니다. 분석할 때 만들어 **썸네일 버킷에 원본과 같은 key** 로 저장합니다.
 
 ```
-pictures/u/1/a.png   원본
-thumbnail/u/1/a.png  썸네일 (내용은 JPEG)
+pictures/u/1/a.png    원본
+thumbnails/u/1/a.png  썸네일 (내용은 JPEG)
 ```
 
 가운데를 잘라 정사각으로 만들고, 해상도는 기본적으로 축소하지 않습니다
 (`THUMBNAIL_MAX_SIZE=0`). 목록이 무거우면 `480` 등을 넣어 줄일 수 있습니다.
 저장본이 없으면 조회 시 즉석 생성하면서 버킷도 채웁니다.
+
+명세 6-6 은 `{thumbnailUrl, title, tags}` JSON 을 요구하므로 그 경로는 JSON 을 주고,
+실제 이미지는 `thumbnailUrl` 이 가리키는 `/thumbnail/raw` 가 줍니다.
+스토리지 presigned GET 을 쓰지 않는 이유는 만료(1시간)가 있어 앱 이미지 캐시가
+매번 깨지고, 스토리지를 외부에 공개해야 하기 때문입니다.
 
 ## 서버 배포
 

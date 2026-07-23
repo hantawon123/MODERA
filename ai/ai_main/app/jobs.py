@@ -126,6 +126,18 @@ class JobStore:
                 self._jobs.popitem(last=False)
             return dict(job)
 
+    def next_image_id(self) -> int:
+        """imageId 만 하나 발급한다(업로드 시점. 분석 작업은 아직 만들지 않는다).
+
+        업로드와 분석 요청이 분리돼 있어서(앱이 온디바이스 OCR 을 끝낸 뒤 분석을 부른다)
+        업로드 단계에서는 번호만 떼어 주고, 작업은 analyze 에서 만든다.
+        """
+        with self._lock:
+            self._seed()
+            image_id = self._next_image_id
+            self._next_image_id += 1
+            return image_id
+
     def update(
         self,
         job_id: int,

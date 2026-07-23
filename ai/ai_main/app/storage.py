@@ -21,8 +21,7 @@ class ImageFetchError(RuntimeError):
     pass
 
 
-@lru_cache(maxsize=1)
-def _client():
+def _build_client(endpoint: str):
     try:
         import boto3
         from botocore.client import Config
@@ -31,15 +30,32 @@ def _client():
 
     settings = get_settings()
     kwargs: dict = {"region_name": settings.aws_region}
-    if settings.s3_endpoint:
+    if endpoint:
         # MinIO 등 S3 호환 스토리지. path-style 로 붙어야 버킷이 경로로 해석된다.
-        kwargs["endpoint_url"] = settings.s3_endpoint
+        kwargs["endpoint_url"] = endpoint
         kwargs["config"] = Config(s3={"addressing_style": "path"}) \
             if settings.s3_path_style else Config()
     if settings.s3_access_key:
         kwargs["aws_access_key_id"] = settings.s3_access_key
         kwargs["aws_secret_access_key"] = settings.s3_secret_key
     return boto3.client("s3", **kwargs)
+
+
+@lru_cache(maxsize=1)
+def _client():
+    """서버가 직접 읽고 쓸 때 쓰는 클라이언트(내부 주소)."""
+    return _build_client(get_settings().s3_endpoint)
+
+
+@lru_cache(maxsize=1)
+def _public_client():
+    """앱에 줄 presigned URL 을 만들 때만 쓰는 클라이언트(공개 주소).
+
+    서명은 이 클라이언트의 endpoint 로 만들어지므로, 앱이 실제로 접근할 수 있는
+    주소여야 한다. S3_PUBLIC_ENDPOINT 가 없으면 내부 주소를 그대로 쓴다.
+    """
+    settings = get_settings()
+    return _build_client(settings.s3_public_endpoint or settings.s3_endpoint)
 
 
 def fetch_image_bytes(s3_key: str) -> bytes:
@@ -51,6 +67,54 @@ def fetch_image_bytes(s3_key: str) -> bytes:
         return obj["Body"].read()
     except Exception as e:
         raise ImageFetchError(f"S3 객체를 읽지 못했습니다: {s3_key}") from e
+
+
+def put_image(key: str, data: bytes, content_type: str = "application/octet-stream") -> None:
+    """원본 이미지를 버킷에 올린다.
+
+    원래는 앱이 Spring 4-1 이 발급한 presigned URL 로 직접 올리는 구조다.
+    Spring 우회 구간에서는 그 경로가 없어 AI 가 대신 받아 준다.
+    """
+    settings = get_settings()
+    if not settings.s3_bucket:
+        raise ImageFetchError("환경변수 S3_BUCKET 이 설정되지 않았습니다.")
+    try:
+        _client().put_object(
+            Bucket=settings.s3_bucket, Key=key, Body=data, ContentType=content_type
+        )
+    except Exception as e:
+        raise ImageFetchError(f"이미지를 저장하지 못했습니다: {key}") from e
+
+
+def presigned_put_url(key: str, expires_in: int | None = None) -> tuple[str, int]:
+    """앱이 원본을 직접 올릴 presigned PUT URL 을 발급한다(명세 4-1·4-5).
+
+    (url, expiresIn) 을 돌려준다. 이 URL 로는 AI 서버를 거치지 않고
+    앱 → 스토리지로 바이너리가 바로 간다.
+    """
+    settings = get_settings()
+    if not settings.s3_bucket:
+        raise ImageFetchError("환경변수 S3_BUCKET 이 설정되지 않았습니다.")
+    expires = expires_in or settings.upload_url_expires_in
+    try:
+        url = _public_client().generate_presigned_url(
+            "put_object",
+            Params={"Bucket": settings.s3_bucket, "Key": key},
+            ExpiresIn=expires,
+        )
+    except Exception as e:
+        raise ImageFetchError(f"업로드 URL 을 발급하지 못했습니다: {key}") from e
+    return url, expires
+
+
+def object_exists(key: str) -> bool:
+    """원본이 실제로 올라왔는지 확인한다(명세 4-2 UPLOAD_NOT_FOUND 판정용)."""
+    settings = get_settings()
+    try:
+        _client().head_object(Bucket=settings.s3_bucket, Key=key)
+        return True
+    except Exception:
+        return False
 
 
 def fetch_image_bytes_from_url(url: str) -> bytes:

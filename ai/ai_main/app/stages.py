@@ -228,6 +228,8 @@ async def run_agent_core(
         "structuredData": {"type": None, "fields": {}},
         # 신규 카테고리 여부(스프링이 생성 판단에 사용). 계약 확정 필요.
         "categoryCreated": resolution.created,
+        # 명세 6-2 categories[].confidence 로 내려줄 값
+        "categoryConfidence": round(resolution.similarity, 3),
         # 검색용 문서 임베딩. Spring 이 pgvector 등에 그대로 적재한다.
         # (요약 텍스트 기준. purpose=DOCUMENT 로 생성)
         "documentVector": vectors[0],
@@ -298,6 +300,8 @@ async def _index_as_other(
             created_at=_now_iso(),
             s3_key=s3_key,
             key_information=[],
+            # 명세 1.4: OCR 이 비었거나 비정보성이면 LLM 단계 결과가 EMPTY 다.
+            status="EMPTY",
         )
     except Exception as e:
         logger.warning("검색 색인 실패 imageId=%s: %s", image_id, e)
@@ -318,6 +322,11 @@ async def run_app_analysis(
         timings: dict[str, float] = {"WAIT": round(time.perf_counter() - queued_at, 2)}
         started = time.perf_counter()
         job_store.update(job_id, "PROCESSING", stage="LLM")
+        # 색인 문서의 status 도 함께 올려 6-1 목록에서 진행 중임이 보이게 한다.
+        try:
+            await asyncio.to_thread(search.set_status, image_id, "PROCESSING")
+        except Exception as e:
+            logger.warning("status 갱신 실패 imageId=%s: %s", image_id, e)
         logger.info("앱 분석 시작 jobId=%s imageId=%s", job_id, image_id)
         try:
             # 0) 썸네일 생성 후 썸네일 버킷에 저장.
@@ -404,6 +413,8 @@ async def run_app_analysis(
                         created_at=_now_iso(),
                         s3_key=s3_key,
                         key_information=result["key_information"],
+                        status="COMPLETED",
+                        category_confidence=generated.get("categoryConfidence"),
                     )
             except Exception as e:
                 logger.warning("검색 색인 실패 imageId=%s: %s (분석 결과는 유지)",
@@ -416,6 +427,10 @@ async def run_app_analysis(
         except Exception as e:
             timings["TOTAL"] = round(time.perf_counter() - started, 2)
             logger.exception("앱 분석 실패 jobId=%s 소요=%s", job_id, timings)
+            try:
+                await asyncio.to_thread(search.set_status, image_id, "FAILED")
+            except Exception:
+                pass
             job_store.update(
                 job_id,
                 "FAILED",

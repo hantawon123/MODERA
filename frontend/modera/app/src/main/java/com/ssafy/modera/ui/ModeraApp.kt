@@ -40,6 +40,7 @@ import androidx.navigation3.runtime.EntryProviderScope
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.ui.NavDisplay
+import android.util.Log
 import com.ssafy.modera.core.designsystem.component.ModeraNavigationSuiteScaffold
 import com.ssafy.modera.core.designsystem.component.Scaffold
 import com.ssafy.modera.core.designsystem.component.Text
@@ -59,8 +60,11 @@ import com.ssafy.modera.navigation.RegisterNavKey
 import com.ssafy.modera.navigation.SearchNavKey
 import com.ssafy.modera.navigation.TOP_LEVEL_NAV_ITEMS
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlin.time.Duration.Companion.seconds
 @Composable
 fun ModeraApp(
     appState: ModeraAppState,
@@ -101,6 +105,7 @@ internal fun ModeraApp(
 
     val navigator = remember { Navigator(appState.navigationState) }
     val homeAnalysisState = remember { HomeAnalysisState() }
+    var bannerDismissJob by remember { mutableStateOf<Job?>(null) }
 
     val selectedImages = remember { mutableStateOf<List<SelectedImage>>(emptyList()) }
     val ocrUploadPayloads = remember { mutableStateOf<List<OcrImageUploadPayload>>(emptyList()) }
@@ -111,7 +116,8 @@ internal fun ModeraApp(
             homeAnalysisState.onImagesSelected(images.size)
             navigator.navigate(HomeNavKey)
 
-            scope.launch {
+            bannerDismissJob?.cancel()
+            bannerDismissJob = scope.launch {
                 val processed = withContext(Dispatchers.IO) {
                     ImageTextRecognizer().use { ocr ->
                         ocr.recognizeAll(context, images)
@@ -119,6 +125,9 @@ internal fun ModeraApp(
                 }
                 selectedImages.value = processed
                 ocrUploadPayloads.value = processed.map { it.toOcrUploadPayload() }
+
+                delay(2.seconds)
+                homeAnalysisState.dismissBanner()
             }
         },
     )

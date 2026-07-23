@@ -27,7 +27,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.dp
 import com.ssafy.modera.core.designsystem.theme.ModeraTheme
-import com.ssafy.modera.core.model.Category
+import com.ssafy.modera.core.model.category.Category
 import com.ssafy.modera.feature.home.component.AiAnalysisProgressBanner
 import com.ssafy.modera.feature.home.component.CategoryCard
 import com.ssafy.modera.feature.home.component.CategorySortPopup

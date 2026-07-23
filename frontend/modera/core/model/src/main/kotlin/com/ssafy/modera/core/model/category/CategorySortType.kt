@@ -1,4 +1,4 @@
-package com.ssafy.modera.core.model
+package com.ssafy.modera.core.model.category
 
 enum class CategorySortType(
     val queryValue: String,

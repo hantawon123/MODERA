@@ -28,7 +28,8 @@ import com.ssafy.modera.core.designsystem.component.ClickableSurface
 import com.ssafy.modera.core.designsystem.component.Icon
 import com.ssafy.modera.core.designsystem.component.Text
 import com.ssafy.modera.core.designsystem.theme.ModeraTheme
-import com.ssafy.modera.core.model.AnalyzedImageSummary
+import com.ssafy.modera.core.model.analyzedimage.AnalyzedImageSummary
+import com.ssafy.modera.core.model.analyzedimage.ImageAnalysisStatus
 import com.ssafy.modera.feature.categoryimages.R
 
 @Composable
@@ -241,4 +242,6 @@ private val previewAnalyzedImageSummary = AnalyzedImageSummary(
         "삼성전자",
         "투자정보",
     ),
+    status = ImageAnalysisStatus.COMPLETED,
+    favorite = false,
 )

@@ -5,4 +5,6 @@ data class AnalyzedImageSummary(
     val title: String,
     val imageUrl: String,
     val hashtags: List<String>,
+    val status: ImageAnalysisStatus,
+    val favorite: Boolean,
 )

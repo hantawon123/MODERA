@@ -4,7 +4,7 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class AnalyzedImagesResponse(
-    val list: List<AnalyzedImageResponse>,
+    val list: List<AnalyzedImageSummaryResponse>,
     val page: Int,
     val size: Int,
     val totalElements: Long,

@@ -1,6 +1,7 @@
 package com.ssafy.modera.core.network
 
-import com.skydoves.sandwich.ApiResponse
+import com.skydoves.sandwich.getOrThrow
+import com.ssafy.modera.core.model.analyzedimage.ImageAnalysisStatus
 import com.ssafy.modera.core.network.service.AnalyzedImageService
 import kotlinx.coroutines.test.runTest
 import org.hamcrest.CoreMatchers.`is`
@@ -21,17 +22,68 @@ class AnalyzedImageServiceTest : ApiAbstract<AnalyzedImageService>() {
     fun fetchAnalyzedImagesFromNetworkTest() = runTest {
         enqueueResponse("AnalyzedImagesResponse.json")
 
-        val response = service.fetchAnalyzedImages()
+        val response = service.fetchAnalyzedImages(
+            statuses = listOf(ImageAnalysisStatus.COMPLETED.name),
+            categoryId = null,
+            tagId = null,
+            favorite = null,
+            dateFrom = null,
+            dateTo = null,
+            page = 0,
+            size = 20,
+            sort = "createdAt,desc",
+        )
 
-        val data = (response as ApiResponse.Success).data
+        val baseResponse = response.getOrThrow()
+        val data = baseResponse.data
         val image = data.list.first()
 
+        assertThat(baseResponse.code, `is`("SUCCESS"))
+        assertThat(baseResponse.message, `is`("요청이 성공했습니다."))
+
         assertThat(data.list.size, `is`(1))
+        assertThat(data.page, `is`(0))
+        assertThat(data.size, `is`(20))
+        assertThat(data.totalElements, `is`(1L))
+        assertThat(data.totalPages, `is`(1))
+        assertThat(data.hasNext, `is`(false))
+
         assertThat(image.imageId, `is`(1024L))
         assertThat(image.title, `is`("C++ 프로그래밍 입문"))
         assertThat(image.status, `is`("COMPLETED"))
         assertThat(image.tags.first().name, `is`("C++"))
         assertThat(image.categories.first().name, `is`("공부"))
-        assertThat(data.hasNext, `is`(false))
+    }
+
+    @Test
+    fun fetchAnalyzedImageDetailFromNetworkTest() = runTest {
+        enqueueResponse("AnalyzedImageDetailResponse.json")
+
+        val response = service.fetchAnalyzedImageDetail(
+            imageId = 101L,
+        )
+
+        val baseResponse = response.getOrThrow()
+        val image = baseResponse.data
+
+        assertThat(baseResponse.code, `is`("SUCCESS"))
+        assertThat(baseResponse.message, `is`("요청이 성공했습니다."))
+
+        assertThat(image.imageId, `is`(101L))
+        assertThat(
+            image.fileName,
+            `is`("Screenshot_20260723_154210.png"),
+        )
+        assertThat(image.status, `is`("COMPLETED"))
+        assertThat(image.favorite, `is`(true))
+        assertThat(image.title, `is`("C++ 프로그래밍 입문서 정보"))
+        assertThat(image.ocr?.lang, `is`("ko"))
+        assertThat(image.ocr?.confidence, `is`(0.96))
+        assertThat(image.tags.first().name, `is`("C++"))
+        assertThat(image.categories.first().name, `is`("공부"))
+        assertThat(
+            image.imageUrl,
+            `is`("https://example.com/images/101/source"),
+        )
     }
 }

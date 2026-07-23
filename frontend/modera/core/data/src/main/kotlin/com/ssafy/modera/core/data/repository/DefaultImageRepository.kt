@@ -4,6 +4,7 @@ import com.ssafy.modera.core.common.network.Dispatcher
 import com.ssafy.modera.core.common.network.ModeraDispatcher
 import com.ssafy.modera.core.model.image.RegisterImage
 import com.ssafy.modera.core.model.image.RegisterImagesResult
+import com.ssafy.modera.core.model.image.UploadCompleteResult
 import com.ssafy.modera.core.network.model.image.RegisterImagesRequest
 import com.ssafy.modera.core.network.model.image.asExternalModel
 import com.ssafy.modera.core.network.model.image.asNetworkModel
@@ -28,5 +29,11 @@ class DefaultImageRepository @Inject constructor(
             ),
         )
         emit(response.asExternalModel())
+    }.flowOn(ioDispatcher)
+
+    override fun notifyUploadComplete(
+        imageId: Long,
+    ): Flow<UploadCompleteResult> = flow {
+        emit(imageClient.notifyUploadComplete(imageId).asExternalModel())
     }.flowOn(ioDispatcher)
 }

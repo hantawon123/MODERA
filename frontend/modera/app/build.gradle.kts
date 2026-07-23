@@ -77,12 +77,9 @@ dependencies {
     implementation(libs.androidx.compose.material3.adaptive.navigation3)
     implementation(libs.androidx.compose.material3.windowSizeClass)
 
-    // ML Kit OCR (라틴·한글·중문·일문·데바나가리)
+    // ML Kit OCR
     implementation(libs.text.recognition)
     implementation(libs.text.recognition.korean)
-    implementation(libs.text.recognition.chinese)
-    implementation(libs.text.recognition.japanese)
-    implementation(libs.text.recognition.devanagari)
 
     ksp(libs.hilt.compiler)
 

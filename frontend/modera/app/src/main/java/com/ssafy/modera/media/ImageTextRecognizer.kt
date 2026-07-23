@@ -7,9 +7,6 @@ import com.google.android.gms.tasks.Task
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.TextRecognizer
-import com.google.mlkit.vision.text.chinese.ChineseTextRecognizerOptions
-import com.google.mlkit.vision.text.devanagari.DevanagariTextRecognizerOptions
-import com.google.mlkit.vision.text.japanese.JapaneseTextRecognizerOptions
 import com.google.mlkit.vision.text.korean.KoreanTextRecognizerOptions
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions
 import kotlinx.coroutines.async
@@ -30,15 +27,10 @@ class ImageTextRecognizer : AutoCloseable {
     private val recognizers: List<TextRecognizer> = listOf(
         TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS),
         TextRecognition.getClient(KoreanTextRecognizerOptions.Builder().build()),
-        TextRecognition.getClient(ChineseTextRecognizerOptions.Builder().build()),
-        TextRecognition.getClient(JapaneseTextRecognizerOptions.Builder().build()),
-        TextRecognition.getClient(DevanagariTextRecognizerOptions.Builder().build()),
     )
 
     /**
      * Content/파일 [Uri] 이미지에서 텍스트를 추출한다.
-     *
-     * @throws IOException 이미지를 열 수 없을 때
      */
     suspend fun recognize(context: Context, uri: Uri): String {
         val image = InputImage.fromFilePath(context, uri)
@@ -47,8 +39,6 @@ class ImageTextRecognizer : AutoCloseable {
 
     /**
      * [SelectedImage]의 Uri에서 텍스트를 추출한다.
-     *
-     * @throws IOException 이미지를 열 수 없을 때
      */
     suspend fun recognize(context: Context, selectedImage: SelectedImage): String =
         recognize(context, selectedImage.uri)
@@ -96,10 +86,6 @@ class ImageTextRecognizer : AutoCloseable {
     }
 }
 
-/**
- * 스크립트별 인식 결과를 라인 단위로 합치고 중복을 제거한다.
- * (CJK/데바나가리 모델도 라틴을 포함해 겹칠 수 있음)
- */
 private fun mergeRecognizedTexts(texts: List<String>): String =
     texts.asSequence()
         .flatMap { it.lineSequence() }

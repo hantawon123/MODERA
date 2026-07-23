@@ -1,7 +1,7 @@
 [versions]
 # Build
 agp = "9.2.1"
-kotlin = "2.3.0"
+kotlin = "2.3.21"
 ksp = "2.3.5"
 protobufPlugin = "0.10.0"
 
@@ -127,6 +127,7 @@ kotlinx-immutable-collection = { group = "org.jetbrains.kotlinx", name = "kotlin
 
 # Kotlin Test
 kotlin-test = { group = "org.jetbrains.kotlin", name = "kotlin-test", version.ref = "kotlin" }
+kotlin-metadata-jvm = { group = "org.jetbrains.kotlin", name = "kotlin-metadata-jvm", version.ref = "kotlin" }
 
 # Hilt
 hilt-core = { module = "com.google.dagger:hilt-core", version.ref = "hilt" }

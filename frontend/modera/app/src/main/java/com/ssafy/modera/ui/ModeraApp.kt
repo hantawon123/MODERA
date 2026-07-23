@@ -41,6 +41,9 @@ import androidx.navigation3.runtime.EntryProviderScope
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.ui.NavDisplay
+import androidx.compose.foundation.layout.exclude
+import androidx.compose.foundation.layout.ime
+import androidx.compose.material3.SnackbarHost
 import com.ssafy.modera.MainViewModel
 import com.ssafy.modera.core.designsystem.component.ModeraNavigationSuiteScaffold
 import com.ssafy.modera.core.designsystem.component.Scaffold
@@ -76,7 +79,7 @@ fun ModeraApp(
         ModeraApp(
             appState = appState,
             viewModel = viewModel,
-            onSettingsDismissed = { showSettingsDialog = false },
+            snackbarHostState = snackbarHostState,
             windowAdaptiveInfo = windowAdaptiveInfo,
             modifier = modifier,
         )
@@ -91,7 +94,7 @@ fun ModeraApp(
 internal fun ModeraApp(
     appState: ModeraAppState,
     viewModel: MainViewModel,
-    onSettingsDismissed: () -> Unit,
+    snackbarHostState: SnackbarHostState,
     modifier: Modifier = Modifier,
     windowAdaptiveInfo: WindowAdaptiveInfo = currentWindowAdaptiveInfo(),
 ) {
@@ -99,6 +102,12 @@ internal fun ModeraApp(
     val navigator = remember { Navigator(appState.navigationState) }
     val homeAnalysisState = remember(viewModel) {
         HomeAnalysisState(onDismissRequest = viewModel::dismissAnalysisBanner)
+    }
+
+    LaunchedEffect(viewModel, snackbarHostState) {
+        viewModel.snackbarMessage.collect { message ->
+            snackbarHostState.showSnackbar(message = message)
+        }
     }
 
     LaunchedEffect(uiState.showAnalysisBanner, uiState.analysisImageCount) {
@@ -159,14 +168,14 @@ internal fun ModeraApp(
                 contentColor = Color.Gray, // TODO : 추후 컬러 변경
                 contentWindowInsets = WindowInsets(0, 0, 0, 0),
                 snackbarHost = {
-//                SnackbarHost(
-//                    snackbarHostState,
-//                    modifier = Modifier.windowInsetsPadding(
-//                        WindowInsets.safeDrawing.exclude(
-//                            WindowInsets.ime,
-//                        ),
-//                    ),
-//                )
+                SnackbarHost(
+                    snackbarHostState,
+                    modifier = Modifier.windowInsetsPadding(
+                        WindowInsets.safeDrawing.exclude(
+                            WindowInsets.ime,
+                        ),
+                    ),
+                )
                 },
             ) { padding ->
                 Column(

@@ -70,6 +70,7 @@ dependencies {
     implementation(libs.androidx.hilt.lifecycle.viewModelCompose)
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.kotlinx.serialization.json)
+    implementation(libs.okhttp)
 
     // material3
     implementation(libs.androidx.compose.material3)

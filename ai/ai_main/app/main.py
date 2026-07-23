@@ -162,8 +162,13 @@ _internal_token_header = APIKeyHeader(
 
 
 async def require_internal_token(
+    request: Request,
     token: str | None = Depends(_internal_token_header),
 ) -> None:
+    # 임시: APP_API_AUTH=false 인 동안 /api/v1/* 은 토큰 없이 통과시킨다.
+    # Android 가 Spring 을 거치지 않고 직접 부르는 기간용이며, 설정 설명은 config.py 참고.
+    if _is_app_api(request) and not get_settings().app_api_auth:
+        return
     if token != get_settings().internal_token:
         raise PermissionError("내부 토큰 불일치")
 

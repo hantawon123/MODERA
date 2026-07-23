@@ -384,12 +384,15 @@ class AnalysisSummary(CamelModel):
 
 class ImageListItem(CamelModel):
     image_id: int
-    file_name: str | None = None      # 미제공
+    file_name: str | None = None
     title: str = ""
     summary: str = ""
     status: str = "COMPLETED"
-    favorite: bool | None = None      # 미제공
+    favorite: bool | None = None
+    # 목록 격자용. 정사각으로 잘려 있어 내용 전체가 보이지 않는다.
     thumbnail_url: str | None = None
+    # 원본 전체. 상세 화면에서 스크린샷을 읽으려면 이쪽을 써야 한다.
+    image_url: str | None = None
     tags: list[TagRef] = []
     categories: list[CategoryRef] = []
     created_at: str | None = None
@@ -412,7 +415,10 @@ class ImageDetail(CamelModel):
     field_sources: dict[str, str] = {}
     analysis_confidence: float | None = None
     key_information: list[str] = []
+    # 목록 격자용(정사각 crop). 내용 전체가 보이지 않는다.
     thumbnail_url: str | None = None
+    # 원본 전체. 상세 화면에서 스크린샷을 읽으려면 이쪽을 쓴다.
+    image_url: str | None = None
     created_at: str | None = None
     uploaded_at: str | None = None
     updated_at: str | None = None

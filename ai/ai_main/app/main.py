@@ -399,9 +399,35 @@ def _category_refs(
                         confidence=confidence)]
 
 
-def _thumbnail_url(image_id: int) -> str:
-    """앱이 이미지 로더에 그대로 넣을 썸네일 주소. 만료가 없는 고정 경로다."""
+def _thumbnail_url(image_id: int, s3_key: str | None = None) -> str | None:
+    """목록 격자용 썸네일 주소(정사각 crop).
+
+    스토리지가 앱에서 직접 접근 가능하면(S3_PUBLIC_ENDPOINT) presigned URL 을 주고,
+    아니면 서버를 경유하는 고정 경로를 준다. 고정 경로는 만료가 없어 캐시하기 좋지만
+    이미지 트래픽이 전부 AI 서버를 통과한다.
+    """
+    settings = get_settings()
+    if s3_key and settings.s3_public_endpoint:
+        url = storage.presigned_get_url(s3_key, settings.s3_thumbnail_bucket)
+        if url:
+            return url
     return f"/api/v1/images/{image_id}/thumbnail/raw"
+
+
+def _image_url(image_id: int, s3_key: str | None = None) -> str | None:
+    """원본 이미지 주소.
+
+    썸네일은 정사각으로 잘려 있어 스크린샷 내용을 다 볼 수 없다. 상세 화면처럼
+    전체를 봐야 하는 곳은 이 주소를 쓴다.
+    """
+    if not s3_key:
+        return None
+    settings = get_settings()
+    if settings.s3_public_endpoint:
+        url = storage.presigned_get_url(s3_key, settings.s3_bucket)
+        if url:
+            return url
+    return f"/api/v1/images/{image_id}/source"
 
 
 def _to_list_item(img: dict[str, Any]) -> ImageListItem:
@@ -412,7 +438,8 @@ def _to_list_item(img: dict[str, Any]) -> ImageListItem:
         summary=img.get("summary", ""),
         status=img.get("status") or "COMPLETED",
         favorite=img.get("favorite", False),
-        thumbnail_url=_thumbnail_url(img["image_id"]),
+        thumbnail_url=_thumbnail_url(img["image_id"], img.get("s3_key")),
+        image_url=_image_url(img["image_id"], img.get("s3_key")),
         tags=_tag_refs(img.get("tags") or []),
         categories=_category_refs(img.get("category")),
         created_at=img.get("created_at"),
@@ -776,7 +803,8 @@ async def app_image_detail(image_id: int):
                                   found.get("category_confidence")),
         field_sources=field_sources,
         key_information=found.get("key_information") or [],
-        thumbnail_url=_thumbnail_url(found["image_id"]),
+        thumbnail_url=_thumbnail_url(found["image_id"], found.get("s3_key")),
+        image_url=_image_url(found["image_id"], found.get("s3_key")),
         created_at=found.get("created_at"),
         uploaded_at=found.get("uploaded_at"),
         updated_at=found.get("created_at"),
@@ -809,7 +837,7 @@ async def app_image_thumbnail_meta(image_id: int):
         return responses.failure("THUMBNAIL_NOT_FOUND", "썸네일이 없습니다.",
                                  f"imageId: {image_id}", http_status=404)
     return responses.success({
-        "thumbnailUrl": _thumbnail_url(image_id),
+        "thumbnailUrl": _thumbnail_url(image_id, found.get("s3_key")),
         "title": found.get("title", ""),
         # 명세 6-6 의 tags 는 이름 배열이다(6-1·6-2 의 객체 배열과 다르다).
         "tags": found.get("tags") or [],
@@ -863,6 +891,47 @@ async def app_image_thumbnail(image_id: int):
                                      str(e)[:200], http_status=404)
 
     return Response(content=thumb, media_type="image/jpeg",
+                    headers={"Cache-Control": "public, max-age=86400"})
+
+
+# ── 원본 이미지 조회 (명세 6-8 의 바이너리 버전) ──────────────────────────
+@app.get("/api/v1/images/{image_id}/source",
+         dependencies=[Depends(require_internal_token)],
+         response_class=Response,
+         responses={200: {"content": {"image/*": {}},
+                          "description": "원본 이미지 바이너리"}})
+async def app_image_source(image_id: int):
+    """원본 이미지를 그대로 돌려준다.
+
+    썸네일(`/thumbnail/raw`)은 정사각으로 잘려 있어 스크린샷 내용이 다 안 보인다.
+    상세 화면처럼 전체를 봐야 하는 곳은 이 경로를 쓴다.
+
+    원본은 수 MB 라 목록에서 여러 장을 한꺼번에 부르면 느려진다. 목록·격자는
+    썸네일을, 상세는 이 경로를 쓰는 것을 전제로 한다.
+    """
+    import asyncio
+
+    found = await asyncio.to_thread(search.get_image, image_id)
+    if found is None:
+        return responses.failure("IMAGE_NOT_FOUND", "이미지를 찾을 수 없습니다.",
+                                 f"imageId: {image_id}", http_status=404)
+    s3_key = found.get("s3_key")
+    if not s3_key:
+        return responses.failure("SOURCE_IMAGE_NOT_FOUND", "원본 이미지가 없습니다.",
+                                 f"imageId: {image_id}", http_status=404)
+    try:
+        data = await asyncio.to_thread(storage.fetch_image, s3_key)
+    except Exception as e:
+        logger.warning("원본 조회 실패 imageId=%s: %s", image_id, e)
+        return responses.failure("SOURCE_IMAGE_NOT_FOUND", "원본을 가져오지 못했습니다.",
+                                 str(e)[:200], http_status=404)
+
+    # 확장자로 미디어 타입을 정한다. 모르면 브라우저·이미지 로더가 알아서 판별하도록 둔다.
+    ext = s3_key.rsplit(".", 1)[-1].lower() if "." in s3_key else ""
+    media = {"png": "image/png", "jpg": "image/jpeg", "jpeg": "image/jpeg",
+             "webp": "image/webp", "heic": "image/heic",
+             "heif": "image/heif"}.get(ext, "application/octet-stream")
+    return Response(content=data, media_type=media,
                     headers={"Cache-Control": "public, max-age=86400"})
 
 
@@ -954,7 +1023,8 @@ async def app_category_list(
             name=i["name"],
             # 이 카테고리에 가장 최근 분류된 사진의 썸네일을 그대로 가리킨다.
             # 카테고리 전용 이미지를 따로 만들지 않는다(사진마다 썸네일 1장).
-            thumbnail_url=(_thumbnail_url(i["thumbnail_image_id"])
+            thumbnail_url=(_thumbnail_url(i["thumbnail_image_id"],
+                                         i.get("thumbnail_s3_key"))
                            if i.get("thumbnail_image_id") else None),
             image_count=i["count"],
             # 이 카테고리 안에서 각 태그가 몇 장에 붙어 있는지까지 함께 내려준다.
@@ -997,7 +1067,8 @@ async def app_home(user_id: CurrentUserId):
             job_id=first["job_id"], image_id=first["image_id"],
             file_name=(found or {}).get("file_name"),
             title=(found or {}).get("title", ""),
-            thumbnail_url=_thumbnail_url(first["image_id"]),
+            thumbnail_url=_thumbnail_url(first["image_id"],
+                                         (found or {}).get("s3_key")),
             stage=first["stage"], status=first["status"],
             progress=_STAGE_PROGRESS.get(first["stage"], 0),
         )
@@ -1040,7 +1111,7 @@ async def app_home(user_id: CurrentUserId):
             HomeRecentImage(
                 image_id=img["image_id"],
                 title=img.get("title", ""),
-                thumbnail_url=_thumbnail_url(img["image_id"]),
+                thumbnail_url=_thumbnail_url(img["image_id"], img.get("s3_key")),
                 tags=_tag_refs(img.get("tags") or []),
                 favorite=img.get("favorite", False),
                 analyzed_at=img.get("created_at"),
@@ -1093,7 +1164,7 @@ async def app_search(
             image_id=h["image_id"],
             title=h.get("title", ""),
             summary=h.get("summary", ""),
-            thumbnail_url=_thumbnail_url(h["image_id"]),
+            thumbnail_url=_thumbnail_url(h["image_id"], h.get("s3_key")),
             score=h.get("score", 0.0),
             tags=_tag_refs(h.get("tags") or []),
             last_viewed_at=h.get("last_viewed_at"),

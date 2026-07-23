@@ -6,7 +6,11 @@
   팀 외부 API 규약(공통 envelope·페이지 형식·에러 코드)을 따릅니다. **프론트가 쓰는 쪽입니다.**
 - **`/internal/v1/*` — Spring 연동용 내부 API.** 명세 10장. Spring 복귀 시 쓰입니다.
 
-모든 요청에 `X-Internal-Token` 헤더가 필요합니다.
+**인증**: 지금은 `APP_API_AUTH=false` 라 **`/api/v1/*` 은 토큰 없이 호출됩니다.**
+Android 가 Spring 을 거치지 않고 직접 부르는 기간용 임시 설정입니다.
+`/internal/v1/*` 은 이 설정과 무관하게 항상 `X-Internal-Token` 을 요구합니다.
+
+Spring 이 앞단에 서면 `APP_API_AUTH=true` 로 되돌립니다.
 
 ## 실행
 
@@ -18,9 +22,9 @@ docker compose up -d --build
 `GEMINI_API_KEY` 와 `INTERNAL_TOKEN` 은 기본값이 없습니다. 설정하지 않으면 기동 시 바로 실패합니다.
 OpenSearch 는 기동에 30~45초 걸립니다. 그 전 요청은 연결 거부됩니다.
 
-**Swagger: `http://<호스트>:8000/docs`** — 우측 상단 Authorize 에 토큰을 넣으면
-아래 엔드포인트를 브라우저에서 그대로 호출해 볼 수 있습니다.
-외부에 열린 서버에서 끄려면 `ENABLE_DOCS=false`.
+**Swagger: `http://<호스트>:8000/docs`** — `/api/v1/*` 은 Authorize 없이 바로
+Try it out 이 됩니다. `/internal/v1/*` 만 우측 상단 Authorize 에 토큰이 필요합니다.
+외부에 열린 서버에서 문서를 끄려면 `ENABLE_DOCS=false`.
 
 ## 앱 직결 API (`/api/v1/*`) — 프론트용
 
@@ -41,7 +45,8 @@ OpenSearch 는 기동에 30~45초 걸립니다. 그 전 요청은 연결 거부�
 | 6-1 | GET | `/api/v1/images` | `status`·`categoryId`·`tagId`·`favorite`·`dateFrom/To`·`sort` |
 | 6-2 | GET | `/api/v1/images/{imageId}` | 상세. 조회 시 `lastViewedAt` 갱신 |
 | 6-6 | GET | `/api/v1/images/{imageId}/thumbnail` | `{thumbnailUrl, title, tags}` JSON |
-| — | GET | `/api/v1/images/{imageId}/thumbnail/raw` | **JPEG 바이너리** (envelope 아님) |
+| — | GET | `/api/v1/images/{imageId}/thumbnail/raw` | 썸네일 **JPEG 바이너리** (envelope 아님) |
+| — | GET | `/api/v1/images/{imageId}/source` | **원본 이미지 바이너리** (상세 화면용) |
 | 7-1 | GET | `/api/v1/tags` | `q`·`sort` |
 | 7-2 | GET | `/api/v1/categories` | 카드용 썸네일·태그·개수. `sort`. **페이지네이션 없음** |
 | 7-3 | GET | `/api/v1/home` | 홈 1콜 집계(현황·카테고리 8개·최근 4장) |
@@ -71,7 +76,6 @@ OpenSearch 는 기동에 30~45초 걸립니다. 그 전 요청은 연결 거부�
 
 ```bash
 curl -X POST http://<호스트>:8000/api/v1/images/upload \
-  -H 'X-Internal-Token: <토큰>' \
   -H 'Content-Type: application/json' \
   -d '{"images":[{"clientRequestId":"local-001","fileName":"a.png",
        "contentHash":"<SHA-256 64자>","fileSize":384211,
@@ -93,9 +97,22 @@ OCR 이 비었거나 정보성이 없다고 판정되면 분석을 건너뛰고 
 
 - **`userId` 는 보내지 않아도 됩니다.** 로그인 미구현 구간이라 서버가 `FIXED_USER_ID`(기본 1)로
   고정합니다. 보내도 무시됩니다. 로그인이 붙으면 서버 설정만 바꾸면 되고 앱은 그대로입니다.
-- **`thumbnailUrl` 은 경로만** 내려옵니다(`/api/v1/images/3/thumbnail/raw`).
-  베이스 URL 을 앞에 붙이고, 호출할 때 `X-Internal-Token` 헤더가 필요합니다.
-  만료가 없으므로 캐시해도 됩니다.
+- **이미지 주소는 두 종류입니다. 용도가 다릅니다.**
+
+  | 필드 | 내용 | 용도 |
+  | --- | --- | --- |
+  | `thumbnailUrl` | **정사각으로 잘린** 썸네일 | 목록·격자·카드 |
+  | `imageUrl` | **원본 전체** | 상세 화면 |
+
+  썸네일은 가운데만 남기고 위아래를 버리므로 **스크린샷 내용이 다 보이지 않습니다.**
+  상세 화면에서 내용을 읽어야 한다면 반드시 `imageUrl` 을 쓰세요.
+  반대로 목록에서 `imageUrl` 을 여러 장 부르면 원본이 수 MB 라 느려집니다.
+
+- **둘 다 경로만** 내려옵니다(`/api/v1/images/3/thumbnail/raw`, `/api/v1/images/3/source`).
+  베이스 URL 을 앞에 붙여서 쓰면 됩니다. 만료가 없으므로 캐시해도 됩니다.
+  **지금은 `APP_API_AUTH=false` 라 헤더 없이 그대로 이미지 로더에 넣으면 됩니다.**
+  (서버에 `S3_PUBLIC_ENDPOINT` 가 설정되면 스토리지 presigned URL 로 바뀝니다.
+  그때는 전체 URL 이 오고, 대신 1시간 만료가 생깁니다.)
 - **태그·카테고리는 전부 AI 가 자동 생성합니다.** 사람이 직접 만들거나 고치는 경로는
   없습니다(6-3 수정 API 는 범위 밖). 그래서 `tags[].source` 와 `fieldSources` 는
   항상 `"AGENT"`, `TagItem.createdBy` 도 항상 `"AGENT"` 입니다.

@@ -55,6 +55,13 @@ class Settings:
         # (원본 pictures/u/1/a.png → 썸네일 thumbnail/u/1/a.png, 내용은 JPEG)
         # 비워 두면 저장하지 않고 요청 때마다 원본을 읽어 즉석 생성한다(기존 동작).
         self.s3_thumbnail_bucket = os.environ.get("S3_THUMBNAIL_BUCKET", "thumbnail")
+        # 스토리지 호출 타임아웃(초)과 재시도 횟수.
+        # 기본값(연결 60초 × 재시도 5회)이면 MinIO 가 잠깐 내려갔을 때 목록·썸네일
+        # 요청이 몇 분씩 매달린다. 짧게 끊고 에러를 돌려주는 편이 낫다.
+        self.s3_connect_timeout = float(os.environ.get("S3_CONNECT_TIMEOUT", "3"))
+        self.s3_read_timeout = float(os.environ.get("S3_READ_TIMEOUT", "10"))
+        self.s3_max_attempts = int(os.environ.get("S3_MAX_ATTEMPTS", "2"))
+
         # 업로드 허용 최대 크기(MB). 명세 4-1 fileSize 는 최대 5MB 다.
         self.max_upload_mb = int(os.environ.get("MAX_UPLOAD_MB", "5"))
         # presigned 업로드 URL 유효시간(초). 명세 4-1 uploadExpiresIn 예시가 600 이다.

@@ -59,6 +59,7 @@ dependencies {
     implementation(projects.core.navigation)
 
     implementation(projects.feature.home)
+    implementation(projects.feature.categoryimages)
 
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.navigation3.ui)

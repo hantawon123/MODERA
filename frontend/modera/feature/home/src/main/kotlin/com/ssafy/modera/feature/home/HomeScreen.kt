@@ -16,16 +16,23 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.dp
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.ssafy.modera.core.designsystem.component.LoadingWheel
+import com.ssafy.modera.core.designsystem.component.Text
 import com.ssafy.modera.core.designsystem.theme.ModeraTheme
 import com.ssafy.modera.core.model.category.Category
 import com.ssafy.modera.core.model.category.CategorySortType
@@ -34,6 +41,48 @@ import com.ssafy.modera.feature.home.component.CategoryCard
 import com.ssafy.modera.feature.home.component.CategorySortPopup
 import com.ssafy.modera.feature.home.component.Header
 import com.ssafy.modera.feature.home.component.SortSection
+
+@Composable
+fun HomeScreen(
+    onCategoryClick: (Long) -> Unit,
+    modifier: Modifier = Modifier,
+    viewModel: HomeViewModel = hiltViewModel(),
+) {
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val analysisState = LocalHomeAnalysisState.current
+
+    LaunchedEffect(analysisState.showBanner) {
+        if (!analysisState.showBanner) {
+            viewModel.updateSortType(CategorySortType.IMAGE_COUNT_DESC)
+        }
+    }
+    when (val state = uiState) {
+        is HomeUiState.Loading -> {
+            HomeLoadingScreen(
+                modifier = modifier,
+            )
+        }
+
+        is HomeUiState.Success -> {
+            HomeScreen(
+                categories = state.categories,
+                selectedSortType = state.selectedSortType,
+                onSortTypeChange = viewModel::updateSortType,
+                onCategoryClick = onCategoryClick,
+                showAnalysisBanner = analysisState.showBanner,
+                analysisImageCount = analysisState.imageCount,
+                onDismissAnalysisBanner = analysisState::dismissBanner,
+                modifier = modifier,
+            )
+        }
+
+        is HomeUiState.Error -> {
+            HomeErrorScreen(
+                modifier = modifier,
+            )
+        }
+    }
+}
 
 @Composable
 fun HomeScreen(
@@ -60,7 +109,7 @@ fun HomeScreen(
         ) {
             Header(
                 title = stringResource(R.string.home_header_title),
-                subtitle = stringResource(R.string.home_header_subtitle)
+                subtitle = stringResource(R.string.home_header_subtitle),
             )
 
             AnimatedVisibility(
@@ -131,6 +180,40 @@ fun HomeScreen(
     }
 }
 
+@Composable
+private fun HomeLoadingScreen(
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .background(ModeraTheme.colors.gray),
+        contentAlignment = Alignment.Center,
+    ) {
+        LoadingWheel()
+    }
+}
+
+@Composable
+private fun HomeErrorScreen(
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .background(ModeraTheme.colors.gray)
+            .padding(horizontal = 24.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = stringResource(R.string.home_error_message),
+            style = ModeraTheme.typography.body2Medium,
+            color = ModeraTheme.colors.typo,
+            textAlign = TextAlign.Center,
+        )
+    }
+}
+
 @Preview(
     name = "Home Screen",
     showBackground = true,
@@ -147,5 +230,27 @@ private fun HomeScreenPreview(
             onSortTypeChange = {},
             onCategoryClick = {},
         )
+    }
+}
+
+@Preview(
+    name = "Home Loading",
+    showBackground = true,
+)
+@Composable
+private fun HomeLoadingScreenPreview() {
+    ModeraTheme {
+        HomeLoadingScreen()
+    }
+}
+
+@Preview(
+    name = "Home Error",
+    showBackground = true,
+)
+@Composable
+private fun HomeErrorScreenPreview() {
+    ModeraTheme {
+        HomeErrorScreen()
     }
 }

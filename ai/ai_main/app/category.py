@@ -13,6 +13,7 @@
 
 import logging
 import math
+import threading
 import unicodedata
 from dataclasses import dataclass, field
 from typing import Callable
@@ -20,6 +21,43 @@ from typing import Callable
 from .schemas import CategoryCandidate
 
 logger = logging.getLogger(__name__)
+
+# 카테고리 이름 임베딩 캐시.
+#
+# 대표 벡터가 없는 후보는 이름을 임베딩해서 대신 쓰는데, 이름 목록은 사용자당
+# 사실상 고정이다(기본 17종). 캐시가 없으면 이미지 한 장마다 17회를 순차로
+# 호출해 건당 Gemini 호출이 2회에서 19회로 뛴다. 이름→벡터는 모델이 같으면
+# 항상 같은 값이므로 프로세스 수명 동안 재사용해도 안전하다.
+# (임베딩 모델·차원을 바꾸면 컨테이너를 재기동해야 한다 — 설정이 프로세스
+#  기동 시 고정되므로 실제로도 재기동이 강제된다.)
+_name_vector_cache: dict[str, list[float]] = {}
+_cache_lock = threading.Lock()
+
+
+def embed_names_cached(
+    names: list[str], embed_fn: Callable[[list[str]], list[list[float]]]
+) -> dict[str, list[float]]:
+    """이름 목록의 임베딩을 돌려준다. 캐시에 없는 것만 한 번에 임베딩한다."""
+    keys = {name: normalize_name(name) for name in names}
+    with _cache_lock:
+        missing = [n for n in names if keys[n] not in _name_vector_cache]
+
+    if missing:
+        logger.info("카테고리 이름 임베딩 %s건 신규 계산 (캐시 %s건)",
+                    len(missing), len(_name_vector_cache))
+        vectors = embed_fn(missing)
+        with _cache_lock:
+            for name, vector in zip(missing, vectors):
+                _name_vector_cache[keys[name]] = vector
+
+    with _cache_lock:
+        return {n: _name_vector_cache[keys[n]] for n in names if keys[n] in _name_vector_cache}
+
+
+def clear_name_vector_cache() -> None:
+    """테스트·운영 점검용. 캐시를 비운다."""
+    with _cache_lock:
+        _name_vector_cache.clear()
 
 
 def cosine_similarity(a: list[float], b: list[float]) -> float:
@@ -77,9 +115,11 @@ def resolve_category(
     # 2) 대표 벡터와 요약 임베딩의 코사인 유사도로 판정
     missing = [c for c in candidates if not c.representative_vector]
     if missing:
-        name_vectors = embed_fn([c.name for c in missing])
-        for candidate, vector in zip(missing, name_vectors):
-            candidate.representative_vector = vector
+        name_vectors = embed_names_cached([c.name for c in missing], embed_fn)
+        for candidate in missing:
+            vector = name_vectors.get(candidate.name)
+            if vector:
+                candidate.representative_vector = vector
 
     scored = [
         (cosine_similarity(summary_embedding, c.representative_vector or []), c)

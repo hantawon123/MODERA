@@ -171,3 +171,128 @@ class SearchHit(CamelModel):
 class SearchResponse(CamelModel):
     total: int
     hits: list[SearchHit] = []
+
+
+# ── 앱 API (Spring 우회 구간) ─────────────────────────────────────────────
+# 팀 API 명세의 외부 API 형식을 따른다. Spring 이 복귀했을 때 앱이 응답 모델을
+# 그대로 재사용할 수 있도록, 이 서비스가 채우지 못하는 값도 필드는 유지하고
+# null 로 내려보낸다(예: favorite, fileName, structuredData).
+
+
+class TagRef(CamelModel):
+    tag_id: int
+    name: str
+
+
+class TagCount(CamelModel):
+    tag_id: int
+    name: str
+    image_count: int
+
+
+class CategoryRef(CamelModel):
+    category_id: int
+    name: str
+
+
+class AppAnalyzeRequest(CamelModel):
+    # 로그인 미구현 구간에서는 서버가 FIXED_USER_ID 로 덮어쓰므로 없어도 된다.
+    # 필드 자체는 남겨 두어 로그인이 붙었을 때 앱을 고치지 않아도 되게 한다.
+    user_id: int | None = None
+    # 팀 명세 10-1 IMAGE_ANALYSIS 와 동일하게 오브젝트 키로 이미지를 지정한다.
+    # presigned URL 은 만료가 있어 나중에 썸네일을 못 만들기 때문이다.
+    image_id: int
+    s3_key: str
+    ocr: OcrInput = OcrInput()
+
+
+class AppAnalyzeAccepted(CamelModel):
+    image_id: int
+    job_id: int
+    stage: str
+    status: str
+
+
+class AnalysisJob(CamelModel):
+    job_id: int
+    image_id: int
+    stage: str
+    status: str
+    file_name: str | None = None      # 미제공(Spring 영역)
+    attempt: int = 1
+    progress: int | None = None       # 미제공
+    retryable: bool = False
+    error_code: str | None = None
+    updated_at: str | None = None
+
+
+class AnalysisSummary(CamelModel):
+    total: int
+    stage_counts: dict[str, dict[str, int]] = {}
+    overall_counts: dict[str, int] = {}
+
+
+class ImageListItem(CamelModel):
+    image_id: int
+    file_name: str | None = None      # 미제공
+    title: str = ""
+    summary: str = ""
+    status: str = "COMPLETED"
+    favorite: bool | None = None      # 미제공
+    thumbnail_url: str | None = None
+    tags: list[TagRef] = []
+    categories: list[CategoryRef] = []
+    created_at: str | None = None
+
+
+class ImageDetail(CamelModel):
+    image_id: int
+    file_name: str | None = None      # 미제공
+    content_hash: str | None = None   # 미제공
+    status: str = "COMPLETED"
+    favorite: bool | None = None      # 미제공
+    title: str = ""
+    summary: str = ""
+    ocr: OcrInput | None = None
+    tags: list[TagRef] = []
+    categories: list[CategoryRef] = []
+    structured_data: dict[str, Any] | None = None   # MVP 제외
+    analysis_confidence: float | None = None
+    key_information: list[str] = []
+    thumbnail_url: str | None = None
+    created_at: str | None = None
+    uploaded_at: str | None = None    # 미제공
+    updated_at: str | None = None
+    last_viewed_at: str | None = None  # 미제공
+
+
+class CategoryCard(CamelModel):
+    category_id: int
+    name: str
+    thumbnail_url: str | None = None
+    image_count: int
+    tags: list[TagCount] = []
+    updated_at: str | None = None
+
+
+class TagItem(CamelModel):
+    tag_id: int
+    name: str
+    usage_count: int
+    created_by: str = "AGENT"
+
+
+class SearchResultItem(CamelModel):
+    image_id: int
+    title: str = ""
+    summary: str = ""
+    thumbnail_url: str | None = None
+    matched_in: list[str] | None = None   # 미제공
+    highlight: str | None = None          # 미제공
+    score: float = 0.0
+    tags: list[TagRef] = []
+    last_viewed_at: str | None = None     # 미제공
+    uploaded_at: str | None = None        # 미제공
+    created_at: str | None = None
+
+

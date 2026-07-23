@@ -1,7 +1,7 @@
 [versions]
 # Build
 agp = "9.2.1"
-kotlin = "2.2.10"
+kotlin = "2.3.0"
 ksp = "2.3.5"
 protobufPlugin = "0.10.0"
 
@@ -52,6 +52,8 @@ androidxTestCore = "1.5.0"
 androidxTestRunner = "1.5.2"
 androidxTestExtJunit = "1.1.5"
 espressoCore = "3.5.1"
+androidxArchCore = "2.2.0"
+robolectric = "4.16.1"
 
 
 [libraries]
@@ -132,12 +134,14 @@ protobuf-kotlin-lite = { group = "com.google.protobuf", name = "protobuf-kotlin-
 # Unit Test
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 turbine = { group = "app.cash.turbine", name = "turbine", version.ref = "turbine" }
+robolectric = { module = "org.robolectric:robolectric", version.ref = "robolectric" }
 
 # Android Test
 androidx-test-core = { group = "androidx.test", name = "core", version.ref = "androidxTestCore" }
 androidx-test-runner = { group = "androidx.test", name = "runner", version.ref = "androidxTestRunner" }
 androidx-test-ext-junit = { group = "androidx.test.ext", name = "junit", version.ref = "androidxTestExtJunit" }
 androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
+androidx-arch-core-testing = { module = "androidx.arch.core:core-testing", version.ref = "androidxArchCore" }
 
 # Coil
 coil-kt = { group = "io.coil-kt", name = "coil", version.ref = "coil" }

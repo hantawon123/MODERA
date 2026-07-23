@@ -112,7 +112,7 @@ public class AuthService {
             throw new BusinessException(UserErrorCode.INVALID_REFRESH_TOKEN);
         }
 
-        Long userId = stored.getUserId();
+        Integer userId = stored.getUserId();
         String accessToken = jwtTokenProvider.createAccessToken(userId);
         String rotatedRefreshToken = jwtTokenProvider.createRefreshToken(userId, stored.getDeviceId());
 
@@ -124,7 +124,7 @@ public class AuthService {
 
     /** 인증된 사용자의 해당 기기 refreshToken만 폐기한다. 다른 기기 토큰으로는 로그아웃할 수 없다. */
     @Transactional
-    public LogoutResponse logout(Long userId, LogoutRequest request) {
+    public LogoutResponse logout(Integer userId, LogoutRequest request) {
         RefreshToken stored = refreshTokenRepository.findByUserIdAndDeviceId(userId, request.deviceId())
                 .orElseThrow(() -> new BusinessException(UserErrorCode.INVALID_REFRESH_TOKEN));
 
@@ -138,7 +138,7 @@ public class AuthService {
         return LogoutResponse.success();
     }
 
-    private void upsertRefreshToken(Long userId, String deviceId, String refreshToken) {
+    private void upsertRefreshToken(Integer userId, String deviceId, String refreshToken) {
         refreshTokenRepository.findByUserIdAndDeviceId(userId, deviceId)
                 .ifPresentOrElse(
                         existing -> existing.rotate(hash(refreshToken), refreshTokenExpiry()),

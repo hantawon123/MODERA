@@ -18,7 +18,6 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
-import java.util.UUID;
 
 /**
  * analysis-result 스트림에서 받은 이벤트를 api-server가 소유한 데이터(library_schema.user_image)와
@@ -37,7 +36,7 @@ public class AnalysisResultEventHandler {
 
     @Transactional
     public void handleCompleted(AnalysisCompletedPayload payload) {
-        UUID imageId = UUID.fromString(payload.imageId());
+        Integer imageId = payload.imageId();
 
         UserImage userImage = userImageRepository.findById(imageId).orElse(null);
         if (userImage == null) {
@@ -89,7 +88,7 @@ public class AnalysisResultEventHandler {
 
     @Transactional
     public void handleFailed(AnalysisFailedPayload payload) {
-        UUID imageId = UUID.fromString(payload.imageId());
+        Integer imageId = payload.imageId();
         UserImage userImage = userImageRepository.findById(imageId).orElse(null);
         if (userImage == null) {
             log.warn("ANALYSIS_FAILED 수신했지만 user_image가 없다: imageId={}", imageId);

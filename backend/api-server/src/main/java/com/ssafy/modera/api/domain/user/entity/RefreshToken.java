@@ -26,10 +26,10 @@ public class RefreshToken {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "token_id")
-    private Long tokenId;
+    private Integer tokenId;
 
     @Column(name = "user_id", nullable = false)
-    private Long userId;
+    private Integer userId;
 
     @Column(name = "device_id", nullable = false)
     private String deviceId;
@@ -44,7 +44,7 @@ public class RefreshToken {
     private OffsetDateTime createdAt;
 
     @Builder
-    public RefreshToken(Long userId, String deviceId, String tokenHash, OffsetDateTime expiresAt, OffsetDateTime createdAt) {
+    public RefreshToken(Integer userId, String deviceId, String tokenHash, OffsetDateTime expiresAt, OffsetDateTime createdAt) {
         this.userId = userId;
         this.deviceId = deviceId;
         this.tokenHash = tokenHash;

@@ -11,7 +11,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -21,7 +20,7 @@ public class ImageQueryService {
     private final UserImageRepository userImageRepository;
     private final ImageAssetRepository imageAssetRepository;
 
-    public ImageDetailResponse getImage(Long userId, UUID imageId) {
+    public ImageDetailResponse getImage(Integer userId, Integer imageId) {
         // 다른 사용자 소유 이미지는 403이 아니라 404로 응답한다(존재 여부 자체를 숨긴다).
         UserImage userImage = userImageRepository.findById(imageId)
                 .filter(image -> image.getUserId().equals(userId))

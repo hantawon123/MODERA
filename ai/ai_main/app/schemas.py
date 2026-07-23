@@ -428,6 +428,18 @@ class CategoryCard(CamelModel):
     updated_at: str | None = None
 
 
+class CategoryListData(CamelModel):
+    """7-2 카테고리 목록의 data.
+
+    명세는 페이지 형식이지만 **프론트 요청으로 페이지네이션을 뺐다**(팀 합의).
+    카테고리는 기본 17종에 AGENT 가 새로 만든 것이 더해지는 정도라 수가 적다
+    (사람이 직접 만드는 경로는 없다). 나눠 줄 이유가 없어 전체를 한 번에 준다.
+    `list` 위치는 다른 목록 API 와 같게 두어 응답 접근 경로를 통일한다.
+    """
+
+    list: List[CategoryCard] = []
+
+
 # ── 7-3 홈 대시보드 요약 ─────────────────────────────────────────────────
 class HomeUser(CamelModel):
     # 로그인 미구현 구간이라 채울 수 없다. 필드는 유지하고 null 로 내려보낸다.

@@ -23,6 +23,7 @@ from .schemas import (
     AnalyzeAccepted,
     AnalyzeRequest,
     CategoryCard,
+    CategoryListData,
     CategoryRef,
     ActiveAnalysis,
     ApiResponse,
@@ -906,16 +907,21 @@ async def app_tag_list(
 
 # ── 7-2 카테고리 목록 ─────────────────────────────────────────────────────
 @app.get("/api/v1/categories", dependencies=[Depends(require_internal_token)],
-         response_model=ApiResponse[PageData[CategoryCard]])
+         response_model=ApiResponse[CategoryListData])
 async def app_category_list(
     user_id: CurrentUserId,
-    page: int = Query(0),
-    size: int = Query(20),
     sort: str | None = Query(
         None,
         description="name,asc(기본)/updatedAt,desc(최신 업로드순)/imageCount,desc(사진 많은 순)",
     ),
 ):
+    """카테고리 목록(명세 7-2).
+
+    **페이지네이션은 프론트 요청으로 뺐다**(명세와 다른 부분, 팀 합의).
+    카테고리는 기본 17종에 AGENT 가 분석 중 새로 만든 것이 더해지는 정도라 수가 적다.
+    사람이 직접 만드는 경로는 없다. 그래서 항상 전체를 한 번에 돌려주고,
+    `page`·`size` 를 보내도 무시한다.
+    """
     # 명세 7-2 정렬. 카테고리 화면의 정렬 드롭다운이 이 세 값을 쓴다.
     category_sorts = {"name,asc", "updatedAt,desc", "imageCount,desc"}
     sort_value = (sort or "name,asc").strip()
@@ -937,8 +943,6 @@ async def app_category_list(
     else:
         items.sort(key=lambda i: i["name"])
 
-    total = len(items)
-    window = items[max(0, page) * size: max(0, page) * size + size]
     cards = [
         CategoryCard(
             category_id=search.stable_id(i["name"]),
@@ -954,9 +958,9 @@ async def app_category_list(
                   for t in i.get("tags") or []],
             updated_at=i.get("last_updated_at"),
         ).model_dump(by_alias=True)
-        for i in window
+        for i in items
     ]
-    return responses.success(responses.page_data(cards, page, size, total))
+    return responses.success({"list": cards})
 
 
 # ── 7-3 홈 대시보드 요약 ─────────────────────────────────────────────────

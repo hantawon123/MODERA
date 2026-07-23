@@ -1,0 +1,43 @@
+{
+  "code": "SUCCESS",
+  "message": "요청이 성공했습니다.",
+  "data": {
+    "list": [
+      {
+        "imageId": 1024,
+        "fileName": "Screenshot_20260716_101010.png",
+        "title": "C++ 프로그래밍 입문",
+        "summary": "교보문고에서 판매 중인 C++ 프로그래밍 입문서, 32,000원",
+        "status": "COMPLETED",
+        "favorite": false,
+        "thumbnailUrl": "https://example.com/thumb.jpg",
+        "tags": [
+          {
+            "tagId": 11,
+            "name": "C++"
+          },
+          {
+            "tagId": 12,
+            "name": "쇼핑"
+          }
+        ],
+        "categories": [
+          {
+            "categoryId": 3,
+            "name": "공부"
+          }
+        ],
+        "createdAt": "2026-07-16T06:00:00.000Z"
+      }
+    ],
+    "page": 0,
+    "size": 20,
+    "totalElements": 1,
+    "totalPages": 1,
+    "first": true,
+    "last": true,
+    "hasNext": false,
+    "hasPrevious": false
+  },
+  "timestamp": "2026-07-23T07:48:10.587Z"
+}

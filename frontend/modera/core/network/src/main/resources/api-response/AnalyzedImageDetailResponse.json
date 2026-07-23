@@ -1,0 +1,62 @@
+{
+  "code": "SUCCESS",
+  "message": "요청이 성공했습니다.",
+  "data": {
+    "imageId": 101,
+    "fileName": "Screenshot_20260723_154210.png",
+    "contentHash": "8f12c7b55e3c44b5d81abf209da9ac0e2b706ca2977f9e31d21050b90c4fdc41",
+    "status": "COMPLETED",
+    "favorite": true,
+    "title": "C++ 프로그래밍 입문서 정보",
+    "summary": "교보문고에서 판매 중인 C++ 입문서로 가격은 32,000원입니다.",
+    "ocr": {
+      "rawText": "교보문고\nC++ 프로그래밍 입문\n32,000원",
+      "refinedText": "교보문고 C++ 프로그래밍 입문 32,000원",
+      "lang": "ko",
+      "confidence": 0.96
+    },
+    "tags": [
+      {
+        "tagId": 11,
+        "name": "C++"
+      },
+      {
+        "tagId": 12,
+        "name": "쇼핑"
+      }
+    ],
+    "categories": [
+      {
+        "categoryId": 3,
+        "name": "공부"
+      }
+    ],
+    "structuredData": {
+      "price": {
+        "value": 32000,
+        "currency": "KRW"
+      }
+    },
+    "fieldSources": {
+      "title": "OCR",
+      "summary": "AI_ANALYSIS"
+    },
+    "analysisConfidence": 0.94,
+    "keyInformation": [
+      {
+        "label": "가격",
+        "value": "32,000원"
+      },
+      {
+        "label": "판매처",
+        "value": "교보문고"
+      }
+    ],
+    "imageUrl": "https://example.com/images/101/source",
+    "createdAt": "2026-07-23T06:42:10.000Z",
+    "uploadedAt": "2026-07-23T06:42:12.000Z",
+    "updatedAt": "2026-07-23T06:43:01.000Z",
+    "lastViewedAt": "2026-07-23T07:15:30.000Z"
+  },
+  "timestamp": "2026-07-23T07:20:00.000Z"
+}

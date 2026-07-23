@@ -1,0 +1,13 @@
+package com.ssafy.modera.core.network.model.analyzedimage
+
+import kotlinx.serialization.Serializable
+
+@Serializable
+data class AnalyzedImagesResponse(
+    val list: List<AnalyzedImageSummaryResponse>,
+    val page: Int,
+    val size: Int,
+    val totalElements: Long,
+    val totalPages: Int,
+    val hasNext: Boolean,
+)

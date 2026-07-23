@@ -1,6 +1,6 @@
-package com.ssafy.modera.core.network.model
+package com.ssafy.modera.core.network.model.category
 
-import com.ssafy.modera.core.model.Category
+import com.ssafy.modera.core.model.category.Category
 import kotlinx.serialization.Serializable
 
 @Serializable

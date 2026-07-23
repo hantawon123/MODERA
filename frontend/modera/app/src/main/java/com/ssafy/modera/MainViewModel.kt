@@ -10,8 +10,9 @@ import com.ssafy.modera.core.model.image.FailedImage
 import com.ssafy.modera.core.model.image.RegisterImage
 import com.ssafy.modera.core.model.image.RegisterImagesResult
 import com.ssafy.modera.core.model.image.RegisteredImage
-import com.ssafy.modera.media.ImageTextRecognizer
 import com.ssafy.modera.core.model.image.SelectedImage
+import com.ssafy.modera.media.ImageTextRecognizer
+import com.ssafy.modera.media.PresignedUrlUploader
 import com.ssafy.modera.media.toRegisterImage
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -44,6 +45,7 @@ data class MainUiState(
 class MainViewModel @Inject constructor(
     @param:ApplicationContext private val appContext: Context,
     private val imageRepository: ImageRepository,
+    private val presignedUrlUploader: PresignedUrlUploader,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(MainUiState())
@@ -122,24 +124,73 @@ class MainViewModel @Inject constructor(
 
         logRegisterRequest(index, registerImage)
 
-        runCatching {
+        val registerResult = runCatching {
             imageRepository.registerImages(listOf(registerImage)).first()
-        }.onSuccess { result ->
-            logRegisterResponse(index, registerImage.clientRequestId, result)
-            _uiState.update { state ->
-                state.copy(
-                    registeredImages = state.registeredImages + result.registered,
-                    duplicatedImages = state.duplicatedImages + result.duplicated,
-                    failedImages = state.failedImages + result.failed,
-                )
-            }
-        }.onFailure { error ->
+        }.getOrElse { error ->
             val failed = FailedImage(
                 clientRequestId = registerImage.clientRequestId,
                 fileName = registerImage.fileName,
                 reason = error.message ?: "REGISTER_REQUEST_FAILED",
             )
             logRegisterFailure(index, failed, error)
+            appendFailed(failed)
+            return
+        }
+
+        logRegisterResponse(index, registerImage.clientRequestId, registerResult)
+        _uiState.update { state ->
+            state.copy(
+                duplicatedImages = state.duplicatedImages + registerResult.duplicated,
+                failedImages = state.failedImages + registerResult.failed,
+            )
+        }
+
+        registerResult.registered.forEach { registered ->
+            uploadAndNotifyComplete(index, processed, registered)
+        }
+    }
+
+    private suspend fun uploadAndNotifyComplete(
+        index: Int,
+        localImage: SelectedImage,
+        registered: RegisteredImage,
+    ) {
+        runCatching {
+            Log.d(
+                REGISTER_LOG_TAG,
+                "[$index] 스토리지 업로드 시작 imageId=${registered.imageId}, url=${registered.uploadUrl}",
+            )
+            presignedUrlUploader.upload(
+                localUri = localImage.uri,
+                uploadUrl = registered.uploadUrl,
+            )
+            Log.d(
+                REGISTER_LOG_TAG,
+                "[$index] 스토리지 업로드 성공 imageId=${registered.imageId}",
+            )
+
+            val complete = imageRepository.notifyUploadComplete(registered.imageId).first()
+            Log.d(
+                REGISTER_LOG_TAG,
+                "[$index] upload-complete 성공 imageId=${complete.imageId}, " +
+                    "uploadCompleted=${complete.uploadCompleted}, uploadedAt=${complete.uploadedAt}",
+            )
+            registered
+        }.onSuccess { uploaded ->
+            _uiState.update { state ->
+                state.copy(registeredImages = state.registeredImages + uploaded)
+            }
+        }.onFailure { error ->
+            val failed = FailedImage(
+                clientRequestId = registered.clientRequestId,
+                fileName = registered.fileName,
+                reason = error.message ?: "UPLOAD_OR_COMPLETE_FAILED",
+            )
+            Log.e(
+                REGISTER_LOG_TAG,
+                "[$index] 업로드완료알림 실패 imageId=${registered.imageId}, reason=${failed.reason}",
+                error,
+            )
             appendFailed(failed)
         }
     }
@@ -238,6 +289,6 @@ class MainViewModel @Inject constructor(
 
     private companion object {
         const val OCR_LOG_TAG = "MODERA_OCR"
-        const val REGISTER_LOG_TAG = "MODERA_okhttp"
+        const val REGISTER_LOG_TAG = "MODERA_REGISTER_OKHTTP"
     }
 }

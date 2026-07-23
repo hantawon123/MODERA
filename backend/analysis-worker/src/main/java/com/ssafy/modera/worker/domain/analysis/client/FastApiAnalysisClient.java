@@ -49,7 +49,7 @@ public class FastApiAnalysisClient implements AnalysisClient {
     }
 
     // TODO: AI 서버 스펙 확정 전까지의 임시 요청 형태
-    private record FastApiRequest(String imageId, String s3Key) {
+    private record FastApiRequest(Integer imageId, String s3Key) {
     }
 
     // TODO: AI 서버 스펙 확정 전까지의 임시 응답 형태

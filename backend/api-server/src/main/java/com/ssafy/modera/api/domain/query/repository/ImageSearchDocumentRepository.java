@@ -43,8 +43,8 @@ public class ImageSearchDocumentRepository {
         jdbcTemplate.update(con -> {
             PreparedStatement ps = con.prepareStatement(UPSERT_SQL);
             int i = 1;
-            ps.setObject(i++, row.imageId());
-            ps.setLong(i++, row.userId());
+            ps.setInt(i++, row.imageId());
+            ps.setInt(i++, row.userId());
             ps.setString(i++, row.title());
             ps.setString(i++, row.summary());
             ps.setString(i++, row.ocrText());

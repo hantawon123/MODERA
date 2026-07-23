@@ -4,8 +4,8 @@ package com.ssafy.modera.contract.payload;
  * {@link com.ssafy.modera.contract.EventTypes#IMAGE_UPLOADED} 이벤트 payload.
  */
 public record ImageUploadedPayload(
-        String imageId,
-        long userId,
+        int imageId,
+        int userId,
         String s3Key,
         ClientOcr clientOcr
 ) {

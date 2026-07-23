@@ -42,8 +42,8 @@ public class UserImageViewRepository {
         jdbcTemplate.update(con -> {
             PreparedStatement ps = con.prepareStatement(UPSERT_SQL);
             int i = 1;
-            ps.setLong(i++, row.userId());
-            ps.setObject(i++, row.imageId());
+            ps.setInt(i++, row.userId());
+            ps.setInt(i++, row.imageId());
             ps.setString(i++, row.nickname());
             ps.setString(i++, row.fileName());
             ps.setString(i++, row.s3Key());

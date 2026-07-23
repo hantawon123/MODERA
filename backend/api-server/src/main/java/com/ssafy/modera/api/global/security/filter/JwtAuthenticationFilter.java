@@ -21,8 +21,8 @@ import java.util.Optional;
  * 걸어버려서(FilterRegistrationBean 자동구성) SecurityConfig의 addFilterBefore와
  * 중복 등록될 수 있다. SecurityConfig에서 new로 직접 만들어 체인에 끼워 넣는다.
  * <p>
- * Bearer 토큰이 유효하면 SecurityContext의 principal을 userId(Long) 그 자체로
- * 설정한다 — 컨트롤러는 {@code @AuthenticationPrincipal Long userId}로 바로 받는다.
+ * Bearer 토큰이 유효하면 SecurityContext의 principal을 userId(Integer) 그 자체로
+ * 설정한다 — 컨트롤러는 {@code @AuthenticationPrincipal Integer userId}로 바로 받는다.
  * /internal/**은 X-Webhook-Token으로 별도 인증하므로 이 필터를 아예 타지 않는다.
  */
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
@@ -48,7 +48,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         resolveToken(request)
                 .filter(jwtTokenProvider::isValid)
                 .ifPresent(token -> {
-                    Long userId = jwtTokenProvider.getUserId(token);
+                    Integer userId = jwtTokenProvider.getUserId(token);
                     Authentication authentication = new UsernamePasswordAuthenticationToken(
                             userId, null, List.of(new SimpleGrantedAuthority("ROLE_USER")));
                     SecurityContextHolder.getContext().setAuthentication(authentication);

@@ -46,9 +46,11 @@ CREATE TABLE analysis_result (
 );
 --rollback DROP TABLE analysis_result;
 
---changeset analysis-worker:020-job-id-image-id-to-integer
--- job_id: bigint → integer. analysis_result.job_id가 analysis_job.job_id를 참조하는
--- FK라서, 제약을 내렸다가 타입을 바꾸고 다시 건다.
+--changeset analysis-worker:020-job-id-to-integer
+--comment Convert analysis_job/analysis_result job_id to integer (image_id is handled separately by 002-convert-image-id-to-integer.sql).
+--preconditions onFail:HALT onError:HALT
+--precondition-sql-check expectedResult:0 SELECT count(*) FROM analysis_job
+--precondition-sql-check expectedResult:0 SELECT count(*) FROM analysis_result
 ALTER TABLE analysis_result DROP CONSTRAINT analysis_result_job_id_fkey;
 
 ALTER TABLE analysis_job ALTER COLUMN job_id TYPE integer;
@@ -56,20 +58,4 @@ ALTER TABLE analysis_result ALTER COLUMN job_id TYPE integer;
 
 ALTER TABLE analysis_result ADD CONSTRAINT analysis_result_job_id_fkey
     FOREIGN KEY (job_id) REFERENCES analysis_job (job_id);
-
--- image_id: uuid → integer. uuid→integer는 캐스트 경로가 없어서(값을 의미 있게
--- 변환할 방법이 없음) 컬럼을 드롭하고 새로 만든다. 기존 행의 image_id 값은 유실됨
--- (로컬 개발 데이터 기준 — 운영 데이터가 있다면 이 방식 그대로 쓰면 안 됨).
-ALTER TABLE analysis_result DROP CONSTRAINT analysis_result_image_id_model_version_key;
-
-ALTER TABLE analysis_job DROP COLUMN image_id;
-ALTER TABLE analysis_job ADD COLUMN image_id INTEGER NOT NULL DEFAULT 0;
-ALTER TABLE analysis_job ALTER COLUMN image_id DROP DEFAULT;
-
-ALTER TABLE analysis_result DROP COLUMN image_id;
-ALTER TABLE analysis_result ADD COLUMN image_id INTEGER NOT NULL DEFAULT 0;
-ALTER TABLE analysis_result ALTER COLUMN image_id DROP DEFAULT;
-
-ALTER TABLE analysis_result ADD CONSTRAINT analysis_result_image_id_model_version_key
-    UNIQUE (image_id, model_version);
---rollback ALTER TABLE analysis_result DROP CONSTRAINT analysis_result_image_id_model_version_key; ALTER TABLE analysis_result DROP COLUMN image_id; ALTER TABLE analysis_result ADD COLUMN image_id UUID NOT NULL; ALTER TABLE analysis_job DROP COLUMN image_id; ALTER TABLE analysis_job ADD COLUMN image_id UUID NOT NULL; ALTER TABLE analysis_result ADD CONSTRAINT analysis_result_image_id_model_version_key UNIQUE (image_id, model_version); ALTER TABLE analysis_result DROP CONSTRAINT analysis_result_job_id_fkey; ALTER TABLE analysis_result ALTER COLUMN job_id TYPE bigint; ALTER TABLE analysis_job ALTER COLUMN job_id TYPE bigint; ALTER TABLE analysis_result ADD CONSTRAINT analysis_result_job_id_fkey FOREIGN KEY (job_id) REFERENCES analysis_job (job_id);
+--rollback ALTER TABLE analysis_result DROP CONSTRAINT analysis_result_job_id_fkey; ALTER TABLE analysis_result ALTER COLUMN job_id TYPE bigint; ALTER TABLE analysis_job ALTER COLUMN job_id TYPE bigint; ALTER TABLE analysis_result ADD CONSTRAINT analysis_result_job_id_fkey FOREIGN KEY (job_id) REFERENCES analysis_job (job_id);

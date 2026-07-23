@@ -63,7 +63,7 @@ public class StorageWebhookService {
 
         // TODO: 클라이언트가 등록 시점에 보낸 OCR 결과를 저장할 곳이 아직 없어 null로 발행한다.
         ImageUploadedPayload payload = new ImageUploadedPayload(
-                imageAsset.getImageId().toString(),
+                imageAsset.getImageId(),
                 userImage.getUserId(),
                 imageAsset.getS3Key(),
                 null

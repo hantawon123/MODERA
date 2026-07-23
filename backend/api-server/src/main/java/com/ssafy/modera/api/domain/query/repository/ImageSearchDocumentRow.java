@@ -2,11 +2,10 @@ package com.ssafy.modera.api.domain.query.repository;
 
 import java.time.Instant;
 import java.util.List;
-import java.util.UUID;
 
 public record ImageSearchDocumentRow(
-        UUID imageId,
-        Long userId,
+        Integer imageId,
+        Integer userId,
         String title,
         String summary,
         String ocrText,

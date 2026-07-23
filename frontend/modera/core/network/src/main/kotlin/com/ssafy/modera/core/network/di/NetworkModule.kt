@@ -44,7 +44,7 @@ internal object NetworkModule {
     @Provides
     @Singleton
     fun provideRetrofit(json: Json, okHttpClient: OkHttpClient): Retrofit {
-        return Retrofit.Builder().client(okHttpClient).baseUrl("https//i15d207.p.ssafy.io:8000")
+        return Retrofit.Builder().client(okHttpClient).baseUrl("http://i15d207.p.ssafy.io:8000/")
             .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))
             .addCallAdapterFactory(ApiResponseCallAdapterFactory.create()).build()
     }

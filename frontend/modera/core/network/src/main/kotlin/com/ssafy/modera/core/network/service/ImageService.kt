@@ -1,6 +1,7 @@
 package com.ssafy.modera.core.network.service
 
 import com.skydoves.sandwich.ApiResponse
+import com.ssafy.modera.core.network.model.BaseResponse
 import com.ssafy.modera.core.network.model.RegisterImagesRequest
 import com.ssafy.modera.core.network.model.RegisterImagesResponse
 import retrofit2.http.Body
@@ -11,5 +12,5 @@ interface ImageService {
     @POST("api/v1/images/upload")
     suspend fun registerImages(
         @Body request: RegisterImagesRequest,
-    ): ApiResponse<RegisterImagesResponse>
+    ): ApiResponse<BaseResponse<RegisterImagesResponse>>
 }

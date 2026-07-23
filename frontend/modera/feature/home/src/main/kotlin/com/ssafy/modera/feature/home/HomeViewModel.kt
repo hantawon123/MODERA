@@ -1,6 +1,5 @@
 package com.ssafy.modera.feature.home
 
-import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ssafy.modera.core.common.result.Result
@@ -11,9 +10,11 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import javax.inject.Inject
 
 @HiltViewModel
@@ -24,8 +25,18 @@ class HomeViewModel @Inject constructor(
     private val selectedSortType =
         MutableStateFlow(CategorySortType.NAME_ASC)
 
+    /**
+     * 값이 증가할 때마다 카테고리 목록을 다시 요청한다.
+     */
+    private val refreshKey = MutableStateFlow(0)
+
     val uiState: StateFlow<HomeUiState> =
-        selectedSortType
+        combine(
+            selectedSortType,
+            refreshKey,
+        ) { sortType, _ ->
+            sortType
+        }
             .flatMapLatest { sortType ->
                 categoryRepository
                     .getCategories(sortType)
@@ -33,13 +44,6 @@ class HomeViewModel @Inject constructor(
                     .map { result ->
                         when (result) {
                             is Result.Success -> {
-                                Log.d(
-                                    "testaaa", "${
-                                        result.data.map {
-                                            it.thumbnailUrl
-                                        }
-                                    }"
-                                )
                                 HomeUiState.Success(
                                     categories = result.data,
                                     selectedSortType = sortType,
@@ -53,9 +57,11 @@ class HomeViewModel @Inject constructor(
                                 )
                             }
 
-                            Result.Loading -> HomeUiState.Loading(
-                                selectedSortType = sortType,
-                            )
+                            Result.Loading -> {
+                                HomeUiState.Loading(
+                                    selectedSortType = sortType,
+                                )
+                            }
                         }
                     }
             }
@@ -69,5 +75,11 @@ class HomeViewModel @Inject constructor(
 
     fun updateSortType(sortType: CategorySortType) {
         selectedSortType.value = sortType
+    }
+
+    fun refreshCategories() {
+        refreshKey.update { current ->
+            current + 1
+        }
     }
 }

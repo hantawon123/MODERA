@@ -44,6 +44,7 @@ import androidx.navigation3.ui.NavDisplay
 import androidx.compose.foundation.layout.exclude
 import androidx.compose.foundation.layout.ime
 import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteType
 import com.ssafy.modera.MainViewModel
 import com.ssafy.modera.core.designsystem.component.ModeraNavigationSuiteScaffold
 import com.ssafy.modera.core.designsystem.component.Scaffold
@@ -55,6 +56,8 @@ import com.ssafy.modera.feature.home.HomeAnalysisState
 import com.ssafy.modera.feature.home.LocalHomeAnalysisState
 import com.ssafy.modera.feature.home.navigation.HomeNavKey
 import com.ssafy.modera.feature.home.navigation.homeEntry
+import com.ssafy.modera.feature.categoryimages.navigation.categoryImagesEntry
+import com.ssafy.modera.feature.imagedetail.navigation.imageDetailEntry
 import com.ssafy.modera.media.rememberGalleryPickerLauncher
 import com.ssafy.modera.navigation.RegisterNavKey
 import com.ssafy.modera.navigation.SearchNavKey
@@ -125,39 +128,49 @@ internal fun ModeraApp(
         },
     )
 
+    val isTopLevelDestination =
+        appState.navigationState.currentKey == appState.navigationState.currentTopLevelKey
+
     CompositionLocalProvider(
         LocalHomeAnalysisState provides homeAnalysisState,
     ) {
         ModeraNavigationSuiteScaffold(
+            layoutType = if (isTopLevelDestination) {
+                null
+            } else {
+                NavigationSuiteType.None
+            },
             navigationSuiteItems = {
-                TOP_LEVEL_NAV_ITEMS.forEach { (navKey, navItem) ->
-                    val selected = navKey != RegisterNavKey &&
-                        navKey == appState.navigationState.currentTopLevelKey
+                if (isTopLevelDestination) {
+                    TOP_LEVEL_NAV_ITEMS.forEach { (navKey, navItem) ->
+                        val selected = navKey != RegisterNavKey &&
+                            navKey == appState.navigationState.currentTopLevelKey
 
-                    item(
-                        selected = selected,
-                        onClick = {
-                            if (navKey == RegisterNavKey) {
-                                launchGalleryPicker()
-                            } else {
-                                navigator.navigate(navKey)
-                            }
-                        },
-                        icon = {
-                            Icon(
-                                imageVector = ImageVector.vectorResource(navItem.unselectedIcon),
-                                contentDescription = null,
-                            )
-                        },
-                        selectedIcon = {
-                            Icon(
-                                imageVector = ImageVector.vectorResource(navItem.selectedIcon),
-                                contentDescription = null,
-                            )
-                        },
-                        label = { Text(stringResource(navItem.iconTextId)) },
-                        modifier = Modifier,
-                    )
+                        item(
+                            selected = selected,
+                            onClick = {
+                                if (navKey == RegisterNavKey) {
+                                    launchGalleryPicker()
+                                } else {
+                                    navigator.navigate(navKey)
+                                }
+                            },
+                            icon = {
+                                Icon(
+                                    imageVector = ImageVector.vectorResource(navItem.unselectedIcon),
+                                    contentDescription = null,
+                                )
+                            },
+                            selectedIcon = {
+                                Icon(
+                                    imageVector = ImageVector.vectorResource(navItem.selectedIcon),
+                                    contentDescription = null,
+                                )
+                            },
+                            label = { Text(stringResource(navItem.iconTextId)) },
+                            modifier = Modifier,
+                        )
+                    }
                 }
             },
             windowAdaptiveInfo = windowAdaptiveInfo,
@@ -213,6 +226,8 @@ internal fun ModeraApp(
 
                         val entryProvider = entryProvider {
                             homeEntry(navigator)
+                            categoryImagesEntry(navigator)
+                            imageDetailEntry(navigator)
                             registerEntry(navigator)
                             searchEntry(navigator)
                         }

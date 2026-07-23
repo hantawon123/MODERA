@@ -8,7 +8,8 @@ android {
     namespace = "com.ssafy.modera.feature.home"
 }
 
-dependencies{
+dependencies {
+    implementation(projects.feature.categoryimages)
     implementation(libs.coil.kt)
     implementation(libs.coil.kt.compose)
 }

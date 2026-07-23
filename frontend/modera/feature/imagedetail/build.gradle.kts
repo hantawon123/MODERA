@@ -5,11 +5,11 @@ plugins {
 }
 
 android {
-    namespace = "com.ssafy.modera.feature.categoryimages"
+    namespace = "com.ssafy.modera.feature.imagedetail"
 }
 
 dependencies {
-    implementation(projects.feature.imagedetail)
+    implementation(projects.core.model)
     implementation(libs.coil.kt)
     implementation(libs.coil.kt.compose)
 }

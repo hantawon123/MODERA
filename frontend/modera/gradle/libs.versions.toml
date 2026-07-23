@@ -72,6 +72,7 @@ constraintlayout = "2.2.1"
 activityKtx = "1.13.0"
 navigationFragmentKtx = "2.9.8"
 navigationUiKtx = "2.9.8"
+material3AdaptiveNavigationSuite = "1.4.0"
 
 
 [libraries]
@@ -195,6 +196,7 @@ androidx-constraintlayout = { group = "androidx.constraintlayout", name = "const
 androidx-activity-ktx = { group = "androidx.activity", name = "activity-ktx", version.ref = "activityKtx" }
 androidx-navigation-fragment-ktx = { group = "androidx.navigation", name = "navigation-fragment-ktx", version.ref = "navigationFragmentKtx" }
 androidx-navigation-ui-ktx = { group = "androidx.navigation", name = "navigation-ui-ktx", version.ref = "navigationUiKtx" }
+androidx-compose-material3-adaptive-navigation-suite = { group = "androidx.compose.material3", name = "material3-adaptive-navigation-suite", version.ref = "material3AdaptiveNavigationSuite" }
 
 
 [plugins]

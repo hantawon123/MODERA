@@ -1,6 +1,8 @@
 ﻿package com.ssafy.modera.core.data.di
 
+import com.ssafy.modera.core.data.repository.AnalyzedImageRepository
 import com.ssafy.modera.core.data.repository.CategoryRepository
+import com.ssafy.modera.core.data.repository.DefaultAnalyzedImageRepository
 import com.ssafy.modera.core.data.repository.DefaultCategoryRepository
 import com.ssafy.modera.core.data.repository.DefaultImageRepository
 import com.ssafy.modera.core.data.repository.ImageRepository
@@ -22,4 +24,9 @@ abstract class DataModule {
     abstract fun bindsImageRepository(
         impl: DefaultImageRepository,
     ): ImageRepository
+
+    @Binds
+    abstract fun bindsAnalyzedImageRepository(
+        impl: DefaultAnalyzedImageRepository,
+    ): AnalyzedImageRepository
 }

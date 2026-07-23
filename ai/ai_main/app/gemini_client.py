@@ -122,7 +122,16 @@ def embed(texts: list[str], purpose: str = "DOCUMENT") -> tuple[str, list[list[f
                 model=settings.embedding_model_name,
                 content=text,
                 task_type=task_type,
+                # 차원을 명시해 모델 기본값(3072)이 아닌 합의된 값으로 받는다.
+                output_dimensionality=settings.embedding_dim,
             ),
         )
-        vectors.append(list(response["embedding"]))
+        vector = list(response["embedding"])
+        # 차원이 어긋난 벡터가 저장·색인까지 흘러가면 조용히 깨진다. 여기서 끊는다.
+        if len(vector) != settings.embedding_dim:
+            raise GeminiError(
+                f"임베딩 차원이 설정과 다릅니다: 기대 {settings.embedding_dim}, "
+                f"실제 {len(vector)} (모델={settings.embedding_model_name})"
+            )
+        vectors.append(vector)
     return settings.embedding_model_name, vectors

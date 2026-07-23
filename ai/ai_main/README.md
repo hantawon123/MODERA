@@ -1,18 +1,92 @@
-# 스크린샷 지식 DB — AI 서비스 (FastAPI 내부 API)
+# 스크린샷 지식 DB — AI 서비스 (FastAPI)
 
-프로토타입 노트북을 서버용으로 재구성한 것입니다. 명세 10장(내부 API)을 따릅니다.
+두 종류의 API 를 제공합니다.
+
+- **`/api/v1/*` — 앱 직결 API.** Spring 의 ERD 재작업 기간 동안 앱이 직접 호출합니다.
+  팀 외부 API 규약(공통 envelope·페이지 형식·에러 코드)을 따릅니다. **프론트가 쓰는 쪽입니다.**
+- **`/internal/v1/*` — Spring 연동용 내부 API.** 명세 10장. Spring 복귀 시 쓰입니다.
+
+모든 요청에 `X-Internal-Token` 헤더가 필요합니다.
 
 ## 실행
 
 ```bash
-pip install -r requirements.txt
 cp .env.example .env        # 값 채우기
-uvicorn app.main:app --host 0.0.0.0 --port 8000
+docker compose up -d --build
 ```
 
-`GEMINI_API_KEY` 와 `INTERNAL_TOKEN` 은 기본값이 없습니다. 설정하지 않으면 첫 요청 시점에 바로 실패합니다.
+`GEMINI_API_KEY` 와 `INTERNAL_TOKEN` 은 기본값이 없습니다. 설정하지 않으면 기동 시 바로 실패합니다.
+OpenSearch 는 기동에 30~45초 걸립니다. 그 전 요청은 연결 거부됩니다.
 
-## 제공 엔드포인트
+**Swagger: `http://<호스트>:8000/docs`** — 우측 상단 Authorize 에 토큰을 넣으면
+아래 엔드포인트를 브라우저에서 그대로 호출해 볼 수 있습니다.
+외부에 열린 서버에서 끄려면 `ENABLE_DOCS=false`.
+
+## 앱 직결 API (`/api/v1/*`) — 프론트용
+
+응답은 모두 팀 공통 envelope 입니다(썸네일 바이너리만 예외).
+
+```json
+{ "code": "SUCCESS", "message": "...", "data": {...}, "timestamp": "..." }
+```
+
+| 화면 | Method | Path | 비고 |
+| --- | --- | --- | --- |
+| 분석 요청 | POST | `/api/v1/analyze` | 202. 즉시 `jobId` 반환, 처리는 백그라운드 |
+| 분석 현황 | GET | `/api/v1/analysis/summary` | 단계별·상태별 집계 |
+| 분석 작업 목록 | GET | `/api/v1/analysis/jobs` | `status`(콤마 구분)·`page`·`size` |
+| 홈 목록 | GET | `/api/v1/images` | `categoryId`·`tagId`·`page`·`size` |
+| 상세 | GET | `/api/v1/images/{imageId}` | |
+| 썸네일 | GET | `/api/v1/images/{imageId}/thumbnail` | **JPEG 바이너리** (envelope 아님) |
+| 태그 목록 | GET | `/api/v1/tags` | `q` 로 이름 필터 |
+| 카테고리 목록 | GET | `/api/v1/categories` | 카드용 썸네일·태그·개수 포함 |
+| 통합 검색 | GET | `/api/v1/search` | `q` 필수. BM25 키워드 검색 |
+
+### 흐름
+
+```
+앱 → Spring 4-1        imageId·key·uploadUrl 발급
+앱 → MinIO             원본 업로드
+앱 → AI  POST /api/v1/analyze   { imageId, s3Key, ocr }   → 202 { jobId }
+앱 → AI  GET  /api/v1/analysis/jobs   폴링으로 진행 확인
+앱 → AI  목록·상세·검색·썸네일 조회
+```
+
+### 분석 요청 예시
+
+```bash
+curl -X POST http://<호스트>:8000/api/v1/analyze \
+  -H 'X-Internal-Token: <토큰>' \
+  -H 'Content-Type: application/json' \
+  -d '{"imageId": 1, "s3Key": "u/1/a.png", "ocr": {"rawText": "OCR 텍스트"}}'
+```
+
+```json
+{ "code": "SUCCESS", "message": "분석 요청이 접수되었습니다.",
+  "data": { "imageId": 1, "jobId": 1, "stage": "LLM", "status": "QUEUED" } }
+```
+
+`status` 는 `QUEUED → PROCESSING → COMPLETED` 로 갑니다.
+`stage` 는 `LLM → IMAGE_ANALYSIS → AGENT → INDEXING` 순입니다.
+OCR 이 비었거나 정보성이 없다고 판정되면 분석을 건너뛰고 `EMPTY` 로 끝나며,
+카테고리 `기타` 로 색인됩니다(목록·검색에는 그대로 나옵니다).
+
+### 프론트가 알아둘 것
+
+- **`userId` 는 보내지 않아도 됩니다.** 로그인 미구현 구간이라 서버가 `FIXED_USER_ID`(기본 1)로
+  고정합니다. 보내도 무시됩니다. 로그인이 붙으면 서버 설정만 바꾸면 되고 앱은 그대로입니다.
+- **`thumbnailUrl` 은 경로만** 내려옵니다(`/api/v1/images/3/thumbnail`).
+  베이스 URL 을 앞에 붙이고, 호출할 때 `X-Internal-Token` 헤더가 필요합니다.
+  만료가 없으므로 캐시해도 됩니다.
+- **카테고리 카드 이미지** 는 그 카테고리에 가장 최근 분류된 사진의 썸네일입니다.
+  전용 이미지를 따로 만들지 않으므로 새 사진이 분류되면 자동으로 바뀝니다.
+- **`categoryId`·`tagId` 는 이름에서 파생된 해시**입니다. 재시작해도 같은 값이지만
+  Spring 복귀 시 DB 실제 ID 로 바뀝니다. **저장하지 말고 매번 응답값을 쓰세요.**
+- **채우지 못하는 필드는 `null`** 로 내려갑니다(`favorite`, `fileName`, `structuredData` 등).
+  필드 자체는 유지되므로 Spring 복귀 시 앱 모델을 고칠 필요가 없습니다.
+- 에러는 `{"code": "INVALID_PARAMETER"|"IMAGE_NOT_FOUND"|..., "message": ..., "data": ...}` 입니다.
+
+## Spring 연동 API (`/internal/v1/*`)
 
 | 명세 | Method | Path | 처리 |
 | --- | --- | --- | --- |
@@ -20,12 +94,53 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000
 | 10-2 | POST | `/internal/v1/embed` | 동기 |
 | 10-3 | POST | `/internal/v1/query/parse` | 동기. 실패 시 `parsedConditions: null` 로 degrade |
 | — | POST | `/internal/v1/search` | 동기. OpenSearch 키워드(BM25) 검색. `userId` 로 격리 |
-| — | GET | `/health` | 헬스체크 |
+| — | GET | `/health` | 헬스체크 (토큰 불필요) |
 
 FastAPI 가 호출하는 쪽: 10-4 콜백, 10-5 지식 후보 조회.
-
-모든 요청에 `X-Internal-Token` 헤더가 필요합니다. 에러는
+이 구간은 envelope 없이 raw JSON 이고, 에러는
 `{"error": CODE, "message": ..., "detail": {}}` 형식입니다.
+
+Spring 이 아직 안 떠 있으면 `SPRING_ENABLED=false` 로 두세요.
+켜져 있으면 매 분석마다 10-5 조회 실패까지 약 4초를 버립니다.
+
+## 썸네일
+
+사진 1장당 1개입니다. 분석할 때 만들어 **썸네일 버킷에 원본과 같은 key** 로 저장합니다.
+
+```
+pictures/u/1/a.png   원본
+thumbnail/u/1/a.png  썸네일 (내용은 JPEG)
+```
+
+가운데를 잘라 정사각으로 만들고, 해상도는 기본적으로 축소하지 않습니다
+(`THUMBNAIL_MAX_SIZE=0`). 목록이 무거우면 `480` 등을 넣어 줄일 수 있습니다.
+저장본이 없으면 조회 시 즉석 생성하면서 버킷도 채웁니다.
+
+## 서버 배포
+
+```bash
+git pull
+cd ai/ai_main
+cp .env.example .env      # 최초 1회. 값 채우기
+docker compose up -d --build
+docker compose logs -f ai-service
+curl localhost:8000/health
+```
+
+로컬 `.env` 와 서버 `.env` 에서 **달라야 하는 값**:
+
+| 키 | 로컬 | 서버 |
+| --- | --- | --- |
+| `S3_ENDPOINT` | `http://host.docker.internal:9000` (SSH 터널) | `http://host.docker.internal:9000` (compose 의 host-gateway) 또는 MinIO 와 같은 네트워크면 `http://minio:9000` |
+| `ENABLE_DOCS` | `true` | 통합 테스트 중엔 `true` 가 편하고, 외부 공개 시 `false` |
+
+`.env` 는 커밋되지 않으므로 서버에서 직접 채워야 합니다.
+
+확인할 것:
+- **8000 포트가 앱에서 접근 가능한지**(보안그룹/방화벽)
+- **9200 은 열지 말 것** — compose 가 `127.0.0.1` 로만 바인딩합니다
+- MinIO 접근: `docker compose exec ai-service python -c "from app import storage; print(len(storage.fetch_image('<실제_s3Key>')))"`
+- 썸네일 쓰기 권한: 위가 되면 같은 방식으로 `storage.store_thumbnail('<키>')`
 
 ## 구조
 
@@ -36,10 +151,11 @@ app/
   gemini_client.py  Gemini 호출 격리 (SDK 교체 시 이 파일만 수정)
   storage.py        S3 원본 이미지 조회
   spring_client.py  10-4 콜백 / 10-5 후보 조회
-  category.py       카테고리 유사도 판정 (무상태)
-  stages.py         LLM / IMAGE_ANALYSIS / AGENT 단계 실행 + 검색 색인
+  category.py       카테고리 유사도 판정 (이름 임베딩 캐시 포함)
+  stages.py         LLM / IMAGE_ANALYSIS / AGENT 단계 실행 + 썸네일 + 검색 색인
   search.py         OpenSearch 키워드 검색 (nori 색인/조회)
-  jobs.py           jobId+stage 멱등 처리
+  jobs.py           jobId+stage 멱등 처리 / 앱 직결 작업 상태
+  responses.py      앱 API 공통 envelope·페이지 형식
   main.py           FastAPI 엔드포인트
 ```
 

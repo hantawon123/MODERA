@@ -7,13 +7,15 @@
 
 import asyncio
 import logging
+import time
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from typing import Any
 
 from . import gemini_client, search, spring_client, storage
 from .category import CategoryResolution, resolve_category
 from .config import get_settings
-from .jobs import job_registry
+from .jobs import job_registry, job_store
 from .schemas import (
     AnalyzeRequest,
     CallbackError,
@@ -26,14 +28,28 @@ logger = logging.getLogger(__name__)
 # Spring 에 사용자 카테고리가 하나도 없을 때 쓰는 초기 후보.
 # 원칙적으로는 Spring DB 에 시드로 넣고 10-5 로 내려받는 편이 낫다.
 DEFAULT_CATEGORIES = [
-    "쇼핑", "음식·맛집", "여행", "예약·예매", "쿠폰·할인", "금융·재테크",
-    "뷰티·미용", "학습·공부", "채용·취업", "IT·개발", "뉴스·시사", "부동산",
-    "건강·운동", "엔터·콘텐츠", "자동차", "반려동물", "기타",
+    "쇼핑", "음식", "여행", "예약", "할인", "금융",
+    "미용", "학습", "취업", "IT", "뉴스", "부동산",
+    "건강", "엔터", "자동차", "반려동물", "기타",
 ]
 
 
 def _now_iso() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
+
+
+@contextmanager
+def _timed(timings: dict[str, float], name: str):
+    """구간 소요 시간을 초 단위로 기록한다.
+
+    "1장에 몇 초 걸리는가" 를 추정이 아니라 로그로 답하기 위한 계측이다.
+    예외가 나도 그 시점까지의 시간은 남긴다.
+    """
+    started = time.perf_counter()
+    try:
+        yield
+    finally:
+        timings[name] = round(time.perf_counter() - started, 2)
 
 
 # 동시 실행 제한용 세마포어. 실행 중인 이벤트 루프에 바인딩되도록 지연 생성한다.
@@ -76,9 +92,14 @@ def run_llm(ocr_text: str) -> tuple[str, dict[str, Any]]:
 
 
 # ── 2) 서버 이미지 분석 ───────────────────────────────────────────────────
-def run_image_analysis(s3_key: str) -> dict[str, Any]:
+def run_image_analysis(image_ref: str, image_bytes: bytes | None = None) -> dict[str, Any]:
+    """image_ref 는 http(s) URL 또는 s3Key 다. storage 가 형태를 보고 처리한다.
+
+    image_bytes 를 넘기면 원본을 다시 내려받지 않는다(썸네일 만들 때 읽어둔 것 재사용).
+    """
     settings = get_settings()
-    image_bytes = storage.fetch_image_bytes(s3_key)
+    if image_bytes is None:
+        image_bytes = storage.fetch_image(image_ref)
     prompt = (
         "이미지를 분석하라. 콘텐츠 유형을 한 문장으로 설명하고(description), "
         "눈에 보이는 주요 객체(objects)와 화면에서 읽히는 핵심 텍스트/브랜드/가격/날짜"
@@ -137,19 +158,37 @@ def _build_candidates(candidates: list[CategoryCandidate]) -> list[CategoryCandi
 
 
 async def run_agent(request: AnalyzeRequest) -> dict[str, Any]:
-    settings = get_settings()
     ocr = request.input.ocr
     image_analysis = request.input.image_analysis
     ocr_text = (ocr.refined_text or ocr.raw_text) if ocr else ""
     analysis_dict = image_analysis.model_dump(by_alias=True) if image_analysis else {}
+    options = request.options
+    return await run_agent_core(
+        user_id=request.user_id,
+        image_id=request.image_id,
+        ocr_text=ocr_text,
+        analysis_dict=analysis_dict,
+        max_tags=options.max_tags if options else None,
+        language=options.language if options else None,
+    )
 
-    # 10-5 기존 태그·카테고리 후보 조회
-    knowledge = await spring_client.fetch_knowledge_candidates(request.user_id)
+
+async def run_agent_core(
+    user_id: int,
+    image_id: int,
+    ocr_text: str,
+    analysis_dict: dict[str, Any],
+    max_tags: int | None = None,
+    language: str | None = None,
+) -> dict[str, Any]:
+    """AGENT 본체. Spring 연동 경로와 앱 직결 경로가 함께 쓴다."""
+    settings = get_settings()
+
+    # 10-5 기존 태그·카테고리 후보 조회 (실패하면 기본 후보로 진행)
+    knowledge = await spring_client.fetch_knowledge_candidates(user_id)
     candidates = _build_candidates(knowledge.categories)
 
-    options = request.options
-    max_tags = (options.max_tags if options and options.max_tags else settings.default_max_tags)
-    language = options.language if options else None
+    max_tags = max_tags or settings.default_max_tags
 
     generated = await asyncio.to_thread(
         run_agent_generation,
@@ -173,7 +212,7 @@ async def run_agent(request: AnalyzeRequest) -> dict[str, Any]:
     )
     logger.info(
         "카테고리 판정 imageId=%s 제안=%s → %s (유사도=%.3f, 기준=%s, 신규=%s)",
-        request.image_id, proposed, resolution.name,
+        image_id, proposed, resolution.name,
         resolution.similarity, resolution.matched_by, resolution.created,
     )
 
@@ -221,6 +260,169 @@ async def _index_for_search(request: AnalyzeRequest, result: dict[str, Any]) -> 
     except Exception as e:
         logger.warning("검색 색인 실패 imageId=%s: %s (분석은 정상 진행)",
                        request.image_id, e)
+
+
+# ── 앱 직결 전체 분석 ─────────────────────────────────────────────────────
+# OCR 이 비었거나 정보성이 없다고 판정된 이미지에 붙는 시스템 카테고리.
+OTHER_CATEGORY = "기타"
+
+
+async def _index_as_other(
+    job_id: int, image_id: int, user_id: int, s3_key: str, ocr_text: str
+) -> None:
+    """분석을 생략하고 '기타' 로만 분류해 색인한다(명세 10-4 처리 규칙 3·4).
+
+    AGENT 를 돌리지 않으므로 제목·태그는 비어 있지만, 이미지 자체는 목록과
+    검색에 남는다. 상태는 EMPTY 로 두어 앱이 '분석 생략'임을 구분할 수 있게 한다.
+    """
+    job_store.update(job_id, "PROCESSING", stage="INDEXING")
+    result = {
+        "title": "",
+        "summary": "",
+        "tags": [],
+        "category": OTHER_CATEGORY,
+        "key_information": [],
+        "confidence": 0.0,
+        "s3_key": s3_key,
+    }
+    try:
+        await asyncio.to_thread(
+            search.index_document,
+            image_id=image_id,
+            user_id=user_id,
+            title="",
+            summary="",
+            tags=[],
+            category_name=OTHER_CATEGORY,
+            raw_text=ocr_text,
+            created_at=_now_iso(),
+            s3_key=s3_key,
+            key_information=[],
+        )
+    except Exception as e:
+        logger.warning("검색 색인 실패 imageId=%s: %s", image_id, e)
+
+    job_store.update(job_id, "EMPTY", result=result, stage="INDEXING")
+
+
+async def run_app_analysis(
+    job_id: int, image_id: int, user_id: int, s3_key: str, ocr_text: str
+) -> None:
+    """한 번의 요청으로 정보성 판정 → 이미지 분석 → AGENT → 색인까지 수행한다.
+
+    Spring 콜백 대신 결과를 job_store 에 담아 두고, 앱이 폴링으로 가져간다.
+    동시 실행 제한을 함께 적용하므로 수백 장이 몰려도 순차적으로 소화된다.
+    """
+    queued_at = time.perf_counter()
+    async with _get_semaphore():
+        timings: dict[str, float] = {"WAIT": round(time.perf_counter() - queued_at, 2)}
+        started = time.perf_counter()
+        job_store.update(job_id, "PROCESSING", stage="LLM")
+        logger.info("앱 분석 시작 jobId=%s imageId=%s", job_id, image_id)
+        try:
+            # 0) 썸네일 생성 후 썸네일 버킷에 저장.
+            #    분석을 건너뛰는 이미지(빈 OCR·비정보성)도 목록에는 나오므로
+            #    정보성 판정보다 먼저 만든다. 여기서 읽은 원본은 이미지 분석에서 재사용한다.
+            #    실패해도 분석은 계속한다(썸네일 조회 시 즉석 생성으로 메꿔진다).
+            original: bytes | None = None
+            try:
+                with _timed(timings, "THUMBNAIL"):
+                    original = await asyncio.to_thread(storage.fetch_image, s3_key)
+                    await asyncio.to_thread(storage.store_thumbnail, s3_key, original)
+            except Exception as e:
+                logger.warning("썸네일 저장 실패 imageId=%s: %s (분석은 계속)", image_id, e)
+
+            # 1) 저장할 가치가 있는 정보인지 판정한다.
+            #    명세 10-4 처리 규칙: OCR 이 비었거나(EMPTY) 정보성이 없으면
+            #    IMAGE_ANALYSIS·AGENT 를 생략하고 '기타' 로 분류한 뒤 색인한다.
+            #    분석을 건너뛸 뿐 사용자 이미지는 목록·검색에서 사라지지 않는다.
+            if not ocr_text.strip():
+                logger.info("OCR 비어 있음 → '기타' 분류 후 색인 jobId=%s", job_id)
+                with _timed(timings, "INDEXING"):
+                    await _index_as_other(job_id, image_id, user_id, s3_key, ocr_text)
+                timings["TOTAL"] = round(time.perf_counter() - started, 2)
+                logger.info("앱 분석 완료(EMPTY) jobId=%s 소요=%s", job_id, timings)
+                return
+
+            with _timed(timings, "LLM"):
+                _, verdict = await asyncio.to_thread(run_llm, ocr_text)
+            if not verdict.get("informative", False):
+                logger.info("비정보성 판정 → '기타' 분류 후 색인 jobId=%s 사유=%s",
+                            job_id, verdict.get("reason", ""))
+                with _timed(timings, "INDEXING"):
+                    await _index_as_other(job_id, image_id, user_id, s3_key, ocr_text)
+                timings["TOTAL"] = round(time.perf_counter() - started, 2)
+                logger.info("앱 분석 완료(비정보성) jobId=%s 소요=%s", job_id, timings)
+                return
+
+            # 2) 이미지 분석. 실패해도 OCR 만으로 계속 진행한다.
+            job_store.update(job_id, "PROCESSING", stage="IMAGE_ANALYSIS")
+            try:
+                with _timed(timings, "IMAGE_ANALYSIS"):
+                    analysis = await asyncio.to_thread(
+                        run_image_analysis, s3_key, original
+                    )
+            except Exception as e:
+                logger.warning("이미지 분석 실패 imageId=%s: %s — OCR 만으로 진행",
+                               image_id, e)
+                analysis = {}
+
+            # 3) 메타데이터 생성 + 카테고리 판정
+            job_store.update(job_id, "PROCESSING", stage="AGENT")
+            with _timed(timings, "AGENT"):
+                generated = await run_agent_core(
+                    user_id=user_id,
+                    image_id=image_id,
+                    ocr_text=ocr_text,
+                    analysis_dict=analysis,
+                )
+            categories = generated.get("categories") or []
+            category = categories[0] if categories else None
+            result = {
+                "title": generated.get("title", ""),
+                "summary": generated.get("summary", ""),
+                "tags": generated.get("tags", []),
+                "category": category,
+                "key_information": generated.get("keyInformation") or [],
+                "confidence": float(generated.get("analysisConfidence", 0.0)),
+                "s3_key": s3_key,
+            }
+
+            # 4) 검색 색인. 실패해도 분석 결과 자체는 살린다.
+            job_store.update(job_id, "PROCESSING", stage="INDEXING")
+            try:
+                with _timed(timings, "INDEXING"):
+                    await asyncio.to_thread(
+                        search.index_document,
+                        image_id=image_id,
+                        user_id=user_id,
+                        title=result["title"],
+                        summary=result["summary"],
+                        tags=result["tags"],
+                        category_name=category,
+                        raw_text=ocr_text,
+                        created_at=_now_iso(),
+                        s3_key=s3_key,
+                        key_information=result["key_information"],
+                    )
+            except Exception as e:
+                logger.warning("검색 색인 실패 imageId=%s: %s (분석 결과는 유지)",
+                               image_id, e)
+
+            job_store.update(job_id, "COMPLETED", result=result, stage="INDEXING")
+            timings["TOTAL"] = round(time.perf_counter() - started, 2)
+            logger.info("앱 분석 완료 jobId=%s imageId=%s category=%s 소요=%s",
+                        job_id, image_id, category, timings)
+        except Exception as e:
+            timings["TOTAL"] = round(time.perf_counter() - started, 2)
+            logger.exception("앱 분석 실패 jobId=%s 소요=%s", job_id, timings)
+            job_store.update(
+                job_id,
+                "FAILED",
+                error={"code": "ANALYSIS_FAILED",
+                       "message": str(e)[:500],
+                       "retryable": True},
+            )
 
 
 # ── 단계 실행 + 콜백 ──────────────────────────────────────────────────────

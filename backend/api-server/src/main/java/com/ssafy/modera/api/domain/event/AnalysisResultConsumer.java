@@ -6,11 +6,13 @@ import com.ssafy.modera.contract.EventTypes;
 import com.ssafy.modera.contract.Streams;
 import com.ssafy.modera.contract.payload.AnalysisCompletedPayload;
 import com.ssafy.modera.contract.payload.AnalysisFailedPayload;
+import io.lettuce.core.RedisCommandTimeoutException;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
+import org.springframework.dao.QueryTimeoutException;
 import org.springframework.data.redis.connection.stream.Consumer;
 import org.springframework.data.redis.connection.stream.MapRecord;
 import org.springframework.data.redis.connection.stream.ReadOffset;
@@ -85,6 +87,9 @@ public class AnalysisResultConsumer {
             try {
                 List<MapRecord<String, String, String>> records = redisTemplate.<String, String>opsForStream().read(
                         Consumer.from(Streams.GROUP_API_CONSUMERS, consumerName),
+                        // block은 spring.data.redis.timeout(Lettuce 명령 타임아웃)보다 항상 짧게
+                        // 유지해야 한다 — 그렇지 않으면 유휴 상태에서 새 메시지를 기다리는 동안
+                        // 매번 RedisCommandTimeoutException이 발생한다.
                         StreamReadOptions.empty().count(10).block(Duration.ofSeconds(5)),
                         StreamOffset.create(Streams.ANALYSIS_RESULT, ReadOffset.lastConsumed())
                 );
@@ -93,6 +98,10 @@ public class AnalysisResultConsumer {
                         processRecord(record);
                     }
                 }
+            } catch (QueryTimeoutException | RedisCommandTimeoutException e) {
+                // block(5초) 동안 새 메시지가 없어서 생기는 정상적인 유휴 타임아웃이다.
+                // ERROR로 남기지 않고 조용히 다음 루프(재블로킹)로 넘어간다.
+                log.debug("analysis-result 유휴 타임아웃(새 메시지 없음), 재시도");
             } catch (Exception e) {
                 if (running) {
                     log.error("analysis-result 스트림 처리 중 오류", e);

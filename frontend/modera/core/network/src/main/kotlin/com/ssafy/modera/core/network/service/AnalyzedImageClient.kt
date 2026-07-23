@@ -16,7 +16,9 @@ class AnalyzedImageClient @Inject constructor(
     ): AnalyzedImagesResponse =
         analyzedImageService
             .fetchAnalyzedImages(
-                statuses = query.statuses.takeIf { it.isNotEmpty() },
+                statuses = query.statuses
+                    .map { it.name }
+                    .takeIf { it.isNotEmpty() },
                 categoryId = query.categoryId,
                 tagId = query.tagId,
                 favorite = query.favorite,

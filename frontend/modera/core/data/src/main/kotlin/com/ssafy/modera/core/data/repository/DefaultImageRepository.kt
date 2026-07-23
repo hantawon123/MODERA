@@ -4,9 +4,9 @@ import com.ssafy.modera.core.common.network.Dispatcher
 import com.ssafy.modera.core.common.network.ModeraDispatcher
 import com.ssafy.modera.core.model.RegisterImage
 import com.ssafy.modera.core.model.RegisterImagesResult
-import com.ssafy.modera.core.network.model.RegisterImagesRequest
-import com.ssafy.modera.core.network.model.asExternalModel
-import com.ssafy.modera.core.network.model.asNetworkModel
+import com.ssafy.modera.core.network.model.image.RegisterImagesRequest
+import com.ssafy.modera.core.network.model.image.asExternalModel
+import com.ssafy.modera.core.network.model.image.asNetworkModel
 import com.ssafy.modera.core.network.service.ImageClient
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.Flow

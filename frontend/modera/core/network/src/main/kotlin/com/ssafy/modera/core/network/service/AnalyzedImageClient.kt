@@ -1,8 +1,8 @@
 package com.ssafy.modera.core.network.service
 
 import com.skydoves.sandwich.getOrThrow
-import com.ssafy.modera.core.network.model.AnalyzedImagesRequest
-import com.ssafy.modera.core.network.model.AnalyzedImagesResponse
+import com.ssafy.modera.core.model.analyzedimage.AnalyzedImageQuery
+import com.ssafy.modera.core.network.model.analyedimage.AnalyzedImagesResponse
 import javax.inject.Inject
 
 class AnalyzedImageClient @Inject constructor(
@@ -10,18 +10,21 @@ class AnalyzedImageClient @Inject constructor(
 ) {
 
     suspend fun fetchAnalyzedImages(
-        request: AnalyzedImagesRequest = AnalyzedImagesRequest(),
+        page: Int,
+        query: AnalyzedImageQuery = AnalyzedImageQuery(),
     ): AnalyzedImagesResponse =
         analyzedImageService
             .fetchAnalyzedImages(
-                status = request.statusQuery,
-                categoryId = request.categoryId,
-                tagId = request.tagId,
-                favorite = request.favorite,
-                dateFrom = request.dateFrom,
-                dateTo = request.dateTo,
-                page = request.page,
-                size = request.size,
+                statuses = query.statuses.takeIf { it.isNotEmpty() },
+                categoryId = query.categoryId,
+                tagId = query.tagId,
+                favorite = query.favorite,
+                dateFrom = query.dateFrom,
+                dateTo = query.dateTo,
+                page = page,
+                size = 20,
+                sort = "createdAt,desc",
             )
             .getOrThrow()
+            .data
 }

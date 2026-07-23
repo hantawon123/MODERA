@@ -389,10 +389,8 @@ class ImageListItem(CamelModel):
     summary: str = ""
     status: str = "COMPLETED"
     favorite: bool | None = None
-    # 목록 격자용. 정사각으로 잘려 있어 내용 전체가 보이지 않는다.
+    # 목록은 썸네일만 준다(정사각 crop, 가볍다). 원본이 필요하면 상세(6-2)를 부른다.
     thumbnail_url: str | None = None
-    # 원본 전체. 상세 화면에서 스크린샷을 읽으려면 이쪽을 써야 한다.
-    image_url: str | None = None
     tags: list[TagRef] = []
     categories: list[CategoryRef] = []
     created_at: str | None = None
@@ -415,9 +413,8 @@ class ImageDetail(CamelModel):
     field_sources: dict[str, str] = {}
     analysis_confidence: float | None = None
     key_information: list[str] = []
-    # 목록 격자용(정사각 crop). 내용 전체가 보이지 않는다.
-    thumbnail_url: str | None = None
-    # 원본 전체. 상세 화면에서 스크린샷을 읽으려면 이쪽을 쓴다.
+    # 상세는 원본만 준다. 썸네일은 정사각으로 잘려 있어 스크린샷 내용을 다 읽을 수
+    # 없으므로 상세 화면에는 부적합하다(명세 6-2 에도 thumbnailUrl 은 없다).
     image_url: str | None = None
     created_at: str | None = None
     uploaded_at: str | None = None

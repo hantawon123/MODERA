@@ -1,39 +1,29 @@
 package com.ssafy.modera.feature.categoryimages.navigation
 
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation3.runtime.EntryProviderScope
 import androidx.navigation3.runtime.NavKey
-import com.ssafy.modera.core.model.analyzedimage.AnalyzedImageSummary
-import com.ssafy.modera.core.model.analyzedimage.ImageAnalysisStatus
 import com.ssafy.modera.core.navigation.Navigator
 import com.ssafy.modera.feature.categoryimages.CategoryImagesScreen
+import com.ssafy.modera.feature.categoryimages.CategoryImagesViewModel
+import com.ssafy.modera.feature.categoryimages.CategoryImagesViewModel.Factory
 
 fun EntryProviderScope<NavKey>.categoryImagesEntry(
     navigator: Navigator,
 ) {
-    // Todo: mock data 삭제
     entry<CategoryImagesNavKey> { navKey ->
         val categoryName = navKey.category.title
         val categoryId = navKey.category.id
 
         CategoryImagesScreen(
             categoryName = categoryName,
-            images = List(12) { index ->
-                AnalyzedImageSummary(
-                    id = index.toLong(),
-                    title = "삼성전자 주가 전망 및 투자 분석",
-                    imageUrl = "https://picsum.photos/seed/category_$index/400/600",
-                    hashtags = listOf(
-                        "주식",
-                        "삼성전자",
-                        "투자",
-                    ),
-                    status = ImageAnalysisStatus.COMPLETED,
-                    favorite = index % 3 == 0,
-                )
-            },
-            onBackClick = {},
+            onBackClick = navigator::goBack,
             onImageClick = {},
-            onDeleteImages = {},
+            viewModel = hiltViewModel<CategoryImagesViewModel, Factory>(
+                key = categoryId.toString(),
+            ) { factory ->
+                factory.create(categoryId)
+            },
         )
     }
 }

@@ -4,6 +4,8 @@ import com.skydoves.sandwich.retrofit.adapters.ApiResponseCallAdapterFactory
 import com.ssafy.modera.core.network.BuildConfig
 import com.ssafy.modera.core.network.service.CategoryClient
 import com.ssafy.modera.core.network.service.CategoryService
+import com.ssafy.modera.core.network.service.ImageClient
+import com.ssafy.modera.core.network.service.ImageService
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -57,5 +59,17 @@ internal object NetworkModule {
     @Singleton
     fun provideCategoryClient(categoryService: CategoryService): CategoryClient {
         return CategoryClient(categoryService)
+    }
+
+    @Provides
+    @Singleton
+    fun provideImageService(retrofit: Retrofit): ImageService {
+        return retrofit.create(ImageService::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun provideImageClient(imageService: ImageService): ImageClient {
+        return ImageClient(imageService)
     }
 }

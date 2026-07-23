@@ -53,7 +53,7 @@ internal object NetworkModule {
         okHttpClient: OkHttpClient,
     ): Retrofit =
         Retrofit.Builder()
-            .baseUrl("http://api.example.com:8000/")
+            .baseUrl("https://api.example.com/")
             .client(okHttpClient)
             .addConverterFactory(
                 json.asConverterFactory(

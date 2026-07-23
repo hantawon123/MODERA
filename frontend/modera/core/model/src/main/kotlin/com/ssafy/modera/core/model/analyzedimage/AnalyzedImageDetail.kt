@@ -9,7 +9,7 @@ data class AnalyzedImageDetail(
     val summary: String,
     val ocr: AnalyzedImageOcr?,
     val tags: List<String>,
-    val categories: List<String>,
+    val categories: AnalyzedImageCategory,
     val imageUrl: String,
     val createdAt: String,
     val updatedAt: String,

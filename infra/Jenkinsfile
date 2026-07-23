@@ -27,28 +27,54 @@ pipeline {
                 dir('ai/ai_main') {
                     sh 'docker build -t ai-main:${BUILD_NUMBER} -t ai-main:latest .'
                 }
+                // 빌드 번호 태그가 계속 쌓여 디스크를 채운다. 최근 3개만 남긴다.
+                // ponytail: 숫자 태그만 훑는 단순 방식. 태그 규칙이 늘면 라벨 기반으로 바꿀 것.
+                sh '''
+                    docker images ai-main --format '{{.Tag}}' \
+                        | grep -E '^[0-9]+$' | sort -rn | tail -n +4 \
+                        | xargs -r -I{} docker rmi ai-main:{} || true
+                '''
             }
         }
 
         stage('AI Deploy') {
             when { changeset "ai/**" }
             steps {
+                echo 'Sync compose file from this repo (레포가 단일 진실 공급원)'
+                sh '''
+                    set -e
+                    mkdir -p /home/ubuntu/app/AI
+                    cp ai/ai_main/docker-compose.yml /home/ubuntu/app/AI/docker-compose.yml
+                '''
                 echo 'Sync .env from Jenkins credential'
                 withCredentials([file(credentialsId: 'ai-server-dotenv', variable: 'AI_DOTENV')]) {
                     sh 'cp "$AI_DOTENV" /home/ubuntu/app/AI/.env'
                 }
                 echo 'Recreate AI Server container with new image'
                 sh '''
+                    set -e
                     cd /home/ubuntu/app/AI
-                    echo "=== AI Container Deploy Start ==="
-                    # opensearch는 그대로 두고 ai-service 컨테이너만 재생성
-                    docker compose up -d --force-recreate ai-service 2>&1
-                    echo "=== compose up exit code: $? ==="
+                    # opensearch 는 없을 때만 생성한다. --no-deps 가 없으면
+                    # --force-recreate 가 의존 서비스인 opensearch 까지 재생성한다.
+                    docker compose up -d opensearch
+                    docker compose up -d --force-recreate --no-deps ai-service
                 '''
-                echo 'Wait for AI Server startup'
-                sh 'sleep 5'
                 echo 'AI Server Health check'
-                sh 'curl -f http://localhost:8000/docs || true'
+                // Dockerfile 의 HEALTHCHECK(/health) 결과를 그대로 읽는다.
+                // 컨테이너 내부 기준이라 Jenkins 가 호스트에 있든 컨테이너 안에 있든 동작한다.
+                sh '''
+                    cd /home/ubuntu/app/AI
+                    cid=$(docker compose ps -q ai-service)
+                    for i in $(seq 1 30); do
+                        status=$(docker inspect -f '{{.State.Health.Status}}' "$cid")
+                        [ "$status" = healthy ] && exit 0
+                        [ "$status" = unhealthy ] && break
+                        sleep 2
+                    done
+                    echo "health check failed (status=$status); recent logs:"
+                    docker compose logs --tail=50 ai-service
+                    exit 1
+                '''
             }
         }
     }

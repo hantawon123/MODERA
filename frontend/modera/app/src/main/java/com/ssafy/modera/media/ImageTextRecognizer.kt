@@ -78,6 +78,19 @@ class ImageTextRecognizer : AutoCloseable {
             .let(::mergeRecognizedTexts)
     }
 
+    /**
+     * 여러 이미지에 대해 OCR을 수행하고, 각 [SelectedImage]에 추출 텍스트를 매핑한다.
+     * 한 장이 실패해도 나머지는 계속 처리한다.
+     */
+    suspend fun recognizeAll(
+        context: Context,
+        images: List<SelectedImage>,
+    ): List<SelectedImage> =
+        images.map { image ->
+            val text = runCatching { recognize(context, image) }.getOrDefault("")
+            image.copy(ocrText = text)
+        }
+
     override fun close() {
         recognizers.forEach(TextRecognizer::close)
     }

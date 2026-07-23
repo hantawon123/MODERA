@@ -22,6 +22,7 @@ import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.ExperimentalComposeUiApi
@@ -31,6 +32,7 @@ import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.unit.dp
@@ -48,12 +50,17 @@ import com.ssafy.modera.feature.home.HomeAnalysisState
 import com.ssafy.modera.feature.home.LocalHomeAnalysisState
 import com.ssafy.modera.feature.home.navigation.HomeNavKey
 import com.ssafy.modera.feature.home.navigation.homeEntry
+import com.ssafy.modera.media.ImageTextRecognizer
+import com.ssafy.modera.media.OcrImageUploadPayload
 import com.ssafy.modera.media.SelectedImage
 import com.ssafy.modera.media.rememberGalleryPickerLauncher
+import com.ssafy.modera.media.toOcrUploadPayload
 import com.ssafy.modera.navigation.RegisterNavKey
 import com.ssafy.modera.navigation.SearchNavKey
 import com.ssafy.modera.navigation.TOP_LEVEL_NAV_ITEMS
-
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 @Composable
 fun ModeraApp(
     appState: ModeraAppState,
@@ -89,15 +96,29 @@ internal fun ModeraApp(
     windowAdaptiveInfo: WindowAdaptiveInfo = currentWindowAdaptiveInfo(),
 ) {
 //    val snackbarHostState = LocalSnackbarHostState.current
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+
     val navigator = remember { Navigator(appState.navigationState) }
     val homeAnalysisState = remember { HomeAnalysisState() }
+
     val selectedImages = remember { mutableStateOf<List<SelectedImage>>(emptyList()) }
+    val ocrUploadPayloads = remember { mutableStateOf<List<OcrImageUploadPayload>>(emptyList()) }
     val launchGalleryPicker = rememberGalleryPickerLauncher(
         onImagesPicked = { images ->
-            selectedImages.value = images
-            if (images.isNotEmpty()) {
-                homeAnalysisState.onImagesSelected(images.size)
-                navigator.navigate(HomeNavKey)
+            if (images.isEmpty()) return@rememberGalleryPickerLauncher
+
+            homeAnalysisState.onImagesSelected(images.size)
+            navigator.navigate(HomeNavKey)
+
+            scope.launch {
+                val processed = withContext(Dispatchers.IO) {
+                    ImageTextRecognizer().use { ocr ->
+                        ocr.recognizeAll(context, images)
+                    }
+                }
+                selectedImages.value = processed
+                ocrUploadPayloads.value = processed.map { it.toOcrUploadPayload() }
             }
         },
     )

@@ -101,6 +101,9 @@ dependencyResolutionManagement {
                 // 예: com.google.android.gms:play-services-location
                 includeGroupByRegex("com\\.google\\.gms(\\..*|)")
 
+                // ML Kit (bundled) 허용
+                includeGroup("com.google.mlkit")
+
                 // LiteRT-LM
                 includeGroupByRegex("com\\.google\\.ai\\.edge(\\..*|)")
             }

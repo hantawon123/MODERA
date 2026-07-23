@@ -1,0 +1,64 @@
+apply plugin: 'org.springframework.boot'
+apply plugin: 'io.spring.dependency-management'
+
+springBoot {
+    mainClass = 'com.ssafy.modera.api.ApiServerApplication'
+}
+
+bootJar {
+    archiveFileName = 'api-server.jar'
+}
+
+dependencies {
+    implementation project(':event-contract')
+
+    implementation 'org.springframework.boot:spring-boot-starter-webmvc'
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    implementation 'org.springframework.boot:spring-boot-starter-security'
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+    implementation 'org.springframework.boot:spring-boot-starter-liquibase'
+    implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+
+    implementation 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+
+    // JSONB 바인딩에 org.postgresql.util.PGobject를 직접 쓰므로 컴파일 타임에도 필요하다.
+    implementation 'org.postgresql:postgresql'
+
+    implementation platform("software.amazon.awssdk:bom:${AWS_SDK_VERSION}")
+    implementation 'software.amazon.awssdk:s3'
+
+    implementation "io.github.openfeign.querydsl:querydsl-core:${QUERYDSL_VERSION}"
+    implementation "io.github.openfeign.querydsl:querydsl-jpa:${QUERYDSL_VERSION}"
+    annotationProcessor "io.github.openfeign.querydsl:querydsl-apt:${QUERYDSL_VERSION}:jpa"
+
+    implementation "io.jsonwebtoken:jjwt-api:${JJWT_VERSION}"
+    runtimeOnly "io.jsonwebtoken:jjwt-impl:${JJWT_VERSION}"
+    runtimeOnly "io.jsonwebtoken:jjwt-jackson:${JJWT_VERSION}"
+
+    implementation "org.springdoc:springdoc-openapi-starter-webmvc-ui:${SPRINGDOC_OPENAPI_VERSION}"
+    implementation "org.springdoc:springdoc-openapi-starter-webmvc-api:${SPRINGDOC_OPENAPI_VERSION}"
+
+    testImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'
+    testImplementation 'org.springframework.security:spring-security-test'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+def querydslSrcDir = layout.buildDirectory.dir("generated/querydsl").get().asFile
+
+tasks.withType(JavaCompile).configureEach {
+    options.getGeneratedSourceOutputDirectory().set(file(querydslSrcDir))
+}
+
+sourceSets {
+    main {
+        java {
+            srcDirs += querydslSrcDir
+        }
+    }
+}
+
+configurations {
+    querydsl.extendsFrom compileClasspath
+}

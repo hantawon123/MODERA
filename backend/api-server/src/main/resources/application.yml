@@ -1,0 +1,68 @@
+spring:
+  application:
+    name: modera-api
+
+  profiles:
+    default: local
+
+  # [Modern Java] Virtual Threads (Project Loom)
+  threads:
+    virtual:
+      enabled: true
+
+  # [Lifecycle] 종료 시 진행 중인 요청을 기다리는 유예 시간
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
+
+  # [JSON] 공통 직렬화 옵션
+  jackson:
+    time-zone: Asia/Seoul
+    default-property-inclusion: always
+
+  # [Data] 공통 JPA 옵션 (DB 접속 정보는 프로필별)
+  jpa:
+    open-in-view: false
+    properties:
+      hibernate:
+        query.in_clause_parameter_padding: true
+
+server:
+  shutdown: graceful
+  port: 8080
+  forward-headers-strategy: native
+
+# [Logging] requestId(RequestIdFilter)·eventId(이벤트 컨슈머/퍼블리셔가 MDC에 심음)를
+# 모든 로그 라인에 붙인다. 둘 다 없으면 빈 문자열로 찍힌다(%X는 MDC 키가 없으면 공백).
+logging:
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} ${LOG_LEVEL_PATTERN:-%5p} ${PID:- } --- [%15.15t] [reqId=%X{requestId} eventId=%X{eventId}] %-40.40logger{39} : %m%n${LOG_EXCEPTION_CONVERSION_WORD:-%wEx}"
+
+# [Security] JWT 설정. 모든 환경에서 JWT_SECRET 환경변수 주입 필수 (fallback 없음 — 미주입 시 기동 실패).
+jwt:
+  secret: ${JWT_SECRET}
+  access-token-validity-in-seconds: 1800
+  refresh-token-validity-in-seconds: 1209600
+
+# [Docs] Swagger는 /api/v1/**만 다룬다 — /internal/**은 JWT가 아니라
+# X-Webhook-Token으로 인증하는 서버 간 내부 API라 문서에서 뺀다(SwaggerConfig 설명 참고).
+springdoc:
+  paths-to-exclude: /internal/**
+
+# [Observability] 액추에이터 기본 노출
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "health, info, prometheus, metrics"
+  endpoint:
+    health:
+      show-details: always
+      probes:
+        enabled: true
+    metrics:
+      enabled: true
+    prometheus:
+      enabled: true
+  metrics:
+    tags:
+      application: ${spring.application.name}

@@ -3,7 +3,7 @@ package com.ssafy.modera.core.network.service
 import com.skydoves.sandwich.ApiResponse
 import com.ssafy.modera.core.model.analyzedimage.ImageAnalysisStatus
 import com.ssafy.modera.core.network.model.BaseResponse
-import com.ssafy.modera.core.network.model.analyedimage.AnalyzedImagesResponse
+import com.ssafy.modera.core.network.model.analyzedimage.AnalyzedImagesResponse
 import retrofit2.http.GET
 import retrofit2.http.Query
 

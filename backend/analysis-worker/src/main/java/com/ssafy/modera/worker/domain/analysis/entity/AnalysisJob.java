@@ -12,7 +12,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.time.OffsetDateTime;
-import java.util.UUID;
 
 @Entity
 @Table(name = "analysis_job")
@@ -23,10 +22,10 @@ public class AnalysisJob {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "job_id")
-    private Long jobId;
+    private Integer jobId;
 
     @Column(name = "image_id", nullable = false)
-    private UUID imageId;
+    private Integer imageId;
 
     @Column(name = "stage", nullable = false)
     private String stage;
@@ -62,7 +61,7 @@ public class AnalysisJob {
     private OffsetDateTime completedAt;
 
     @Builder
-    public AnalysisJob(UUID imageId, String stage, String status, Integer attempt,
+    public AnalysisJob(Integer imageId, String stage, String status, Integer attempt,
                         String triggerType, OffsetDateTime queuedAt) {
         this.imageId = imageId;
         this.stage = stage;

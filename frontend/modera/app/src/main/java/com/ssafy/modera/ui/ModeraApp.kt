@@ -235,7 +235,6 @@ internal fun ModeraApp(
                             imageDetailEntry(navigator)
                             registerEntry(navigator)
                             searchEntry(navigator)
-                            categoryImagesEntry(navigator)
                         }
 
                         NavDisplay(

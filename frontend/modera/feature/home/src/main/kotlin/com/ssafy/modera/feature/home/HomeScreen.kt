@@ -28,6 +28,7 @@ import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.dp
 import com.ssafy.modera.core.designsystem.theme.ModeraTheme
 import com.ssafy.modera.core.model.category.Category
+import com.ssafy.modera.core.model.category.CategorySortType
 import com.ssafy.modera.feature.home.component.AiAnalysisProgressBanner
 import com.ssafy.modera.feature.home.component.CategoryCard
 import com.ssafy.modera.feature.home.component.CategorySortPopup
@@ -128,12 +129,6 @@ fun HomeScreen(
             }
         }
     }
-}
-
-enum class CategorySortType(
-    val label: String,
-) {
-    NAME("이름순"), LATEST("최신 업로드순"), IMAGE_COUNT("사진 많은 순"),
 }
 
 @Preview(

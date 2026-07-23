@@ -2,6 +2,7 @@ package com.ssafy.modera.feature.home
 
 import androidx.compose.ui.tooling.preview.PreviewParameterProvider
 import com.ssafy.modera.core.model.category.Category
+import com.ssafy.modera.core.model.category.CategorySortType
 
 internal data class HomeScreenPreviewData(
     val categories: List<Category>,
@@ -14,15 +15,15 @@ internal class HomeScreenPreviewParameterProvider :
     override val values: Sequence<HomeScreenPreviewData> = sequenceOf(
         HomeScreenPreviewData(
             categories = previewCategories,
-            selectedSortType = CategorySortType.NAME,
+            selectedSortType = CategorySortType.NAME_ASC,
         ),
         HomeScreenPreviewData(
             categories = previewCategories,
-            selectedSortType = CategorySortType.LATEST,
+            selectedSortType = CategorySortType.UPDATED_AT_DESC,
         ),
         HomeScreenPreviewData(
             categories = emptyList(),
-            selectedSortType = CategorySortType.IMAGE_COUNT,
+            selectedSortType = CategorySortType.IMAGE_COUNT_DESC,
         ),
     )
 }

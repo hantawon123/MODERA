@@ -1,4 +1,4 @@
-package com.ssafy.modera.core.network.model
+package com.ssafy.modera.core.network.model.image
 
 import com.ssafy.modera.core.model.FailedImage
 import kotlinx.serialization.Serializable

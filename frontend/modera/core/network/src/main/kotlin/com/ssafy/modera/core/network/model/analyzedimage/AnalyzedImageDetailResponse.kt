@@ -46,7 +46,7 @@ fun AnalyzedImageDetailResponse.asExternalModel(): AnalyzedImageDetail =
             categories.first().categoryId,
             categories.first().name
         ),
-        imageUrl = imageUrl,
+        imageUrl = "https://i15d207.p.ssafy.io$imageUrl",
         createdAt = createdAt,
         updatedAt = updatedAt,
     )

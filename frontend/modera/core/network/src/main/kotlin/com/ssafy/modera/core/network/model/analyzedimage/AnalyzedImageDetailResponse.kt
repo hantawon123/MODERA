@@ -1,5 +1,6 @@
 package com.ssafy.modera.core.network.model.analyzedimage
 
+import com.ssafy.modera.core.model.analyzedimage.AnalyzedImageCategory
 import com.ssafy.modera.core.model.analyzedimage.AnalyzedImageDetail
 import com.ssafy.modera.core.model.analyzedimage.ImageAnalysisStatus
 import kotlinx.serialization.Serializable
@@ -24,6 +25,7 @@ data class AnalyzedImageDetailResponse(
     val lastViewedAt: String?,
 )
 
+// Todo: categories -> 단일 객체로 서버에 수정 요청
 fun AnalyzedImageDetailResponse.asExternalModel(): AnalyzedImageDetail =
     AnalyzedImageDetail(
         id = imageId,
@@ -40,7 +42,10 @@ fun AnalyzedImageDetailResponse.asExternalModel(): AnalyzedImageDetail =
         summary = summary,
         ocr = ocr?.asExternalModel(),
         tags = tags.map { it.name },
-        categories = categories.map { it.name },
+        categories = AnalyzedImageCategory(
+            categories.first().categoryId,
+            categories.first().name
+        ),
         imageUrl = imageUrl,
         createdAt = createdAt,
         updatedAt = updatedAt,

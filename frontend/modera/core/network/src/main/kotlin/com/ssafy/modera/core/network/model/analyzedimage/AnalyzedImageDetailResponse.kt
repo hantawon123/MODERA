@@ -46,7 +46,7 @@ fun AnalyzedImageDetailResponse.asExternalModel(): AnalyzedImageDetail =
             categories.first().categoryId,
             categories.first().name
         ),
-        imageUrl = imageUrl,
+        imageUrl = "https://api.example.com$imageUrl",
         createdAt = createdAt,
         updatedAt = updatedAt,
     )

@@ -1,5 +1,10 @@
 package com.ssafy.modera.feature.home
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -23,6 +28,7 @@ import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.dp
 import com.ssafy.modera.core.designsystem.theme.ModeraTheme
 import com.ssafy.modera.core.model.Category
+import com.ssafy.modera.feature.home.component.AiAnalysisProgressBanner
 import com.ssafy.modera.feature.home.component.CategoryCard
 import com.ssafy.modera.feature.home.component.CategorySortPopup
 import com.ssafy.modera.feature.home.component.Header
@@ -34,6 +40,9 @@ fun HomeScreen(
     selectedSortType: CategorySortType,
     onSortTypeChange: (CategorySortType) -> Unit,
     onCategoryClick: (Long) -> Unit,
+    showAnalysisBanner: Boolean = false,
+    analysisImageCount: Int = 0,
+    onDismissAnalysisBanner: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     var sortMenuExpanded by remember { mutableStateOf(false) }
@@ -52,6 +61,20 @@ fun HomeScreen(
                 title = stringResource(R.string.home_header_title),
                 subtitle = stringResource(R.string.home_header_subtitle)
             )
+
+            AnimatedVisibility(
+                visible = showAnalysisBanner && analysisImageCount > 0,
+                enter = fadeIn() + expandVertically(),
+                exit = fadeOut() + shrinkVertically(),
+            ) {
+                AiAnalysisProgressBanner(
+                    imageCount = analysisImageCount,
+                    onDismiss = onDismissAnalysisBanner,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 12.dp),
+                )
+            }
 
             SortSection(
                 selectedSortType = selectedSortType,

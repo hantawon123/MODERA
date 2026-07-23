@@ -45,7 +45,7 @@ fun Uri.toSelectedImage(contentResolver: ContentResolver): SelectedImage {
     }
 
     return SelectedImage(
-        uri = this,
+        uri = toString(),
         originalFileName = originalFileName,
         fileSizeBytes = fileSizeBytes,
     )

@@ -16,6 +16,7 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
+import androidx.core.net.toUri
 
 /**
  * ML Kit Text Recognition으로 이미지에서 텍스트를 추출한다.
@@ -36,10 +37,10 @@ class ImageTextRecognizer : AutoCloseable {
     }
 
     /**
-     * [SelectedImage]의 Uri에서 텍스트를 추출한다.
+     * [SelectedImage]의 uri 문자열에서 텍스트를 추출한다.
      */
     suspend fun recognize(context: Context, selectedImage: SelectedImage): String =
-        recognize(context, selectedImage.uri)
+        recognize(context, selectedImage.uri.toUri())
 
     /**
      * [Bitmap]에서 텍스트를 추출한다.

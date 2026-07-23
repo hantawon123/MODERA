@@ -49,7 +49,9 @@ spring:
       port: ${REDIS_PORT:6379}
       password: ${REDIS_PASSWORD}
       connect-timeout: 2000
-      timeout: 1000
+      # AnalysisResultConsumer의 XREADGROUP block(5초)보다 반드시 길어야 한다.
+      # 이보다 짧으면 컨슈머가 유휴 상태일 때마다 RedisCommandTimeoutException이 발생한다.
+      timeout: 6000
 
 # [Object Storage] 엔드포인트/자격증명 전부 환경변수. fallback 없음 — 미주입 시 기동 실패.
 storage:

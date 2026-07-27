@@ -53,9 +53,10 @@ public class User {
     private OffsetDateTime updatedAt;
 
     @Builder
-    public User(String provider, String loginId, String passwordHash, String email, String nickname,
+    public User(String provider, String providerId, String loginId, String passwordHash, String email, String nickname,
                 OffsetDateTime createdAt, OffsetDateTime updatedAt) {
         this.provider = provider;
+        this.providerId = providerId;
         this.loginId = loginId;
         this.passwordHash = passwordHash;
         this.email = email;

@@ -1,6 +1,7 @@
 package com.ssafy.modera.api.domain.user.controller;
 
 import com.ssafy.modera.api.domain.user.dto.request.LoginRequest;
+import com.ssafy.modera.api.domain.user.dto.request.KakaoLoginRequest;
 import com.ssafy.modera.api.domain.user.dto.request.LogoutRequest;
 import com.ssafy.modera.api.domain.user.dto.request.RefreshRequest;
 import com.ssafy.modera.api.domain.user.dto.request.RegisterRequest;
@@ -60,6 +61,14 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<ApiResponse<TokenResponse>> login(@RequestBody @Valid LoginRequest request) {
         return ResponseEntity.ok(ApiResponse.success(authService.login(request)));
+    }
+
+    @Operation(summary = "카카오 로그인", description = "카카오 인가 코드를 검증하고 로컬 로그인과 동일한 서비스 토큰을 발급합니다.")
+    @PostMapping("/kakao/login")
+    public ResponseEntity<ApiResponse<TokenResponse>> kakaoLogin(
+            @RequestBody @Valid KakaoLoginRequest request
+    ) {
+        return ResponseEntity.ok(ApiResponse.success(authService.kakaoLogin(request)));
     }
 
     @Operation(

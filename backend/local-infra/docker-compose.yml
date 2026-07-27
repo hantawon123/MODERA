@@ -93,6 +93,9 @@ services:
       # JWT_SECRET은 base64여야 한다(JwtTokenProvider가 Decoders.BASE64로 디코딩).
       # 문자열을 그대로 쓰면(예: 하이픈 포함) 기동이 실패한다 — 로컬 전용 더미값.
       JWT_SECRET: ${JWT_SECRET:-JST22TJeTXAaCo/L6KKPBDYAbKyxmR7DUxJCcQup770=}
+      KAKAO_CLIENT_ID: ${KAKAO_CLIENT_ID:-}
+      KAKAO_CLIENT_SECRET: ${KAKAO_CLIENT_SECRET:-}
+      KAKAO_REDIRECT_URI: ${KAKAO_REDIRECT_URI:-}
       MINIO_WEBHOOK_TOKEN: local-dev-webhook-token
       DB_HOST: api-db
       REDIS_HOST: redis

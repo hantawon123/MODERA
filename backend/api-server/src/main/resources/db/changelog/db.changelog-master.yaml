@@ -9,3 +9,5 @@ databaseChangeLog:
       file: db/changelog/004-add-user-profile-image.sql
   - include:
       file: db/changelog/005-add-unique-user-nickname.sql
+  - include:
+      file: db/changelog/006-add-unique-social-provider.sql

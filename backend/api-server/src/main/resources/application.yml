@@ -43,6 +43,12 @@ jwt:
   access-token-validity-in-seconds: 1800
   refresh-token-validity-in-seconds: 1209600
 
+oauth:
+  kakao:
+    client-id: ${KAKAO_CLIENT_ID:}
+    client-secret: ${KAKAO_CLIENT_SECRET:}
+    redirect-uri: ${KAKAO_REDIRECT_URI:}
+
 # [Docs] Swagger는 /api/v1/**만 다룬다 — /internal/**은 JWT가 아니라
 # X-Webhook-Token으로 인증하는 서버 간 내부 API라 문서에서 뺀다(SwaggerConfig 설명 참고).
 springdoc:

@@ -4,8 +4,7 @@ spring:
       on-profile: local
 
   # [Data Source] local-infra의 api-db 컨테이너.
-  # 이 개발 환경에서는 다른 프로젝트 컨테이너가 host 5432를 이미 쓰고 있어
-  # local-infra/docker-compose.yml에서 api-db를 host 5433으로 노출했다(3단계 참고).
+  # local-infra의 api-db 컨테이너가 호스트에 노출한 5433 포트로 접속한다.
   datasource:
     driver-class-name: org.postgresql.Driver
     url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5433}/${DB_NAME:modera_api}

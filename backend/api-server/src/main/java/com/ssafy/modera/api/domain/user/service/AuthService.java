@@ -1,6 +1,7 @@
 package com.ssafy.modera.api.domain.user.service;
 
 import com.ssafy.modera.api.domain.user.dto.request.LoginRequest;
+import com.ssafy.modera.api.domain.user.dto.request.KakaoLoginRequest;
 import com.ssafy.modera.api.domain.user.dto.request.LogoutRequest;
 import com.ssafy.modera.api.domain.user.dto.request.RefreshRequest;
 import com.ssafy.modera.api.domain.user.dto.request.RegisterRequest;
@@ -37,6 +38,7 @@ import java.util.HexFormat;
 public class AuthService {
 
     private static final String PROVIDER_LOCAL = "LOCAL";
+    private static final String PROVIDER_KAKAO = "KAKAO";
     private static final String HASH_ALGORITHM = "SHA-256";
 
     private final UserRepository userRepository;
@@ -44,6 +46,8 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
     private final JwtProperties jwtProperties;
+    private final KakaoClient kakaoClient;
+    private final NicknameGenerator nicknameGenerator;
 
     @Transactional
     public RegisterResponse register(RegisterRequest request) {
@@ -80,13 +84,18 @@ public class AuthService {
             throw new BusinessException(UserErrorCode.LOGIN_FAILED);
         }
 
-        String accessToken = jwtTokenProvider.createAccessToken(user.getUserId());
-        String refreshToken = jwtTokenProvider.createRefreshToken(user.getUserId(), request.deviceId());
+        return issueTokens(user, request.deviceId());
+    }
 
-        upsertRefreshToken(user.getUserId(), request.deviceId(), refreshToken);
+    @Transactional
+    public TokenResponse kakaoLogin(KakaoLoginRequest request) {
+        KakaoClient.KakaoUser kakaoUser = kakaoClient.getUser(request.authorizationCode());
+        String providerId = kakaoUser.id().toString();
 
-        log.info("로그인 성공: userId={}, deviceId={}", user.getUserId(), request.deviceId());
-        return new TokenResponse(accessToken, refreshToken, user.getUserId());
+        User user = userRepository.findByProviderAndProviderId(PROVIDER_KAKAO, providerId)
+                .orElseGet(() -> createKakaoUser(kakaoUser, providerId));
+
+        return issueTokens(user, request.deviceId());
     }
 
     /**
@@ -150,6 +159,34 @@ public class AuthService {
                                 .createdAt(OffsetDateTime.now())
                                 .build())
                 );
+    }
+
+    private User createKakaoUser(KakaoClient.KakaoUser kakaoUser, String providerId) {
+        OffsetDateTime now = OffsetDateTime.now();
+        String email = kakaoUser.email();
+        if (email != null && userRepository.existsByEmail(email)) {
+            // 이메일은 카카오 회원의 영구 식별자가 아니므로 기존 계정을 자동 연결하지 않는다.
+            email = null;
+        }
+
+        return userRepository.save(User.builder()
+                .provider(PROVIDER_KAKAO)
+                .providerId(providerId)
+                .email(email)
+                .nickname(nicknameGenerator.generateUnique())
+                .createdAt(now)
+                .updatedAt(now)
+                .build());
+    }
+
+    private TokenResponse issueTokens(User user, String deviceId) {
+        String accessToken = jwtTokenProvider.createAccessToken(user.getUserId());
+        String refreshToken = jwtTokenProvider.createRefreshToken(user.getUserId(), deviceId);
+        upsertRefreshToken(user.getUserId(), deviceId, refreshToken);
+
+        log.info("로그인 성공: provider={}, userId={}, deviceId={}",
+                user.getProvider(), user.getUserId(), deviceId);
+        return new TokenResponse(accessToken, refreshToken, user.getUserId());
     }
 
     private OffsetDateTime refreshTokenExpiry() {

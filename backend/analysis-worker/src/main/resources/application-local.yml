@@ -37,11 +37,25 @@ spring:
       port: ${REDIS_PORT:6380}
       password: ${REDIS_PASSWORD:}
 
+## server:
+##   port: 8082
+# 로컬 실연동 테스트용 (Jenkins가 8081 점유하고 있어서 8082로 바꿨음)
+
 # [Internal] AI 서버가 분석 결과 콜백(X-Internal-Token 헤더)을 보낼 때 검증할 값.
 # AI 서버가 /internal/v1/analyze 요청에 쓰는 토큰과 같은 값이다(양방향 공유 토큰).
 internal:
   callback:
     token: ${INTERNAL_TOKEN:local-dev-internal-token}
+
+# [Analysis] AI 서버 실연동 테스트용. mock으로 되돌리려면 client만 mock으로.
+# ai-server는 도커 컨테이너, worker는 IDE(호스트)에서 뜨므로
+# 콜백 주소는 컨테이너에서 호스트를 가리키는 host.docker.internal을 쓴다.
+# analysis:
+#   client: ${ANALYSIS_CLIENT:fastapi}
+#   callback-url: ${CALLBACK_URL:http://host.docker.internal:8082/internal/v1/callback/analysis}
+
+# analysis-worker:
+#   ai-server-url: ${AI_SERVER_URL:http://localhost:8000}
 
 logging:
   level:

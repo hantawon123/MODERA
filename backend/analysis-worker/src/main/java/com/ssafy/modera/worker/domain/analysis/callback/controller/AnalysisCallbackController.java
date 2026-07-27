@@ -1,8 +1,8 @@
 package com.ssafy.modera.worker.domain.analysis.callback.controller;
 
 import com.ssafy.modera.worker.domain.analysis.callback.dto.request.AnalysisCallbackRequest;
-import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;

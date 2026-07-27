@@ -6,6 +6,10 @@ import com.ssafy.modera.api.domain.image.entity.ImageAsset;
 import com.ssafy.modera.api.domain.image.repository.ImageAssetRepository;
 import com.ssafy.modera.api.domain.library.entity.UserImage;
 import com.ssafy.modera.api.domain.library.repository.UserImageRepository;
+import com.ssafy.modera.api.domain.query.repository.UserImageViewRepository;
+import com.ssafy.modera.api.domain.query.repository.UserImageViewRow;
+import com.ssafy.modera.api.domain.user.entity.User;
+import com.ssafy.modera.api.domain.user.repository.UserRepository;
 import com.ssafy.modera.api.global.config.StorageProperties;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -19,6 +23,7 @@ import java.net.URI;
 import java.net.URL;
 import java.time.Duration;
 import java.time.OffsetDateTime;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -28,6 +33,8 @@ public class ImageRegistrationService {
 
     private final ImageAssetRepository imageAssetRepository;
     private final UserImageRepository userImageRepository;
+    private final UserRepository userRepository;
+    private final UserImageViewRepository userImageViewRepository;
     private final StorageProperties storageProperties;
     private final S3Presigner s3Presigner;
 
@@ -71,6 +78,28 @@ public class ImageRegistrationService {
                 .updatedAt(now)
                 .build();
         userImageRepository.save(userImage);
+
+        String nickname = userRepository.findById(userId)
+                .map(User::getNickname)
+                .orElse(null);
+
+        userImageViewRepository.upsert(new UserImageViewRow(
+                userId,
+                imageId,
+                nickname,
+                imageAsset.getFileName(),
+                imageAsset.getS3Key(),
+                null,
+                userImage.getTitle(),
+                null,
+                null,
+                List.of(),
+                imageAsset.getUploadStatus(),
+                userImage.getAnalysisStatus(),
+                userImage.getFavorite(),
+                now.toInstant(),
+                now.toInstant()
+        ));
 
         return toResponse(imageAsset);
     }

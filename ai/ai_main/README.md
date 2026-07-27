@@ -153,6 +153,32 @@ FastAPI 가 호출하는 쪽: 10-4 콜백, 10-5 지식 후보 조회.
 
 Spring 이 아직 안 떠 있으면 `SPRING_ENABLED=false` 로 두세요.
 켜져 있으면 매 분석마다 10-5 조회 실패까지 약 4초를 버립니다.
+`SPRING_ENABLED=false` 여도 요청에 `callbackUrl` 이 있으면 그 주소로는 콜백을 보냅니다.
+
+### stage — `LLM` / `IMAGE_ANALYSIS` / `AGENT` / `FULL`
+
+앞 세 개는 한 요청에 한 단계만 돌고, 다음 단계로 넘길지는 Spring 이 정합니다.
+**`FULL` 은 한 요청에서 세 단계를 이어서 처리하고 콜백을 한 번만 보냅니다** —
+`analysis-worker` 의 `FastApiAnalysisClient` 가 쓰는 방식입니다.
+
+```json
+POST /internal/v1/analyze          X-Internal-Token: <공유 토큰>
+{ "jobId": 7001, "imageId": 7001, "userId": 1, "stage": "FULL",
+  "input": { "image": { "s3Key": "u/1/a.png" } },
+  "options": { "maxTags": 10, "language": "ko" },
+  "callbackUrl": "http://analysis-worker:8081/internal/v1/callback/analysis" }
+→ 202 { "jobId": 7001, "imageId": 7001, "stage": "FULL", "accepted": true, "status": "QUEUED" }
+```
+
+콜백(10-4)의 `result` 는 `summary`·`ocrRefinedText`·`informative`·
+`analysisConfidence`·`documentVector`(768차) 를 포함합니다 — worker 의
+`AnalysisCallbackService` 가 읽는 키입니다. `status` 는 `COMPLETED` / `EMPTY` / `FAILED`.
+
+`FULL` 요청에는 OCR 이 실려 오지 않으므로(worker 가 `input.image` 만 보냄) 이미지
+분석을 먼저 돌려 거기서 읽어낸 텍스트를 OCR 대용으로 씁니다. `input.ocr` 이 오면 그게 우선입니다.
+
+로컬에서 worker 와 붙여 돌리는 절차는 **[LOCAL_DEV.md](LOCAL_DEV.md)** 를 보세요
+(`MOCK_AI=true` 로 Gemini 키 없이 띄우는 법 포함).
 
 ## 썸네일
 
@@ -208,12 +234,19 @@ app/
   storage.py        S3 원본 이미지 조회
   spring_client.py  10-4 콜백 / 10-5 후보 조회
   category.py       카테고리 유사도 판정 (이름 임베딩 캐시 포함)
-  stages.py         LLM / IMAGE_ANALYSIS / AGENT 단계 실행 + 썸네일 + 검색 색인
+  stages.py         LLM / IMAGE_ANALYSIS / AGENT / FULL 실행 + 썸네일 + 검색 색인
   search.py         OpenSearch 키워드 검색 (nori 색인/조회)
   jobs.py           jobId+stage 멱등 처리 / 앱 직결 작업 상태
   responses.py      앱 API 공통 envelope·페이지 형식
   main.py           FastAPI 엔드포인트
+scripts/
+  seed_minio.py     로컬 MinIO 버킷·테스트 이미지 생성
+  full_stage_test.py  FULL 동시 요청 + 콜백 수신 테스트(세마포어 회귀 테스트 겸용)
 ```
+
+`stages.py` 의 동시 실행 세마포어는 **진입점(`execute_stage` / `run_app_analysis`)에서만**
+잡는다. 파이프라인 본체(`_run_full_pipeline`)가 또 잡으면 `asyncio.Semaphore` 가
+재진입 불가라 자기 자신을 기다리며 멈춘다.
 
 ## 검색 (OpenSearch)
 

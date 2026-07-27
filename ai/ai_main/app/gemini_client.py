@@ -90,8 +90,59 @@ def parse_json_response(text: str) -> dict[str, Any]:
         raise GeminiError(f"모델 응답을 JSON 으로 해석하지 못했습니다: {cleaned[:200]!r}")
 
 
+def _mock_json(parts: list[Any]) -> dict[str, Any]:
+    """MOCK_AI=true 일 때 쓰는 가짜 응답.
+
+    프롬프트가 요구하는 JSON 형태를 보고 어느 호출인지 구분한다. 각 프롬프트가
+    출력 스키마를 문자열로 박아 두고 있어(`'{"informative": ...}'`) 그 키를 찾으면 된다.
+    """
+    prompt = " ".join(p for p in parts if isinstance(p, str))
+    if '"informative"' in prompt:
+        return {"informative": True, "confidence": 0.9, "reason": "MOCK 정보성 판정"}
+    if '"detected_texts"' in prompt:
+        return {
+            "description": "MOCK 이미지 분석 결과입니다.",
+            "detected_texts": ["MOCK 텍스트", "32,000원", "2026-07-28"],
+            "objects": ["텍스트", "버튼"],
+        }
+    if '"key_information"' in prompt:
+        return {
+            "title": "MOCK 제목",
+            "summary": "MOCK 요약입니다.",
+            "tags": ["mock", "테스트"],
+            "categories": ["쇼핑"],
+            "key_information": ["항목: MOCK 값"],
+            "analysis_confidence": 0.9,
+        }
+    if '"price_min"' in prompt:
+        return {"keywords": ["mock"], "price_min": None, "price_max": None,
+                "brand": None, "category_hints": [], "date_from": None,
+                "date_to": None, "expires_before": None, "confidence": 0.9}
+    return {}
+
+
+def _mock_vector(text: str, dim: int) -> list[float]:
+    """텍스트 해시로 만드는 결정적 단위 벡터. 같은 입력이면 항상 같은 값이 나온다."""
+    import hashlib
+    import math
+
+    digest = hashlib.sha256(text.encode("utf-8")).digest()
+    seed = int.from_bytes(digest[:8], "big")
+    # 선형 합동 생성기. random 모듈의 전역 상태를 건드리지 않으려고 직접 돌린다.
+    values: list[float] = []
+    state = seed or 1
+    for _ in range(dim):
+        state = (state * 6364136223846793005 + 1442695040888963407) % (2**64)
+        values.append((state / 2**64) * 2.0 - 1.0)
+    norm = math.sqrt(sum(v * v for v in values)) or 1.0
+    return [v / norm for v in values]
+
+
 def generate_json(model_name: str, parts: list[Any]) -> dict[str, Any]:
     """텍스트(또는 텍스트+이미지) 프롬프트를 보내고 JSON 응답을 받는다."""
+    if get_settings().mock_ai:
+        logger.info("MOCK_AI — generate_json 가짜 응답 (model=%s)", model_name)
+        return _mock_json(parts)
     genai = _genai()
     model = genai.GenerativeModel(model_name)
     response = _call_with_retry(
@@ -112,6 +163,12 @@ def image_part(image_bytes: bytes):
 def embed(texts: list[str], purpose: str = "DOCUMENT") -> tuple[str, list[list[float]]]:
     """텍스트 배치를 임베딩한다. (모델명, 벡터 목록)을 돌려준다."""
     settings = get_settings()
+    if settings.mock_ai:
+        logger.info("MOCK_AI — embed 가짜 벡터 %s건 (dim=%s)",
+                    len(texts), settings.embedding_dim)
+        return settings.embedding_model_name, [
+            _mock_vector(t, settings.embedding_dim) for t in texts
+        ]
     genai = _genai()
     task_type = "retrieval_query" if purpose == "QUERY" else "retrieval_document"
     vectors: list[list[float]] = []

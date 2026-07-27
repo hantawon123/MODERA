@@ -254,7 +254,7 @@ internal fun ModeraApp(
 
 private fun Modifier.notificationDot(): Modifier =
     composed {
-        val tertiaryColor = ModeraTheme.colors.blue
+        val tertiaryColor = ModeraTheme.colors.yellow500
         drawWithContent {
             drawContent()
             drawCircle(

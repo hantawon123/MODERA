@@ -1,8 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!--    디자인 완성 후 수정-->
-    <color name="blue">#0065F4</color>
+    <!-- Neutral -->
     <color name="white">#FFFFFF</color>
-    <color name="typo">#404040</color>
-    <color name="gray">#ECEEF3</color>
+    <color name="black">#000000</color>
+
+    <color name="gray_50">#FCFCFB</color>
+    <color name="gray_100">#F5F5F3</color>
+    <color name="gray_200">#E9E8E5</color>
+    <color name="gray_300">#D6D5D1</color>
+    <color name="gray_400">#B5B4AE</color>
+    <color name="gray_500">#8D8C86</color>
+    <color name="gray_700">#575651</color>
+    <color name="gray_900">#242321</color>
+
+    <!-- Yellow -->
+    <color name="yellow_500">#FFC700</color>
+    <color name="yellow_600">#FFB400</color>
+    <color name="yellow_700">#FF8600</color>
+    <color name="yellow_800">#FF8200</color>
 </resources>

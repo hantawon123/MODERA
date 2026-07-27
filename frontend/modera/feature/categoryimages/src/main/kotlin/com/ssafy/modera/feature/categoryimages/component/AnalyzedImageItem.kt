@@ -64,7 +64,7 @@ internal fun AnalyzedImageItem(
                     ),
                     modifier = Modifier
                         .fillMaxSize()
-                        .background(color = ModeraTheme.colors.gray),
+                        .background(color = ModeraTheme.colors.gray50),
                     contentScale = ContentScale.Crop,
                 )
 
@@ -115,7 +115,7 @@ private fun AnalyzedImageInfo(
         Text(
             text = title,
             style = ModeraTheme.typography.bodySB14,
-            color = ModeraTheme.colors.typo,
+            color = ModeraTheme.colors.gray700,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
@@ -140,7 +140,7 @@ private fun AnalyzedImageInfo(
                                 fill = false,
                             ),
                             style = ModeraTheme.typography.captionR12,
-                            color = ModeraTheme.colors.blue,
+                            color = ModeraTheme.colors.yellow500,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                         )
@@ -160,7 +160,7 @@ private fun SelectionIndicator(
             .size(24.dp)
             .background(
                 color = if (selected) {
-                    ModeraTheme.colors.blue
+                    ModeraTheme.colors.yellow500
                 } else {
                     Color.White.copy(alpha = 0.88f)
                 },

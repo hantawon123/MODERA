@@ -45,7 +45,7 @@ internal fun ImageDetailSummarySection(
         Text(
             text = summary,
             style = ModeraTheme.typography.bodyR14,
-            color = ModeraTheme.colors.typo,
+            color = ModeraTheme.colors.gray700,
         )
     }
 }
@@ -104,7 +104,7 @@ internal fun ImageDetailOcrSection(
                     modifier = Modifier
                         .padding(4.dp)
                         .size(20.dp),
-                    tint = ModeraTheme.colors.typo.copy(alpha = 0.6f),
+                    tint = ModeraTheme.colors.gray700.copy(alpha = 0.6f),
                 )
             }
         },
@@ -113,7 +113,7 @@ internal fun ImageDetailOcrSection(
         Text(
             text = analyzedImageOcr?.rawText ?: "",
             style = ModeraTheme.typography.bodyR14,
-            color = ModeraTheme.colors.typo,
+            color = ModeraTheme.colors.gray700,
         )
     }
 }
@@ -150,7 +150,7 @@ private fun ImageDetailSection(
                 Text(
                     text = title,
                     style = ModeraTheme.typography.titleSB18,
-                    color = ModeraTheme.colors.typo,
+                    color = ModeraTheme.colors.gray700,
                 )
             }
             trailing?.invoke()

@@ -54,5 +54,5 @@ fun VerticalDivider(
 object DividerDefaults {
     val Thickness: Dp = 1.0.dp
     val color: Color
-        @Composable get() = ModeraTheme.colors.typo
+        @Composable get() = ModeraTheme.colors.gray700
 }

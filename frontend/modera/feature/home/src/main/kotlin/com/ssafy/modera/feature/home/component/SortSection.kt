@@ -66,7 +66,7 @@ private fun SortButton(
             Text(
                 text = sortType.label,
                 style = ModeraTheme.typography.bodyR14,
-                color = ModeraTheme.colors.typo,
+                color = ModeraTheme.colors.gray700,
             )
 
             Icon(
@@ -89,7 +89,7 @@ private fun SortSectionPreview() {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(ModeraTheme.colors.gray)
+                .background(ModeraTheme.colors.gray50)
                 .padding(horizontal = 12.dp),
         ) {
             SortSection(

@@ -138,7 +138,7 @@ private fun ImageDetailHeroMetadata(
             ) {
                 ClickableSurface(
                     onClick = onCategoryClick,
-                    color = ModeraTheme.colors.blue.copy(alpha = 0.85f),
+                    color = ModeraTheme.colors.yellow500.copy(alpha = 0.85f),
                     shape = RoundedCornerShape(4.dp),
                 ) {
                     Text(

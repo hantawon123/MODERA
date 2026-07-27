@@ -59,6 +59,30 @@ public class AnalysisCallbackService {
         return "COMPLETED".equals(job.getStatus()) || "FAILED".equals(job.getStatus());
     }
 
+    /**
+     * 결과 이벤트를 발행해도 되는지 확인한다. userId가 없으면 발행하지 않는다.
+     *
+     * analysis_job.user_id는 마이그레이션 003에서 default 없이 추가돼 그 이전 행은 전부
+     * NULL이다. 반면 AnalysisCompletedPayload·AnalysisFailedPayload의 userId는 primitive
+     * int라 그대로 넘기면 언박싱 NPE가 난다.
+     *
+     * 0 같은 대체값을 넣지 않는 이유: api-server가 이 값을 그대로 query_schema의
+     * user_image_view.user_id로 쓴다. 틀린 userId가 들어가면 read model이 조용히
+     * 오염되고, 그건 "이벤트를 재생하면 재구축할 수 있다"는 read model의 전제를 깬다.
+     * 이벤트를 아예 안 보내면 user_id를 채운 뒤 재발행해 복구할 수 있다.
+     *
+     * job 상태와 분석 결과 저장은 이미 끝난 뒤라 그대로 남는다 — 버리는 건 이벤트뿐이다.
+     */
+    private boolean hasUserId(AnalysisJob job, String eventType) {
+        if (job.getUserId() != null) {
+            return true;
+        }
+        log.error("job에 userId가 없어 {} 발행을 생략한다(003 마이그레이션 이전 행으로 추정). "
+                        + "user_id를 채운 뒤 재발행이 필요하다: jobId={} imageId={}",
+                eventType, job.getJobId(), job.getImageId());
+        return false;
+    }
+
     private void handleSuccess(AnalysisJob analysisJob, AnalysisCallbackRequest request) {
         Map<String, Object> result = request.result() == null ? Map.of() : request.result();
 
@@ -87,16 +111,20 @@ public class AnalysisCallbackService {
         analysisJob.markCompleted(request.modelVersion(), OffsetDateTime.now());
         analysisJobRepository.save(analysisJob);
 
-        // analysisStatus는 AI가 보낸 값을 그대로 넘긴다.
-        // EMPTY(OCR이 비었거나 비정보성이라 분석을 생략함)를 COMPLETED로 덮어쓰면
-        // api-server의 user_image.analysis_status가 "정상 분석 완료"로 기록돼
-        // 분석을 건너뛴 이미지와 실제로 분석된 이미지를 구분할 수 없다.
+        if (!hasUserId(analysisJob, EventTypes.ANALYSIS_COMPLETED)) {
+            return;
+        }
+
         // AI는 categories를 배열로 보내지만 이미지 1장당 카테고리는 하나로 확정된다
         // (AGENT가 후보 중 하나를 고르거나 새로 만든 결과). 첫 원소만 쓴다.
         List<String> categories = strList(result, "categories");
         String categoryName = categories.isEmpty() ? null : categories.get(0);
         List<String> tagNames = strList(result, "tags");
 
+        // analysisStatus는 AI가 보낸 값을 그대로 넘긴다.
+        // EMPTY(OCR이 비었거나 비정보성이라 분석을 생략함)를 COMPLETED로 덮어쓰면
+        // api-server의 user_image.analysis_status가 "정상 분석 완료"로 기록돼
+        // 분석을 건너뛴 이미지와 실제로 분석된 이미지를 구분할 수 없다.
         AnalysisCompletedPayload payload = new AnalysisCompletedPayload(
                 analysisJob.getImageId(), analysisJob.getUserId(),
                 str(result, "summary"), str(result, "ocrRefinedText"),
@@ -113,6 +141,10 @@ public class AnalysisCallbackService {
 
         job.markFailed(code, message, retryable, OffsetDateTime.now());
         analysisJobRepository.save(job);
+
+        if (!hasUserId(job, EventTypes.ANALYSIS_FAILED)) {
+            return;
+        }
 
         AnalysisFailedPayload payload = new AnalysisFailedPayload(
                 job.getImageId(), job.getUserId(), code, message, retryable);

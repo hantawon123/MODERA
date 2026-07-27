@@ -18,6 +18,7 @@ import org.springframework.stereotype.Service;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 @Slf4j
 @Service
@@ -86,10 +87,16 @@ public class AnalysisCallbackService {
         // EMPTY(OCR이 비었거나 비정보성이라 분석을 생략함)를 COMPLETED로 덮어쓰면
         // api-server의 user_image.analysis_status가 "정상 분석 완료"로 기록돼
         // 분석을 건너뛴 이미지와 실제로 분석된 이미지를 구분할 수 없다.
+        // AI는 categories를 배열로 보내지만 이미지 1장당 카테고리는 하나로 확정된다
+        // (AGENT가 후보 중 하나를 고르거나 새로 만든 결과). 첫 원소만 쓴다.
+        List<String> categories = strList(result, "categories");
+        String categoryName = categories.isEmpty() ? null : categories.get(0);
+        List<String> tagNames = strList(result, "tags");
+
         AnalysisCompletedPayload payload = new AnalysisCompletedPayload(
                 analysisJob.getImageId(), analysisJob.getUserId(),
                 str(result, "summary"), str(result, "ocrRefinedText"),
-                null, null, null, request.status(), request.modelVersion()
+                categoryName, tagNames, null, request.status(), request.modelVersion()
         );
         eventPublisher.publish(Streams.ANALYSIS_RESULT, EventTypes.ANALYSIS_COMPLETED, 1, payload);
         log.info("ANALYSIS_COMPLETED 발행: jobId={} imageId={}", analysisJob.getJobId(), analysisJob.getImageId());
@@ -123,9 +130,21 @@ public class AnalysisCallbackService {
         return value instanceof Boolean b ? b : null;
     }
 
-    private Double dbl(Map<String, Object> map, String key) {
+    /**
+     * 문자열 배열을 꺼낸다. 없거나 배열이 아니면 빈 리스트다.
+     * 원소 중 null·빈 문자열은 버린다 — tag_names는 TEXT[]라 null 원소가 그대로 들어가면
+     * 조회 쪽에서 매번 걸러야 한다.
+     */
+    private List<String> strList(Map<String, Object> map, String key) {
         Object value = map.get(key);
-        return value instanceof Number n ? n.doubleValue() : null;
+        if (!(value instanceof List<?> list)) {
+            return List.of();
+        }
+        return list.stream()
+                .filter(Objects::nonNull)
+                .map(Object::toString)
+                .filter(s -> !s.isBlank())
+                .toList();
     }
 
     private float[] vector(Map<String, Object> map, String key) {

@@ -44,9 +44,17 @@ spring:
       # 이보다 짧으면 컨슈머가 유휴 상태일 때마다 RedisCommandTimeoutException이 발생한다.
       timeout: 6000
 
-# [Analysis] 운영은 실제 AI 서버를 호출한다. fallback 없음 — 미주입 시 기동 실패.
+# [Internal] AI 서버가 분석 결과 콜백(X-Internal-Token 헤더)을 보낼 때 검증할 값.
+# fallback 없음 — 미주입 시 기동 실패.
+internal:
+  callback:
+    token: ${INTERNAL_TOKEN}
+
+# [Analysis] FastApiAnalysisClient가 아직 미완성 스펙(AI 서버 실제 API와 다름)이라
+# 기본값을 mock으로 낮춰뒀다. TODO: C안(FastApiAnalysisClient, 콜백 기반 재구현)
+# 구현 완료 시 기본값을 fastapi로 되돌릴 것.
 analysis:
-  client: ${ANALYSIS_CLIENT:fastapi}
+  client: ${ANALYSIS_CLIENT:mock}
 
 analysis-worker:
   ai-server-url: ${AI_SERVER_URL}

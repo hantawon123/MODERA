@@ -2,6 +2,7 @@ package com.ssafy.modera.worker.domain.analysis.callback.controller;
 
 import com.ssafy.modera.worker.domain.analysis.callback.dto.request.AnalysisCallbackRequest;
 import com.ssafy.modera.worker.domain.analysis.callback.service.AnalysisCallbackService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -26,7 +27,7 @@ public class AnalysisCallbackController {
     @PostMapping("/callback/analysis")
     public ResponseEntity<Map<String, Object>> receive(
             @RequestHeader(value = "X-Internal-Token", required = false) String token,
-            @RequestBody AnalysisCallbackRequest request
+            @Valid @RequestBody AnalysisCallbackRequest request
     ) {
         verifyToken(token);
 

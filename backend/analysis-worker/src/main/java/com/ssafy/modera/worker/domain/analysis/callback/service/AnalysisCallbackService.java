@@ -12,10 +12,10 @@ import com.ssafy.modera.worker.domain.analysis.repository.AnalysisJobRepository;
 import com.ssafy.modera.worker.domain.analysis.repository.AnalysisResultRepository;
 import com.ssafy.modera.worker.domain.analysis.repository.AnalysisResultRow;
 import com.ssafy.modera.worker.domain.event.EventPublisher;
-import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -28,14 +28,79 @@ import java.util.Objects;
 public class AnalysisCallbackService {
 
     private static final int EMBEDDING_DIM = 768;
+    /** 콜백은 정상 도착했지만 worker가 결과를 남기지 못한 경우. AI 분석 자체의 실패와 구분한다. */
+    private static final String CALLBACK_PERSIST_ERROR = "CALLBACK_PERSIST_ERROR";
+    private static final int MAX_ERROR_MESSAGE = 500;
+
     private final AnalysisJobRepository analysisJobRepository;
     private final AnalysisResultRepository analysisResultRepository;
     private final EventPublisher eventPublisher;
     // JacksonConfig가 등록한 Jackson 2 ObjectMapper. jsonb 컬럼용 직렬화에 쓴다.
     private final ObjectMapper objectMapper;
+    private final TransactionTemplate transactionTemplate;
 
-    @Transactional
+    /**
+     * 콜백 처리 진입점.
+     *
+     * 결과 저장·이벤트 발행이 깨지면 트랜잭션이 롤백되면서 job이 PROCESSING에 그대로 남고
+     * ANALYSIS_FAILED도 나가지 않는다 — AI가 3회 재시도하고 포기하면 아무도 모르는 채로
+     * 영구 정지한다. 리팩터링 이전 동기 방식은 같은 상황에서 job을 FAILED로 남겼다.
+     * 그 관측성을 되돌리기 위해 예외를 잡아 별도 트랜잭션으로 실패를 확정한다.
+     *
+     * 트랜잭션 경계를 @Transactional 대신 TransactionTemplate으로 직접 다루는 이유:
+     * "실패를 기록하는 트랜잭션"은 롤백된 트랜잭션과 별개여야 하는데, 같은 빈 안에서
+     * self-invocation을 하면 프록시를 타지 않아 @Transactional이 적용되지 않는다.
+     */
     public void handle(AnalysisCallbackRequest request) {
+        try {
+            transactionTemplate.executeWithoutResult(status -> apply(request));
+        } catch (Exception e) {
+            markCallbackFailed(request, e);
+        }
+    }
+
+    /**
+     * 콜백 처리가 깨졌을 때 job을 FAILED로 확정하고 ANALYSIS_FAILED를 발행한다.
+     *
+     * AI에는 정상 응답(200)을 돌려주게 되므로 재시도가 멈춘다. AI의 재시도 창은 백오프를
+     * 포함해도 약 3초라 실제 DB 장애가 그 안에 낫는 경우는 드물고, job을 FAILED로 찍는
+     * 순간 isFinished()가 true가 되어 어차피 재시도가 무시된다 — 둘은 양립하지 않는다.
+     * retryable=true로 남겨 두어 나중에 재분석 대상으로 고를 수 있게 한다.
+     *
+     * 이 기록마저 실패하면(DB가 통째로 죽은 경우) 남은 것이 없으므로 예외를 그대로 올려
+     * 500을 내보낸다. 이때는 AI 재시도가 유일한 복구 수단이다.
+     */
+    private void markCallbackFailed(AnalysisCallbackRequest request, Exception cause) {
+        log.error("콜백 처리 실패 — job을 FAILED로 확정한다: jobId={} imageId={}",
+                request.jobId(), request.imageId(), cause);
+        transactionTemplate.executeWithoutResult(status -> {
+            AnalysisJob job = analysisJobRepository.findById(request.jobId()).orElse(null);
+            if (job == null || isFinished(job)) {
+                return;
+            }
+            String message = cause.getClass().getSimpleName() + ": " + cause.getMessage();
+            job.markFailed(CALLBACK_PERSIST_ERROR, truncate(message), true, OffsetDateTime.now());
+            analysisJobRepository.save(job);
+
+            if (!hasUserId(job, EventTypes.ANALYSIS_FAILED)) {
+                return;
+            }
+            eventPublisher.publish(Streams.ANALYSIS_RESULT, EventTypes.ANALYSIS_FAILED, 1,
+                    new AnalysisFailedPayload(job.getImageId(), job.getUserId(),
+                            CALLBACK_PERSIST_ERROR, truncate(message), true));
+            log.warn("ANALYSIS_FAILED 발행(콜백 처리 실패): jobId={}", job.getJobId());
+        });
+    }
+
+    /** error_message는 TEXT지만 원인 예외 전문이 그대로 들어가면 로그·조회가 지저분해진다. */
+    private String truncate(String message) {
+        if (message == null) {
+            return "unknown";
+        }
+        return message.length() <= MAX_ERROR_MESSAGE ? message : message.substring(0, MAX_ERROR_MESSAGE);
+    }
+
+    private void apply(AnalysisCallbackRequest request) {
         AnalysisJob analysisJob = analysisJobRepository.findById(request.jobId()).orElse(null);
         if (analysisJob == null) {
             // 영구 오류: 재시도 해도 없음. 로그만 남기고 받아들임.

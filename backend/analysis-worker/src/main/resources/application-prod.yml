@@ -38,7 +38,6 @@ spring:
     redis:
       host: ${REDIS_HOST:redis}
       port: ${REDIS_PORT:6379}
-      password: ${REDIS_PASSWORD}
       connect-timeout: 2000
       # ImageAnalysisConsumer의 XREADGROUP block(5초)보다 반드시 길어야 한다.
       # 이보다 짧으면 컨슈머가 유휴 상태일 때마다 RedisCommandTimeoutException이 발생한다.
@@ -55,6 +54,8 @@ internal:
 # 구현 완료 시 기본값을 fastapi로 되돌릴 것.
 analysis:
   client: ${ANALYSIS_CLIENT:mock}
+  # AI가 분석 결과를 보낼 worker 주소. 같은 docker network의 컨테이너명으로 접근한다.
+  callback-url: ${CALLBACK_URL:http://modera-worker:8081/internal/v1/callback/analysis}
 
 analysis-worker:
   ai-server-url: ${AI_SERVER_URL}

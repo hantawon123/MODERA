@@ -188,7 +188,7 @@ public class ImageAnalysisConsumer {
         try {
             // 요청 보내고 끝
             // 결과는 AI가 콜백으로 보내며 AnalysisCallbackService가 처리
-            analysisClient.requestAnalysis(job, payload.s3Key());
+            analysisClient.requestAnalysis(job, payload.s3Key(), payload.clientOcr());
         } catch (Exception e) {
             log.error("분석 실패: imageId={}", imageId, e);
             job.markFailed("ANALYSIS_REQUEST_ERROR", String.valueOf(e.getMessage()), true, OffsetDateTime.now());

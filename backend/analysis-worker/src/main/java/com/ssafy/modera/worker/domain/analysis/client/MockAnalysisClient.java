@@ -1,5 +1,6 @@
 package com.ssafy.modera.worker.domain.analysis.client;
 
+import com.ssafy.modera.contract.payload.ImageUploadedPayload;
 import com.ssafy.modera.worker.domain.analysis.callback.dto.request.AnalysisCallbackRequest;
 import com.ssafy.modera.worker.domain.analysis.callback.service.AnalysisCallbackService;
 import com.ssafy.modera.worker.domain.analysis.entity.AnalysisJob;
@@ -30,8 +31,9 @@ public class MockAnalysisClient implements AnalysisClient {
     private final AnalysisCallbackService analysisCallbackService;
 
     @Override
-    public void requestAnalysis(AnalysisJob job, String s3Key) {
-        log.info("[mock] 분석 요청 - 즉시 콜백 처리: jobId={} imageId={}", job.getJobId(), job.getImageId());
+    public void requestAnalysis(AnalysisJob job, String s3Key, ImageUploadedPayload.ClientOcr clientOcr) {
+        log.info("[mock] 분석 요청 - 즉시 콜백 처리: jobId={} imageId={} ocr={}",
+                job.getJobId(), job.getImageId(), clientOcr != null);
 
         AnalysisCallbackRequest callback = new AnalysisCallbackRequest(
                 job.getJobId(),

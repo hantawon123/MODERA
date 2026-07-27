@@ -1,5 +1,6 @@
 package com.ssafy.modera.worker.domain.analysis.client;
 
+import com.ssafy.modera.contract.payload.ImageUploadedPayload;
 import com.ssafy.modera.worker.domain.analysis.entity.AnalysisJob;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -36,15 +37,14 @@ public class FastApiAnalysisClient implements AnalysisClient {
         this.callbackUrl = callbackUrl;
     }
 
-
     @Override
-    public void requestAnalysis(AnalysisJob job, String s3Key) {
+    public void requestAnalysis(AnalysisJob job, String s3Key, ImageUploadedPayload.ClientOcr clientOcr) {
         AnalyzeRequest body = new AnalyzeRequest(
                 job.getJobId(),
                 job.getImageId(),
                 job.getUserId(),
                 STAGE_FULL,
-                new AnalyzeInput(new ImageInput(s3Key)),
+                new AnalyzeInput(new ImageInput(s3Key), toOcrInput(clientOcr)),
                 new AnalyzeOptions(10, "ko"),
                 callbackUrl
         );
@@ -63,8 +63,15 @@ public class FastApiAnalysisClient implements AnalysisClient {
                     job.getJobId(), accepted.error());
             return;
         }
-        log.info("AI 분석 요청 접수됨: jobId={} imageId={} stage={}",
-                job.getJobId(), job.getImageId(), STAGE_FULL);
+        log.info("AI 분석 요청 접수됨: jobId={} imageId={} stage={} ocr={}",
+                job.getJobId(), job.getImageId(), STAGE_FULL, toOcrInput(clientOcr) != null);
+    }
+
+    private OcrInput toOcrInput(ImageUploadedPayload.ClientOcr clientOcr) {
+        if (clientOcr == null || clientOcr.rawText() == null || clientOcr.rawText().isBlank()) {
+            return null;
+        }
+        return new OcrInput(clientOcr.rawText(), clientOcr.lang(), clientOcr.confidence());
     }
 
 
@@ -79,9 +86,11 @@ public class FastApiAnalysisClient implements AnalysisClient {
             String callbackUrl
     ) {}
 
-    private record AnalyzeInput(ImageInput image) {}
+    private record AnalyzeInput(ImageInput image, OcrInput ocr) {}
 
     private record ImageInput(String s3Key) {}
+
+    private record OcrInput(String rawText, String lang, Double confidence) {}
 
     private record AnalyzeOptions(Integer maxTags, String language) {}
 

@@ -1,5 +1,7 @@
 package com.ssafy.modera.worker.domain.analysis.callback.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ssafy.modera.contract.EventTypes;
 import com.ssafy.modera.contract.Streams;
 import com.ssafy.modera.contract.payload.AnalysisCompletedPayload;
@@ -29,6 +31,8 @@ public class AnalysisCallbackService {
     private final AnalysisJobRepository analysisJobRepository;
     private final AnalysisResultRepository analysisResultRepository;
     private final EventPublisher eventPublisher;
+    // JacksonConfig가 등록한 Jackson 2 ObjectMapper. jsonb 컬럼용 직렬화에 쓴다.
+    private final ObjectMapper objectMapper;
 
     @Transactional
     public void handle(AnalysisCallbackRequest request) {
@@ -67,9 +71,9 @@ public class AnalysisCallbackService {
                 null,                                    // ocrConfidence
                 str(result, "summary"),
                 bool(result, "informative"),
-                null,                      // structuredType
-                null,                                   // structuredFieldsJson
-                null,                                   // keyInformationJson
+                null,                      // structuredType — MVP 제외(AI도 안 보냄)
+                null,                                   // structuredFieldsJson — 위와 동일
+                jsonArray(result, "keyInformation"),
                 flt(result, "analysisConfidence"),
                 vector(result, "documentVector"),
                 request.modelVersion(),
@@ -171,5 +175,28 @@ public class AnalysisCallbackService {
     private Float flt(Map<String, Object> map, String key) {
         Object value = map.get(key);
         return value instanceof Number n ? n.floatValue() : null;
+    }
+
+    /**
+     * 문자열 배열을 JSONB 컬럼에 넣을 JSON 문자열로 만든다.
+     *
+     * analysis_result.key_information은 jsonb라 AnalysisResultRepository가 PGobject로
+     * 바인딩한다(setJsonbOrNull). 즉 여기서 넘겨야 하는 건 이미 직렬화된 JSON 텍스트다.
+     * 값이 없으면 빈 배열("[]") 대신 null을 준다 — "AI가 안 보냄"과 "보냈는데 비어 있음"을
+     * 컬럼에서 구분할 수 있어야 나중에 재분석 대상을 고를 수 있다.
+     *
+     * 직렬화 실패는 분석 결과 전체를 버릴 이유가 못 된다. 경고만 남기고 이 칸만 비운다.
+     */
+    private String jsonArray(Map<String, Object> map, String key) {
+        List<String> values = strList(map, key);
+        if (values.isEmpty()) {
+            return null;
+        }
+        try {
+            return objectMapper.writeValueAsString(values);
+        } catch (JsonProcessingException e) {
+            log.warn("{} 직렬화 실패 — 해당 컬럼만 비우고 저장 진행: {}", key, e.getMessage());
+            return null;
+        }
     }
 }

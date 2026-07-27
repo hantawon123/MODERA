@@ -17,8 +17,14 @@ def _required(name: str) -> str:
 
 class Settings:
     def __init__(self) -> None:
+        # 모델 호출을 전부 가짜 응답으로 대체한다(로컬 배선 점검용).
+        # Gemini 를 부르지 않으므로 API 키 없이 서버를 띄울 수 있고, 파이프라인
+        # 왕복(S3 읽기 → 3단계 → 콜백)과 동시성 동작을 키 소모 없이 확인할 수 있다.
+        # ⚠️ 분석 품질은 확인할 수 없다. 배포 환경에서는 절대 켜지 말 것.
+        self.mock_ai = os.environ.get("MOCK_AI", "false").lower() == "true"
+
         # 자격증명 (기본값 없음)
-        self.gemini_api_key = _required("GEMINI_API_KEY")
+        self.gemini_api_key = "" if self.mock_ai else _required("GEMINI_API_KEY")
         self.internal_token = _required("INTERNAL_TOKEN")
 
         # Spring 내부 API (10-4 콜백, 10-5 후보 조회)

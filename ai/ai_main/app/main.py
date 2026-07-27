@@ -262,6 +262,9 @@ _REQUIRED_INPUT = {
     "LLM": ("ocr",),
     "IMAGE_ANALYSIS": ("image",),
     "AGENT": ("ocr", "image_analysis"),
+    # FULL 은 원본 이미지만 있으면 된다. ocr 은 있으면 쓰고, 없으면
+    # 이미지 분석에서 읽어낸 텍스트로 대신한다(stages._run_full_pipeline 참고).
+    "FULL": ("image",),
 }
 
 

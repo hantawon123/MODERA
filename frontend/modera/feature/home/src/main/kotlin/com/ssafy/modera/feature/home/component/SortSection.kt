@@ -65,7 +65,7 @@ private fun SortButton(
         ) {
             Text(
                 text = sortType.label,
-                style = ModeraTheme.typography.body2,
+                style = ModeraTheme.typography.bodyR14,
                 color = ModeraTheme.colors.typo,
             )
 

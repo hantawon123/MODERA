@@ -25,7 +25,7 @@ internal fun Header(
     ) {
         Text(
             text = title,
-            style = ModeraTheme.typography.subtitle1,
+            style = ModeraTheme.typography.titleB22,
             color = ModeraTheme.colors.typo,
         )
 
@@ -33,7 +33,7 @@ internal fun Header(
 
         Text(
             text = subtitle,
-            style = ModeraTheme.typography.body2,
+            style = ModeraTheme.typography.bodyR14,
             color = ModeraTheme.colors.typo,
         )
     }

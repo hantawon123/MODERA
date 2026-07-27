@@ -124,9 +124,9 @@ private fun SortMenuItem(
     }
 
     val textStyle = if (selected) {
-        ModeraTheme.typography.body2SemiBold
+        ModeraTheme.typography.bodySB14
     } else {
-        ModeraTheme.typography.body2
+        ModeraTheme.typography.bodyR14
     }
 
     val contentColor = if (selected) {

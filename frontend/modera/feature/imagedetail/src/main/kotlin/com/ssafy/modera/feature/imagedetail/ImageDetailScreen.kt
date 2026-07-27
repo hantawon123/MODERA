@@ -270,7 +270,7 @@ private fun ImageDetailErrorScreen(
 
         Text(
             text = "이미지 정보를 불러오지 못했습니다.",
-            style = ModeraTheme.typography.body2Medium,
+            style = ModeraTheme.typography.bodyR14,
             color = ModeraTheme.colors.typo,
             textAlign = TextAlign.Center,
             modifier = Modifier.align(Alignment.Center),

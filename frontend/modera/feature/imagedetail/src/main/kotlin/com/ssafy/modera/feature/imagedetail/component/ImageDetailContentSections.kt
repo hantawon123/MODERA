@@ -44,7 +44,7 @@ internal fun ImageDetailSummarySection(
     ) {
         Text(
             text = summary,
-            style = ModeraTheme.typography.body2,
+            style = ModeraTheme.typography.bodyR14,
             color = ModeraTheme.colors.typo,
         )
     }
@@ -112,7 +112,7 @@ internal fun ImageDetailOcrSection(
     ) {
         Text(
             text = analyzedImageOcr?.rawText ?: "",
-            style = ModeraTheme.typography.body2,
+            style = ModeraTheme.typography.bodyR14,
             color = ModeraTheme.colors.typo,
         )
     }
@@ -149,7 +149,7 @@ private fun ImageDetailSection(
                 icon?.invoke()
                 Text(
                     text = title,
-                    style = ModeraTheme.typography.subtitle3SemiBold,
+                    style = ModeraTheme.typography.titleSB18,
                     color = ModeraTheme.colors.typo,
                 )
             }

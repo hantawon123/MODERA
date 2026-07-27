@@ -109,7 +109,7 @@ internal fun AiAnalysisProgressBanner(
                 ) {
                     Text(
                         text = stringResource(R.string.home_analysis_status),
-                        style = ModeraTheme.typography.body2Medium,
+                        style = ModeraTheme.typography.bodyR14,
                         color = StatusBlue,
                     )
                     Spacer(modifier = Modifier.width(4.dp))
@@ -118,7 +118,7 @@ internal fun AiAnalysisProgressBanner(
 
                 Text(
                     text = stringResource(R.string.home_analysis_message, imageCount),
-                    style = ModeraTheme.typography.subtitle3SemiBold,
+                    style = ModeraTheme.typography.titleSB18,
                     color = ModeraTheme.colors.typo,
                 )
             }

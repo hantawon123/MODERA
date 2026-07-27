@@ -78,7 +78,7 @@ internal fun ImageDetailActionBar(
         ) {
             Text(
                 text = stringResource(R.string.image_detail_related_materials),
-                style = ModeraTheme.typography.body2SemiBold,
+                style = ModeraTheme.typography.bodySB14,
             )
             Icon(
                 painter = painterResource(R.drawable.ic_chevron_right),

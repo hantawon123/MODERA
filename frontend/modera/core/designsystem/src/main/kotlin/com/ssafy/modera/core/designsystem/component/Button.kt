@@ -134,9 +134,9 @@ object ModeraButtonDefaults {
     @Composable
     fun buttonColors(
         containerColor: Color = ModeraTheme.colors.white,
-        contentColor: Color = ModeraTheme.colors.typo,
-        disabledContainerColor: Color = ModeraTheme.colors.gray,
-        disabledContentColor: Color = ModeraTheme.colors.typo
+        contentColor: Color = ModeraTheme.colors.gray700,
+        disabledContainerColor: Color = ModeraTheme.colors.gray50,
+        disabledContentColor: Color = ModeraTheme.colors.gray700
     ): ButtonColors = ButtonColors(
         containerColor = containerColor,
         contentColor = contentColor,

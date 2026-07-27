@@ -8,10 +8,20 @@ import com.ssafy.modera.core.designsystem.R
 
 @Immutable
 data class ModeraColors(
-    val blue: Color,
     val white: Color,
-    val gray: Color,
-    val typo: Color,
+    val gray50: Color,
+    val gray100: Color,
+    val gray200: Color,
+    val gray300: Color,
+    val gray400: Color,
+    val gray500: Color,
+    val gray700: Color,
+    val gray900: Color,
+    val black: Color,
+    val yellow500: Color,
+    val yellow600: Color,
+    val yellow700: Color,
+    val yellow800: Color,
 ) {
     companion object {
         /**
@@ -19,10 +29,20 @@ data class ModeraColors(
          */
         @Composable
         fun defaultColors(): ModeraColors = ModeraColors(
-            blue = colorResource(id = R.color.blue),
-            white = colorResource(id = R.color.white),
-            gray = colorResource(id = R.color.gray),
-            typo = colorResource(id = R.color.typo),
+            white = colorResource(R.color.white),
+            gray50 = colorResource(R.color.gray_50),
+            gray100 = colorResource(R.color.gray_100),
+            gray200 = colorResource(R.color.gray_200),
+            gray300 = colorResource(R.color.gray_300),
+            gray400 = colorResource(R.color.gray_400),
+            gray500 = colorResource(R.color.gray_500),
+            gray700 = colorResource(R.color.gray_700),
+            gray900 = colorResource(R.color.gray_900),
+            black = colorResource(R.color.black),
+            yellow500 = colorResource(R.color.yellow_500),
+            yellow600 = colorResource(R.color.yellow_600),
+            yellow700 = colorResource(R.color.yellow_700),
+            yellow800 = colorResource(R.color.yellow_800),
         )
     }
 }

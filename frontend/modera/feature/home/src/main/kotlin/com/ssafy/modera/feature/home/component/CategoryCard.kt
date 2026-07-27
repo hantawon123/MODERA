@@ -69,7 +69,7 @@ fun CategoryCard(
                 Text(
                     text = itemCount.toString(),
                     style = ModeraTheme.typography.bodySB14,
-                    color = ModeraTheme.colors.blue,
+                    color = ModeraTheme.colors.yellow500,
                 )
             }
 
@@ -78,7 +78,7 @@ fun CategoryCard(
             Text(
                 text = title,
                 style = ModeraTheme.typography.titleSB18,
-                color = ModeraTheme.colors.typo,
+                color = ModeraTheme.colors.gray700,
             )
 
             Spacer(modifier = Modifier.size(4.dp))
@@ -88,7 +88,7 @@ fun CategoryCard(
                     tagFormat.format(tag)
                 },
                 style = ModeraTheme.typography.captionR12,
-                color = ModeraTheme.colors.blue,
+                color = ModeraTheme.colors.yellow500,
                 maxLines = 1,
             )
         }

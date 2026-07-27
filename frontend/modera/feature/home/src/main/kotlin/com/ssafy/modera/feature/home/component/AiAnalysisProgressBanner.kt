@@ -119,7 +119,7 @@ internal fun AiAnalysisProgressBanner(
                 Text(
                     text = stringResource(R.string.home_analysis_message, imageCount),
                     style = ModeraTheme.typography.titleSB18,
-                    color = ModeraTheme.colors.typo,
+                    color = ModeraTheme.colors.gray700,
                 )
             }
 

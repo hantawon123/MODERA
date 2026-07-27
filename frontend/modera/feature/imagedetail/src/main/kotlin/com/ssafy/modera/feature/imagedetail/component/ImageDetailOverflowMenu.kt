@@ -76,7 +76,7 @@ private fun ImageDetailMenuItem(
     text: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    textColor: Color = ModeraTheme.colors.typo,
+    textColor: Color = ModeraTheme.colors.gray700,
 ) {
     ClickableSurface(
         onClick = onClick,

@@ -95,7 +95,7 @@ fun CategoryImagesScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(ModeraTheme.colors.gray),
+            .background(ModeraTheme.colors.gray50),
     ) {
         CategoryImagesTopAppBar(
             categoryName = categoryName,
@@ -188,7 +188,7 @@ private fun CategoryImagesLoadingScreen(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(ModeraTheme.colors.gray),
+            .background(ModeraTheme.colors.gray50),
         contentAlignment = Alignment.Center,
     ) {
         LoadingWheel()
@@ -204,7 +204,7 @@ private fun CategoryImagesErrorScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(ModeraTheme.colors.gray),
+            .background(ModeraTheme.colors.gray50),
     ) {
         CategoryImagesTopAppBar(
             categoryName = categoryName,
@@ -223,7 +223,7 @@ private fun CategoryImagesErrorScreen(
             Text(
                 text = "이미지 목록을 불러오지 못했습니다.",
                 style = ModeraTheme.typography.bodyR14,
-                color = ModeraTheme.colors.typo,
+                color = ModeraTheme.colors.gray700,
                 textAlign = TextAlign.Center,
             )
         }
@@ -236,13 +236,13 @@ private fun CategoryImagesEmptyScreen(
 ) {
     Box(
         modifier = modifier
-            .background(ModeraTheme.colors.gray),
+            .background(ModeraTheme.colors.gray50),
         contentAlignment = Alignment.Center,
     ) {
         Text(
             text = "등록된 이미지가 없습니다.",
             style = ModeraTheme.typography.bodyR14,
-            color = ModeraTheme.colors.typo,
+            color = ModeraTheme.colors.gray700,
             textAlign = TextAlign.Center,
         )
     }

@@ -37,6 +37,12 @@ spring:
       port: ${REDIS_PORT:6380}
       password: ${REDIS_PASSWORD:}
 
+# [Internal] AI 서버가 분석 결과 콜백(X-Internal-Token 헤더)을 보낼 때 검증할 값.
+# AI 서버가 /internal/v1/analyze 요청에 쓰는 토큰과 같은 값이다(양방향 공유 토큰).
+internal:
+  callback:
+    token: ${INTERNAL_TOKEN:local-dev-internal-token}
+
 logging:
   level:
     root: INFO

@@ -33,6 +33,11 @@ spring:
       port: ${REDIS_PORT:6379}
       password: ${REDIS_PASSWORD:}
 
+# [Internal] AI 서버가 분석 결과 콜백(X-Internal-Token 헤더)을 보낼 때 검증할 값.
+internal:
+  callback:
+    token: ${INTERNAL_TOKEN:local-dev-internal-token}
+
 # [Analysis] 컨테이너 환경에서도 실제 AI 서버가 없으니 기본은 mock.
 analysis:
   client: ${ANALYSIS_CLIENT:mock}

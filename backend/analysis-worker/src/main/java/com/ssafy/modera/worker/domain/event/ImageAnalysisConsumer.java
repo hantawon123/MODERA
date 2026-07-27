@@ -179,6 +179,7 @@ public class ImageAnalysisConsumer {
 
         AnalysisJob job = AnalysisJob.builder()
                 .imageId(imageId)
+                .userId(payload.userId())
                 .stage("ANALYSIS")
                 .status("PENDING")
                 .attempt(1)

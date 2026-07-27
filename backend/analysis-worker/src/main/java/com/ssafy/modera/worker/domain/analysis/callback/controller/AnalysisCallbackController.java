@@ -1,6 +1,8 @@
 package com.ssafy.modera.worker.domain.analysis.callback.controller;
 
 import com.ssafy.modera.worker.domain.analysis.callback.dto.request.AnalysisCallbackRequest;
+import com.ssafy.modera.worker.domain.analysis.callback.service.AnalysisCallbackService;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
@@ -13,7 +15,10 @@ import java.util.Map;
 @Slf4j
 @RestController
 @RequestMapping("/internal/v1")
+@RequiredArgsConstructor
 public class AnalysisCallbackController {
+
+    private final AnalysisCallbackService analysisCallbackService;
 
     @Value("${internal.callback.token}")
     private String expectedToken;
@@ -29,7 +34,7 @@ public class AnalysisCallbackController {
                 request.jobId(), request.imageId(), request.stage(), request.status(),
                 request.result() == null ? "none" : request.result().keySet());
 
-        // TODO(2-B): 멱등 체크 → 결과 저장 → ANALYSIS_COMPLETED 발행
+        analysisCallbackService.handle(request);
 
         return ResponseEntity.ok(Map.of("received", true));
     }

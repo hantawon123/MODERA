@@ -89,10 +89,12 @@ public class AnalysisCallbackService {
         boolean inserted = analysisResultRepository.insert(new AnalysisResultRow(
                 analysisJob.getJobId(),
                 analysisJob.getImageId(),
-                null,                         // ocrRawText — 콜백에 없음(추후 결정)
+                // AI 콜백은 refined 텍스트만 돌려준다. raw/lang/confidence는 앱이 보낸
+                // 온디바이스 OCR이 유일한 출처라, job 생성 시 실어둔 값을 여기서 꺼내 쓴다.
+                analysisJob.getClientOcrRawText(),
                 str(result, "ocrRefinedText"),
-                null,                            // ocrLang
-                null,                                    // ocrConfidence
+                analysisJob.getClientOcrLang(),
+                analysisJob.getClientOcrConfidence(),
                 str(result, "summary"),
                 bool(result, "informative"),
                 null,                      // structuredType — MVP 제외(AI도 안 보냄)

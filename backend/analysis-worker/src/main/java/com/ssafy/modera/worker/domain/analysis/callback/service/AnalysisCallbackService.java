@@ -82,10 +82,14 @@ public class AnalysisCallbackService {
         analysisJob.markCompleted(request.modelVersion(), OffsetDateTime.now());
         analysisJobRepository.save(analysisJob);
 
+        // analysisStatus는 AI가 보낸 값을 그대로 넘긴다.
+        // EMPTY(OCR이 비었거나 비정보성이라 분석을 생략함)를 COMPLETED로 덮어쓰면
+        // api-server의 user_image.analysis_status가 "정상 분석 완료"로 기록돼
+        // 분석을 건너뛴 이미지와 실제로 분석된 이미지를 구분할 수 없다.
         AnalysisCompletedPayload payload = new AnalysisCompletedPayload(
                 analysisJob.getImageId(), analysisJob.getUserId(),
                 str(result, "summary"), str(result, "ocrRefinedText"),
-                null, null, null, "COMPLETED", request.modelVersion()
+                null, null, null, request.status(), request.modelVersion()
         );
         eventPublisher.publish(Streams.ANALYSIS_RESULT, EventTypes.ANALYSIS_COMPLETED, 1, payload);
         log.info("ANALYSIS_COMPLETED 발행: jobId={} imageId={}", analysisJob.getJobId(), analysisJob.getImageId());

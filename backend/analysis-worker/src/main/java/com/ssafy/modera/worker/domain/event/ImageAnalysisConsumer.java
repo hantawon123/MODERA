@@ -4,16 +4,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ssafy.modera.contract.EventEnvelope;
 import com.ssafy.modera.contract.EventTypes;
 import com.ssafy.modera.contract.Streams;
-import com.ssafy.modera.contract.payload.AnalysisCompletedPayload;
 import com.ssafy.modera.contract.payload.AnalysisFailedPayload;
 import com.ssafy.modera.contract.payload.ImageUploadedPayload;
 import com.ssafy.modera.worker.domain.analysis.client.AnalysisClient;
-import com.ssafy.modera.worker.domain.analysis.client.AnalysisOutcome;
-import com.ssafy.modera.worker.domain.analysis.client.AnalysisRequest;
 import com.ssafy.modera.worker.domain.analysis.entity.AnalysisJob;
 import com.ssafy.modera.worker.domain.analysis.repository.AnalysisJobRepository;
-import com.ssafy.modera.worker.domain.analysis.repository.AnalysisResultRepository;
-import com.ssafy.modera.worker.domain.analysis.repository.AnalysisResultRow;
 import io.lettuce.core.RedisCommandTimeoutException;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
@@ -49,7 +44,6 @@ public class ImageAnalysisConsumer {
     private final StringRedisTemplate redisTemplate;
     private final ObjectMapper objectMapper;
     private final AnalysisJobRepository analysisJobRepository;
-    private final AnalysisResultRepository analysisResultRepository;
     private final AnalysisClient analysisClient;
     private final EventPublisher eventPublisher;
 
@@ -179,7 +173,8 @@ public class ImageAnalysisConsumer {
 
         AnalysisJob job = AnalysisJob.builder()
                 .imageId(imageId)
-                .stage("ANALYSIS")
+                .userId(payload.userId())
+                .stage("FULL")
                 .status("PENDING")
                 .attempt(1)
                 .triggerType("INITIAL")
@@ -191,36 +186,16 @@ public class ImageAnalysisConsumer {
         analysisJobRepository.save(job);
 
         try {
-            AnalysisOutcome outcome = analysisClient.analyze(new AnalysisRequest(payload.imageId(), payload.s3Key()));
-
-            boolean inserted = analysisResultRepository.insert(new AnalysisResultRow(
-                    job.getJobId(), imageId, outcome.ocrRawText(), outcome.ocrRefinedText(), outcome.ocrLang(),
-                    outcome.ocrConfidence(), outcome.summary(), outcome.informative(), outcome.structuredType(),
-                    outcome.structuredFieldsJson(), outcome.keyInformationJson(), outcome.analysisConfidence(),
-                    outcome.embedding(), outcome.modelVersion(), OffsetDateTime.now().toInstant()
-            ));
-            if (!inserted) {
-                log.info("이미 저장된 (imageId, modelVersion) 조합이라 결과 저장을 건너뛴다: imageId={}, modelVersion={}",
-                        imageId, outcome.modelVersion());
-            }
-
-            job.markCompleted(outcome.modelVersion(), OffsetDateTime.now());
-            analysisJobRepository.save(job);
-
-            // ocrText는 클라이언트에 노출할 최종본이라 refined 쪽을 보낸다(raw는 worker 내부에만 남는다).
-            AnalysisCompletedPayload completedPayload = new AnalysisCompletedPayload(
-                    payload.imageId(), payload.userId(), outcome.summary(), outcome.ocrRefinedText(),
-                    null, null, outcome.structuredFieldsJson(), "COMPLETED", outcome.modelVersion()
-            );
-            eventPublisher.publish(Streams.ANALYSIS_RESULT, EventTypes.ANALYSIS_COMPLETED, 1, completedPayload);
-            log.info("ANALYSIS_COMPLETED 발행: imageId={}", imageId);
+            // 요청 보내고 끝
+            // 결과는 AI가 콜백으로 보내며 AnalysisCallbackService가 처리
+            analysisClient.requestAnalysis(job, payload.s3Key());
         } catch (Exception e) {
             log.error("분석 실패: imageId={}", imageId, e);
-            job.markFailed("ANALYSIS_ERROR", String.valueOf(e.getMessage()), true, OffsetDateTime.now());
+            job.markFailed("ANALYSIS_REQUEST_ERROR", String.valueOf(e.getMessage()), true, OffsetDateTime.now());
             analysisJobRepository.save(job);
 
             AnalysisFailedPayload failedPayload = new AnalysisFailedPayload(
-                    payload.imageId(), payload.userId(), "ANALYSIS_ERROR", String.valueOf(e.getMessage()), true);
+                    imageId, payload.userId(), "ANALYSIS_REQUEST_ERROR", String.valueOf(e.getMessage()), true);
             eventPublisher.publish(Streams.ANALYSIS_RESULT, EventTypes.ANALYSIS_FAILED, 1, failedPayload);
         }
     }

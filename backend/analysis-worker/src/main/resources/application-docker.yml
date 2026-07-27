@@ -32,10 +32,22 @@ spring:
       host: ${REDIS_HOST:redis}
       port: ${REDIS_PORT:6379}
       password: ${REDIS_PASSWORD:}
+      # ImageAnalysisConsumer의 XREADGROUP block(5초)보다 반드시 길어야 한다.
+      timeout: 6000
+
+# [Internal] AI 서버가 분석 결과 콜백(X-Internal-Token 헤더)을 보낼 때 검증할 값.
+internal:
+  callback:
+    token: ${INTERNAL_TOKEN:local-dev-internal-token}
 
 # [Analysis] 컨테이너 환경에서도 실제 AI 서버가 없으니 기본은 mock.
 analysis:
   client: ${ANALYSIS_CLIENT:mock}
+  # AI가 결과를 보낼 worker 주소. 같은 compose network의 컨테이너명으로 접근한다.
+  callback-url: ${CALLBACK_URL:http://analysis-worker:8081/internal/v1/callback/analysis}
+
+analysis-worker:
+  ai-server-url: ${AI_SERVER_URL:http://ai-server:8000}
 
 logging:
   level:

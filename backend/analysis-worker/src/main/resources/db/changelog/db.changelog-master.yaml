@@ -3,3 +3,5 @@ databaseChangeLog:
       file: db/changelog/001-init-schema.sql
   - include:
       file: db/changelog/002-convert-image-id-to-integer.sql
+  - include:
+      file: db/changelog/003-add-user-id-to-job.sql

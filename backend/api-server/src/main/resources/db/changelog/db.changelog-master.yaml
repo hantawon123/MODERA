@@ -3,3 +3,9 @@ databaseChangeLog:
       file: db/changelog/001-init-schema.sql
   - include:
       file: db/changelog/002-convert-identifiers-to-integer.sql
+  - include:
+      file: db/changelog/003-add-soft-delete-and-document-schema.sql
+  - include:
+      file: db/changelog/004-add-user-profile-image.sql
+  - include:
+      file: db/changelog/005-add-unique-user-nickname.sql

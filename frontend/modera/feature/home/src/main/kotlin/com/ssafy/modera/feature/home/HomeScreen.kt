@@ -149,8 +149,7 @@ fun HomeScreen(
             LazyVerticalGrid(
                 columns = GridCells.Fixed(2),
                 modifier = Modifier
-                    .fillMaxSize()
-                    .padding(bottom = 40.dp),
+                    .fillMaxSize(),
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {

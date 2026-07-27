@@ -11,3 +11,5 @@ databaseChangeLog:
       file: db/changelog/005-add-unique-user-nickname.sql
   - include:
       file: db/changelog/006-add-unique-social-provider.sql
+  - include:
+      file: db/changelog/007-deduplicate-image-assets.sql

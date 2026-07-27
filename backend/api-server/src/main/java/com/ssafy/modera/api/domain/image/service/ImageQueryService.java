@@ -22,8 +22,7 @@ public class ImageQueryService {
 
     public ImageDetailResponse getImage(Integer userId, Integer imageId) {
         // 다른 사용자 소유 이미지는 403이 아니라 404로 응답한다(존재 여부 자체를 숨긴다).
-        UserImage userImage = userImageRepository.findById(imageId)
-                .filter(image -> image.getUserId().equals(userId))
+        UserImage userImage = userImageRepository.findByUserIdAndImageId(userId, imageId)
                 .orElseThrow(() -> new BusinessException(ImageErrorCode.IMAGE_NOT_FOUND));
 
         ImageAsset imageAsset = imageAssetRepository.findById(imageId)

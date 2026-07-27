@@ -89,7 +89,7 @@ private fun ImageDetailMenuItem(
                 horizontal = 20.dp,
                 vertical = 14.dp,
             ),
-            style = ModeraTheme.typography.body2,
+            style = ModeraTheme.typography.bodyR14,
             color = textColor,
         )
     }

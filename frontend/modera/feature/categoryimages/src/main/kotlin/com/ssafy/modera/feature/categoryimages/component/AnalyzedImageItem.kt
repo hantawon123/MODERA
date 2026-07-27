@@ -114,7 +114,7 @@ private fun AnalyzedImageInfo(
     ) {
         Text(
             text = title,
-            style = ModeraTheme.typography.body2SemiBold,
+            style = ModeraTheme.typography.bodySB14,
             color = ModeraTheme.colors.typo,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
@@ -139,7 +139,7 @@ private fun AnalyzedImageInfo(
                                 weight = 1f,
                                 fill = false,
                             ),
-                            style = ModeraTheme.typography.caption1,
+                            style = ModeraTheme.typography.captionR12,
                             color = ModeraTheme.colors.blue,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,

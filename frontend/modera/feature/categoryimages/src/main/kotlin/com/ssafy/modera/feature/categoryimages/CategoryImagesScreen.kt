@@ -222,7 +222,7 @@ private fun CategoryImagesErrorScreen(
         ) {
             Text(
                 text = "이미지 목록을 불러오지 못했습니다.",
-                style = ModeraTheme.typography.body2Medium,
+                style = ModeraTheme.typography.bodyR14,
                 color = ModeraTheme.colors.typo,
                 textAlign = TextAlign.Center,
             )
@@ -241,7 +241,7 @@ private fun CategoryImagesEmptyScreen(
     ) {
         Text(
             text = "등록된 이미지가 없습니다.",
-            style = ModeraTheme.typography.body2Medium,
+            style = ModeraTheme.typography.bodyR14,
             color = ModeraTheme.colors.typo,
             textAlign = TextAlign.Center,
         )

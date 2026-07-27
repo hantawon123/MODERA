@@ -60,7 +60,7 @@ internal fun SelectedImagesDeleteBar(
                         R.string.category_image_list_delete,
                     )
                 },
-                style = ModeraTheme.typography.body2SemiBold,
+                style = ModeraTheme.typography.bodySB14,
             )
         }
     }

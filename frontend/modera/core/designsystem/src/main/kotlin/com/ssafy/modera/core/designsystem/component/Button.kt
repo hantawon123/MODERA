@@ -58,7 +58,7 @@ fun Button(
     ) {
         ProvideContentColorTextStyle(
             contentColor = contentColor,
-            textStyle = ModeraTheme.typography.body1SemiBold
+            textStyle = ModeraTheme.typography.bodySB16
         ) {
             Row(
                 Modifier
@@ -96,7 +96,7 @@ private fun ButtonPreview() {
         ) {
             Text(
                 text = "내용 입력",
-                style = ModeraTheme.typography.subtitle3SemiBold
+                style = ModeraTheme.typography.titleSB18
             )
         }
     }
@@ -114,7 +114,7 @@ private fun DisabledButtonPreview() {
         ) {
             Text(
                 text = "내용 입력",
-                style = ModeraTheme.typography.subtitle3SemiBold
+                style = ModeraTheme.typography.titleSB18
             )
         }
     }

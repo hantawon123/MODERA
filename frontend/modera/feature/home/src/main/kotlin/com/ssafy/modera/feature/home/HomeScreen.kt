@@ -216,7 +216,7 @@ private fun HomeErrorScreen(
     ) {
         Text(
             text = stringResource(R.string.home_error_message),
-            style = ModeraTheme.typography.body2Medium,
+            style = ModeraTheme.typography.bodyR14,
             color = ModeraTheme.colors.typo,
             textAlign = TextAlign.Center,
         )

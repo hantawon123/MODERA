@@ -58,7 +58,7 @@ internal fun CategoryImagesTopAppBar(
                     horizontal = 4.dp,
                     vertical = 6.dp,
                 ),
-                style = ModeraTheme.typography.body2SemiBold,
+                style = ModeraTheme.typography.bodySB14,
                 color = ModeraTheme.colors.blue,
             )
         }
@@ -97,7 +97,7 @@ private fun TopAppBar(
             modifier = Modifier
                 .weight(1f)
                 .padding(start = 12.dp),
-            style = ModeraTheme.typography.subtitle1,
+            style = ModeraTheme.typography.titleB22,
             color = ModeraTheme.colors.typo,
             maxLines = 1,
         )

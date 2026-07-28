@@ -262,6 +262,7 @@ erDiagram
 
 ```mermaid
 erDiagram
+    USER_CATEGORY_VIEW ||--o{ USER_IMAGE_VIEW : "user_id + category_id"
     USER_IMAGE_VIEW ||--o{ DOCUMENT_IMAGE_VIEW : "user_id + image_id"
     USER_DOCUMENT_VIEW ||--o{ DOCUMENT_IMAGE_VIEW : "user_id + document_id"
     USER_IMAGE_VIEW ||--o{ USER_SCHEDULE_VIEW : "user_id + image_id"
@@ -274,6 +275,7 @@ erDiagram
         VARCHAR thumbnail_key
         VARCHAR title
         TEXT summary
+        INTEGER category_id
         VARCHAR category_name
         TEXT_ARRAY tag_names
         TEXT_ARRAY key_information
@@ -281,10 +283,19 @@ erDiagram
         VARCHAR upload_status
         VARCHAR analysis_status
         BOOLEAN favorite
+        TIMESTAMPTZ uploaded_at
         TIMESTAMPTZ created_at
         CHAR del_yn
         VARCHAR is_documented_yn
         VARCHAR is_calendared_yn
+    }
+
+    USER_CATEGORY_VIEW {
+        INTEGER user_id PK
+        INTEGER category_id PK
+        VARCHAR category_name
+        INTEGER image_count
+        TIMESTAMPTZ latest_uploaded_at
     }
 
     USER_DOCUMENT_VIEW {
@@ -330,6 +341,7 @@ erDiagram
 | 테이블 | 주요 조회 화면 | 원본 데이터 | 비고 |
 |---|---|---|---|
 | `user_image_view` | 사용자 이미지 목록 및 이미지 상세 | `users`, `image_asset`, `thumbnail`, taxonomy 관계, 즐겨찾기·문서·일정 관계 | 이미지 화면용 핵심 Read Model. `favorite`, `is_documented_yn`, `is_calendared_yn`은 관계 테이블에서 파생되는 값이다. |
+| `user_category_view` | 사용자별 카테고리 목록 | `category`, `image_category`, `user_image`, `image_asset` | 카테고리 이름, 활성 이미지 수, 최근 업로드 시각을 사용자별로 집계한다. |
 | `user_document_view` | 사용자 문서 목록 및 문서 상세 | `document`, `user_document`, `image_document` | 문서 원문과 포함 이미지 수를 한 번에 조회한다. `image_count`는 관계 변경 시 함께 갱신해야 한다. |
 | `document_image_view` | 특정 문서에 포함된 이미지 목록 | `image_document`, `image_asset`, `thumbnail`, 분석 결과, 태그 | 문서 화면에 필요한 이미지 제목·요약·썸네일·태그를 보관한다. `added_at` 기준 정렬이 가능하다. |
 | `user_schedule_view` | 사용자 일정 후보 및 캘린더 일정 목록 | `schedule`, `user_schedule`, `image_schedule` | 이미지에서 추출된 일정과 캘린더 등록 상태를 함께 조회한다. 이미지 1개에 여러 행이 존재할 수 있다. |

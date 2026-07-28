@@ -93,7 +93,11 @@ class AnalyzeOptions(CamelModel):
     language: str | None = None
 
 
-Stage = Literal["LLM", "IMAGE_ANALYSIS", "AGENT"]
+# FULL 은 한 요청에서 LLM → IMAGE_ANALYSIS → AGENT 를 이어서 처리한다.
+# 단계별 stage 는 Spring 이 다음 단계를 결정해 매번 다시 부르는 구조인데,
+# analysis-worker 는 이미지 1장을 한 번만 던지고 콜백 1회를 기다린다
+# (backend/analysis-worker FastApiAnalysisClient 는 STAGE_FULL 만 보낸다).
+Stage = Literal["LLM", "IMAGE_ANALYSIS", "AGENT", "FULL"]
 
 
 class AnalyzeRequest(CamelModel):

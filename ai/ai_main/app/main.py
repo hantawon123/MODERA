@@ -264,6 +264,9 @@ _REQUIRED_INPUT = {
     "LLM": ("ocr",),
     "IMAGE_ANALYSIS": ("image",),
     "AGENT": ("ocr", "image_analysis"),
+    # FULL 은 원본 이미지만 있으면 된다. ocr 은 있으면 쓰고, 없으면
+    # 이미지 분석에서 읽어낸 텍스트로 대신한다(stages._run_full_pipeline 참고).
+    "FULL": ("image",),
 }
 
 
@@ -367,6 +370,8 @@ async def keyword_search(request: SearchRequest):
         hits, total = await asyncio.to_thread(
             search.keyword_search,
             request.user_id, request.query, request.category, request.size,
+            # 내부/Spring 소비자에는 정확 total 과 BM25 점수 스케일을 보장한다(하이브리드 옵트아웃).
+            hybrid=False,
         )
     except Exception as e:
         logger.exception("검색 실패")

@@ -17,8 +17,14 @@ def _required(name: str) -> str:
 
 class Settings:
     def __init__(self) -> None:
+        # 모델 호출을 전부 가짜 응답으로 대체한다(로컬 배선 점검용).
+        # Gemini 를 부르지 않으므로 API 키 없이 서버를 띄울 수 있고, 파이프라인
+        # 왕복(S3 읽기 → 3단계 → 콜백)과 동시성 동작을 키 소모 없이 확인할 수 있다.
+        # ⚠️ 분석 품질은 확인할 수 없다. 배포 환경에서는 절대 켜지 말 것.
+        self.mock_ai = os.environ.get("MOCK_AI", "false").lower() == "true"
+
         # 자격증명 (기본값 없음)
-        self.gemini_api_key = _required("GEMINI_API_KEY")
+        self.gemini_api_key = "" if self.mock_ai else _required("GEMINI_API_KEY")
         self.internal_token = _required("INTERNAL_TOKEN")
 
         # Spring 내부 API (10-4 콜백, 10-5 후보 조회)
@@ -108,6 +114,24 @@ class Settings:
         # bge-m3 는 dense 1024 차원. 색인과 질의를 반드시 같은 모델로 임베딩해야 비교가 성립한다.
         self.search_embedding_model = os.environ.get("SEARCH_EMBEDDING_MODEL", "BAAI/bge-m3")
         self.search_embedding_dim = int(os.environ.get("SEARCH_EMBEDDING_DIM", "1024"))
+
+        # F3 하이브리드 검색 (BM25 + kNN 시맨틱, RRF 순위결합 + 절대 임계값 컷).
+        # relevance 정렬·scope=ALL 에서만 켜진다. 임베딩 모델이 없으면 자동으로 BM25 로 폴백한다.
+        self.search_hybrid_enabled = (
+            os.environ.get("SEARCH_HYBRID_ENABLED", "true").lower() == "true"
+        )
+        # RRF 상수. 순위결합에서 1/(k+rank) 의 k. 관례값 60. 상위 급경사를 원하면 낮춘다.
+        self.search_rrf_k = int(os.environ.get("SEARCH_RRF_K", "60"))
+        # 후보풀 크기 = kNN k. page 와 무관한 고정값이라 페이지를 넘겨도 total 이 흔들리지 않는다.
+        # 융합 total 은 이 값의 약 2배(BM25∪kNN)를 상한으로 가진다. 코퍼스가 커지면 늘린다.
+        self.search_hybrid_pool_size = int(os.environ.get("SEARCH_HYBRID_POOL_SIZE", "200"))
+        # 억지 매칭 차단의 핵심. 재계산 코사인(단위벡터 내적)이 이 값 미만인 후보는 버린다.
+        # 살아남는 후보가 없으면 "결과 없음". A/B 캘리브레이션(12문서, bge-m3): 관련쌍 최상위
+        # 0.52~0.64 vs 무관쌍 최상위 0.44~0.45 로 갈려, 0.50 이면 무관 질의를 결과 없음으로
+        # 막으면서 관련 문서는 보존한다. 실데이터로 F5 에서 재확정(0.48~0.52 구간).
+        self.search_knn_min_cosine = float(os.environ.get("SEARCH_KNN_MIN_COSINE", "0.50"))
+        # 임베딩이 없는 레거시 문서(빈 OCR·F2 이전)에만 적용하는 어휘 컷. 기본 off(하위호환).
+        self.search_bm25_min_score = float(os.environ.get("SEARCH_BM25_MIN_SCORE", "0.0"))
 
         # 모델
         self.llm_model_name = os.environ.get("LLM_MODEL_NAME", "gemini-3.5-flash")

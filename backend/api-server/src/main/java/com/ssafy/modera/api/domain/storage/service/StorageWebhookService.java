@@ -52,7 +52,15 @@ public class StorageWebhookService {
             return;
         }
 
-        UserImage userImage = userImageRepository.findById(imageAsset.getImageId()).orElse(null);
+        if ("UPLOADED".equals(imageAsset.getUploadStatus())) {
+            log.info("이미 처리된 MinIO webhook을 무시한다: imageId={}, s3Key={}",
+                    imageAsset.getImageId(), s3Key);
+            return;
+        }
+
+        UserImage userImage = userImageRepository
+                .findFirstByImageIdOrderByUserImageIdAsc(imageAsset.getImageId())
+                .orElse(null);
         if (userImage == null) {
             log.warn("imageId={} 에 해당하는 user_image를 찾지 못해 webhook을 무시한다", imageAsset.getImageId());
             return;

@@ -138,7 +138,7 @@ private fun ImageDetailHeroMetadata(
             ) {
                 ClickableSurface(
                     onClick = onCategoryClick,
-                    color = ModeraTheme.colors.blue.copy(alpha = 0.85f),
+                    color = ModeraTheme.colors.yellow500.copy(alpha = 0.85f),
                     shape = RoundedCornerShape(4.dp),
                 ) {
                     Text(
@@ -147,14 +147,14 @@ private fun ImageDetailHeroMetadata(
                             horizontal = 8.dp,
                             vertical = 4.dp,
                         ),
-                        style = ModeraTheme.typography.caption1SemiBold,
+                        style = ModeraTheme.typography.captionSB12,
                         color = ModeraTheme.colors.white,
                     )
                 }
 
                 Text(
                     text = title,
-                    style = ModeraTheme.typography.body2SemiBold,
+                    style = ModeraTheme.typography.bodySB14,
                     color = ModeraTheme.colors.white,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -181,7 +181,7 @@ private fun ImageDetailHeroMetadata(
 
         Text(
             text = stringResource(R.string.image_detail_uploaded_at, uploadedAt),
-            style = ModeraTheme.typography.caption1,
+            style = ModeraTheme.typography.captionR12,
             color = ModeraTheme.colors.white.copy(alpha = 0.85f),
         )
 
@@ -195,7 +195,7 @@ private fun ImageDetailHeroMetadata(
                             R.string.image_detail_hashtag,
                             hashtag.removePrefix("#"),
                         ),
-                        style = ModeraTheme.typography.caption1Medium,
+                        style = ModeraTheme.typography.captionM12,
                         color = ModeraTheme.colors.white.copy(alpha = 0.9f),
                     )
                 }

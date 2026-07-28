@@ -76,7 +76,7 @@ private fun ImageDetailMenuItem(
     text: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    textColor: Color = ModeraTheme.colors.typo,
+    textColor: Color = ModeraTheme.colors.gray700,
 ) {
     ClickableSurface(
         onClick = onClick,
@@ -89,7 +89,7 @@ private fun ImageDetailMenuItem(
                 horizontal = 20.dp,
                 vertical = 14.dp,
             ),
-            style = ModeraTheme.typography.body2,
+            style = ModeraTheme.typography.bodyR14,
             color = textColor,
         )
     }

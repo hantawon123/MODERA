@@ -30,7 +30,7 @@ import com.ssafy.modera.core.designsystem.theme.ModeraTheme
 @Composable
 fun Scaffold(
     modifier: Modifier = Modifier,
-    containerColor: Color = ModeraTheme.colors.gray,
+    containerColor: Color = ModeraTheme.colors.gray50,
     topBar: @Composable () -> Unit = {},
     bottomBar: @Composable () -> Unit = {},
     snackbarHost: @Composable () -> Unit = {},

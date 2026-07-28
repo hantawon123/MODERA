@@ -89,7 +89,7 @@ fun Text(
     onTextLayout: (TextLayoutResult) -> Unit = {},
     style: TextStyle = LocalModeraTextStyle.current
 ) {
-    val textColor = color.takeOrElse { style.color.takeOrElse { ModeraTheme.colors.typo } }
+    val textColor = color.takeOrElse { style.color.takeOrElse { ModeraTheme.colors.gray700 } }
 
     BasicText(
         text = text,

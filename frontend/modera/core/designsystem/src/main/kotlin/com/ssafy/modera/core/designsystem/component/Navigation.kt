@@ -207,7 +207,7 @@ fun ModeraNavigationSuiteScaffold(
         layoutType = resolvedLayoutType,
         containerColor = Color.Transparent,
         navigationSuiteColors = NavigationSuiteDefaults.colors(
-            navigationBarContainerColor = ModeraTheme.colors.blue.copy(alpha = 0.2f),
+            navigationBarContainerColor = ModeraTheme.colors.yellow500.copy(alpha = 0.2f),
             navigationBarContentColor = ModeraNavigationDefaults.navigationContentColor(),
             navigationRailContainerColor = Color.Transparent,
         ),
@@ -258,5 +258,5 @@ object ModeraNavigationDefaults {
     fun navigationSelectedItemColor() = MaterialTheme.colorScheme.onPrimaryContainer
 
     @Composable
-    fun navigationIndicatorColor() = ModeraTheme.colors.blue.copy(alpha = 0.5f)
+    fun navigationIndicatorColor() = ModeraTheme.colors.yellow500.copy(alpha = 0.5f)
 }

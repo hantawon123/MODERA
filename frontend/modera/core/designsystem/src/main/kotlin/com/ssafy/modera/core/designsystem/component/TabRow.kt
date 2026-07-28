@@ -38,7 +38,7 @@ fun TabRow(
     selectedTabIndex: Int,
     modifier: Modifier = Modifier,
     containerColor: Color = Color.Transparent,
-    contentColor: Color = ModeraTheme.colors.typo,
+    contentColor: Color = ModeraTheme.colors.gray700,
     indicator: @Composable (tabPositions: List<TabPosition>) -> Unit =
         @Composable { tabPositions ->
             if (selectedTabIndex < tabPositions.size) {
@@ -134,7 +134,7 @@ object TabRowDefaults {
     @Composable
     fun Indicator(
         modifier: Modifier = Modifier,
-        color: Color = ModeraTheme.colors.blue,
+        color: Color = ModeraTheme.colors.yellow500,
         shape: RoundedCornerShape = RoundedCornerShape(2.dp),
         height: Dp = 4.dp
     ) {

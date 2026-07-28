@@ -58,8 +58,8 @@ internal fun CategoryImagesTopAppBar(
                     horizontal = 4.dp,
                     vertical = 6.dp,
                 ),
-                style = ModeraTheme.typography.body2SemiBold,
-                color = ModeraTheme.colors.blue,
+                style = ModeraTheme.typography.bodySB14,
+                color = ModeraTheme.colors.yellow500,
             )
         }
     }
@@ -84,7 +84,7 @@ private fun TopAppBar(
             color = Color.Transparent,
         ) {
             Icon(
-                painter = painterResource(designSystemR.drawable.ic_arrow_left),
+                painter = painterResource(designSystemR.drawable.ic_arrow_left_24),
                 contentDescription = stringResource(
                     R.string.top_app_bar_back,
                 ),
@@ -97,8 +97,8 @@ private fun TopAppBar(
             modifier = Modifier
                 .weight(1f)
                 .padding(start = 12.dp),
-            style = ModeraTheme.typography.subtitle1,
-            color = ModeraTheme.colors.typo,
+            style = ModeraTheme.typography.titleB22,
+            color = ModeraTheme.colors.gray700,
             maxLines = 1,
         )
 

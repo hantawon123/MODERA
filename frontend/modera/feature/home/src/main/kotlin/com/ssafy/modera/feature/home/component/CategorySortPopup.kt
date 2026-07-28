@@ -101,7 +101,7 @@ private fun CategorySortPopupContent(
 
             if (index != CategorySortType.entries.lastIndex) {
                 HorizontalDivider(
-                    color = ModeraTheme.colors.gray,
+                    color = ModeraTheme.colors.gray50,
                 )
             }
         }
@@ -124,15 +124,15 @@ private fun SortMenuItem(
     }
 
     val textStyle = if (selected) {
-        ModeraTheme.typography.body2SemiBold
+        ModeraTheme.typography.bodySB14
     } else {
-        ModeraTheme.typography.body2
+        ModeraTheme.typography.bodyR14
     }
 
     val contentColor = if (selected) {
-        ModeraTheme.colors.blue
+        ModeraTheme.colors.yellow500
     } else {
-        ModeraTheme.colors.typo
+        ModeraTheme.colors.gray700
     }
 
     ClickableSurface(
@@ -160,7 +160,7 @@ private fun SortMenuItem(
                 painter = painterResource(R.drawable.ic_check),
                 contentDescription = null,
                 tint = if (selected) {
-                    ModeraTheme.colors.blue
+                    ModeraTheme.colors.yellow500
                 } else {
                     Color.Transparent
                 },

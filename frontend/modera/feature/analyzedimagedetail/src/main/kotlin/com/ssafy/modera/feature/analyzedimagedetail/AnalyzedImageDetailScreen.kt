@@ -1,4 +1,4 @@
-package com.ssafy.modera.feature.imagedetail
+package com.ssafy.modera.feature.analyzedimagedetail
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
@@ -33,18 +33,18 @@ import com.ssafy.modera.core.model.analyzedimage.AnalyzedImageCategory
 import com.ssafy.modera.core.model.analyzedimage.AnalyzedImageDetail
 import com.ssafy.modera.core.model.analyzedimage.AnalyzedImageOcr
 import com.ssafy.modera.core.model.analyzedimage.ImageAnalysisStatus
-import com.ssafy.modera.feature.imagedetail.component.ImageDetailActionBarAnimated
-import com.ssafy.modera.feature.imagedetail.component.ImageDetailHeroSection
-import com.ssafy.modera.feature.imagedetail.component.ImageDetailOcrSection
-import com.ssafy.modera.feature.imagedetail.component.ImageDetailOverflowMenu
-import com.ssafy.modera.feature.imagedetail.component.ImageDetailSummarySection
-import com.ssafy.modera.feature.imagedetail.component.ImageDetailTopOverlay
+import com.ssafy.modera.feature.analyzedimagedetail.component.AnalyzedImageDetailActionBarAnimated
+import com.ssafy.modera.feature.analyzedimagedetail.component.AnalyzedImageDetailHeroSection
+import com.ssafy.modera.feature.analyzedimagedetail.component.AnalyzedImageDetailOcrSection
+import com.ssafy.modera.feature.analyzedimagedetail.component.AnalyzedImageDetailOverflowMenu
+import com.ssafy.modera.feature.analyzedimagedetail.component.AnalyzedImageDetailSummarySection
+import com.ssafy.modera.feature.analyzedimagedetail.component.AnalyzedImageDetailTopOverlay
 
 /**
  * ViewModel 연결 및 UiState 분기 Screen
  */
 @Composable
-fun ImageDetailScreen(
+fun AnalyzedImageDetailScreen(
     onBackClick: () -> Unit,
     onCategoryClick: (Long) -> Unit,
     onReanalyzeClick: (Long) -> Unit,
@@ -54,19 +54,19 @@ fun ImageDetailScreen(
     onDeleteClick: (Long) -> Unit,
     onFavoriteClick: (Long) -> Unit,
     modifier: Modifier = Modifier,
-    viewModel: ImageDetailViewModel = hiltViewModel()
+    viewModel: AnalyzedImageDetailViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
     when (val state = uiState) {
-        is ImageDetailUiState.Loading -> {
+        is AnalyzedImageDetailUiState.Loading -> {
             ImageDetailLoadingScreen(
                 modifier = modifier,
             )
         }
 
-        is ImageDetailUiState.Success -> {
-            ImageDetailScreen(
+        is AnalyzedImageDetailUiState.Success -> {
+            AnalyzedImageDetailScreen(
                 image = state.image,
                 onBackClick = onBackClick,
                 onCategoryClick = onCategoryClick,
@@ -80,8 +80,8 @@ fun ImageDetailScreen(
             )
         }
 
-        is ImageDetailUiState.Error -> {
-            ImageDetailErrorScreen(
+        is AnalyzedImageDetailUiState.Error -> {
+            AnalyzedImageDetailErrorScreen(
                 onBackClick = onBackClick,
                 modifier = modifier,
             )
@@ -93,7 +93,7 @@ fun ImageDetailScreen(
  * 실제 이미지 상세 UI
  */
 @Composable
-fun ImageDetailScreen(
+fun AnalyzedImageDetailScreen(
     image: AnalyzedImageDetail,
     onBackClick: () -> Unit,
     onCategoryClick: (Long) -> Unit,
@@ -151,7 +151,7 @@ fun ImageDetailScreen(
                     .fillMaxSize()
                     .verticalScroll(scrollState),
             ) {
-                ImageDetailHeroSection(
+                AnalyzedImageDetailHeroSection(
                     imageUrl = image.imageUrl,
                     title = image.title,
                     showOverlay = showOverlay,
@@ -170,11 +170,11 @@ fun ImageDetailScreen(
                     },
                 )
 
-                ImageDetailSummarySection(
+                AnalyzedImageDetailSummarySection(
                     summary = image.summary,
                 )
 
-                ImageDetailOcrSection(
+                AnalyzedImageDetailOcrSection(
                     analyzedImageOcr = image.ocr,
                     onCopyClick = {
                         onCopyOcrTextClick(
@@ -188,7 +188,7 @@ fun ImageDetailScreen(
                 )
             }
 
-            ImageDetailTopOverlay(
+            AnalyzedImageDetailTopOverlay(
                 visible = showOverlay,
                 onBackClick = onBackClick,
                 onReanalyzeClick = {
@@ -200,7 +200,7 @@ fun ImageDetailScreen(
                 modifier = Modifier.align(Alignment.TopCenter),
             )
 
-            ImageDetailOverflowMenu(
+            AnalyzedImageDetailOverflowMenu(
                 expanded = showOverflowMenu,
                 onDismissRequest = {
                     showOverflowMenu = false
@@ -222,7 +222,7 @@ fun ImageDetailScreen(
                 },
             )
 
-            ImageDetailActionBarAnimated(
+            AnalyzedImageDetailActionBarAnimated(
                 visible = showActionBar,
                 onReanalyzeClick = {
                     onReanalyzeClick(image.id)
@@ -251,7 +251,7 @@ private fun ImageDetailLoadingScreen(
 }
 
 @Composable
-private fun ImageDetailErrorScreen(
+private fun AnalyzedImageDetailErrorScreen(
     onBackClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -260,7 +260,7 @@ private fun ImageDetailErrorScreen(
             .fillMaxSize()
             .background(ModeraTheme.colors.gray50),
     ) {
-        ImageDetailTopOverlay(
+        AnalyzedImageDetailTopOverlay(
             visible = true,
             onBackClick = onBackClick,
             onReanalyzeClick = {},
@@ -279,14 +279,14 @@ private fun ImageDetailErrorScreen(
 }
 
 @Preview(
-    name = "Image Detail",
+    name = "Analyzed Image Detail",
     showBackground = true,
 )
 @Composable
-private fun ImageDetailScreenPreview() {
+private fun AnalyzedImageDetailScreenPreview() {
     ModeraTheme {
-        ImageDetailScreen(
-            image = previewImageDetail,
+        AnalyzedImageDetailScreen(
+            image = previewAnalyzedImageDetail,
             onBackClick = {},
             onCategoryClick = {},
             onReanalyzeClick = {},
@@ -300,11 +300,11 @@ private fun ImageDetailScreenPreview() {
 }
 
 @Preview(
-    name = "Image Detail Loading",
+    name = "Analyzed Image Detail Loading",
     showBackground = true,
 )
 @Composable
-private fun ImageDetailLoadingScreenPreview() {
+private fun AnalyzedImageDetailLoadingScreenPreview() {
     ModeraTheme {
         ImageDetailLoadingScreen()
     }
@@ -315,15 +315,15 @@ private fun ImageDetailLoadingScreenPreview() {
     showBackground = true,
 )
 @Composable
-private fun ImageDetailErrorScreenPreview() {
+private fun AnalyzedImageDetailErrorScreenPreview() {
     ModeraTheme {
-        ImageDetailErrorScreen(
+        AnalyzedImageDetailErrorScreen(
             onBackClick = {},
         )
     }
 }
 
-private val previewImageDetail = AnalyzedImageDetail(
+private val previewAnalyzedImageDetail = AnalyzedImageDetail(
     id = 1L,
     fileName = "ascii_hackathon_poster.jpg",
     status = ImageAnalysisStatus.COMPLETED,

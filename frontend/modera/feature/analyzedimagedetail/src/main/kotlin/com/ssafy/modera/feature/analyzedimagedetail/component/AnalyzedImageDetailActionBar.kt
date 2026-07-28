@@ -1,4 +1,4 @@
-package com.ssafy.modera.feature.imagedetail.component
+package com.ssafy.modera.feature.analyzedimagedetail.component
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
@@ -28,10 +28,10 @@ import com.ssafy.modera.core.designsystem.component.Icon
 import com.ssafy.modera.core.designsystem.component.ModeraButtonDefaults
 import com.ssafy.modera.core.designsystem.component.Text
 import com.ssafy.modera.core.designsystem.theme.ModeraTheme
-import com.ssafy.modera.feature.imagedetail.R
+import com.ssafy.modera.feature.analyzedimagedetail.R
 
 @Composable
-internal fun ImageDetailActionBar(
+internal fun AnalyzedImageDetailActionBar(
     onReanalyzeClick: () -> Unit,
     onRelatedMaterialsClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -93,7 +93,7 @@ internal fun ImageDetailActionBar(
 }
 
 @Composable
-internal fun ImageDetailActionBarAnimated(
+internal fun AnalyzedImageDetailActionBarAnimated(
     visible: Boolean,
     onReanalyzeClick: () -> Unit,
     onRelatedMaterialsClick: () -> Unit,
@@ -105,7 +105,7 @@ internal fun ImageDetailActionBarAnimated(
         enter = slideInVertically { it / 2 } + fadeIn(),
         exit = slideOutVertically { it / 2 } + fadeOut(),
     ) {
-        ImageDetailActionBar(
+        AnalyzedImageDetailActionBar(
             onReanalyzeClick = onReanalyzeClick,
             onRelatedMaterialsClick = onRelatedMaterialsClick,
         )
@@ -114,10 +114,10 @@ internal fun ImageDetailActionBarAnimated(
 
 @Preview(showBackground = true)
 @Composable
-private fun ImageDetailActionBarPreview() {
+private fun AnalyzedImageDetailActionBarPreview() {
     ModeraTheme {
         Column {
-            ImageDetailActionBar(
+            AnalyzedImageDetailActionBar(
                 onReanalyzeClick = {},
                 onRelatedMaterialsClick = {},
             )

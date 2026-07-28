@@ -392,10 +392,15 @@ def keyword_search(
 ) -> tuple[list[dict[str, Any]], int]:
     """검색 진입점. 항상 user_id 로 격리하고, category·tag 가 있으면 추가 필터.
 
-    relevance 정렬·scope=ALL 이고 임베딩 모델이 살아 있으면 하이브리드(BM25+kNN, F3)로
-    처리하고, 그 밖에는 기존 BM25 로 처리한다. `hybrid=False` 로 강제 BM25(내부 엔드포인트가
-    정확 total·BM25 점수 스케일을 유지하려고 쓴다). 어떤 이유로든 하이브리드가 깨지면
-    BM25 로 폴백해 검색 자체는 살린다(best-effort).
+    relevance·scope=ALL 자동 검색(hybrid=None)은 **cascade(F4)** 로 처리한다: BM25 를
+    먼저 돌려 결과가 있으면 그대로 쓰고(임베딩 안 함), 빈 결과일 때만 하이브리드(BM25+kNN,
+    F3)로 승격한다. "쿠팡" 같은 키워드는 정확 BM25 로, "반려견" 처럼 어휘가 안 겹치는
+    시맨틱 질의는 승격돼 의미로 잡힌다 — 질의를 '자연어인지' 분류하지 않고 검색 결과로 판단한다.
+
+    `hybrid=False` 는 강제 BM25(내부 엔드포인트가 정확 total·BM25 점수 스케일을 유지),
+    `hybrid=True` 는 (relevance·scope=ALL 조건 하에서) 프로브 없이 바로 하이브리드를 켠다
+    — OCR/TAG scope 나 필드 정렬이면 hybrid 값과 무관하게 BM25 로 간다. 하이브리드가 어떤
+    이유로든 깨지면 BM25 로 폴백해 검색 자체는 살린다(best-effort).
     """
     ensure_index()
     settings = get_settings()
@@ -405,8 +410,8 @@ def keyword_search(
         # STRUCTURED: 검색할 필드가 없다. 질의를 날리지 않고 빈 결과를 돌려준다.
         return [], 0
 
-    # 임베딩은 title+summary 기반이라 하이브리드는 relevance·scope=ALL 에서만 의미가 있다.
-    # OCR/TAG scope, 필드 정렬은 사용자가 명시적으로 다른 축을 원한 것이라 BM25 를 유지한다.
+    # 하이브리드는 relevance·scope=ALL 에서만 의미가 있다(임베딩이 title+summary 기반).
+    # OCR/TAG scope, 필드 정렬, hybrid=False, 킬스위치 off 는 전부 기존 BM25 를 유지한다.
     sort_value = (sort or "relevance").strip()
     hybrid_eligible = (
         hybrid is not False
@@ -414,8 +419,51 @@ def keyword_search(
         and scope.upper() == "ALL"
         and sort_value == "relevance"
     )
-    # 질의 임베딩은 하이브리드 조건일 때만 만든다(모델 로드/추론 비용 회피). None → BM25 폴백.
-    qvec = embedder.embed(query) if hybrid_eligible else None
+    if not hybrid_eligible:
+        return _bm25_search(
+            settings, user_id, query, fields, category, tag, size, page, sort
+        )
+
+    # hybrid=True: 프로브 없이 강제 하이브리드.
+    if hybrid is True:
+        return _run_hybrid_or_bm25(
+            settings, user_id, query, fields, category, tag, size, page, sort
+        )
+
+    # hybrid=None: cascade(F4). BM25 를 먼저 돌려 결과가 있으면 임베딩 없이 그대로 쓰고,
+    # 빈 결과일 때만 하이브리드로 승격한다. '자연어인지' 분류하지 않고 검색 결과로 판단한다.
+    # 승격 지연은 BM25 프로브 1회(~수 ms)뿐이고, 지연을 지배하는 임베딩은 어차피 공통이다.
+    bm25_hits, bm25_total = _bm25_search(
+        settings, user_id, query, fields, category, tag, size, page, sort
+    )
+    if bm25_total > 0:
+        return bm25_hits, bm25_total   # 키워드로 충분 — 임베딩 생략
+    # BM25 빈 결과 → 시맨틱으로 승격. 승격이 불가하면 이미 받은 빈 결과를 그대로 돌려준다.
+    return _run_hybrid_or_bm25(
+        settings, user_id, query, fields, category, tag, size, page, sort,
+        bm25_fallback=(bm25_hits, bm25_total),
+    )
+
+
+def _run_hybrid_or_bm25(
+    settings: Any,
+    user_id: int,
+    query: str,
+    fields: list[str],
+    category: str | None,
+    tag: str | None,
+    size: int,
+    page: int,
+    sort: str | None,
+    bm25_fallback: tuple[list[dict[str, Any]], int] | None = None,
+) -> tuple[list[dict[str, Any]], int]:
+    """질의를 임베딩해 하이브리드를 시도하고, 임베딩 불가·하이브리드 실패 시 BM25 로 폴백한다.
+
+    `bm25_fallback` 이 주어지면(cascade 가 이미 BM25 를 돌려본 경우) 폴백에서 BM25 를
+    다시 돌리지 않고 그 결과를 그대로 쓴다. hybrid=True(프로브 없음)일 때는 None 이라
+    폴백 시 BM25 를 새로 돌린다.
+    """
+    qvec = embedder.embed(query)
     if qvec is not None:
         try:
             return _hybrid_search(
@@ -423,7 +471,8 @@ def keyword_search(
             )
         except Exception:
             logger.exception("하이브리드 검색 실패 → BM25 폴백")
-
+    if bm25_fallback is not None:
+        return bm25_fallback
     return _bm25_search(
         settings, user_id, query, fields, category, tag, size, page, sort
     )

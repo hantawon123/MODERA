@@ -8,8 +8,6 @@ import com.ssafy.modera.api.domain.query.repository.ImageSearchDocumentRepositor
 import com.ssafy.modera.api.domain.query.repository.ImageSearchDocumentRow;
 import com.ssafy.modera.api.domain.query.repository.UserImageViewRepository;
 import com.ssafy.modera.api.domain.query.repository.UserImageViewRow;
-import com.ssafy.modera.api.domain.user.entity.User;
-import com.ssafy.modera.api.domain.user.repository.UserRepository;
 import com.ssafy.modera.contract.payload.AnalysisCompletedPayload;
 import com.ssafy.modera.contract.payload.AnalysisFailedPayload;
 import lombok.RequiredArgsConstructor;
@@ -30,7 +28,6 @@ public class AnalysisResultEventHandler {
 
     private final UserImageRepository userImageRepository;
     private final ImageAssetRepository imageAssetRepository;
-    private final UserRepository userRepository;
     private final UserImageViewRepository userImageViewRepository;
     private final ImageSearchDocumentRepository imageSearchDocumentRepository;
 
@@ -49,8 +46,6 @@ public class AnalysisResultEventHandler {
             return;
         }
 
-        String nickname = userRepository.findById(payload.userId()).map(User::getNickname).orElse(null);
-
         OffsetDateTime now = OffsetDateTime.now();
         userImage.applyAnalysisStatus(payload.analysisStatus(), now);
         userImageRepository.save(userImage);
@@ -58,7 +53,7 @@ public class AnalysisResultEventHandler {
         userImageViewRepository.upsert(new UserImageViewRow(
                 payload.userId(),
                 imageId,
-                nickname,
+                null,
                 imageAsset.getFileName(),
                 imageAsset.getS3Key(),
                 imageAsset.getThumbnailKey(),

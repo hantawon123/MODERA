@@ -47,7 +47,6 @@ public class AuthService {
     private final JwtTokenProvider jwtTokenProvider;
     private final JwtProperties jwtProperties;
     private final KakaoClient kakaoClient;
-    private final NicknameGenerator nicknameGenerator;
 
     @Transactional
     public RegisterResponse register(RegisterRequest request) {
@@ -64,7 +63,6 @@ public class AuthService {
                 .loginId(request.loginId())
                 .passwordHash(passwordEncoder.encode(request.password()))
                 .email(request.email())
-                .nickname(request.nickname())
                 .createdAt(now)
                 .updatedAt(now)
                 .build();
@@ -173,7 +171,6 @@ public class AuthService {
                 .provider(PROVIDER_KAKAO)
                 .providerId(providerId)
                 .email(email)
-                .nickname(nicknameGenerator.generateUnique())
                 .createdAt(now)
                 .updatedAt(now)
                 .build());

@@ -155,17 +155,6 @@ public class ImageRegistrationService {
             Integer userId,
             ImageRegisterItemRequest request
     ) {
-        UserImage idempotent = userImageRepository
-                .findByUserIdAndClientRequestId(
-                        userId,
-                        request.clientRequestId()
-                )
-                .orElse(null);
-
-        if (idempotent != null) {
-            return duplicated(idempotent.getImageId());
-        }
-
         String normalizedContentHash =
                 request.contentHash().toLowerCase(Locale.ROOT);
 
@@ -188,7 +177,6 @@ public class ImageRegistrationService {
                     .orElseGet(
                             () -> createUserImage(
                                     userId,
-                                    request,
                                     existingAsset,
                                     OffsetDateTime.now()
                             )
@@ -221,7 +209,6 @@ public class ImageRegistrationService {
 
         createUserImage(
                 userId,
-                request,
                 imageAsset,
                 now
         );
@@ -235,17 +222,12 @@ public class ImageRegistrationService {
 
     private UserImage createUserImage(
             Integer userId,
-            ImageRegisterItemRequest request,
             ImageAsset imageAsset,
             OffsetDateTime now
     ) {
         UserImage userImage = UserImage.builder()
-                .imageId(imageAsset.getImageId())
                 .userId(userId)
-                .clientRequestId(request.clientRequestId())
-                .title(request.fileName())
-                .createdAt(now)
-                .updatedAt(now)
+                .imageId(imageAsset.getImageId())
                 .build();
 
         userImageRepository.save(userImage);
@@ -258,13 +240,13 @@ public class ImageRegistrationService {
                         imageAsset.getFileName(),
                         imageAsset.getS3Key(),
                         null,
-                        userImage.getTitle(),
+                        imageAsset.getFileName(),
                         null,
                         null,
                         List.of(),
                         imageAsset.getUploadStatus(),
-                        userImage.getAnalysisStatus(),
-                        userImage.getFavorite(),
+                        "NONE",
+                        false,
                         now.toInstant(),
                         now.toInstant()
                 )

@@ -15,3 +15,5 @@ databaseChangeLog:
       file: db/changelog/007-deduplicate-image-assets.sql
   - include:
       file: db/changelog/008-remove-users-nickname-profile.sql
+  - include:
+      file: db/changelog/009-split-thumbnail-and-ocr.sql

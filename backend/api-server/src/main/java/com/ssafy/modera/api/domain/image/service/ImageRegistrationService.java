@@ -215,7 +215,6 @@ public class ImageRegistrationService {
                 .s3Key(s3Key)
                 .uploadStatus("PENDING")
                 .createdAt(now)
-                .updatedAt(now)
                 .build();
 
         imageAssetRepository.save(imageAsset);

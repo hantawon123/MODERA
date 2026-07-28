@@ -1,4 +1,4 @@
-package com.ssafy.modera.feature.imagedetail.component
+package com.ssafy.modera.feature.analyzedimagedetail.component
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
@@ -22,10 +22,10 @@ import com.ssafy.modera.core.designsystem.R as designSystemR
 import com.ssafy.modera.core.designsystem.component.ClickableSurface
 import com.ssafy.modera.core.designsystem.component.Icon
 import com.ssafy.modera.core.designsystem.theme.ModeraTheme
-import com.ssafy.modera.feature.imagedetail.R
+import com.ssafy.modera.feature.analyzedimagedetail.R
 
 @Composable
-internal fun ImageDetailTopOverlay(
+internal fun AnalyzedImageDetailTopOverlay(
     visible: Boolean,
     onBackClick: () -> Unit,
     onReanalyzeClick: () -> Unit,
@@ -96,9 +96,9 @@ internal fun ImageDetailTopOverlay(
 
 @Preview(showBackground = true)
 @Composable
-private fun ImageDetailTopOverlayPreview() {
+private fun AnalyzedImageDetailTopOverlayPreview() {
     ModeraTheme {
-        ImageDetailTopOverlay(
+        AnalyzedImageDetailTopOverlay(
             visible = true,
             onBackClick = {},
             onReanalyzeClick = {},

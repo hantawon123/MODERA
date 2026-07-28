@@ -1,4 +1,4 @@
-package com.ssafy.modera.feature.imagedetail.component
+package com.ssafy.modera.feature.analyzedimagedetail.component
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -23,14 +23,14 @@ import com.ssafy.modera.core.model.analyzedimage.AnalyzedImageCategory
 import com.ssafy.modera.core.model.analyzedimage.AnalyzedImageDetail
 import com.ssafy.modera.core.model.analyzedimage.AnalyzedImageOcr
 import com.ssafy.modera.core.model.analyzedimage.ImageAnalysisStatus
-import com.ssafy.modera.feature.imagedetail.R
+import com.ssafy.modera.feature.analyzedimagedetail.R
 
 @Composable
-internal fun ImageDetailSummarySection(
+internal fun AnalyzedImageDetailSummarySection(
     summary: String,
     modifier: Modifier = Modifier,
 ) {
-    ImageDetailSection(
+    AnalyzedImageDetailSection(
         title = stringResource(R.string.image_detail_summary_title),
         icon = {
             Icon(
@@ -86,12 +86,12 @@ internal fun ImageDetailSummarySection(
 //}
 
 @Composable
-internal fun ImageDetailOcrSection(
+internal fun AnalyzedImageDetailOcrSection(
     analyzedImageOcr: AnalyzedImageOcr?,
     onCopyClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    ImageDetailSection(
+    AnalyzedImageDetailSection(
         title = stringResource(R.string.image_detail_ocr_title),
         trailing = {
             ClickableSurface(
@@ -119,7 +119,7 @@ internal fun ImageDetailOcrSection(
 }
 
 @Composable
-private fun ImageDetailSection(
+private fun AnalyzedImageDetailSection(
     title: String,
     modifier: Modifier = Modifier,
     icon: (@Composable () -> Unit)? = null,
@@ -161,19 +161,19 @@ private fun ImageDetailSection(
 
 @Preview(showBackground = true)
 @Composable
-private fun ImageDetailContentSectionsPreview() {
+private fun AnalyzedAnalyzedImageDetailContentSectionsPreview() {
     ModeraTheme {
         Column {
-            ImageDetailSummarySection(summary = previewImageDetail.summary)
-            ImageDetailOcrSection(
-                analyzedImageOcr = previewImageDetail.ocr,
+            AnalyzedImageDetailSummarySection(summary = previewAnalyzedImageDetail.summary)
+            AnalyzedImageDetailOcrSection(
+                analyzedImageOcr = previewAnalyzedImageDetail.ocr,
                 onCopyClick = {},
             )
         }
     }
 }
 
-private val previewImageDetail = AnalyzedImageDetail(
+private val previewAnalyzedImageDetail = AnalyzedImageDetail(
     id = 1L,
     fileName = "ascii_hackathon_poster.jpg",
     status = ImageAnalysisStatus.COMPLETED,

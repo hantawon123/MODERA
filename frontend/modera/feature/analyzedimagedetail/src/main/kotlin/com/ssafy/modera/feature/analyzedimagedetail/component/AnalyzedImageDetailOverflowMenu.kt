@@ -1,4 +1,4 @@
-package com.ssafy.modera.feature.imagedetail.component
+package com.ssafy.modera.feature.analyzedimagedetail.component
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
@@ -17,10 +17,10 @@ import androidx.compose.ui.window.Popup
 import com.ssafy.modera.core.designsystem.component.ClickableSurface
 import com.ssafy.modera.core.designsystem.component.Text
 import com.ssafy.modera.core.designsystem.theme.ModeraTheme
-import com.ssafy.modera.feature.imagedetail.R
+import com.ssafy.modera.feature.analyzedimagedetail.R
 
 @Composable
-internal fun ImageDetailOverflowMenu(
+internal fun AnalyzedImageDetailOverflowMenu(
     expanded: Boolean,
     onDismissRequest: () -> Unit,
     onCopyTextClick: () -> Unit,
@@ -45,21 +45,21 @@ internal fun ImageDetailOverflowMenu(
                 .background(ModeraTheme.colors.white)
                 .padding(vertical = 4.dp),
         ) {
-            ImageDetailMenuItem(
+            AnalyzedImageDetailMenuItem(
                 text = stringResource(R.string.image_detail_copy_text),
                 onClick = {
                     onCopyTextClick()
                     onDismissRequest()
                 },
             )
-            ImageDetailMenuItem(
+            AnalyzedImageDetailMenuItem(
                 text = stringResource(R.string.image_detail_view_info),
                 onClick = {
                     onViewInfoClick()
                     onDismissRequest()
                 },
             )
-            ImageDetailMenuItem(
+            AnalyzedImageDetailMenuItem(
                 text = stringResource(R.string.image_detail_delete),
                 textColor = Color(0xFFE53935),
                 onClick = {
@@ -72,7 +72,7 @@ internal fun ImageDetailOverflowMenu(
 }
 
 @Composable
-private fun ImageDetailMenuItem(
+private fun AnalyzedImageDetailMenuItem(
     text: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -97,9 +97,9 @@ private fun ImageDetailMenuItem(
 
 @Preview(showBackground = true)
 @Composable
-private fun ImageDetailOverflowMenuPreview() {
+private fun AnalyzedImageDetailOverflowMenuPreview() {
     ModeraTheme {
-        ImageDetailOverflowMenu(
+        AnalyzedImageDetailOverflowMenu(
             expanded = true,
             onDismissRequest = {},
             onCopyTextClick = {},

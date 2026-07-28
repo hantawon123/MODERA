@@ -1,4 +1,4 @@
-package com.ssafy.modera.feature.imagedetail.component
+package com.ssafy.modera.feature.analyzedimagedetail.component
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
@@ -31,10 +31,10 @@ import com.ssafy.modera.core.designsystem.component.ClickableSurface
 import com.ssafy.modera.core.designsystem.component.Icon
 import com.ssafy.modera.core.designsystem.component.Text
 import com.ssafy.modera.core.designsystem.theme.ModeraTheme
-import com.ssafy.modera.feature.imagedetail.R
+import com.ssafy.modera.feature.analyzedimagedetail.R
 
 @Composable
-internal fun ImageDetailHeroSection(
+internal fun AnalyzedImageDetailHeroSection(
     imageUrl: String,
     title: String,
     showOverlay: Boolean,
@@ -98,7 +98,7 @@ internal fun ImageDetailHeroSection(
             enter = fadeIn(),
             exit = fadeOut(),
         ) {
-            ImageDetailHeroMetadata(
+            AnalyzedImageDetailHeroMetadata(
                 categoryName = categoryName,
                 title = title,
                 uploadedAt = uploadedAt,
@@ -112,7 +112,7 @@ internal fun ImageDetailHeroSection(
 }
 
 @Composable
-private fun ImageDetailHeroMetadata(
+private fun AnalyzedImageDetailHeroMetadata(
     categoryName: String,
     title: String,
     uploadedAt: String,
@@ -206,9 +206,9 @@ private fun ImageDetailHeroMetadata(
 
 @Preview(showBackground = true, heightDp = 480)
 @Composable
-private fun ImageDetailHeroSectionPreview() {
+private fun AnalyzedImageDetailHeroSectionPreview() {
     ModeraTheme {
-        ImageDetailHeroSection(
+        AnalyzedImageDetailHeroSection(
             imageUrl = "https://picsum.photos/seed/hackathon/800/1200",
             title = "ASCII HACKATHON",
             showOverlay = true,

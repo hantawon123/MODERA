@@ -1,20 +1,20 @@
-package com.ssafy.modera.feature.imagedetail.navigation
+package com.ssafy.modera.feature.analyzedimagedetail.navigation
 
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation3.runtime.EntryProviderScope
 import androidx.navigation3.runtime.NavKey
 import com.ssafy.modera.core.navigation.Navigator
-import com.ssafy.modera.feature.imagedetail.ImageDetailScreen
-import com.ssafy.modera.feature.imagedetail.ImageDetailViewModel
-import com.ssafy.modera.feature.imagedetail.ImageDetailViewModel.Factory
+import com.ssafy.modera.feature.analyzedimagedetail.AnalyzedImageDetailScreen
+import com.ssafy.modera.feature.analyzedimagedetail.AnalyzedImageDetailViewModel
+import com.ssafy.modera.feature.analyzedimagedetail.AnalyzedImageDetailViewModel.Factory
 
-fun EntryProviderScope<NavKey>.imageDetailEntry(
+fun EntryProviderScope<NavKey>.analyzedImageDetailEntry(
     navigator: Navigator,
 ) {
-    entry<ImageDetailNavKey> { key ->
+    entry<AnalyzedImageDetailNavKey> { key ->
         val id = key.imageId
 
-        ImageDetailScreen(
+        AnalyzedImageDetailScreen(
             onBackClick = navigator::goBack,
             onCategoryClick = { /* TODO: 카테고리 검색 화면으로 이동 */ },
             onReanalyzeClick = { /* TODO: 이미지 재분석 API 연동 */ },
@@ -23,7 +23,7 @@ fun EntryProviderScope<NavKey>.imageDetailEntry(
             onViewImageInfoClick = { /* TODO: 이미지 정보 다이얼로그 */ },
             onDeleteClick = { /* TODO: 이미지 삭제 API 연동 */ },
             onFavoriteClick = { /* TODO: 즐겨찾기 토글 */ },
-            viewModel = hiltViewModel<ImageDetailViewModel, Factory>(
+            viewModel = hiltViewModel<AnalyzedImageDetailViewModel, Factory>(
                 key = id.toString(),
             ) { factory ->
                 factory.create(id)

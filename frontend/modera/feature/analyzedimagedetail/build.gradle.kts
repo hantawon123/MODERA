@@ -5,7 +5,7 @@ plugins {
 }
 
 android {
-    namespace = "com.ssafy.modera.feature.imagedetail"
+    namespace = "com.ssafy.modera.feature.analyzedimagedetail"
 }
 
 dependencies {

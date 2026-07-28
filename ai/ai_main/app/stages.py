@@ -21,6 +21,7 @@ from .schemas import (
     CallbackError,
     CallbackRequest,
     CategoryCandidate,
+    KnowledgeCandidates,
 )
 
 logger = logging.getLogger(__name__)
@@ -126,12 +127,21 @@ def run_agent_generation(
     candidate_names: list[str],
     max_tags: int | None,
     language: str | None,
+    existing_tags: list[str] | None = None,
 ) -> dict[str, Any]:
     settings = get_settings()
     tag_rule = (
-        f"[태그] 핵심 키워드 위주로 최대 {max_tags}개, 중복·과도한 일반 태그 제외.\n\n"
-        if max_tags else "[태그] 중복·과도한 일반 태그 제외.\n\n"
+        f"[태그] 핵심 키워드 위주로 최대 {max_tags}개, 중복·과도한 일반 태그 제외.\n"
+        if max_tags else "[태그] 중복·과도한 일반 태그 제외.\n"
     )
+    # 기존 태그를 기준점으로 준다. 의미가 같은 태그의 난립('맛집' vs '맛집추천')을 막고
+    # 어휘를 수렴시킨다. 카테고리의 기존 후보 제시와 같은 취지. 없으면 자유 생성(콜드스타트).
+    if existing_tags:
+        tag_rule += (
+            f"기존 태그 목록: {existing_tags}. 의미가 같은 태그가 이 목록에 있으면 "
+            "새로 만들지 말고 그대로 재사용하라. 목록에 맞는 것이 없을 때만 새 태그를 만들어라.\n"
+        )
+    tag_rule += "\n"
     language_rule = f"출력 언어는 {language} 로 한다.\n" if language else ""
     prompt = (
         "OCR 텍스트와 이미지 분석 결과를 종합해 개인 지식 DB용 메타데이터를 생성하라.\n\n"
@@ -158,6 +168,38 @@ def _build_candidates(candidates: list[CategoryCandidate]) -> list[CategoryCandi
     # 이 사용자에게 쌓인 카테고리가 아직 없으면 기본 후보로 시작한다
     # (categoryId 없음 = 아직 저장되지 않은 후보).
     return [CategoryCandidate(category_id=None, name=name) for name in DEFAULT_CATEGORIES]
+
+
+def _existing_tag_names(
+    user_id: int, knowledge: KnowledgeCandidates, limit: int = 30
+) -> list[str]:
+    """태그 생성의 '기준점'. 사용자에게 이미 쌓인 태그를 모아 AGENT 가 재사용하게 한다.
+
+    카테고리에 기존 후보를 제시하는 것과 대응된다. 두 소스를 합친다:
+    - OpenSearch 태그 집계(자기 인덱스라 Spring 없이도 동작) — 사용 빈도 순
+    - Spring 10-5 knowledge.tags (복귀 시)
+    없으면 빈 리스트(콜드스타트 → 기존처럼 자유 생성).
+    """
+    names: list[str] = []
+    seen: set[str] = set()
+
+    def add(name: str) -> None:
+        n = (name or "").strip()
+        key = n.lower()
+        if n and key not in seen:
+            seen.add(key)
+            names.append(n)
+
+    # best-effort — 집계가 실패해도 태그 생성 자체는 막지 않는다.
+    try:
+        for row in search.aggregate_tags(user_id, limit=limit):
+            add(row.get("name", ""))
+    except Exception as e:
+        logger.warning("기존 태그 집계 실패(무시하고 진행): %s", e)
+    for tag in knowledge.tags:
+        add(tag.name)
+
+    return names[:limit]
 
 
 async def run_agent(request: AnalyzeRequest) -> dict[str, Any]:
@@ -190,12 +232,15 @@ async def run_agent_core(
     # 10-5 기존 태그·카테고리 후보 조회 (실패하면 기본 후보로 진행)
     knowledge = await spring_client.fetch_knowledge_candidates(user_id)
     candidates = _build_candidates(knowledge.categories)
+    # 태그 난립 방지용 기준점(기존 태그). OpenSearch 집계라 스레드로 돌린다.
+    existing_tags = await asyncio.to_thread(_existing_tag_names, user_id, knowledge)
 
     max_tags = max_tags or settings.default_max_tags
 
     generated = await asyncio.to_thread(
         run_agent_generation,
         ocr_text, analysis_dict, [c.name for c in candidates], max_tags, language,
+        existing_tags,
     )
 
     summary = generated.get("summary", "") or generated.get("title", "")

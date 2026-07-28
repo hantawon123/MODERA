@@ -15,7 +15,11 @@ public record RegisterRequest(
         @Schema(description = "이메일", example = "user@example.com")
         @NotBlank @Email @Size(max = 255) String email,
 
-        @Schema(description = "닉네임, 30자 이하", example = "모데라")
-        @NotBlank @Size(max = 30) String nickname
+        @Schema(
+                description = "하위 호환용 필드이며 현재 저장하지 않습니다.",
+                example = "모데라",
+                deprecated = true
+        )
+        @Size(max = 30) String nickname
 ) {
 }

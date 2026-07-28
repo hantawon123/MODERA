@@ -275,11 +275,13 @@ async def run_agent_core(
         "title": generated.get("title", ""),
         "summary": summary,
         "tags": tags,
-        "categories": [resolution.name],
+        # 카테고리는 항상 하나다(프롬프트가 하나만 고르게 하고 resolve_category 도
+        # 하나를 돌려준다). 배열로 감싸면 Spring 이 없는 다중 카테고리를 처리해야 한다.
+        "category": resolution.name,
         "keyInformation": generated.get("key_information") or [],
         "analysisConfidence": float(generated.get("analysis_confidence", 0.0)),
-        # 구조화 데이터는 MVP 범위에서 제외. 형태만 유지한다.
-        "structuredData": {"type": None, "fields": {}},
+        # 일정 데이터는 MVP 범위에서 제외. 형태만 유지한다.
+        "scheduleData": {"type": None, "fields": {}},
         # 신규 카테고리 여부(스프링이 생성 판단에 사용). 계약 확정 필요.
         "categoryCreated": resolution.created,
         # 명세 6-2 categories[].confidence 로 내려줄 값
@@ -300,7 +302,6 @@ async def _index_for_search(request: AnalyzeRequest, result: dict[str, Any]) -> 
     """
     ocr = request.input.ocr
     raw_text = (ocr.refined_text or ocr.raw_text) if ocr else ""
-    categories = result.get("categories") or []
     try:
         await asyncio.to_thread(
             search.index_document,
@@ -309,7 +310,7 @@ async def _index_for_search(request: AnalyzeRequest, result: dict[str, Any]) -> 
             title=result.get("title", ""),
             summary=result.get("summary", ""),
             tags=result.get("tags", []),
-            category_name=categories[0] if categories else None,
+            category_name=result.get("category"),
             raw_text=raw_text,
             created_at=_now_iso(),
         )
@@ -375,7 +376,7 @@ def _empty_callback_result(ocr_text: str, reason: str) -> dict[str, Any]:
         "title": "",
         "summary": "",
         "tags": [],
-        "categories": [OTHER_CATEGORY],
+        "category": OTHER_CATEGORY,
         "keyInformation": [],
         "analysisConfidence": 0.0,
         "informative": False,
@@ -517,8 +518,7 @@ async def _run_full_pipeline(
                 max_tags=max_tags,
                 language=language,
             )
-        categories = generated.get("categories") or []
-        category = categories[0] if categories else None
+        category = generated.get("category")
         result = {
             "title": generated.get("title", ""),
             "summary": generated.get("summary", ""),

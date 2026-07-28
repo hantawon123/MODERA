@@ -380,4 +380,4 @@ OpenSearch + AI 서비스를 함께 띄운다.
 
 ## 범위에서 제외
 
-- **구조화 데이터(structuredData)** — MVP 제외. AGENT 는 `{"type": null, "fields": {}}` 빈 형태만 반환합니다. 확장 시 `stages.run_agent_generation` 프롬프트에 유형별 스키마를 추가하세요.
+- **일정 데이터(scheduleData)** — MVP 제외. AGENT 는 `{"type": null, "fields": {}}` 빈 형태만 반환합니다. 확장 시 `stages.run_agent_generation` 프롬프트에 유형별 스키마를 추가하세요. 앱 직결 API(6-2)의 `structuredData` 는 이름이 비슷하지만 별개 필드이고 항상 `null` 입니다.

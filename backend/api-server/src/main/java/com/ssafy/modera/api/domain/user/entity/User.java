@@ -14,8 +14,7 @@ import lombok.NoArgsConstructor;
 import java.time.OffsetDateTime;
 
 /**
- * user_schema.users. 6단계에서는 이벤트 소비 시 nickname 조회용 최소 매핑이었고,
- * 규약3(인증)에서 회원가입/로그인에 필요한 필드를 채우는 빌더가 추가됐다.
+ * user_schema.users 회원 엔티티.
  */
 @Entity
 @Table(name = "users", schema = "user_schema")
@@ -43,9 +42,6 @@ public class User {
     @Column(name = "email")
     private String email;
 
-    @Column(name = "nickname", nullable = false)
-    private String nickname;
-
     @Column(name = "created_at", nullable = false)
     private OffsetDateTime createdAt;
 
@@ -53,15 +49,15 @@ public class User {
     private OffsetDateTime updatedAt;
 
     @Builder
-    public User(String provider, String providerId, String loginId, String passwordHash, String email, String nickname,
+    public User(String provider, String providerId, String loginId, String passwordHash, String email,
                 OffsetDateTime createdAt, OffsetDateTime updatedAt) {
         this.provider = provider;
         this.providerId = providerId;
         this.loginId = loginId;
         this.passwordHash = passwordHash;
         this.email = email;
-        this.nickname = nickname;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
     }
+
 }

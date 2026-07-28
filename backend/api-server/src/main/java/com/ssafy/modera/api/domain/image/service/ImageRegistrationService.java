@@ -10,8 +10,6 @@ import com.ssafy.modera.api.domain.library.entity.UserImage;
 import com.ssafy.modera.api.domain.library.repository.UserImageRepository;
 import com.ssafy.modera.api.domain.query.repository.UserImageViewRepository;
 import com.ssafy.modera.api.domain.query.repository.UserImageViewRow;
-import com.ssafy.modera.api.domain.user.entity.User;
-import com.ssafy.modera.api.domain.user.repository.UserRepository;
 import com.ssafy.modera.api.global.config.StorageProperties;
 import com.ssafy.modera.api.global.exception.BusinessException;
 import jakarta.validation.ConstraintViolation;
@@ -46,7 +44,6 @@ public class ImageRegistrationService {
 
     private final ImageAssetRepository imageAssetRepository;
     private final UserImageRepository userImageRepository;
-    private final UserRepository userRepository;
     private final UserImageViewRepository userImageViewRepository;
     private final StorageProperties storageProperties;
     private final S3Presigner s3Presigner;
@@ -254,16 +251,11 @@ public class ImageRegistrationService {
 
         userImageRepository.save(userImage);
 
-        String nickname = userRepository
-                .findById(userId)
-                .map(User::getNickname)
-                .orElse(null);
-
         userImageViewRepository.upsert(
                 new UserImageViewRow(
                         userId,
                         imageAsset.getImageId(),
-                        nickname,
+                        null,
                         imageAsset.getFileName(),
                         imageAsset.getS3Key(),
                         null,

@@ -84,7 +84,7 @@ private fun TopAppBar(
             color = Color.Transparent,
         ) {
             Icon(
-                painter = painterResource(designSystemR.drawable.ic_arrow_left),
+                painter = painterResource(designSystemR.drawable.ic_arrow_left_24),
                 contentDescription = stringResource(
                     R.string.top_app_bar_back,
                 ),

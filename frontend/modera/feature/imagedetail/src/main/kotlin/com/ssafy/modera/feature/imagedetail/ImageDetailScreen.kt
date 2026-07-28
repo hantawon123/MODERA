@@ -144,7 +144,7 @@ fun ImageDetailScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(ModeraTheme.colors.gray),
+                .background(ModeraTheme.colors.gray50),
         ) {
             Column(
                 modifier = Modifier
@@ -243,7 +243,7 @@ private fun ImageDetailLoadingScreen(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(ModeraTheme.colors.gray),
+            .background(ModeraTheme.colors.gray50),
         contentAlignment = Alignment.Center,
     ) {
         LoadingWheel()
@@ -258,7 +258,7 @@ private fun ImageDetailErrorScreen(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(ModeraTheme.colors.gray),
+            .background(ModeraTheme.colors.gray50),
     ) {
         ImageDetailTopOverlay(
             visible = true,
@@ -270,8 +270,8 @@ private fun ImageDetailErrorScreen(
 
         Text(
             text = "이미지 정보를 불러오지 못했습니다.",
-            style = ModeraTheme.typography.body2Medium,
-            color = ModeraTheme.colors.typo,
+            style = ModeraTheme.typography.bodyR14,
+            color = ModeraTheme.colors.gray700,
             textAlign = TextAlign.Center,
             modifier = Modifier.align(Alignment.Center),
         )

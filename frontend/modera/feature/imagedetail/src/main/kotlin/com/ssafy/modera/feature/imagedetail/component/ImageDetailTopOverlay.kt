@@ -54,7 +54,7 @@ internal fun ImageDetailTopOverlay(
                 color = Color.Transparent,
             ) {
                 Icon(
-                    painter = painterResource(designSystemR.drawable.ic_arrow_left),
+                    painter = painterResource(designSystemR.drawable.ic_arrow_left_24),
                     contentDescription = stringResource(R.string.image_detail_back),
                     modifier = Modifier.size(24.dp),
                     tint = Color.White,

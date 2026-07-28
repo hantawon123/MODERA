@@ -111,7 +111,7 @@ fun HomeScreen(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(ModeraTheme.colors.gray)
+            .background(ModeraTheme.colors.gray50)
             .padding(horizontal = 12.dp),
     ) {
         Column(
@@ -196,7 +196,7 @@ private fun HomeLoadingScreen(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(ModeraTheme.colors.gray),
+            .background(ModeraTheme.colors.gray50),
         contentAlignment = Alignment.Center,
     ) {
         LoadingWheel()
@@ -210,14 +210,14 @@ private fun HomeErrorScreen(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(ModeraTheme.colors.gray)
+            .background(ModeraTheme.colors.gray50)
             .padding(horizontal = 24.dp),
         contentAlignment = Alignment.Center,
     ) {
         Text(
             text = stringResource(R.string.home_error_message),
-            style = ModeraTheme.typography.body2Medium,
-            color = ModeraTheme.colors.typo,
+            style = ModeraTheme.typography.bodyR14,
+            color = ModeraTheme.colors.gray700,
             textAlign = TextAlign.Center,
         )
     }

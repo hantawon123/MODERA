@@ -50,7 +50,7 @@ internal fun ImageDetailActionBar(
     ) {
         ClickableSurface(
             onClick = onReanalyzeClick,
-            color = ModeraTheme.colors.gray,
+            color = ModeraTheme.colors.gray50,
             shape = RoundedCornerShape(8.dp),
             modifier = Modifier.size(52.dp),
         ) {
@@ -62,7 +62,7 @@ internal fun ImageDetailActionBar(
                     painter = painterResource(R.drawable.ic_refresh),
                     contentDescription = stringResource(R.string.image_detail_reanalyze),
                     modifier = Modifier.size(24.dp),
-                    tint = ModeraTheme.colors.typo,
+                    tint = ModeraTheme.colors.gray700,
                 )
             }
         }
@@ -71,14 +71,14 @@ internal fun ImageDetailActionBar(
             onClick = onRelatedMaterialsClick,
             modifier = Modifier.weight(1f),
             colors = ModeraButtonDefaults.buttonColors(
-                containerColor = ModeraTheme.colors.blue.copy(alpha = 0.12f),
-                contentColor = ModeraTheme.colors.blue,
+                containerColor = ModeraTheme.colors.yellow500.copy(alpha = 0.12f),
+                contentColor = ModeraTheme.colors.yellow500,
             ),
             shape = RoundedCornerShape(8.dp),
         ) {
             Text(
                 text = stringResource(R.string.image_detail_related_materials),
-                style = ModeraTheme.typography.body2SemiBold,
+                style = ModeraTheme.typography.bodySB14,
             )
             Icon(
                 painter = painterResource(R.drawable.ic_chevron_right),
@@ -86,7 +86,7 @@ internal fun ImageDetailActionBar(
                 modifier = Modifier
                     .padding(start = 4.dp)
                     .size(20.dp),
-                tint = ModeraTheme.colors.blue,
+                tint = ModeraTheme.colors.yellow500,
             )
         }
     }

@@ -25,16 +25,16 @@ internal fun Header(
     ) {
         Text(
             text = title,
-            style = ModeraTheme.typography.subtitle1,
-            color = ModeraTheme.colors.typo,
+            style = ModeraTheme.typography.titleB22,
+            color = ModeraTheme.colors.gray700,
         )
 
         Spacer(modifier = Modifier.height(6.dp))
 
         Text(
             text = subtitle,
-            style = ModeraTheme.typography.body2,
-            color = ModeraTheme.colors.typo,
+            style = ModeraTheme.typography.bodyR14,
+            color = ModeraTheme.colors.gray700,
         )
     }
 }

@@ -38,7 +38,7 @@ public class AnalysisResultEventHandler {
     public void handleCompleted(AnalysisCompletedPayload payload) {
         Integer imageId = payload.imageId();
 
-        UserImage userImage = userImageRepository.findById(imageId).orElse(null);
+        UserImage userImage = userImageRepository.findByUserIdAndImageId(payload.userId(), imageId).orElse(null);
         if (userImage == null) {
             log.warn("ANALYSIS_COMPLETED 수신했지만 user_image가 없다: imageId={}", imageId);
             return;
@@ -89,7 +89,7 @@ public class AnalysisResultEventHandler {
     @Transactional
     public void handleFailed(AnalysisFailedPayload payload) {
         Integer imageId = payload.imageId();
-        UserImage userImage = userImageRepository.findById(imageId).orElse(null);
+        UserImage userImage = userImageRepository.findByUserIdAndImageId(payload.userId(), imageId).orElse(null);
         if (userImage == null) {
             log.warn("ANALYSIS_FAILED 수신했지만 user_image가 없다: imageId={}", imageId);
             return;

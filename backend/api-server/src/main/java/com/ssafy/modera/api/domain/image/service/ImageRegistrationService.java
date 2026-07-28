@@ -3,6 +3,7 @@ package com.ssafy.modera.api.domain.image.service;
 import com.ssafy.modera.api.domain.image.dto.ImageRegisterRequest;
 import com.ssafy.modera.api.domain.image.dto.ImageRegisterResponse;
 import com.ssafy.modera.api.domain.image.entity.ImageAsset;
+import com.ssafy.modera.api.domain.image.exception.ImageErrorCode;
 import com.ssafy.modera.api.domain.image.repository.ImageAssetRepository;
 import com.ssafy.modera.api.domain.library.entity.UserImage;
 import com.ssafy.modera.api.domain.library.repository.UserImageRepository;
@@ -11,6 +12,7 @@ import com.ssafy.modera.api.domain.query.repository.UserImageViewRow;
 import com.ssafy.modera.api.domain.user.entity.User;
 import com.ssafy.modera.api.domain.user.repository.UserRepository;
 import com.ssafy.modera.api.global.config.StorageProperties;
+import com.ssafy.modera.api.global.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -42,14 +44,31 @@ public class ImageRegistrationService {
     public ImageRegisterResponse register(Integer userId, ImageRegisterRequest request) {
         return userImageRepository.findByUserIdAndClientRequestId(userId, request.clientRequestId())
                 .map(this::toResponseForExisting)
-                .orElseGet(() -> createNew(userId, request));
+                .orElseGet(() -> imageAssetRepository.findByContentHash(request.contentHash())
+                        .map(imageAsset -> linkExisting(userId, request, imageAsset))
+                        .orElseGet(() -> createNew(userId, request)));
     }
 
     private ImageRegisterResponse toResponseForExisting(UserImage userImage) {
         ImageAsset imageAsset = imageAssetRepository.findById(userImage.getImageId())
                 .orElseThrow(() -> new IllegalStateException(
                         "user_image는 있는데 image_asset이 없다: imageId=" + userImage.getImageId()));
-        return toResponse(imageAsset);
+        return toResponseByUploadStatus(imageAsset);
+    }
+
+    private ImageRegisterResponse linkExisting(
+            Integer userId,
+            ImageRegisterRequest request,
+            ImageAsset imageAsset
+    ) {
+        if (!imageAsset.getFileSize().equals(request.fileSize())) {
+            throw new BusinessException(ImageErrorCode.DUPLICATE_IMAGE);
+        }
+
+        userImageRepository.findByUserIdAndImageId(userId, imageAsset.getImageId())
+                .orElseGet(() -> createUserImage(userId, request, imageAsset, OffsetDateTime.now()));
+
+        return toResponseByUploadStatus(imageAsset);
     }
 
     private ImageRegisterResponse createNew(Integer userId, ImageRegisterRequest request) {
@@ -69,8 +88,19 @@ public class ImageRegistrationService {
                 .build();
         imageAssetRepository.save(imageAsset);
 
+        createUserImage(userId, request, imageAsset, now);
+
+        return toResponse(imageAsset);
+    }
+
+    private UserImage createUserImage(
+            Integer userId,
+            ImageRegisterRequest request,
+            ImageAsset imageAsset,
+            OffsetDateTime now
+    ) {
         UserImage userImage = UserImage.builder()
-                .imageId(imageId)
+                .imageId(imageAsset.getImageId())
                 .userId(userId)
                 .clientRequestId(request.clientRequestId())
                 .title(request.fileName())
@@ -85,7 +115,7 @@ public class ImageRegistrationService {
 
         userImageViewRepository.upsert(new UserImageViewRow(
                 userId,
-                imageId,
+                imageAsset.getImageId(),
                 nickname,
                 imageAsset.getFileName(),
                 imageAsset.getS3Key(),
@@ -101,6 +131,18 @@ public class ImageRegistrationService {
                 now.toInstant()
         ));
 
+        return userImage;
+    }
+
+    private ImageRegisterResponse toResponseByUploadStatus(ImageAsset imageAsset) {
+        if ("UPLOADED".equals(imageAsset.getUploadStatus())) {
+            return new ImageRegisterResponse(
+                    imageAsset.getImageId(),
+                    null,
+                    imageAsset.getS3Key(),
+                    null
+            );
+        }
         return toResponse(imageAsset);
     }
 

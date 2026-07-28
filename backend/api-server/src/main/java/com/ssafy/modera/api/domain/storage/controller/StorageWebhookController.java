@@ -49,6 +49,7 @@ public class StorageWebhookController {
         String presented = webhookHeader != null ? webhookHeader : stripBearer(authorizationHeader);
         return presented != null && webhookToken.equals(presented);
     }
+    
     private String stripBearer(String value) {
         if (value == null) {
             return null;

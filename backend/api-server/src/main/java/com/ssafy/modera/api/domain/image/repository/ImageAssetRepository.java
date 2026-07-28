@@ -10,6 +10,8 @@ public interface ImageAssetRepository extends JpaRepository<ImageAsset, Integer>
 
     Optional<ImageAsset> findByS3Key(String s3Key);
 
+    Optional<ImageAsset> findByContentHash(String contentHash);
+
     @Query(value = "SELECT nextval('image_schema.image_asset_image_id_seq')", nativeQuery = true)
     Integer nextImageId();
 }

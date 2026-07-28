@@ -2,6 +2,8 @@ package com.ssafy.modera.api.domain.library.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
@@ -23,7 +25,11 @@ import java.time.OffsetDateTime;
 public class UserImage {
 
     @Id
-    @Column(name = "image_id")
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "user_image_id")
+    private Integer userImageId;
+
+    @Column(name = "image_id", nullable = false)
     private Integer imageId;
 
     @Column(name = "user_id", nullable = false)

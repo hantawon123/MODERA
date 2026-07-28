@@ -1,5 +1,6 @@
 package com.ssafy.modera.api.domain.image.service;
 
+import com.ssafy.modera.api.domain.image.dto.ImageRegisterItemRequest;
 import com.ssafy.modera.api.domain.image.dto.ImageRegisterRequest;
 import com.ssafy.modera.api.domain.image.dto.ImageRegisterResponse;
 import com.ssafy.modera.api.domain.image.entity.ImageAsset;
@@ -13,9 +14,14 @@ import com.ssafy.modera.api.domain.user.entity.User;
 import com.ssafy.modera.api.domain.user.repository.UserRepository;
 import com.ssafy.modera.api.global.config.StorageProperties;
 import com.ssafy.modera.api.global.exception.BusinessException;
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.Validator;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.support.TransactionTemplate;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.s3.presigner.model.PresignedPutObjectRequest;
@@ -25,13 +31,19 @@ import java.net.URI;
 import java.net.URL;
 import java.time.Duration;
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
+import java.util.Set;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ImageRegistrationService {
 
     private static final Duration PUT_URL_TTL = Duration.ofMinutes(10);
+    private static final Set<String> SUPPORTED_EXTENSIONS =
+            Set.of("jpg", "jpeg", "png", "webp", "heic", "heif");
 
     private final ImageAssetRepository imageAssetRepository;
     private final UserImageRepository userImageRepository;
@@ -39,39 +51,88 @@ public class ImageRegistrationService {
     private final UserImageViewRepository userImageViewRepository;
     private final StorageProperties storageProperties;
     private final S3Presigner s3Presigner;
+    private final Validator validator;
+    private final PlatformTransactionManager transactionManager;
 
-    @Transactional
+    /**
+     * 배치 자체는 부분 성공을 허용한다. DB 작업은 이미지 한 건마다 새 트랜잭션으로
+     * 격리하여 한 건의 롤백이 이미 성공한 다른 이미지에 영향을 주지 않게 한다.
+     *
+     * OCR 값은 필수 검증만 수행한다. 저장 위치가 확정되기 전까지는 영속화하지 않는다.
+     */
     public ImageRegisterResponse register(Integer userId, ImageRegisterRequest request) {
-        return userImageRepository.findByUserIdAndClientRequestId(userId, request.clientRequestId())
-                .map(this::toResponseForExisting)
-                .orElseGet(() -> imageAssetRepository.findByContentHash(request.contentHash())
-                        .map(imageAsset -> linkExisting(userId, request, imageAsset))
-                        .orElseGet(() -> createNew(userId, request)));
-    }
+        List<ImageRegisterResponse.Registered> registered = new ArrayList<>();
+        List<ImageRegisterResponse.Duplicated> duplicated = new ArrayList<>();
+        List<ImageRegisterResponse.Failed> failed = new ArrayList<>();
 
-    private ImageRegisterResponse toResponseForExisting(UserImage userImage) {
-        ImageAsset imageAsset = imageAssetRepository.findById(userImage.getImageId())
-                .orElseThrow(() -> new IllegalStateException(
-                        "user_image는 있는데 image_asset이 없다: imageId=" + userImage.getImageId()));
-        return toResponseByUploadStatus(imageAsset);
-    }
+        for (ImageRegisterItemRequest image : request.images()) {
+            String validationFailure = validate(image);
+            if (validationFailure != null) {
+                failed.add(new ImageRegisterResponse.Failed(fileNameOf(image), validationFailure));
+                continue;
+            }
 
-    private ImageRegisterResponse linkExisting(
-            Integer userId,
-            ImageRegisterRequest request,
-            ImageAsset imageAsset
-    ) {
-        if (!imageAsset.getFileSize().equals(request.fileSize())) {
-            throw new BusinessException(ImageErrorCode.DUPLICATE_IMAGE);
+            try {
+                RegistrationResult result = registerInIndependentTransaction(userId, image);
+                if (result.duplicated()) {
+                    duplicated.add(new ImageRegisterResponse.Duplicated(
+                            image.fileName(),
+                            result.imageId()
+                    ));
+                } else {
+                    registered.add(new ImageRegisterResponse.Registered(
+                            result.imageId(),
+                            image.fileName(),
+                            result.presignedUrl(),
+                            PUT_URL_TTL.toSeconds()
+                    ));
+                }
+            } catch (BusinessException e) {
+                failed.add(new ImageRegisterResponse.Failed(
+                        image.fileName(),
+                        e.getErrorCode().getCode()
+                ));
+            } catch (RuntimeException e) {
+                log.error("이미지 배치 등록 실패: userId={}, fileName={}", userId, image.fileName(), e);
+                failed.add(new ImageRegisterResponse.Failed(image.fileName(), "INTERNAL_ERROR"));
+            }
         }
 
-        userImageRepository.findByUserIdAndImageId(userId, imageAsset.getImageId())
-                .orElseGet(() -> createUserImage(userId, request, imageAsset, OffsetDateTime.now()));
-
-        return toResponseByUploadStatus(imageAsset);
+        return new ImageRegisterResponse(
+                List.copyOf(registered),
+                List.copyOf(duplicated),
+                List.copyOf(failed)
+        );
     }
 
-    private ImageRegisterResponse createNew(Integer userId, ImageRegisterRequest request) {
+    private RegistrationResult registerInIndependentTransaction(
+            Integer userId,
+            ImageRegisterItemRequest request
+    ) {
+        TransactionTemplate transaction = new TransactionTemplate(transactionManager);
+        transaction.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+        return transaction.execute(status -> registerOne(userId, request));
+    }
+
+    private RegistrationResult registerOne(Integer userId, ImageRegisterItemRequest request) {
+        UserImage idempotent = userImageRepository
+                .findByUserIdAndClientRequestId(userId, request.clientRequestId())
+                .orElse(null);
+        if (idempotent != null) {
+            return duplicated(idempotent.getImageId());
+        }
+
+        String normalizedContentHash = request.contentHash().toLowerCase(Locale.ROOT);
+        ImageAsset existingAsset = imageAssetRepository.findByContentHash(normalizedContentHash).orElse(null);
+        if (existingAsset != null) {
+            if (!existingAsset.getFileSize().equals(request.fileSize())) {
+                throw new BusinessException(ImageErrorCode.DUPLICATE_IMAGE);
+            }
+            userImageRepository.findByUserIdAndImageId(userId, existingAsset.getImageId())
+                    .orElseGet(() -> createUserImage(userId, request, existingAsset, OffsetDateTime.now()));
+            return duplicated(existingAsset.getImageId());
+        }
+
         Integer imageId = imageAssetRepository.nextImageId();
         String s3Key = "%d/%s-%s".formatted(userId, imageId, request.fileName());
         OffsetDateTime now = OffsetDateTime.now();
@@ -79,7 +140,7 @@ public class ImageRegistrationService {
         ImageAsset imageAsset = ImageAsset.builder()
                 .imageId(imageId)
                 .fileName(request.fileName())
-                .contentHash(request.contentHash())
+                .contentHash(normalizedContentHash)
                 .fileSize(request.fileSize())
                 .s3Key(s3Key)
                 .uploadStatus("PENDING")
@@ -87,15 +148,14 @@ public class ImageRegistrationService {
                 .updatedAt(now)
                 .build();
         imageAssetRepository.save(imageAsset);
-
         createUserImage(userId, request, imageAsset, now);
 
-        return toResponse(imageAsset);
+        return new RegistrationResult(imageId, false, createPresignedUrl(imageAsset));
     }
 
     private UserImage createUserImage(
             Integer userId,
-            ImageRegisterRequest request,
+            ImageRegisterItemRequest request,
             ImageAsset imageAsset,
             OffsetDateTime now
     ) {
@@ -134,19 +194,7 @@ public class ImageRegistrationService {
         return userImage;
     }
 
-    private ImageRegisterResponse toResponseByUploadStatus(ImageAsset imageAsset) {
-        if ("UPLOADED".equals(imageAsset.getUploadStatus())) {
-            return new ImageRegisterResponse(
-                    imageAsset.getImageId(),
-                    null,
-                    imageAsset.getS3Key(),
-                    null
-            );
-        }
-        return toResponse(imageAsset);
-    }
-
-    private ImageRegisterResponse toResponse(ImageAsset imageAsset) {
+    private String createPresignedUrl(ImageAsset imageAsset) {
         PutObjectRequest putObjectRequest = PutObjectRequest.builder()
                 .bucket(storageProperties.getBucket().getPictures())
                 .key(imageAsset.getS3Key())
@@ -158,27 +206,64 @@ public class ImageRegistrationService {
                 .build();
 
         PresignedPutObjectRequest presigned = s3Presigner.presignPutObject(presignRequest);
-
-        return new ImageRegisterResponse(
-                imageAsset.getImageId(),
-                toPublicUrl(presigned.url()),
-                imageAsset.getS3Key(),
-                OffsetDateTime.now().plus(PUT_URL_TTL)
-        );
+        return toPublicUrl(presigned.url());
     }
 
-    /**
-     * S3Presigner는 항상 S3_INTERNAL_ENDPOINT로 서명하므로, 클라이언트에게 줄 URL은
-     * 호스트만 S3_PUBLIC_ENDPOINT로 치환한다(경로·서명 쿼리는 그대로 유지).
-     * URI의 다중 인자 생성자를 쓰면 이미 퍼센트 인코딩된 쿼리를 다시 인코딩해버려서
-     * (예: %2F → %252F) 서명이 깨지므로, 문자열을 그대로 이어붙인다.
-     * 참고: SigV4 서명은 Host를 서명 대상 헤더에 포함하므로, internal/public이
-     * 실제로 다른 호스트인 운영 환경에서는 앞단 프록시가 Host를 투명하게 넘겨야
-     * 서명 검증이 통과한다(이 부분은 인프라 담당 영역).
-     */
+    private RegistrationResult duplicated(Integer imageId) {
+        return new RegistrationResult(imageId, true, null);
+    }
+
+    private String validate(ImageRegisterItemRequest request) {
+        if (request == null) {
+            return "INVALID_REQUEST";
+        }
+
+        Set<ConstraintViolation<ImageRegisterItemRequest>> violations = validator.validate(request);
+        if (!violations.isEmpty()) {
+            if (request.ocr() == null || violations.stream()
+                    .anyMatch(violation -> violation.getPropertyPath().toString().startsWith("ocr"))) {
+                return "OCR_REQUIRED";
+            }
+            if (request.contentHash() == null || violations.stream()
+                    .anyMatch(violation -> violation.getPropertyPath().toString().equals("contentHash"))) {
+                return "INVALID_CONTENT_HASH";
+            }
+            if (request.fileSize() == null || violations.stream()
+                    .anyMatch(violation -> violation.getPropertyPath().toString().equals("fileSize"))) {
+                return "INVALID_FILE_SIZE";
+            }
+            return "INVALID_REQUEST";
+        }
+
+        if (!isSupportedFormat(request.fileName())) {
+            return "UNSUPPORTED_FORMAT";
+        }
+        return null;
+    }
+
+    private boolean isSupportedFormat(String fileName) {
+        int extensionSeparator = fileName.lastIndexOf('.');
+        if (extensionSeparator < 0 || extensionSeparator == fileName.length() - 1) {
+            return false;
+        }
+        String extension = fileName.substring(extensionSeparator + 1).toLowerCase(Locale.ROOT);
+        return SUPPORTED_EXTENSIONS.contains(extension);
+    }
+
+    private String fileNameOf(ImageRegisterItemRequest request) {
+        return request == null || request.fileName() == null ? "" : request.fileName();
+    }
+
     private String toPublicUrl(URL internalUrl) {
         URI publicBase = URI.create(storageProperties.getPublicEndpoint());
         String base = publicBase.getScheme() + "://" + publicBase.getAuthority() + internalUrl.getPath();
         return internalUrl.getQuery() == null ? base : base + "?" + internalUrl.getQuery();
+    }
+
+    private record RegistrationResult(
+            Integer imageId,
+            boolean duplicated,
+            String presignedUrl
+    ) {
     }
 }

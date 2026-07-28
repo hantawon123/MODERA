@@ -10,7 +10,6 @@ import java.util.List;
 public record UserImageViewRow(
         Integer userId,
         Integer imageId,
-        String nickname,
         String fileName,
         String s3Key,
         String thumbnailKey,
@@ -18,10 +17,11 @@ public record UserImageViewRow(
         String summary,
         String categoryName,
         List<String> tagNames,
+        List<String> keyInformation,
+        String structuredDataJson,
         String uploadStatus,
         String analysisStatus,
         Boolean favorite,
-        Instant createdAt,
-        Instant updatedAt
+        Instant createdAt
 ) {
 }

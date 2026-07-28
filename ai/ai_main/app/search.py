@@ -1,10 +1,9 @@
 """OpenSearch 키워드 검색 (FastAPI 전담).
 
 - 색인: AGENT 단계가 끝나면 요약·태그·카테고리·OCR 원문을 색인한다.
+  검색용 시맨틱 벡터(로컬 bge-m3)도 knn_vector 필드에 함께 색인한다(F2).
 - 검색: BM25(multi_match) 키워드 검색. 한글은 nori analyzer 로 형태소 분석한다.
-
-의미(벡터) 검색은 MVP 범위에서 제외한다. 확장 시 이 인덱스에 knn_vector 필드를
-추가하고 AGENT 콜백의 documentVector 를 함께 색인하면 하이브리드로 넓힐 수 있다.
+  하이브리드(BM25+kNN)는 F3 에서 이 벡터를 이용해 얹는다.
 
 SDK(opensearch-py) 의존성을 이 파일에만 가둔다.
 """
@@ -16,6 +15,7 @@ from functools import lru_cache
 from typing import Any
 
 from .config import get_settings
+from . import embedder
 
 logger = logging.getLogger(__name__)
 
@@ -56,9 +56,15 @@ def _client():
 
 
 def _index_body() -> dict[str, Any]:
+    settings = get_settings()
     return {
         "settings": {
-            "index": {"number_of_shards": 1, "number_of_replicas": 0},
+            "index": {
+                "number_of_shards": 1,
+                "number_of_replicas": 0,
+                # 검색용 kNN(로컬 bge-m3 벡터) 활성화 — F2.
+                "knn": True,
+            },
             "analysis": {
                 "analyzer": {
                     # nori_tokenizer 로 복합명사까지 분해해 한글 키워드 검색 품질을 높인다.
@@ -84,6 +90,18 @@ def _index_body() -> dict[str, Any]:
                 },
                 "category_name": {"type": "keyword"},  # 정확 일치 필터
                 "raw_text": {"type": "text", "analyzer": _KOREAN_ANALYZER},
+                # 검색용 시맨틱 벡터(로컬 bge-m3). 카테고리용 gemini-768 과 별개 필드다.
+                # 자연어/하이브리드 검색(F3)에서 kNN 으로 조회한다. 벡터가 없는 문서
+                # (빈 OCR 등)는 kNN 에 안 걸리고 BM25 로만 검색된다.
+                "embedding": {
+                    "type": "knn_vector",
+                    "dimension": settings.search_embedding_dim,
+                    "method": {
+                        "name": "hnsw",
+                        "space_type": "cosinesimil",
+                        "engine": "lucene",
+                    },
+                },
                 "created_at": {"type": "date"},
                 # 명세 4-1 등록 시점에 채워지는 필드.
                 "file_name": {"type": "keyword"},
@@ -167,6 +185,12 @@ def index_document(
     }
     if uploaded_at:
         doc["uploaded_at"] = uploaded_at
+    # 검색용 시맨틱 벡터(로컬 bge-m3). best-effort — 실패해도 색인·BM25 는 계속 동작.
+    # 빈 OCR 이미지는 title·summary 가 비어 벡터를 만들지 않는다(kNN 대상에서 자연히 제외).
+    search_text = " ".join(p for p in (title, summary) if p).strip()
+    vector = embedder.embed(search_text)
+    if vector:
+        doc["embedding"] = vector
     # 4-1 등록 때 만들어 둔 문서(fileName·contentHash·uploadedAt 등)를 덮어쓰지 않도록
     # 통째로 index 하지 않고 부분 병합한다. 문서가 없으면 새로 만든다.
     _merge_doc(image_id, doc)

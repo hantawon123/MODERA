@@ -2,6 +2,7 @@ package com.ssafy.modera.api.domain.event;
 
 import com.ssafy.modera.api.domain.image.entity.ImageAsset;
 import com.ssafy.modera.api.domain.image.repository.ImageAssetRepository;
+import com.ssafy.modera.api.domain.image.repository.ThumbnailRepository;
 import com.ssafy.modera.api.domain.library.entity.UserImage;
 import com.ssafy.modera.api.domain.library.repository.UserImageRepository;
 import com.ssafy.modera.api.domain.query.repository.ImageSearchDocumentRepository;
@@ -28,6 +29,7 @@ public class AnalysisResultEventHandler {
 
     private final UserImageRepository userImageRepository;
     private final ImageAssetRepository imageAssetRepository;
+    private final ThumbnailRepository thumbnailRepository;
     private final UserImageViewRepository userImageViewRepository;
     private final ImageSearchDocumentRepository imageSearchDocumentRepository;
 
@@ -56,7 +58,9 @@ public class AnalysisResultEventHandler {
                 null,
                 imageAsset.getFileName(),
                 imageAsset.getS3Key(),
-                imageAsset.getThumbnailKey(),
+                thumbnailRepository.findByImageId(imageId)
+                        .map(thumbnail -> thumbnail.getS3Key())
+                        .orElse(null),
                 userImage.getTitle(),
                 payload.summary(),
                 payload.categoryName(),

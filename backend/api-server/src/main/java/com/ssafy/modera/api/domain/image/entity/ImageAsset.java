@@ -36,9 +36,6 @@ public class ImageAsset {
     @Column(name = "s3_key", nullable = false, unique = true)
     private String s3Key;
 
-    @Column(name = "thumbnail_key")
-    private String thumbnailKey;
-
     @Column(name = "upload_status", nullable = false)
     private String uploadStatus;
 
@@ -48,27 +45,20 @@ public class ImageAsset {
     @Column(name = "created_at", nullable = false)
     private OffsetDateTime createdAt;
 
-    @Column(name = "updated_at", nullable = false)
-    private OffsetDateTime updatedAt;
-
     @Builder
     public ImageAsset(Integer imageId, String fileName, String contentHash, Integer fileSize,
-                       String s3Key, String thumbnailKey, String uploadStatus,
-                       OffsetDateTime createdAt, OffsetDateTime updatedAt) {
+                       String s3Key, String uploadStatus, OffsetDateTime createdAt) {
         this.imageId = imageId;
         this.fileName = fileName;
         this.contentHash = contentHash;
         this.fileSize = fileSize;
         this.s3Key = s3Key;
-        this.thumbnailKey = thumbnailKey;
         this.uploadStatus = uploadStatus;
         this.createdAt = createdAt;
-        this.updatedAt = updatedAt;
     }
 
     public void markUploaded(OffsetDateTime uploadedAt) {
         this.uploadStatus = "UPLOADED";
         this.uploadedAt = uploadedAt;
-        this.updatedAt = uploadedAt;
     }
 }

@@ -37,3 +37,5 @@ databaseChangeLog:
       file: db/changelog/018-align-document-relations-and-taxonomy.sql
   - include:
       file: db/changelog/019-create-user-favorite-image.sql
+  - include:
+      file: db/changelog/020-create-schedule-domain.sql

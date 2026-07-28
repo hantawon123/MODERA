@@ -4,6 +4,9 @@
 !.env.example
 !.env.local.example
 
+# 테스트 폴더
+test/
+
 # ── Python ────────────────────────────────────────────────────────────────
 __pycache__/
 *.py[cod]

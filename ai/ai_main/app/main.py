@@ -14,7 +14,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse, Response
 from fastapi.security import APIKeyHeader
 
-from . import gemini_client, responses, search, storage
+from . import document, gemini_client, responses, search, storage
 from .config import get_settings
 from .jobs import job_registry, job_store
 from .schemas import (
@@ -27,6 +27,8 @@ from .schemas import (
     CategoryRef,
     ActiveAnalysis,
     ApiResponse,
+    DocumentRequest,
+    DocumentResponse,
     EmbedRequest,
     EmbedResponse,
     EmbeddingItem,
@@ -371,6 +373,52 @@ async def keyword_search(request: SearchRequest):
         return _error("SEARCH_FAILED", str(e)[:500], http_status=502)
 
     response = SearchResponse(total=total, hits=[SearchHit(**h) for h in hits])
+    return JSONResponse(status_code=200, content=response.model_dump(by_alias=True))
+
+
+# ── 문서화 (분석 완료 이미지 → 마크다운) ─────────────────────────────────
+@app.post("/internal/v1/documents", dependencies=[Depends(require_internal_token)],
+          response_model=DocumentResponse,
+          responses={400: {"description": "INVALID_REQUEST / NO_DOCUMENT_SOURCE"},
+                     502: {"description": "DOCUMENT_GENERATION_FAILED"}})
+async def create_document(request: DocumentRequest):
+    """분석이 끝난 이미지들을 묶어 하나의 마크다운 문서로 만든다.
+
+    분석 파이프라인과 무관한 별개 기능이다. 새로 분석하지 않는다.
+
+    재료(`images`)는 **Spring 이 요청 본문에 실어 보낸다.** 10-1 과 같은 방식이라
+    AI 는 아무것도 조회하지 않는다. 어떤 이미지가 이 사용자 것이고 분석이
+    끝났는지는 Spring 이 질의 단계에서 이미 거른 상태여야 한다.
+
+    응답의 `markdown` 이 최종 산출물이다. Spring 은 이 문자열을 그대로 저장하거나
+    앱에 내려보내면 된다.
+    """
+    import asyncio
+
+    if not request.images:
+        return _error("INVALID_REQUEST", "images 가 비어 있습니다.", http_status=400)
+    if len(request.images) > document.MAX_IMAGES:
+        return _error(
+            "INVALID_REQUEST",
+            f"한 번에 최대 {document.MAX_IMAGES}장까지 묶을 수 있습니다.",
+            detail={"requested": len(request.images), "limit": document.MAX_IMAGES},
+            http_status=400,
+        )
+
+    try:
+        result = await asyncio.to_thread(
+            document.generate,
+            request.user_id, request.images,
+            request.title, request.instruction, request.language,
+        )
+    except document.NoSourceError as e:
+        # 요청은 정상인데 재료가 전부 비어 있는 경우.
+        return _error("NO_DOCUMENT_SOURCE", str(e), http_status=400)
+    except Exception as e:
+        logger.exception("문서 생성 실패 userId=%s", request.user_id)
+        return _error("DOCUMENT_GENERATION_FAILED", str(e)[:500], http_status=502)
+
+    response = DocumentResponse.model_validate(result)
     return JSONResponse(status_code=200, content=response.model_dump(by_alias=True))
 
 

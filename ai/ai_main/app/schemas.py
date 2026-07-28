@@ -195,6 +195,117 @@ class KnowledgeCandidates(CamelModel):
     categories: list[CategoryCandidate] = []
 
 
+# ── 문서화 (분석 완료 이미지 → 마크다운 문서) ─────────────────────────────
+# 10-1 과 같은 방식이다: Spring 이 필요한 데이터를 전부 실어 보내고 AI 는 조회하지
+# 않는다. AI 쪽 색인·저장소에 의존하지 않으므로 OpenSearch 가 죽어도 동작하고,
+# Spring 은 자기 DB 에서 뽑은 값만 넘기면 된다.
+class DocumentImage(CamelModel):
+    """문서 재료 1건. Spring 이 분석 완료(COMPLETED) 이미지만 골라 보낸다."""
+
+    image_id: int
+    title: str = ""
+    summary: str = ""
+    tags: list[str] = []              # 이름만. {tagId, name} 객체가 아니다
+    category: str | None = None       # 카테고리 이름
+    key_information: list[str] = []   # "항목: 값" 문자열 (10-4 keyInformation)
+    ocr: OcrInput = OcrInput()        # refinedText 가 있으면 그쪽을 쓴다
+    created_at: str | None = None     # ISO-8601. 시간순 서술·출처 표에 쓴다
+
+
+class DocumentRequest(CamelModel):
+    """N장 → 문서 1개. 이미지 한 장당 한 번 부르는 API 가 아니다.
+
+    여러 스크린샷을 종합해 하나의 글로 재구성하는 것이 목적이라, 이미지들이
+    한 프롬프트에 함께 들어가야 모델이 비교·병합·시간순 서술을 할 수 있다.
+    장당 호출로 쪼개면 각 문서가 서로를 모르므로 같은 결과가 나오지 않는다.
+    """
+
+    user_id: int                      # 로그·추적용
+    # 문서로 묶을 이미지들. 순서는 참고용이며 구성은 모델이 정한다.
+    images: list[DocumentImage]
+    title: str | None = None          # 없으면 모델이 제목을 정한다
+    instruction: str | None = None    # "여행 일정표로 정리해줘" 같은 추가 지시
+    language: str | None = None
+
+    model_config = ConfigDict(
+        alias_generator=to_camel,
+        populate_by_name=True,
+        protected_namespaces=(),
+        # Swagger 예시는 반드시 복수로 둔다. 한 장짜리를 보여 주면 장당 1콜로
+        # 읽혀서, 이 기능의 목적(여러 장을 한 문서로 종합)이 전달되지 않는다.
+        json_schema_extra={
+            "example": {
+                "userId": 1,
+                "instruction": "구매 후보를 가격순으로 비교해 줘",
+                "images": [
+                    {
+                        "imageId": 101,
+                        "title": "교보문고 C++ 프로그래밍 입문",
+                        "summary": "C++ 입문서 32,000원, 10% 할인 중",
+                        "tags": ["도서", "프로그래밍"],
+                        "category": "쇼핑",
+                        "keyInformation": ["가격: 32,000원", "할인: 10%",
+                                           "판매처: 교보문고"],
+                        "ocr": {"rawText": "교보문고 C++ 프로그래밍 입문 "
+                                           "32,000원 10% 할인"},
+                        "createdAt": "2026-07-16T06:00:00.000Z",
+                    },
+                    {
+                        "imageId": 102,
+                        "title": "예스24 C++ 프로그래밍 입문",
+                        "summary": "같은 책 28,800원, 무료배송",
+                        "tags": ["도서", "프로그래밍"],
+                        "category": "쇼핑",
+                        "keyInformation": ["가격: 28,800원", "배송: 무료",
+                                           "판매처: 예스24"],
+                        "ocr": {"rawText": "예스24 C++ 프로그래밍 입문 "
+                                           "28,800원 무료배송"},
+                        "createdAt": "2026-07-16T06:02:00.000Z",
+                    },
+                    {
+                        "imageId": 103,
+                        "title": "알라딘 중고 C++ 프로그래밍 입문",
+                        "summary": "중고 상급 15,000원",
+                        "tags": ["도서", "중고"],
+                        "category": "쇼핑",
+                        "keyInformation": ["가격: 15,000원", "상태: 상급",
+                                           "판매처: 알라딘"],
+                        "ocr": {"rawText": "알라딘 중고샵 C++ 프로그래밍 입문 "
+                                           "상급 15,000원"},
+                        "createdAt": "2026-07-16T06:05:00.000Z",
+                    },
+                ],
+            }
+        },
+    )
+
+
+class DocumentSection(CamelModel):
+    heading: str
+    body: str = ""
+    bullets: list[str] = []
+    # 이 섹션의 근거가 된 이미지. 실제 소스에 있는 번호만 남는다.
+    image_ids: list[int] = []
+
+
+class SkippedImage(CamelModel):
+    image_id: int
+    # NO_CONTENT: 제목·요약·주요정보·OCR 이 전부 비어 문서에 넣을 내용이 없다.
+    reason: str
+
+
+class DocumentResponse(CamelModel):
+    title: str
+    summary: str = ""
+    sections: list[DocumentSection] = []
+    # 위 구조를 그대로 렌더링한 마크다운. Spring 은 보통 이 필드만 쓰면 된다.
+    markdown: str
+    source_image_ids: list[int] = []
+    skipped: list[SkippedImage] = []
+    model_version: str
+    generated_at: str
+
+
 # ── 검색 (OpenSearch 키워드/BM25) ─────────────────────────────────────────
 class SearchRequest(CamelModel):
     user_id: int

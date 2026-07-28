@@ -1,18 +1,37 @@
 package com.ssafy.modera.api.domain.image.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import io.swagger.v3.oas.annotations.media.Schema;
 
-import java.time.OffsetDateTime;
+import java.util.List;
 
 public record ImageRegisterResponse(
-        @Schema(description = "발급된 이미지 ID") Integer imageId,
-
-        @Schema(description = "이 URL로 파일을 직접 PUT한다(binary, multipart 아님). expiresAt 이후 만료")
-        String presignedPutUrl,
-
-        @Schema(description = "MinIO 안에서의 객체 키. 서버 내부용으로 응답에는 참고용으로만 포함")
-        String s3Key,
-
-        @Schema(description = "presignedPutUrl 만료 시각") OffsetDateTime expiresAt
+        List<Registered> registered,
+        List<Duplicated> duplicated,
+        List<Failed> failed
 ) {
+    public record Registered(
+            Integer imageId,
+            String fileName,
+
+            @JsonProperty("presignedURL")
+            @Schema(description = "MinIO/S3에 직접 PUT할 URL")
+            String presignedUrl,
+
+            @Schema(description = "presigned URL 유효시간(초)", example = "600")
+            long uploadExpiresIn
+    ) {
+    }
+
+    public record Duplicated(
+            String fileName,
+            Integer existingImageId
+    ) {
+    }
+
+    public record Failed(
+            String fileName,
+            String reason
+    ) {
+    }
 }

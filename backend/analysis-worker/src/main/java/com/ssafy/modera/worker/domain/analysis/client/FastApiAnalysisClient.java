@@ -1,11 +1,16 @@
 package com.ssafy.modera.worker.domain.analysis.client;
 
+import com.ssafy.modera.contract.payload.ImageUploadedPayload;
 import com.ssafy.modera.worker.domain.analysis.entity.AnalysisJob;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.http.MediaType;
+import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
+
+import java.net.http.HttpClient;
 
 /**
  * 외부 AI 서버(FastAPI) 호출 구현.
@@ -31,20 +36,28 @@ public class FastApiAnalysisClient implements AnalysisClient {
             @Value("${internal.callback.token}") String internalToken,
             @Value("${analysis.callback-url}") String callbackUrl
     ) {
-        this.restClient = RestClient.builder().baseUrl(aiServerUrl).build();
+        // uvicorn이 HTTP/2 upgrade 요청을 거절하면서 본문이 유실된다("Unsupported upgrade request").
+        // HTTP/1.1로 고정한다.
+        HttpClient httpClient = HttpClient.newBuilder()
+                .version(HttpClient.Version.HTTP_1_1)
+                .build();
+
+        this.restClient = RestClient.builder()
+                .baseUrl(aiServerUrl)
+                .requestFactory(new JdkClientHttpRequestFactory(httpClient))
+                .build();
         this.internalToken = internalToken;
         this.callbackUrl = callbackUrl;
     }
 
-
     @Override
-    public void requestAnalysis(AnalysisJob job, String s3Key) {
+    public void requestAnalysis(AnalysisJob job, String s3Key, ImageUploadedPayload.ClientOcr clientOcr) {
         AnalyzeRequest body = new AnalyzeRequest(
                 job.getJobId(),
                 job.getImageId(),
                 job.getUserId(),
                 STAGE_FULL,
-                new AnalyzeInput(new ImageInput(s3Key)),
+                new AnalyzeInput(new ImageInput(s3Key), toOcrInput(clientOcr)),
                 new AnalyzeOptions(10, "ko"),
                 callbackUrl
         );
@@ -52,6 +65,7 @@ public class FastApiAnalysisClient implements AnalysisClient {
         AnalyzeAccepted accepted = restClient.post()
                 .uri("/internal/v1/analyze")
                 .header(HEADER_INTERNAL_TOKEN, internalToken)
+                .contentType(MediaType.APPLICATION_JSON)
                 .body(body)
                 .retrieve()
                 .body(AnalyzeAccepted.class);
@@ -63,8 +77,15 @@ public class FastApiAnalysisClient implements AnalysisClient {
                     job.getJobId(), accepted.error());
             return;
         }
-        log.info("AI 분석 요청 접수됨: jobId={} imageId={} stage={}",
-                job.getJobId(), job.getImageId(), STAGE_FULL);
+        log.info("AI 분석 요청 접수됨: jobId={} imageId={} stage={} ocr={}",
+                job.getJobId(), job.getImageId(), STAGE_FULL, toOcrInput(clientOcr) != null);
+    }
+
+    private OcrInput toOcrInput(ImageUploadedPayload.ClientOcr clientOcr) {
+        if (clientOcr == null || clientOcr.rawText() == null || clientOcr.rawText().isBlank()) {
+            return null;
+        }
+        return new OcrInput(clientOcr.rawText(), clientOcr.lang(), clientOcr.confidence());
     }
 
 
@@ -79,9 +100,11 @@ public class FastApiAnalysisClient implements AnalysisClient {
             String callbackUrl
     ) {}
 
-    private record AnalyzeInput(ImageInput image) {}
+    private record AnalyzeInput(ImageInput image, OcrInput ocr) {}
 
     private record ImageInput(String s3Key) {}
+
+    private record OcrInput(String rawText, String lang, Double confidence) {}
 
     private record AnalyzeOptions(Integer maxTags, String language) {}
 

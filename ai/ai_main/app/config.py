@@ -99,6 +99,10 @@ class Settings:
         self.opensearch_user = os.environ.get("OPENSEARCH_USER", "")
         self.opensearch_password = os.environ.get("OPENSEARCH_PASSWORD", "")
         self.opensearch_index = os.environ.get("OPENSEARCH_INDEX", "screenshot_kb")
+        # BM25 과다매칭 방지. nori 가 "5만원" 을 5/만/원 으로 쪼개면 "원" 하나만 걸린
+        # 문서까지 딸려온다. 질의 토큰의 이 비율 이상이 있는 문서만 매칭한다.
+        # OpenSearch minimum_should_match 표기("75%", "2<75%" 등)를 그대로 받는다.
+        self.search_min_should_match = os.environ.get("SEARCH_MIN_SHOULD_MATCH", "75%")
 
         # 모델
         self.llm_model_name = os.environ.get("LLM_MODEL_NAME", "gemini-3.5-flash")

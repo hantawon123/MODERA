@@ -375,7 +375,15 @@ def keyword_search(
         return [], 0
 
     bool_query: dict[str, Any] = {
-        "must": [{"multi_match": {"query": query, "fields": fields}}],
+        "must": [{
+            "multi_match": {
+                "query": query,
+                "fields": fields,
+                # 기본 OR 는 토큰 하나만 걸려도 매칭돼 "원"·"만" 같은 흔한 형태소로
+                # 과다매칭이 난다. 질의 토큰의 일정 비율 이상을 요구해 이를 막는다.
+                "minimum_should_match": settings.search_min_should_match,
+            },
+        }],
         "filter": [{"term": {"user_id": user_id}}],
     }
     if category:

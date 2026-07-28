@@ -40,6 +40,16 @@ analysis:
   stuck-timeout: ${STUCK_TIMEOUT:PT10M}
   stuck-scan-interval: ${STUCK_SCAN_INTERVAL:PT5M}
 
+  # [PEL Reclaim] 컨슈머가 메시지를 가져간 뒤 XACK 없이 죽으면 그 메시지는 Redis PEL에
+  # 남아 아무도 다시 가져가지 않는다 (새 컨슈머는 '>' 오프셋으로 새 메시지만 읽는다.)
+  # PelReclaimScanner가 주기적으로 그런 메시지를 회수해 재처리한다.
+
+  # StuckJobScanner가 "분석은 시작했는데 안 끝난 것"을 걷어낸다면, 이쪽은
+  # "분석이 아예 시작되지 못한 것"을 되살리는 짝이다.
+  pel-min-idle: ${PEL_MIN_IDLE:PT5M}    # 이만큼 pending이면 죽은 컨슈머로 간주
+  pel-scan-interval: ${PEL_SCAN_INTERVAL:PT1M} # 후보를 훑는 주기
+  pel-max-delivery: ${PEL_MAX_DELIVERY:5}      # 이 횟수를 넘게 재전달됐으면 포기(XACK+에러 로그)
+
 # [Observability] 액추에이터는 health만 노출한다. api-server와 달리 요청 트래픽을
 # 받는 API 서버가 아니라 컨슈머+콜백 수신용 백그라운드 프로세스라 info/metrics/
 # prometheus까지는 지금 필요 없다고 판단했다.

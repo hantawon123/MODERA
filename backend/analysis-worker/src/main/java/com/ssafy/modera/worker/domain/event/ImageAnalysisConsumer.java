@@ -171,6 +171,10 @@ public class ImageAnalysisConsumer {
     private void handleImageUploaded(EventEnvelope envelope, ImageUploadedPayload payload) {
         Integer imageId = payload.imageId();
 
+        // 온디바이스 OCR은 여기서만 손에 들어온다. AI 콜백은 refined 텍스트만 돌려주므로
+        // raw/lang/confidence를 결과에 남기려면 job에 실어 콜백 시점까지 들고 가야 한다.
+        ImageUploadedPayload.ClientOcr clientOcr = payload.clientOcr();
+
         AnalysisJob job = AnalysisJob.builder()
                 .imageId(imageId)
                 .userId(payload.userId())
@@ -179,6 +183,9 @@ public class ImageAnalysisConsumer {
                 .attempt(1)
                 .triggerType("INITIAL")
                 .queuedAt(OffsetDateTime.now())
+                .clientOcrRawText(clientOcr == null ? null : clientOcr.rawText())
+                .clientOcrLang(clientOcr == null ? null : clientOcr.lang())
+                .clientOcrConfidence(toFloat(clientOcr == null ? null : clientOcr.confidence()))
                 .build();
         analysisJobRepository.save(job);
 
@@ -188,7 +195,7 @@ public class ImageAnalysisConsumer {
         try {
             // 요청 보내고 끝
             // 결과는 AI가 콜백으로 보내며 AnalysisCallbackService가 처리
-            analysisClient.requestAnalysis(job, payload.s3Key());
+            analysisClient.requestAnalysis(job, payload.s3Key(), payload.clientOcr());
         } catch (Exception e) {
             log.error("분석 실패: imageId={}", imageId, e);
             job.markFailed("ANALYSIS_REQUEST_ERROR", String.valueOf(e.getMessage()), true, OffsetDateTime.now());
@@ -198,6 +205,11 @@ public class ImageAnalysisConsumer {
                     imageId, payload.userId(), "ANALYSIS_REQUEST_ERROR", String.valueOf(e.getMessage()), true);
             eventPublisher.publish(Streams.ANALYSIS_RESULT, EventTypes.ANALYSIS_FAILED, 1, failedPayload);
         }
+    }
+
+    /** ClientOcr.confidence는 Double, analysis_job.client_ocr_confidence는 REAL이다. */
+    private Float toFloat(Double value) {
+        return value == null ? null : value.floatValue();
     }
 
     private void sleepQuietly() {

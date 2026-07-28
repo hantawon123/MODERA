@@ -1,5 +1,6 @@
 package com.ssafy.modera.worker.domain.analysis.client;
 
+import com.ssafy.modera.contract.payload.ImageUploadedPayload;
 import com.ssafy.modera.worker.domain.analysis.entity.AnalysisJob;
 
 /**
@@ -10,5 +11,5 @@ import com.ssafy.modera.worker.domain.analysis.entity.AnalysisJob;
  * 결과 처리는 AnalysisCallback Service 담당
  */
 public interface AnalysisClient {
-    void requestAnalysis(AnalysisJob job, String s3Key);
+    void requestAnalysis(AnalysisJob job, String s3Key, ImageUploadedPayload.ClientOcr clientOcr);
 }

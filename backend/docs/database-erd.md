@@ -2,7 +2,7 @@
 
 > 기준: `modera_api` 로컬 DB 및 Liquibase `020-create-schedule-domain` 반영 구조  
 > 범위: API DB의 객체 스키마, 관계 스키마, 조회 스키마  
-> 제외: `analysis-worker` 전용 `modera_analysis` DB
+> 제외: `analysis-worker` 전용 `modera_analysis` DB — [analysis-db-erd.md](./analysis-db-erd.md) 참고
 
 ## 공통 설계 원칙
 

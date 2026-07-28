@@ -116,7 +116,7 @@ private fun ModeraIconButtonPreview() {
     ModeraTheme {
         IconButton(
             onClick = {},
-            painter = painterResource(R.drawable.ic_arrow_left),
+            painter = painterResource(R.drawable.ic_arrow_left_24),
         )
     }
 }

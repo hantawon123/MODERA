@@ -23,3 +23,17 @@ databaseChangeLog:
       file: db/changelog/011-create-document-table.sql
   - include:
       file: db/changelog/012-rebuild-library-relations.sql
+  - include:
+      file: db/changelog/013-update-user-image-view.sql
+  - include:
+      file: db/changelog/014-drop-image-search-document.sql
+  - include:
+      file: db/changelog/015-drop-search-history.sql
+  - include:
+      file: db/changelog/016-create-user-document-view.sql
+  - include:
+      file: db/changelog/017-create-document-image-view.sql
+  - include:
+      file: db/changelog/018-align-document-relations-and-taxonomy.sql
+  - include:
+      file: db/changelog/019-create-user-favorite-image.sql

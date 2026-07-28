@@ -236,7 +236,6 @@ public class ImageRegistrationService {
                 new UserImageViewRow(
                         userId,
                         imageAsset.getImageId(),
-                        null,
                         imageAsset.getFileName(),
                         imageAsset.getS3Key(),
                         null,
@@ -244,10 +243,11 @@ public class ImageRegistrationService {
                         null,
                         null,
                         List.of(),
+                        List.of(),
+                        null,
                         imageAsset.getUploadStatus(),
                         "NONE",
                         false,
-                        now.toInstant(),
                         now.toInstant()
                 )
         );

@@ -5,8 +5,6 @@ import com.ssafy.modera.api.domain.image.repository.ImageAssetRepository;
 import com.ssafy.modera.api.domain.image.repository.ThumbnailRepository;
 import com.ssafy.modera.api.domain.library.entity.UserImage;
 import com.ssafy.modera.api.domain.library.repository.UserImageRepository;
-import com.ssafy.modera.api.domain.query.repository.ImageSearchDocumentRepository;
-import com.ssafy.modera.api.domain.query.repository.ImageSearchDocumentRow;
 import com.ssafy.modera.api.domain.query.repository.UserImageViewRepository;
 import com.ssafy.modera.api.domain.query.repository.UserImageViewRow;
 import com.ssafy.modera.contract.payload.AnalysisCompletedPayload;
@@ -15,8 +13,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.time.OffsetDateTime;
 
 /**
  * analysis-result 스트림에서 받은 이벤트를 api-server가 소유한 데이터(library_schema.user_image)와
@@ -31,7 +27,6 @@ public class AnalysisResultEventHandler {
     private final ImageAssetRepository imageAssetRepository;
     private final ThumbnailRepository thumbnailRepository;
     private final UserImageViewRepository userImageViewRepository;
-    private final ImageSearchDocumentRepository imageSearchDocumentRepository;
 
     @Transactional
     public void handleCompleted(AnalysisCompletedPayload payload) {
@@ -48,12 +43,9 @@ public class AnalysisResultEventHandler {
             return;
         }
 
-        OffsetDateTime now = OffsetDateTime.now();
-
         userImageViewRepository.upsert(new UserImageViewRow(
                 payload.userId(),
                 imageId,
-                null,
                 imageAsset.getFileName(),
                 imageAsset.getS3Key(),
                 thumbnailRepository.findByImageId(imageId)
@@ -63,23 +55,12 @@ public class AnalysisResultEventHandler {
                 payload.summary(),
                 payload.categoryName(),
                 payload.tagNames(),
+                java.util.List.of(),
+                payload.structuredFields(),
                 imageAsset.getUploadStatus(),
                 payload.analysisStatus(),
                 false,
-                imageAsset.getCreatedAt().toInstant(),
-                now.toInstant()
-        ));
-
-        imageSearchDocumentRepository.upsert(new ImageSearchDocumentRow(
-                imageId,
-                payload.userId(),
-                imageAsset.getFileName(),
-                payload.summary(),
-                payload.ocrText(),
-                payload.categoryName(),
-                payload.tagNames(),
-                payload.structuredFields(),
-                now.toInstant()
+                imageAsset.getCreatedAt().toInstant()
         ));
     }
 
@@ -94,8 +75,7 @@ public class AnalysisResultEventHandler {
         userImageViewRepository.updateAnalysisStatus(
                 payload.userId(),
                 imageId,
-                "FAILED",
-                OffsetDateTime.now().toInstant()
+                "FAILED"
         );
     }
 }

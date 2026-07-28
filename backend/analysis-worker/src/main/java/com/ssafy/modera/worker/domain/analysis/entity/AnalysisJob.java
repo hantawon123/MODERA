@@ -24,6 +24,9 @@ public class AnalysisJob {
     @Column(name = "job_id")
     private Integer jobId;
 
+    @Column(name = "user_id")
+    private Integer userId;
+
     @Column(name = "image_id", nullable = false)
     private Integer imageId;
 
@@ -61,8 +64,9 @@ public class AnalysisJob {
     private OffsetDateTime completedAt;
 
     @Builder
-    public AnalysisJob(Integer imageId, String stage, String status, Integer attempt,
+    public AnalysisJob(Integer userId, Integer imageId, String stage, String status, Integer attempt,
                         String triggerType, OffsetDateTime queuedAt) {
+        this.userId = userId;
         this.imageId = imageId;
         this.stage = stage;
         this.status = status;

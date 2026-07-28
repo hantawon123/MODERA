@@ -5,9 +5,6 @@ spring:
   profiles:
     default: local
 
-  main:
-    web-application-type: none
-
   # [Modern Java] Virtual Threads (Project Loom)
   threads:
     virtual:
@@ -21,13 +18,36 @@ spring:
     time-zone: Asia/Seoul
     default-property-inclusion: always
 
+# [Web] AI 서버가 분석 결과를 콜백으로 보내는 걸 받기 위한 서버.
+# api-server가 8080을 쓰므로 겹치지 않게 8081. graceful shutdown은 위
+# lifecycle.timeout-per-shutdown-phase와 짝을 이룬다(스트림 컨슈머 스레드뿐
+# 아니라 처리 중인 콜백 요청도 그 유예 시간 안에 마무리된다).
+server:
+  shutdown: graceful
+  port: 8081
+
 # [Analysis] mock | fastapi. local 기본은 mock(AI 서버 없이 파이프라인 검증용).
 analysis:
   client: mock
+  callback-url: ${CALLBACK_URL:http://modera-worker:8081/internal/v1/callback/analysis}
+
+# [Observability] 액추에이터는 health만 노출한다. api-server와 달리 요청 트래픽을
+# 받는 API 서버가 아니라 컨슈머+콜백 수신용 백그라운드 프로세스라 info/metrics/
+# prometheus까지는 지금 필요 없다고 판단했다.
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: always
+      probes:
+        enabled: true
 
 # [Logging] eventId(이벤트 컨슈머/퍼블리셔가 MDC에 심음)를 모든 로그 라인에 붙인다.
-# worker는 web이 없어 requestId는 항상 해당 없음(빈 문자열) — api-server와 같은 패턴을
-# 써서 로그 형태를 통일해뒀다.
+# 콜백 수신용 웹서버가 생겼지만 api-server의 RequestIdFilter 같은 요청 ID 추적
+# 장치는 아직 없어 requestId는 안 쓴다 — eventId만 남긴다.
 logging:
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss.SSS} ${LOG_LEVEL_PATTERN:-%5p} ${PID:- } --- [%15.15t] [eventId=%X{eventId}] %-40.40logger{39} : %m%n${LOG_EXCEPTION_CONVERSION_WORD:-%wEx}"

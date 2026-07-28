@@ -49,8 +49,6 @@ public class AnalysisResultEventHandler {
         }
 
         OffsetDateTime now = OffsetDateTime.now();
-        userImage.applyAnalysisStatus(payload.analysisStatus(), now);
-        userImageRepository.save(userImage);
 
         userImageViewRepository.upsert(new UserImageViewRow(
                 payload.userId(),
@@ -61,21 +59,21 @@ public class AnalysisResultEventHandler {
                 thumbnailRepository.findByImageId(imageId)
                         .map(thumbnail -> thumbnail.getS3Key())
                         .orElse(null),
-                userImage.getTitle(),
+                imageAsset.getFileName(),
                 payload.summary(),
                 payload.categoryName(),
                 payload.tagNames(),
                 imageAsset.getUploadStatus(),
                 payload.analysisStatus(),
-                userImage.getFavorite(),
-                userImage.getCreatedAt().toInstant(),
+                false,
+                imageAsset.getCreatedAt().toInstant(),
                 now.toInstant()
         ));
 
         imageSearchDocumentRepository.upsert(new ImageSearchDocumentRow(
                 imageId,
                 payload.userId(),
-                userImage.getTitle(),
+                imageAsset.getFileName(),
                 payload.summary(),
                 payload.ocrText(),
                 payload.categoryName(),
@@ -93,7 +91,11 @@ public class AnalysisResultEventHandler {
             log.warn("ANALYSIS_FAILED 수신했지만 user_image가 없다: imageId={}", imageId);
             return;
         }
-        userImage.applyAnalysisStatus("FAILED", OffsetDateTime.now());
-        userImageRepository.save(userImage);
+        userImageViewRepository.updateAnalysisStatus(
+                payload.userId(),
+                imageId,
+                "FAILED",
+                OffsetDateTime.now().toInstant()
+        );
     }
 }

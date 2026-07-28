@@ -60,4 +60,9 @@ public class User {
         this.updatedAt = updatedAt;
     }
 
+    public void updateEmail(String email, OffsetDateTime updatedAt) {
+        this.email = email;
+        this.updatedAt = updatedAt;
+    }
+
 }

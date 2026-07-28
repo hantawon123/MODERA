@@ -23,11 +23,11 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.ssafy.modera.core.designsystem.component.LoadingWheel
 import com.ssafy.modera.core.designsystem.component.Text
 import com.ssafy.modera.core.designsystem.theme.ModeraTheme
 import com.ssafy.modera.core.model.analyzedimage.AnalyzedImageSummary
 import com.ssafy.modera.core.model.analyzedimage.ImageAnalysisStatus
+import com.ssafy.modera.core.ui.LoadingScreen
 import com.ssafy.modera.feature.categoryimages.component.AnalyzedImageItem
 import com.ssafy.modera.feature.categoryimages.component.CategoryImagesTopAppBar
 import com.ssafy.modera.feature.categoryimages.component.SelectedImagesDeleteBar
@@ -44,7 +44,7 @@ fun CategoryImagesScreen(
 
     when (val state = uiState) {
         is CategoryImagesUiState.Loading -> {
-            CategoryImagesLoadingScreen(
+            LoadingScreen(
                 modifier = modifier,
             )
         }
@@ -182,20 +182,6 @@ fun CategoryImagesScreen(
 }
 
 @Composable
-private fun CategoryImagesLoadingScreen(
-    modifier: Modifier = Modifier,
-) {
-    Box(
-        modifier = modifier
-            .fillMaxSize()
-            .background(ModeraTheme.colors.gray50),
-        contentAlignment = Alignment.Center,
-    ) {
-        LoadingWheel()
-    }
-}
-
-@Composable
 private fun CategoryImagesErrorScreen(
     categoryName: String,
     onBackClick: () -> Unit,
@@ -279,17 +265,6 @@ private fun CategoryImagesEmptyScreenPreview() {
             onImageClick = {},
             onDeleteImages = {},
         )
-    }
-}
-
-@Preview(
-    name = "Category Image Loading",
-    showBackground = true,
-)
-@Composable
-private fun CategoryImagesLoadingScreenPreview() {
-    ModeraTheme {
-        CategoryImagesLoadingScreen()
     }
 }
 

@@ -31,11 +31,11 @@ import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.ssafy.modera.core.designsystem.component.LoadingWheel
 import com.ssafy.modera.core.designsystem.component.Text
 import com.ssafy.modera.core.designsystem.theme.ModeraTheme
 import com.ssafy.modera.core.model.category.Category
 import com.ssafy.modera.core.model.category.CategorySortType
+import com.ssafy.modera.core.ui.LoadingScreen
 import com.ssafy.modera.feature.home.component.AiAnalysisProgressBanner
 import com.ssafy.modera.feature.home.component.CategoryCard
 import com.ssafy.modera.feature.home.component.CategorySortPopup
@@ -68,7 +68,7 @@ fun HomeScreen(
 
     when (val state = uiState) {
         is HomeUiState.Loading -> {
-            HomeLoadingScreen(
+            LoadingScreen(
                 modifier = modifier,
             )
         }
@@ -190,20 +190,6 @@ fun HomeScreen(
 }
 
 @Composable
-private fun HomeLoadingScreen(
-    modifier: Modifier = Modifier,
-) {
-    Box(
-        modifier = modifier
-            .fillMaxSize()
-            .background(ModeraTheme.colors.gray50),
-        contentAlignment = Alignment.Center,
-    ) {
-        LoadingWheel()
-    }
-}
-
-@Composable
 private fun HomeErrorScreen(
     modifier: Modifier = Modifier,
 ) {
@@ -246,12 +232,6 @@ private fun HomeScreenPreview(
     name = "Home Loading",
     showBackground = true,
 )
-@Composable
-private fun HomeLoadingScreenPreview() {
-    ModeraTheme {
-        HomeLoadingScreen()
-    }
-}
 
 @Preview(
     name = "Home Error",

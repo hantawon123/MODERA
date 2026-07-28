@@ -136,6 +136,7 @@ include(":core:navigation")
 include(":core:designsystem")
 include(":core:common")
 include(":core:domain")
+include(":core:ui")
 //
 //include(":feature:auth")
 include(":feature:home")

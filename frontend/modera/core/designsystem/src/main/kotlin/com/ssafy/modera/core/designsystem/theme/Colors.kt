@@ -22,6 +22,10 @@ data class ModeraColors(
     val yellow600: Color,
     val yellow700: Color,
     val yellow800: Color,
+    val yellow700Bg: Color,
+    val red: Color,
+    val blue: Color,
+    val brown: Color,
 ) {
     companion object {
         /**
@@ -43,6 +47,10 @@ data class ModeraColors(
             yellow600 = colorResource(R.color.yellow_600),
             yellow700 = colorResource(R.color.yellow_700),
             yellow800 = colorResource(R.color.yellow_800),
+            yellow700Bg = colorResource(R.color.yellow_700_bg),
+            red = colorResource(R.color.red),
+            blue = colorResource(R.color.blue),
+            brown = colorResource(R.color.brown),
         )
     }
 }

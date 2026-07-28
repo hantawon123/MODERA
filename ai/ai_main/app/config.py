@@ -103,6 +103,11 @@ class Settings:
         # 문서까지 딸려온다. 질의 토큰의 이 비율 이상이 있는 문서만 매칭한다.
         # OpenSearch minimum_should_match 표기("75%", "2<75%" 등)를 그대로 받는다.
         self.search_min_should_match = os.environ.get("SEARCH_MIN_SHOULD_MATCH", "75%")
+        # 검색용 로컬 임베딩(자연어/시맨틱 검색). 카테고리 판정용 gemini-embedding-2(768,
+        # pgvector)와는 완전히 별개다. knn_vector 필드 차원은 이 모델 출력과 일치해야 한다.
+        # bge-m3 는 dense 1024 차원. 색인과 질의를 반드시 같은 모델로 임베딩해야 비교가 성립한다.
+        self.search_embedding_model = os.environ.get("SEARCH_EMBEDDING_MODEL", "BAAI/bge-m3")
+        self.search_embedding_dim = int(os.environ.get("SEARCH_EMBEDDING_DIM", "1024"))
 
         # 모델
         self.llm_model_name = os.environ.get("LLM_MODEL_NAME", "gemini-3.5-flash")

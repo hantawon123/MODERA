@@ -8,6 +8,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
+import java.util.Collection;
 import java.util.List;
 
 public interface AnalysisJobRepository extends JpaRepository<AnalysisJob, Integer> {
@@ -49,4 +50,11 @@ public interface AnalysisJobRepository extends JpaRepository<AnalysisJob, Intege
                      @Param("errorCode") String errorCode,
                      @Param("errorMessage") String errorMessage,
                      @Param("now") OffsetDateTime now);
+
+    /**
+     * 같은 이미지에 이미 진행 중이거나 완료된 job이 있는지 확인한다.
+     * webhook 재전송, PEL 재처리로 IMAGE_UPLADED가 중복 도착했을 때
+     * AI 호출까지 중복되는 걸 막는 용도이다.
+     */
+    boolean existsByImageIdAndStatusIn(Integer imageId, Collection<String> statuses);
 }

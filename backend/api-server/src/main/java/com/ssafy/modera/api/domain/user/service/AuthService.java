@@ -27,6 +27,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.OffsetDateTime;
 import java.util.HexFormat;
+import java.util.Locale;
 
 /**
  * 회원가입 / 로그인 / 토큰 재발급(RTR) / 로그아웃.
@@ -92,6 +93,7 @@ public class AuthService {
 
         User user = userRepository.findByProviderAndProviderId(PROVIDER_KAKAO, providerId)
                 .orElseGet(() -> createKakaoUser(kakaoUser, providerId));
+        synchronizeKakaoEmail(user, kakaoUser.email());
 
         return issueTokens(user, request.deviceId());
     }
@@ -161,7 +163,7 @@ public class AuthService {
 
     private User createKakaoUser(KakaoClient.KakaoUser kakaoUser, String providerId) {
         OffsetDateTime now = OffsetDateTime.now();
-        String email = kakaoUser.email();
+        String email = normalizeEmail(kakaoUser.email());
         if (email != null && userRepository.existsByEmail(email)) {
             // 이메일은 카카오 회원의 영구 식별자가 아니므로 기존 계정을 자동 연결하지 않는다.
             email = null;
@@ -174,6 +176,29 @@ public class AuthService {
                 .createdAt(now)
                 .updatedAt(now)
                 .build());
+    }
+
+    private void synchronizeKakaoEmail(User user, String kakaoEmail) {
+        String email = normalizeEmail(kakaoEmail);
+        if (email == null || email.equals(user.getEmail())) {
+            return;
+        }
+
+        // users.email은 UNIQUE다. 같은 이메일의 로컬/다른 소셜 계정을 자동 병합하지 않는다.
+        if (userRepository.existsByEmail(email)) {
+            log.info("카카오 이메일 동기화 생략: email already used, userId={}", user.getUserId());
+            return;
+        }
+
+        user.updateEmail(email, OffsetDateTime.now());
+        log.info("카카오 이메일 동기화 완료: userId={}", user.getUserId());
+    }
+
+    private String normalizeEmail(String email) {
+        if (email == null || email.isBlank()) {
+            return null;
+        }
+        return email.trim().toLowerCase(Locale.ROOT);
     }
 
     private TokenResponse issueTokens(User user, String deviceId) {

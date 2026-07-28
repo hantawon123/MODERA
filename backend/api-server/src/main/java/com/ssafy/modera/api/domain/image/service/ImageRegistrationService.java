@@ -21,8 +21,6 @@ import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.s3.presigner.model.PresignedPutObjectRequest;
 import software.amazon.awssdk.services.s3.presigner.model.PutObjectPresignRequest;
 
-import java.net.URI;
-import java.net.URL;
 import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -161,7 +159,7 @@ public class ImageRegistrationService {
 
         return new ImageRegisterResponse(
                 imageAsset.getImageId(),
-                toPublicUrl(presigned.url()),
+                presigned.url().toString(),
                 imageAsset.getS3Key(),
                 OffsetDateTime.now().plus(PUT_URL_TTL)
         );
@@ -176,9 +174,4 @@ public class ImageRegistrationService {
      * 실제로 다른 호스트인 운영 환경에서는 앞단 프록시가 Host를 투명하게 넘겨야
      * 서명 검증이 통과한다(이 부분은 인프라 담당 영역).
      */
-    private String toPublicUrl(URL internalUrl) {
-        URI publicBase = URI.create(storageProperties.getPublicEndpoint());
-        String base = publicBase.getScheme() + "://" + publicBase.getAuthority() + internalUrl.getPath();
-        return internalUrl.getQuery() == null ? base : base + "?" + internalUrl.getQuery();
-    }
 }

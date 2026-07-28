@@ -145,6 +145,7 @@ OCR 이 비었거나 정보성이 없다고 판정되면 분석을 건너뛰고 
 | 10-2 | POST | `/internal/v1/embed` | 동기 |
 | 10-3 | POST | `/internal/v1/query/parse` | 동기. 실패 시 `parsedConditions: null` 로 degrade |
 | — | POST | `/internal/v1/search` | 동기. OpenSearch 키워드(BM25) 검색. `userId` 로 격리 |
+| — | POST | `/internal/v1/documents` | 동기. Spring 이 보낸 분석 결과 여러 건 → 마크다운 문서 |
 | — | GET | `/health` | 헬스체크 (토큰 불필요) |
 
 FastAPI 가 호출하는 쪽: 10-4 콜백, 10-5 지식 후보 조회.
@@ -153,6 +154,111 @@ FastAPI 가 호출하는 쪽: 10-4 콜백, 10-5 지식 후보 조회.
 
 Spring 이 아직 안 떠 있으면 `SPRING_ENABLED=false` 로 두세요.
 켜져 있으면 매 분석마다 10-5 조회 실패까지 약 4초를 버립니다.
+
+## 문서화 (`POST /internal/v1/documents`)
+
+> 전체 필드·에러 코드·Spring 연동 유의사항은 **[docs/DOCUMENT_API.md](docs/DOCUMENT_API.md)** 에 명세서 형식으로 정리했다. 아래는 요약이다.
+
+분석이 끝난 이미지 여러 장을 묶어 하나의 마크다운 문서로 만듭니다.
+분석 파이프라인과 별개 기능입니다 — 새 단계를 추가하지 않습니다.
+
+**재료는 Spring 이 요청 본문에 실어 보냅니다(10-1 과 같은 방식).** AI 는 색인·저장소를
+조회하지 않습니다. 데이터 보관 주체가 Spring 이므로 AI 쪽 사본을 읽으면 두 곳이 어긋날
+수 있고, 조회 왕복·타임아웃·소유자 검증이 전부 딸려옵니다. **어떤 이미지가 이 사용자
+것이고 분석이 끝났는지는 Spring 이 질의 단계에서 걸러서 보내야 합니다.**
+
+**N장 → 문서 1개입니다. 이미지 한 장당 한 번 부르는 API 가 아닙니다.** 이미지들이
+한 프롬프트에 함께 들어가야 모델이 비교·병합·시간순 서술을 할 수 있습니다. 장당 호출로
+쪼개면 각 문서가 서로를 몰라 같은 결과가 나오지 않습니다. 응답에 `imageId` 는 없고,
+`sourceImageIds` 와 섹션별 `imageIds` 로 어느 이미지에서 나왔는지만 표시합니다.
+
+```
+Spring → AI   POST /internal/v1/documents
+{
+  "userId": 1,
+  "instruction": "구매 후보를 가격순으로 비교해 줘",   // 선택
+  "title": null,          // 선택. 없으면 모델이 제목을 정한다
+  "language": null,       // 선택
+  "images": [                                     // ← 여러 장을 한 번에
+    { "imageId": 101,
+      "title": "교보문고 C++ 프로그래밍 입문",
+      "summary": "C++ 입문서 32,000원, 10% 할인 중",
+      "tags": ["도서", "프로그래밍"],               // 이름만. {tagId,name} 아님
+      "category": "쇼핑",                          // 카테고리 이름
+      "keyInformation": ["가격: 32,000원", "판매처: 교보문고"],   // 10-4 로 보낸 그 필드
+      "ocr": { "rawText": "교보문고 C++ 프로그래밍 입문 32,000원", "refinedText": null },
+      "createdAt": "2026-07-16T06:00:00.000Z" },
+
+    { "imageId": 102, "title": "예스24 C++ 프로그래밍 입문",
+      "summary": "같은 책 28,800원, 무료배송", "tags": ["도서", "프로그래밍"],
+      "category": "쇼핑", "keyInformation": ["가격: 28,800원", "판매처: 예스24"],
+      "ocr": { "rawText": "예스24 C++ 프로그래밍 입문 28,800원 무료배송" },
+      "createdAt": "2026-07-16T06:02:00.000Z" },
+
+    { "imageId": 103, "title": "알라딘 중고 C++ 프로그래밍 입문",
+      "summary": "중고 상급 15,000원", "tags": ["도서", "중고"],
+      "category": "쇼핑", "keyInformation": ["가격: 15,000원", "판매처: 알라딘"],
+      "ocr": { "rawText": "알라딘 중고샵 C++ 프로그래밍 입문 상급 15,000원" },
+      "createdAt": "2026-07-16T06:05:00.000Z" }
+  ]
+}
+
+  ① prepare_sources    중복·빈 항목 정리 (조회 없음)
+  ② generate_document  Gemini 1회 호출 — 3장이 한 프롬프트에 → {title, summary, sections[]}
+  ③ render_markdown    파이썬이 마크다운으로 렌더 (모델이 아님)
+
+            ← {
+  "title": "C++ 입문서 구매 후보 비교",
+  "summary": "같은 책을 세 곳에서 확인했다. 최저가는 알라딘 중고 15,000원.",
+  "sections": [
+    { "heading": "가격 비교", "body": "...",
+      "bullets": ["알라딘 중고 15,000원 (상급)", "예스24 28,800원 (무료배송)",
+                  "교보문고 32,000원 (10% 할인)"],
+      "imageIds": [103, 102, 101] }        // ← 한 섹션이 세 장을 근거로 삼는다
+  ],
+  "markdown": "# C++ 입문서 구매 후보 비교\n\n...",
+  "sourceImageIds": [101, 102, 103],
+  "skipped": [],
+  "modelVersion": "gemini-3.5-flash",
+  "generatedAt": "2026-07-16T06:10:00.000Z"
+}
+```
+
+- **`markdown` 이 최종 산출물입니다.** `sections` 는 Spring/앱이 직접 재조립하고 싶을 때 쓰는 원자료입니다.
+- 마크다운을 모델에게 시키지 않고 구조(JSON)만 받아 서버가 렌더합니다. 출력 모양이 항상 같고 코드펜스·잡문이 섞이지 않습니다.
+- `title`·`summary`·`keyInformation`·`ocr` 이 **전부 빈** 항목은 `skipped: NO_CONTENT` 로 빠집니다(빈 블록을 넣으면 모델이 지어냅니다). 한 장도 못 쓰면 `NO_DOCUMENT_SOURCE`(400).
+- 한 번에 **최대 30장**(`document.MAX_IMAGES`), 이미지당 OCR **1500자**까지 프롬프트에 넣습니다. OCR 은 자르지 말고 전체를 보내면 AI 가 자릅니다. 30장 초과는 400.
+- `ocr` 은 `refinedText` 가 있으면 그쪽을, 없으면 `rawText` 를 씁니다(분석 단계와 같은 규칙).
+- Gemini 호출 1회라 동기 응답입니다(분석처럼 job·콜백을 만들지 않습니다). 장수가 늘어 응답이 길어지면 10-1 처럼 202 + 콜백으로 바꾸면 됩니다.
+- OpenSearch 에 의존하지 않으므로 검색이 죽어 있어도 동작하고, Swagger 에서 손으로 만든 JSON 으로 바로 시험할 수 있습니다.
+
+```bash
+python test/test_document.py   # N→1 묶기·건너뛰기·렌더링 자체 점검 (네트워크 불필요)
+```
+
+### Spring 쪽에 필요한 작업
+
+AI 가 만드는 것은 위 `/internal/v1/documents` 하나뿐입니다. 나머지는 Spring 몫입니다.
+
+| 구분 | 내용 |
+| --- | --- |
+| 앱용 API | `POST /api/v1/documents` 등. 앱에서 `imageIds` 를 받아 처리 |
+| DB 조회 | 그 imageIds 중 **해당 userId 소유 + `status=COMPLETED`** 만 골라 위 8개 필드로 변환 |
+| AI 호출 | `/internal/v1/documents` 를 **1회** 호출 (장당 호출 아님) |
+| 저장 | `document`(documentId PK, userId, title, markdown, modelVersion, generatedAt) + `document_image`(documentId, imageId, sortOrder) N:M |
+| 조회 API | 문서 목록·상세 |
+
+AI 가 Spring 을 조회하지 않으므로 **Spring 에 새 내부 조회 API 는 필요 없습니다.**
+필터링(소유자·분석 완료)은 Spring 의 질의 단계에서 끝나야 합니다 — AI 는 받은 것을
+그대로 씁니다.
+
+확인이 필요한 필드 두 가지:
+
+1. **`ocr.rawText` 보관 여부.** 10-4 콜백에 OCR 원문은 들어 있지 않습니다. 앱이 4-1 등록
+   요청에 실어 보낸 것을 Spring 이 저장하고 있어야 합니다. 없으면 문서 품질이
+   "요약문 이어붙이기" 수준까지 떨어집니다.
+2. **`keyInformation` 보관 여부.** AI 가 10-4 로 보내고는 있지만 명세 밖 합의 필드라
+   Spring 이 버리고 있을 수 있습니다. 가격·날짜 같은 구체 사실이 여기 담깁니다.
 
 ## 썸네일
 
@@ -209,6 +315,7 @@ app/
   spring_client.py  10-4 콜백 / 10-5 후보 조회
   category.py       카테고리 유사도 판정 (이름 임베딩 캐시 포함)
   stages.py         LLM / IMAGE_ANALYSIS / AGENT 단계 실행 + 썸네일 + 검색 색인
+  document.py       Spring 이 보낸 분석 결과 묶어 마크다운 문서 생성 (파이프라인과 별개)
   search.py         OpenSearch 키워드 검색 (nori 색인/조회)
   jobs.py           jobId+stage 멱등 처리 / 앱 직결 작업 상태
   responses.py      앱 API 공통 envelope·페이지 형식

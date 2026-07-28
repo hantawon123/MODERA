@@ -388,8 +388,15 @@ def keyword_search(
     tag: str | None = None,
     scope: str = "ALL",
     sort: str | None = None,
+    hybrid: bool | None = None,
 ) -> tuple[list[dict[str, Any]], int]:
-    """BM25 키워드 검색. 항상 user_id 로 격리하고, category·tag 가 있으면 추가 필터."""
+    """검색 진입점. 항상 user_id 로 격리하고, category·tag 가 있으면 추가 필터.
+
+    relevance 정렬·scope=ALL 이고 임베딩 모델이 살아 있으면 하이브리드(BM25+kNN, F3)로
+    처리하고, 그 밖에는 기존 BM25 로 처리한다. `hybrid=False` 로 강제 BM25(내부 엔드포인트가
+    정확 total·BM25 점수 스케일을 유지하려고 쓴다). 어떤 이유로든 하이브리드가 깨지면
+    BM25 로 폴백해 검색 자체는 살린다(best-effort).
+    """
     ensure_index()
     settings = get_settings()
 
@@ -398,6 +405,75 @@ def keyword_search(
         # STRUCTURED: 검색할 필드가 없다. 질의를 날리지 않고 빈 결과를 돌려준다.
         return [], 0
 
+    # 임베딩은 title+summary 기반이라 하이브리드는 relevance·scope=ALL 에서만 의미가 있다.
+    # OCR/TAG scope, 필드 정렬은 사용자가 명시적으로 다른 축을 원한 것이라 BM25 를 유지한다.
+    sort_value = (sort or "relevance").strip()
+    hybrid_eligible = (
+        hybrid is not False
+        and settings.search_hybrid_enabled
+        and scope.upper() == "ALL"
+        and sort_value == "relevance"
+    )
+    # 질의 임베딩은 하이브리드 조건일 때만 만든다(모델 로드/추론 비용 회피). None → BM25 폴백.
+    qvec = embedder.embed(query) if hybrid_eligible else None
+    if qvec is not None:
+        try:
+            return _hybrid_search(
+                settings, user_id, query, qvec, category, tag, size, page
+            )
+        except Exception:
+            logger.exception("하이브리드 검색 실패 → BM25 폴백")
+
+    return _bm25_search(
+        settings, user_id, query, fields, category, tag, size, page, sort
+    )
+
+
+def _search_filters(
+    user_id: int, category: str | None, tag: str | None
+) -> list[dict[str, Any]]:
+    """사용자 격리(+선택 필터). BM25·kNN 두 가지가 똑같이 써서 격리 동치성을 보장한다."""
+    filters: list[dict[str, Any]] = [{"term": {"user_id": user_id}}]
+    if category:
+        filters.append({"term": {"category_name": category}})
+    if tag:
+        filters.append({"term": {"tags.keyword": tag}})
+    return filters
+
+
+def _hit_dict(source: dict[str, Any], score: float) -> dict[str, Any]:
+    """검색 hit 의 공통 형태. BM25·하이브리드 두 경로가 같은 키집합을 돌려줘야
+    호출부(SearchHit·SearchResultItem)의 계약이 깨지지 않는다."""
+    return {
+        "image_id": source.get("image_id"),
+        "title": source.get("title", ""),
+        "summary": source.get("summary", ""),
+        "tags": source.get("tags", []),
+        "category": source.get("category_name"),
+        "s3_key": source.get("s3_key"),
+        "created_at": source.get("created_at"),
+        "uploaded_at": source.get("uploaded_at"),
+        "last_viewed_at": source.get("last_viewed_at"),
+        "score": score,
+    }
+
+
+def _bm25_search(
+    settings: Any,
+    user_id: int,
+    query: str,
+    fields: list[str],
+    category: str | None,
+    tag: str | None,
+    size: int,
+    page: int,
+    sort: str | None,
+) -> tuple[list[dict[str, Any]], int]:
+    """기존 BM25 경로(F1). 하이브리드 조건이 아니거나 임베딩이 없을 때 쓴다.
+
+    서버측 from/size 페이징이라 total 이 정확하고, _score 스케일도 그대로다.
+    scope=OCR/TAG, 필드 정렬, 내부 엔드포인트, 모델 미로드가 모두 여기로 온다.
+    """
     bool_query: dict[str, Any] = {
         "must": [{
             "multi_match": {
@@ -408,12 +484,8 @@ def keyword_search(
                 "minimum_should_match": settings.search_min_should_match,
             },
         }],
-        "filter": [{"term": {"user_id": user_id}}],
+        "filter": _search_filters(user_id, category, tag),
     }
-    if category:
-        bool_query["filter"].append({"term": {"category_name": category}})
-    if tag:
-        bool_query["filter"].append({"term": {"tags.keyword": tag}})
 
     resp = _client().search(
         index=settings.opensearch_index,
@@ -425,23 +497,178 @@ def keyword_search(
         },
     )
 
+    # relevance 가 아닌 정렬에서는 _score 가 null 로 온다.
     hits = [
-        {
-            "image_id": h["_source"].get("image_id"),
-            "title": h["_source"].get("title", ""),
-            "summary": h["_source"].get("summary", ""),
-            "tags": h["_source"].get("tags", []),
-            "category": h["_source"].get("category_name"),
-            "s3_key": h["_source"].get("s3_key"),
-            "created_at": h["_source"].get("created_at"),
-            "uploaded_at": h["_source"].get("uploaded_at"),
-            "last_viewed_at": h["_source"].get("last_viewed_at"),
-            # relevance 가 아닌 정렬에서는 _score 가 null 로 온다.
-            "score": h.get("_score") or 0.0,
-        }
+        _hit_dict(h["_source"], h.get("_score") or 0.0)
         for h in resp["hits"]["hits"]
     ]
-    total = resp["hits"]["total"]["value"]
+    return hits, resp["hits"]["total"]["value"]
+
+
+# 하이브리드 후보풀에서 돌려받을 _source 필드. embedding 을 명시적으로 포함해,
+# 나중에 매핑에 _source excludes 가 생겨도 클라이언트측 코사인 재계산이 견고하게 한다.
+_POOL_SOURCE = [
+    "image_id", "title", "summary", "tags", "category_name", "s3_key",
+    "created_at", "uploaded_at", "last_viewed_at", "embedding",
+]
+
+
+def _bm25_pool_body(
+    settings: Any, query: str, filters: list[dict[str, Any]], n: int
+) -> dict[str, Any]:
+    """하이브리드용 BM25 후보풀. 요청 size 가 아니라 고정 풀 크기 N 을 받아
+    page 와 무관하게 같은 후보집합을 만든다(페이지 간 total 안정)."""
+    return {
+        "from": 0,
+        "size": n,
+        "query": {"bool": {
+            "must": [{
+                "multi_match": {
+                    "query": query,
+                    "fields": _SCOPE_FIELDS["ALL"],
+                    "minimum_should_match": settings.search_min_should_match,
+                },
+            }],
+            "filter": filters,
+        }},
+        # 동점 문서의 rank 를 결정적으로 만들기 위한 2차 정렬.
+        "sort": [{"_score": {"order": "desc"}}, {"image_id": {"order": "desc"}}],
+        "_source": {"includes": _POOL_SOURCE},
+    }
+
+
+def _knn_body(
+    qvec: list[float], filters: list[dict[str, Any]], n: int
+) -> dict[str, Any]:
+    """lucene kNN 후보풀. filter 를 knn 필드객체 안(vector·k 와 형제)에 두어
+    OpenSearch 2.4+ efficient pre-filtering 으로 사용자 격리를 건다. 미지원 빌드면
+    unknown field 에러가 나(조용한 무시가 아님) 상위에서 BM25-only 로 degrade 한다."""
+    return {
+        "size": n,
+        "query": {"knn": {"embedding": {
+            "vector": qvec,
+            "k": n,
+            "filter": {"bool": {"filter": filters}},
+        }}},
+        "_source": {"includes": _POOL_SOURCE},
+    }
+
+
+def _hybrid_search(
+    settings: Any,
+    user_id: int,
+    query: str,
+    qvec: list[float],
+    category: str | None,
+    tag: str | None,
+    size: int,
+    page: int,
+) -> tuple[list[dict[str, Any]], int]:
+    """BM25 + lucene kNN 을 msearch 1왕복으로 받아, 융합 전에 raw 신호로 임계값 컷을
+    적용하고 RRF 로 순위결합한다(F3).
+
+    - 컷: 임베딩이 있는 후보는 재계산 코사인(단위벡터 내적)이 임계값 이상이어야 살아남는다.
+      어휘로만 걸린 무관 문서를 걸러 "억지 매칭"을 막는다. 살아남는 후보가 없으면 결과 없음.
+      임베딩 없는 레거시 문서는 BM25 최소 점수로만 거른다(기본 off → 하위호환).
+    - 폴백: kNN 만 실패하면 이미 받은 BM25 결과로 BM25-only 하이브리드를 계속한다(재실행 없음).
+    - total: 융합 생존자 수. 후보풀 N 이 page 무관 고정이라 페이지 간 total 이 안정적이다.
+    """
+    n = max(settings.search_hybrid_pool_size, size)
+    filters = _search_filters(user_id, category, tag)
+    body = [
+        {"index": settings.opensearch_index}, _bm25_pool_body(settings, query, filters, n),
+        {"index": settings.opensearch_index}, _knn_body(qvec, filters, n),
+    ]
+    responses = _client().msearch(body=body)["responses"]
+
+    # ── msearch 부분 실패는 예외가 아니라 responses[i].error 로 온다. 명시 검사한다. ──
+    bm25_resp = responses[0]
+    if bm25_resp.get("error"):
+        # BM25 자체가 실패하면 하이브리드를 포기하고 상위에서 레거시 BM25 로 폴백한다.
+        raise SearchError(f"BM25 후보풀 조회 실패: {bm25_resp['error']}")
+    bm25_hits = bm25_resp["hits"]["hits"]
+
+    knn_resp = responses[1]
+    if knn_resp.get("error") or "hits" not in knn_resp:
+        # kNN 만 실패(구버전 lucene filter 미지원 등): 재실행 없이 BM25-only 로 진행한다.
+        logger.warning(
+            "kNN 후보풀 조회 실패 → BM25-only 하이브리드: %s", knn_resp.get("error")
+        )
+        knn_hits = []
+    else:
+        knn_hits = knn_resp["hits"]["hits"]
+
+    # ── union (image_id 로 dedup). 각 가지의 raw 점수를 문서에 기록한다. ──
+    docs: dict[int, dict[str, Any]] = {}
+    bm25_ids: list[int] = []
+    knn_ids: list[int] = []
+    for h in bm25_hits:
+        src = h["_source"]
+        iid = src.get("image_id")
+        if iid is None:
+            continue
+        bm25_ids.append(iid)
+        docs.setdefault(iid, {"src": src})["bm25"] = h.get("_score") or 0.0
+    for h in knn_hits:
+        src = h["_source"]
+        iid = src.get("image_id")
+        if iid is None:
+            continue
+        knn_ids.append(iid)
+        docs.setdefault(iid, {"src": src})
+    bm25_set = set(bm25_ids)
+    knn_set = set(knn_ids)
+
+    # ── 임계값 컷(융합 前, raw 신호). bge-m3 는 단위벡터라 cos = dot(qvec, emb). ──
+    qn = len(qvec)
+    survivors: list[int] = []
+    for iid, d in docs.items():
+        emb = d["src"].get("embedding")
+        if emb and len(emb) == qn:
+            cos = sum(a * b for a, b in zip(qvec, emb))
+            d["cos"] = cos
+            if cos >= settings.search_knn_min_cosine:
+                survivors.append(iid)
+        else:
+            # 임베딩 없는 레거시 문서: 시맨틱 게이트를 면제하고 어휘 점수로만 거른다.
+            d["cos"] = None
+            if d.get("bm25", 0.0) >= settings.search_bm25_min_score:
+                survivors.append(iid)
+    if not survivors:
+        return [], 0  # 억지 매칭 차단 → 결과 없음
+
+    # ── 생존자 내에서 각 가지 rank 를 결정적으로 매긴다(점수 desc, image_id desc). ──
+    bm25_rank = {
+        iid: r for r, iid in enumerate(sorted(
+            [i for i in survivors if i in bm25_set],
+            key=lambda i: (-docs[i]["bm25"], -i),
+        ))
+    }
+    knn_rank = {
+        iid: r for r, iid in enumerate(sorted(
+            [i for i in survivors if i in knn_set and docs[i].get("cos") is not None],
+            key=lambda i: (-docs[i]["cos"], -i),
+        ))
+    }
+
+    # ── RRF 순위결합. 두 리스트 rank 의 1/(k+rank+1) 합. ──
+    k = settings.search_rrf_k
+    fused = sorted(
+        (
+            (
+                iid,
+                (1.0 / (k + bm25_rank[iid] + 1) if iid in bm25_rank else 0.0)
+                + (1.0 / (k + knn_rank[iid] + 1) if iid in knn_rank else 0.0),
+            )
+            for iid in survivors
+        ),
+        key=lambda t: (-t[1], -t[0]),  # rrf desc, image_id desc
+    )
+
+    total = len(fused)  # page 무관 고정풀 위의 생존자 수 → 페이지 간 안정
+    start = max(0, page) * size
+    window = fused[start:start + size]  # 순수 클라이언트 슬라이싱
+    hits = [_hit_dict(docs[iid]["src"], round(score, 6)) for iid, score in window]
     return hits, total
 
 

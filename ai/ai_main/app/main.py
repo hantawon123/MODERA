@@ -368,6 +368,8 @@ async def keyword_search(request: SearchRequest):
         hits, total = await asyncio.to_thread(
             search.keyword_search,
             request.user_id, request.query, request.category, request.size,
+            # 내부/Spring 소비자에는 정확 total 과 BM25 점수 스케일을 보장한다(하이브리드 옵트아웃).
+            hybrid=False,
         )
     except Exception as e:
         logger.exception("검색 실패")

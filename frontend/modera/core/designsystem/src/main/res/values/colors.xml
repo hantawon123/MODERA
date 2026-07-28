@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+
     <!-- Neutral -->
     <color name="white">#FFFFFF</color>
     <color name="black">#000000</color>
@@ -18,4 +19,11 @@
     <color name="yellow_600">#FFB400</color>
     <color name="yellow_700">#FF8600</color>
     <color name="yellow_800">#FF8200</color>
+    <color name="yellow_700_bg">#FFE2B3</color>
+
+    <!-- Semantic -->
+    <color name="red">#FF5B32</color>
+    <color name="blue">#3E82FF</color>
+    <color name="brown">#5E564E</color>
+
 </resources>

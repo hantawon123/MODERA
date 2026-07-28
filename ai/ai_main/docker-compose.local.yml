@@ -1,0 +1,72 @@
+# 로컬 개발용 compose. 배포용 docker-compose.yml 과 별개다.
+#
+# backend/local-infra 스택(MinIO·Redis·analysis-worker)이 먼저 떠 있어야 한다:
+#   cd backend/local-infra && docker compose up -d
+#
+# 실행:
+#   cp .env.local.example .env.local
+#   docker compose -f docker-compose.local.yml up -d --build
+#   docker compose -f docker-compose.local.yml --profile search up -d   # OpenSearch 까지
+#
+# 이 컨테이너는 local-infra 가 만든 네트워크에 함께 들어간다. 그래서
+#   ai-server → MinIO           : http://minio:9000
+#   ai-server → analysis-worker : http://analysis-worker:8081
+#   analysis-worker → ai-server : http://ai-server:8000
+# 처럼 컨테이너 이름으로 서로 닿는다. 호스트 포트 매핑에 의존하지 않으므로
+# local-infra 가 8081 을 노출하지 않아도 콜백이 도착한다.
+services:
+  ai-server:
+    build:
+      context: .
+    container_name: modera-ai-server
+    env_file: .env.local
+    environment:
+      # .env.local 의 값(호스트 기준 localhost:9002)을 컨테이너 기준으로 덮어쓴다.
+      S3_ENDPOINT: http://minio:9000
+      # presigned URL 은 컨테이너 밖(브라우저·앱)에서 열리므로 호스트 주소를 유지한다.
+      S3_PUBLIC_ENDPOINT: http://localhost:9002
+      OPENSEARCH_HOST: opensearch
+      OPENSEARCH_PORT: "9200"
+      OPENSEARCH_USE_SSL: "false"
+      # worker 로 콜백을 보낼 때 쓰는 기본 주소. 요청의 callbackUrl 이 우선한다.
+      SPRING_BASE_URL: http://analysis-worker:8081
+    ports:
+      - "8000:8000"
+    networks:
+      - modera-network
+      - default
+
+  # 검색·목록 API(/api/v1/*)까지 볼 때만 띄운다. FULL 파이프라인은 이것 없이도 돈다
+  # (색인 실패는 경고만 남기고 통과).
+  #
+  # nori 이미지는 먼저 빌드해야 한다:
+  #   docker build -t ai-opensearch-nori:latest -f opensearch.Dockerfile .
+  # 로컬은 보안 플러그인을 꺼서 http + 무인증으로 붙는다(배포용 compose 와 다른 점).
+  opensearch:
+    image: ai-opensearch-nori:latest
+    container_name: modera-opensearch
+    profiles: ["search"]
+    environment:
+      - discovery.type=single-node
+      - DISABLE_SECURITY_PLUGIN=true
+      - OPENSEARCH_JAVA_OPTS=-Xms1g -Xmx1g
+    ulimits:
+      memlock: { soft: -1, hard: -1 }
+      nofile: { soft: 65536, hard: 65536 }
+    volumes:
+      - opensearch-local-data:/usr/share/opensearch/data
+    ports:
+      - "127.0.0.1:9200:9200"
+    networks:
+      - default
+
+networks:
+  # backend/local-infra 가 만든 네트워크. 이 파일이 만들지 않는다.
+  # 이름은 compose 프로젝트명(디렉터리명 local-infra) + 서비스 네트워크명이다.
+  # `docker network ls | grep modera` 로 실제 이름을 확인할 것.
+  modera-network:
+    external: true
+    name: local-infra_modera-network
+
+volumes:
+  opensearch-local-data:

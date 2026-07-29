@@ -1,6 +1,6 @@
 # MODERA API DB ERD
 
-> 기준: `develop/backend` 및 Liquibase `022-remove-ocr-lang-and-add-category-image` 반영 구조
+> 기준: `develop/backend` 및 Liquibase `023-add-user-image-soft-delete-and-document-deleted-count` 반영 구조
 > 범위: API DB의 객체 스키마, 관계 스키마, 조회 스키마  
 > 제외: `analysis-worker` 전용 `modera_analysis` DB — [analysis-db-erd.md](./analysis-db-erd.md) 참고
 
@@ -21,6 +21,7 @@
 | `021-extend-user-image-view-for-category` | `user_image_view.category_id`, `uploaded_at` 및 카테고리별 이미지 조회 인덱스 추가 | 카테고리 화면에서 이미지 목록을 별도 JOIN 없이 조회하기 위한 Read Model 확장이다. |
 | `021-create-user-category-view` | `user_category_view` 및 이름·최근 업로드·이미지 수 정렬 인덱스 추가 | 사용자별 카테고리 목록과 카테고리별 활성 이미지 수를 미리 집계한다. |
 | `022-remove-ocr-lang-and-add-category-image` | `ocr.lang` 삭제, `category.image_s3_key` 및 `user_category_view.image_s3_key` 추가 | 카테고리 이미지의 MinIO/S3 객체 키를 원본과 Read Model에 저장한다. |
+| `023-add-user-image-soft-delete-and-document-deleted-count` | `user_image.del_yn`, `user_document_view.del_image_count` 추가 | 사용자별 이미지 soft delete와 문서 내 삭제 이미지 수를 관리한다. |
 
 ---
 
@@ -199,6 +200,7 @@ erDiagram
         INTEGER user_image_id PK
         INTEGER user_id
         INTEGER image_id
+        CHAR del_yn "NOT NULL DEFAULT N"
     }
 
     USER_DOCUMENT {
@@ -254,7 +256,7 @@ erDiagram
 
 | 테이블 | 관계 | UNIQUE 제약 | 비고 |
 |---|---|---|---|
-| `user_image` | 사용자 N:M 이미지 | `(user_id, image_id)` | 하나의 이미지 원본을 여러 사용자가 공유할 수 있다. 같은 사용자의 동일 이미지 중복 등록은 불가능하다. |
+| `user_image` | 사용자 N:M 이미지 | `(user_id, image_id)` | 하나의 이미지 원본을 여러 사용자가 공유할 수 있다. 같은 사용자의 동일 이미지 중복 등록은 불가능하다. `del_yn`은 NOT NULL, 기본값 `N`, 허용값 `Y/N`이며 사용자별 삭제 상태를 관리한다. |
 | `user_document` | 사용자 1:N 문서 | `(user_id, document_id)`, `document_id` | 문서마다 소유자는 정확히 한 명이다. |
 | `image_category` | 이미지 N:1 카테고리 | `image_id` | 이미지 하나에는 카테고리 최대 1개가 연결된다. |
 | `image_tag` | 이미지 N:M 태그 | `(image_id, tag_id)` | 동일 이미지에 같은 태그를 중복 연결할 수 없다. 최대 5개 제한은 Spring/AI 로직에서 보장한다. |
@@ -314,6 +316,7 @@ erDiagram
         VARCHAR name
         TEXT content
         INTEGER image_count
+        INTEGER del_image_count "NOT NULL DEFAULT 0"
         TIMESTAMPTZ created_at
         TIMESTAMPTZ updated_at
         CHAR del_yn
@@ -352,7 +355,7 @@ erDiagram
 |---|---|---|---|---|
 | `user_image_view` | PK `(user_id, image_id)`<br/>부분 인덱스 `(user_id, category_id, uploaded_at DESC, image_id) WHERE del_yn='N'` | 사용자 이미지 목록 및 이미지 상세, 카테고리별 이미지 목록 | `users`, `image_asset`, `thumbnail`, taxonomy 관계, 즐겨찾기·문서·일정 관계 | 이미지 화면용 핵심 Read Model. `category_id`는 분류 식별자, `uploaded_at`은 실제 스토리지 업로드 완료 시각이다. `favorite`, `is_documented_yn`, `is_calendared_yn`은 관계 테이블에서 파생된다. |
 | `user_category_view` | PK `(user_id, category_id)`<br/>사용자별 이름·최근 업로드·이미지 수 인덱스 | 사용자별 카테고리 목록 및 정렬 | `category`, `image_category`, `user_image`, `image_asset` | 카테고리 이름, 이미지 객체 키, 활성 이미지 수, 최근 업로드 시각을 사용자별로 집계한다. `image_count`는 0 이상이어야 한다. |
-| `user_document_view` | PK `(user_id, document_id)` | 사용자 문서 목록 및 문서 상세 | `document`, `user_document`, `image_document` | 문서 원문과 포함 이미지 수를 한 번에 조회한다. `image_count`는 관계 변경 시 함께 갱신해야 한다. |
+| `user_document_view` | PK `(user_id, document_id)`<br/>`image_count >= 0`, `del_image_count >= 0` | 사용자 문서 목록 및 문서 상세 | `document`, `user_document`, `image_document` | 문서 원문과 포함 이미지 수를 한 번에 조회한다. `del_image_count`는 NOT NULL, 기본값 `0`이며 이미지 삭제 상태 변경 시 `image_count`와 함께 갱신해야 한다. |
 | `document_image_view` | PK `image_document_id`<br/>인덱스 `(document_id, added_at, image_document_id)` | 특정 문서에 포함된 이미지 목록 | `image_document`, `image_asset`, `thumbnail`, 분석 결과, 태그 | 문서 화면에 필요한 이미지 제목·요약·썸네일·태그를 보관한다. `added_at` 기준 정렬이 가능하다. |
 | `user_schedule_view` | PK `(user_id, schedule_id)`<br/>인덱스 `(user_id, is_calendared_yn, del_yn, start_at)` | 사용자 일정 후보 및 캘린더 일정 목록 | `schedule`, `user_schedule`, `image_schedule` | 이미지에서 추출된 일정과 캘린더 등록 상태를 함께 조회한다. 이미지 1개에 여러 행이 존재할 수 있다. |
 

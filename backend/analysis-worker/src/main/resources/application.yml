@@ -50,6 +50,11 @@ analysis:
   pel-scan-interval: ${PEL_SCAN_INTERVAL:PT1M} # 후보를 훑는 주기
   pel-max-delivery: ${PEL_MAX_DELIVERY:5}      # 이 횟수를 넘게 재전달됐으면 포기(XACK+에러 로그)
 
+# [AI Server] FastApiAnalysisClient가 분석을 요청할 주소.
+# analysis.client=fastapi일 때만 읽힌다(mock이면 빈 자체가 만들어지지 않는다).
+analysis-worker:
+  ai-server-url: ${AI_SERVER_URL:http://ai-server:8000}
+
 # [Observability] 액추에이터는 health만 노출한다. api-server와 달리 요청 트래픽을
 # 받는 API 서버가 아니라 컨슈머+콜백 수신용 백그라운드 프로세스라 info/metrics/
 # prometheus까지는 지금 필요 없다고 판단했다.

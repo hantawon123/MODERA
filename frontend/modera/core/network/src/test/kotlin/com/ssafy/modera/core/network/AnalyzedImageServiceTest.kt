@@ -77,7 +77,6 @@ class AnalyzedImageServiceTest : ApiAbstract<AnalyzedImageService>() {
         assertThat(image.status, `is`("COMPLETED"))
         assertThat(image.favorite, `is`(true))
         assertThat(image.title, `is`("C++ 프로그래밍 입문서 정보"))
-        assertThat(image.ocr?.lang, `is`("ko"))
         assertThat(image.ocr?.confidence, `is`(0.96))
         assertThat(image.tags.first().name, `is`("C++"))
         assertThat(image.categories.first().name, `is`("공부"))

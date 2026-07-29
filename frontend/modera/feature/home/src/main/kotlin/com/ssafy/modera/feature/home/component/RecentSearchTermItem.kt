@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
@@ -34,16 +35,16 @@ internal fun RecentSearchTermItem(
             .border(
                 width = 1.dp,
                 color = ModeraTheme.colors.gray200,
-                shape = RoundedCornerShape(10.dp),
+                shape = RoundedCornerShape(16.dp),
             )
-            .padding(start = 14.dp, top = 10.dp, end = 6.dp, bottom = 10.dp)
+            .padding(start = 10.dp, top = 4.dp, end = 4.dp, bottom = 4.dp)
             .clickable(enabled = true, onClick = onItemClick),
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
             text = text,
-            style = ModeraTheme.typography.bodyR16,
+            style = ModeraTheme.typography.captionR12,
             color = ModeraTheme.colors.gray700,
         )
 
@@ -53,7 +54,9 @@ internal fun RecentSearchTermItem(
             imageVector = ImageVector.vectorResource(ModeraIcons.Close),
             contentDescription = stringResource(R.string.home_search_term_item_close_button),
             tint = ModeraTheme.colors.gray500,
-            modifier = Modifier.clickable(enabled = true, onClick = onDeleteClick),
+            modifier = Modifier
+                .size(20.dp)
+                .clickable(enabled = true, onClick = onDeleteClick),
         )
     }
 }

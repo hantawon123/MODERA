@@ -10,6 +10,8 @@ import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 /**
  * Logical relationship between a user object and an image object.
@@ -32,9 +34,21 @@ public class UserImage {
     @Column(name = "image_id", nullable = false)
     private Integer imageId;
 
+    @JdbcTypeCode(SqlTypes.CHAR)
+    @Column(name = "del_yn", nullable = false, length = 1)
+    private String delYn = "N";
+
     @Builder
     public UserImage(Integer userId, Integer imageId) {
         this.userId = userId;
         this.imageId = imageId;
+    }
+
+    public void softDelete() {
+        this.delYn = "Y";
+    }
+
+    public void restore() {
+        this.delYn = "N";
     }
 }

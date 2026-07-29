@@ -47,7 +47,7 @@ fun CategoryItem(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(CategoryItemDefaults.ContentPadding),
+                .padding(start = 16.dp, top = 16.dp),
         ) {
             Text(
                 text = title,
@@ -101,7 +101,6 @@ internal fun categoryIllustrationRes(title: String): Int = when (title.trim()) {
 private object CategoryItemDefaults {
     val Shape = RoundedCornerShape(20.dp)
     val ShadowElevation = 6.dp
-    val ContentPadding = 16.dp
     const val IllustrationSizeFraction = 0.80f
 }
 

@@ -9,3 +9,5 @@ databaseChangeLog:
       file: db/changelog/004-add-client-ocr-to-job.sql
   - include:
       file: db/changelog/005-add-stuck-job-index.sql
+  - include:
+      file: db/changelog/006-add-active-job-unique-index.sql

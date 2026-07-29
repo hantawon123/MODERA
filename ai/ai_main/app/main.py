@@ -360,24 +360,39 @@ async def query_parse(request: QueryParseRequest):
     return JSONResponse(status_code=200, content=response.model_dump(by_alias=True))
 
 
-# ── 키워드 검색 (OpenSearch BM25) ─────────────────────────────────────────
+# ── 검색 (Spring 이 호출하는 내부 검색 — 하이브리드/cascade) ─────────────
+# 앱↔AI 직결 종료 후 사용자 검색은 전부 Spring 을 거쳐 여기로 온다. 그래서 기본
+# 모드는 cascade(자연어/시맨틱 검색이 살아 있는 경로)다. Spring 은 응답의 imageId
+# 순서를 유지한 채 자기 DB(조회 사본)를 조인해 앱 응답을 조립한다.
 @app.post("/internal/v1/search", dependencies=[Depends(require_internal_token)])
 async def keyword_search(request: SearchRequest):
     if not request.query or not request.query.strip():
         return _error("INVALID_REQUEST", "query 가 비어 있습니다.", http_status=400)
+    if request.scope.upper() not in ("ALL", "OCR", "TAG", "STRUCTURED"):
+        return _error("INVALID_REQUEST",
+                      "scope 는 ALL/OCR/TAG/STRUCTURED 중 하나여야 합니다.", http_status=400)
+    if request.mode not in ("auto", "bm25"):
+        return _error("INVALID_REQUEST", "mode 는 auto/bm25 중 하나여야 합니다.",
+                      http_status=400)
     try:
         import asyncio
         hits, total = await asyncio.to_thread(
             search.keyword_search,
             request.user_id, request.query, request.category, request.size,
-            # 내부/Spring 소비자에는 정확 total 과 BM25 점수 스케일을 보장한다(하이브리드 옵트아웃).
-            hybrid=False,
+            request.page, request.tag, request.scope, request.sort,
+            # auto → hybrid=None(cascade: BM25 먼저, 빈 결과면 시맨틱 승격).
+            # bm25 → hybrid=False(강제 BM25 — 정확 total·BM25 점수 스케일 보장).
+            hybrid=(False if request.mode == "bm25" else None),
         )
+    except search.InvalidSortError as e:
+        # 내부 API 는 앱 envelope 가 아니라 raw 에러 형식을 쓴다.
+        return _error("INVALID_SORT", str(e), http_status=400)
     except Exception as e:
         logger.exception("검색 실패")
         return _error("SEARCH_FAILED", str(e)[:500], http_status=502)
 
-    response = SearchResponse(total=total, hits=[SearchHit(**h) for h in hits])
+    response = SearchResponse(total=total, page=request.page, size=request.size,
+                              hits=[SearchHit(**h) for h in hits])
     return JSONResponse(status_code=200, content=response.model_dump(by_alias=True))
 
 

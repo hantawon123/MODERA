@@ -37,7 +37,7 @@ pipeline {
             when { changeset "backend/**" }
             steps {
                 sh '''
-                    cd /home/ubuntu/app
+                    cd /home/ubuntu/app/spring
                     docker compose up -d --force-recreate 2>&1
                 '''
                 echo 'Wait for startup'

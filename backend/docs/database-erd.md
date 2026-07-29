@@ -1,6 +1,6 @@
 # MODERA API DB ERD
 
-> 기준: `chore/database` 및 Liquibase `024-add-soft-delete-to-independent-tables` 반영 구조
+> 기준: `feat/clientRequstId_database` 및 Liquibase `025-create-image-registration-request` 반영 구조
 > 범위: API DB의 객체 스키마, 관계 스키마, 조회 스키마  
 > 제외: `analysis-worker` 전용 `modera_analysis` DB — [analysis-db-erd.md](./analysis-db-erd.md) 참고
 
@@ -11,6 +11,7 @@
 - 서비스 경계를 넘는 물리 FK는 사용하지 않는다. 해당 ID의 존재 여부와 동기화는 Spring 트랜잭션 및 이벤트 처리에서 보장한다.
 - `query_schema`는 화면 조회에 필요한 데이터를 미리 합쳐 둔 CQRS Read Model이다.
 - 모든 주요 식별자는 PostgreSQL `INTEGER`를 사용한다.
+- 클라이언트가 생성하는 이미지 등록 요청 식별자 `client_request_id`는 UUID를 사용한다.
 - `del_yn`은 `Y` 또는 `N`이며 기본값은 `N`이다.
 
 ### 최신 반영 사항
@@ -23,6 +24,7 @@
 | `022-remove-ocr-lang-and-add-category-image` | `ocr.lang` 삭제, `category.image_s3_key` 및 `user_category_view.image_s3_key` 추가 | 카테고리 이미지의 MinIO/S3 객체 키를 원본과 Read Model에 저장한다. |
 | `023-add-user-image-soft-delete-and-document-deleted-count` | `user_image.del_yn`, `user_document_view.del_image_count` 추가 | 사용자별 이미지 soft delete와 문서 내 삭제 이미지 수를 관리한다. |
 | `024-add-soft-delete-to-independent-tables` | 물리 FK 종속 테이블을 제외한 taxonomy·관계·조회 테이블의 `del_yn` 추가 | `thumbnail`, `ocr`은 `image_asset` 물리 삭제 시 CASCADE되므로 제외한다. |
+| `025-create-image-registration-request` | `image_schema.image_registration_request` 추가 | `(user_id, client_request_id)` UNIQUE로 4-1 이미지 등록 요청의 중복 실행을 방지한다. 사진 메타데이터는 복사하지 않고 처리 후 `image_id`만 연결한다. |
 
 ---
 
@@ -36,6 +38,7 @@ erDiagram
     USERS ||--o| USER_SETTING : "물리 FK / ON DELETE CASCADE"
     IMAGE_ASSET ||--o| THUMBNAIL : "물리 FK / ON DELETE CASCADE"
     IMAGE_ASSET ||--o| OCR : "물리 FK / ON DELETE CASCADE"
+    IMAGE_ASSET o|--o{ IMAGE_REGISTRATION_REQUEST : "물리 FK / ON DELETE SET NULL"
 
     USERS {
         INTEGER user_id PK
@@ -93,6 +96,18 @@ erDiagram
         INTEGER image_id FK, UK
     }
 
+    IMAGE_REGISTRATION_REQUEST {
+        INTEGER image_registration_request_id PK
+        INTEGER user_id
+        UUID client_request_id UK
+        INTEGER image_id FK
+        VARCHAR status
+        VARCHAR failure_reason
+        TIMESTAMPTZ created_at
+        TIMESTAMPTZ updated_at
+        TIMESTAMPTZ completed_at
+    }
+
     CATEGORY {
         INTEGER category_id PK
         VARCHAR name UK
@@ -138,6 +153,7 @@ erDiagram
 | `image_schema` | `image_asset` | `image_id` | `content_hash` UNIQUE, `s3_key` UNIQUE, `upload_status='PENDING'` | 스토리지 이미지 원본 메타데이터. 해시 UNIQUE로 동일 파일은 전역에서 한 번만 저장한다. |
 | `image_schema` | `thumbnail` | `thumbnail_id` | `image_id` UNIQUE/FK, `s3_key` UNIQUE | 이미지당 썸네일 최대 1개. 이미지 물리 삭제 시 CASCADE 삭제된다. |
 | `image_schema` | `ocr` | `ocr_id` | `image_id` UNIQUE/FK | 이미지당 OCR 결과 최대 1개. 이미지 물리 삭제 시 CASCADE 삭제된다. |
+| `image_schema` | `image_registration_request` | `image_registration_request_id` | `(user_id, client_request_id)` UNIQUE, `status='PROCESSING'`, `image_id` nullable/FK | 4-1 이미지 등록 요청의 멱등성 및 처리 결과를 관리한다. `user_id`는 논리 참조이고 사진 정보는 `image_asset`에만 보관한다. 등록 전·실패 상태에서는 `image_id`가 NULL일 수 있으며 이미지 물리 삭제 시 요청 이력의 `image_id`만 NULL로 변경된다. |
 | `taxonomy_schema` | `category` | `category_id` | `name` NOT NULL UNIQUE, `image_s3_key` UNIQUE, `del_yn='N'` | 모든 사용자가 공유하는 카테고리 사전. `image_s3_key`에는 카테고리 이미지의 MinIO/S3 객체 키를 저장하며 물리 삭제 대신 soft delete한다. |
 | `taxonomy_schema` | `tag` | `tag_id` | `name` NOT NULL UNIQUE, `del_yn='N'` | 모든 사용자가 공유하는 태그 사전. 이미지당 최대 5개 정책은 애플리케이션에서 보장하며 물리 삭제 대신 soft delete한다. |
 | `document_schema` | `document` | `document_id` | `content=''`, `del_yn='N'` | Markdown 문서 원본. 이미지 관계와 소유자는 `library_schema`에서 관리한다. |

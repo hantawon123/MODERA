@@ -58,8 +58,8 @@ import com.ssafy.modera.feature.home.HomeAnalysisState
 import com.ssafy.modera.feature.home.LocalHomeAnalysisState
 import com.ssafy.modera.feature.home.navigation.HomeNavKey
 import com.ssafy.modera.feature.home.navigation.homeEntry
-import com.ssafy.modera.feature.imagedetail.navigation.imageDetailEntry
-import com.ssafy.modera.feature.imagedetail.navigation.navigateToImageDetail
+import com.ssafy.modera.feature.analyzedimagedetail.navigation.analyzedImageDetailEntry
+import com.ssafy.modera.feature.analyzedimagedetail.navigation.navigateToImageDetail
 import com.ssafy.modera.media.rememberGalleryPickerLauncher
 import com.ssafy.modera.navigation.RegisterNavKey
 import com.ssafy.modera.navigation.SearchNavKey
@@ -235,7 +235,7 @@ internal fun ModeraApp(
                                 navigator = navigator,
                                 onImageClick = navigator::navigateToImageDetail
                             )
-                            imageDetailEntry(navigator)
+                            analyzedImageDetailEntry(navigator)
                             registerEntry(navigator)
                             searchEntry(navigator)
                         }

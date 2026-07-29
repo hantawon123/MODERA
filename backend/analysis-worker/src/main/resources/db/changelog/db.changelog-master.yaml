@@ -7,3 +7,5 @@ databaseChangeLog:
       file: db/changelog/003-add-user-id-to-job.sql
   - include:
       file: db/changelog/004-add-client-ocr-to-job.sql
+  - include:
+      file: db/changelog/005-add-stuck-job-index.sql

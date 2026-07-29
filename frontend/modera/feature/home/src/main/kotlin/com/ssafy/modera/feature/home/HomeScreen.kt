@@ -22,7 +22,6 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -54,6 +53,8 @@ import com.ssafy.modera.core.ui.LoadingScreen
 import com.ssafy.modera.feature.home.component.CategoryItem
 import com.ssafy.modera.feature.home.component.HomeHeroSection
 import com.ssafy.modera.feature.home.component.HomeTopActions
+import com.ssafy.modera.feature.home.component.RecentSearchSection
+import com.ssafy.modera.feature.home.component.SearchResultSection
 
 @Composable
 fun HomeScreen(
@@ -74,10 +75,16 @@ fun HomeScreen(
 
         is HomeUiState.Success -> {
             HomeScreen(
-                categories = state.categories,
+                uiState = state,
                 onCalendarClick = onCalendarClick,
                 onSettingsClick = onSettingsClick,
                 onCategoryClick = onCategoryClick,
+                onSearchQueryChange = viewModel::onSearchQueryChanged,
+                onSearchBarFocusChange = viewModel::onSearchBarFocusChanged,
+                onSearchSubmit = viewModel::submitSearch,
+                onRecentSearchClick = viewModel::selectRecentSearch,
+                onRecentSearchDelete = viewModel::removeRecentSearchTerm,
+                onSearchDeactivate = viewModel::deactivateSearch,
                 modifier = modifier,
             )
         }
@@ -92,20 +99,25 @@ fun HomeScreen(
 
 @Composable
 fun HomeScreen(
-    categories: List<Category>,
+    uiState: HomeUiState.Success,
     onCalendarClick: () -> Unit,
     onSettingsClick: () -> Unit,
     onCategoryClick: (Category) -> Unit,
+    onSearchQueryChange: (String) -> Unit,
+    onSearchBarFocusChange: (Boolean) -> Unit,
+    onSearchSubmit: () -> Unit,
+    onRecentSearchClick: (String) -> Unit,
+    onRecentSearchDelete: (String) -> Unit,
+    onSearchDeactivate: () -> Unit,
+    onSearchResultClick: (SearchMaterialResult) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
-    var isSearchActive by remember { mutableStateOf(false) }
-    var searchQuery by remember { mutableStateOf("") }
     val searchFocusRequester = remember { FocusRequester() }
     val focusManager = LocalFocusManager.current
     val dismissInteractionSource = remember { MutableInteractionSource() }
 
     val upperWeight by animateFloatAsState(
-        targetValue = if (isSearchActive) {
+        targetValue = if (uiState.isSearchActive) {
             HomeScreenDefaults.CollapsedUpperWeight
         } else {
             HomeScreenDefaults.ExpandedUpperWeight
@@ -117,7 +129,7 @@ fun HomeScreen(
         label = "homeSearchUpperWeight",
     )
     val upperContentAlpha by animateFloatAsState(
-        targetValue = if (isSearchActive) 0f else 1f,
+        targetValue = if (uiState.isSearchActive) 0f else 1f,
         animationSpec = tween(
             durationMillis = HomeScreenDefaults.ContentFadeDurationMillis,
             easing = FastOutSlowInEasing,
@@ -125,7 +137,7 @@ fun HomeScreen(
         label = "homeSearchUpperAlpha",
     )
     val categoryContentAlpha by animateFloatAsState(
-        targetValue = if (isSearchActive) 0f else 1f,
+        targetValue = if (uiState.isSearchActive) 0f else 1f,
         animationSpec = tween(
             durationMillis = HomeScreenDefaults.ContentFadeDurationMillis,
             easing = FastOutSlowInEasing,
@@ -133,7 +145,7 @@ fun HomeScreen(
         label = "homeSearchCategoryAlpha",
     )
     val searchActiveTopSpacing by animateDpAsState(
-        targetValue = if (isSearchActive) {
+        targetValue = if (uiState.isSearchActive) {
             HomeScreenDefaults.SearchActiveTopSpacing
         } else {
             0.dp
@@ -148,17 +160,24 @@ fun HomeScreen(
     val statusBarTopPadding = rememberRawStatusBarTopPadding()
 
     fun dismissSearch() {
-        isSearchActive = false
-        searchQuery = ""
+        onSearchDeactivate()
         focusManager.clearFocus()
     }
 
-    BackHandler(enabled = isSearchActive) {
+    fun submitSearch() {
+        if (uiState.searchQuery.trim().isEmpty()) {
+            return
+        }
+        focusManager.clearFocus()
+        onSearchSubmit()
+    }
+
+    BackHandler(enabled = uiState.isSearchActive) {
         dismissSearch()
     }
 
-    LaunchedEffect(isSearchActive) {
-        if (isSearchActive) {
+    LaunchedEffect(uiState.isSearchActive) {
+        if (uiState.isSearchActive && !uiState.isShowingSearchResults) {
             searchFocusRequester.requestFocus()
         }
     }
@@ -176,7 +195,7 @@ fun HomeScreen(
                 .weight(upperWeight)
                 .graphicsLayer { alpha = upperContentAlpha }
                 .then(
-                    if (isSearchActive) {
+                    if (uiState.isSearchActive) {
                         Modifier.pointerInput(Unit) {
                             awaitPointerEventScope {
                                 while (true) {
@@ -203,21 +222,13 @@ fun HomeScreen(
         }
 
         ModeraSearchBar(
-            query = searchQuery,
-            onQueryChange = { query ->
-                searchQuery = query
-                if (!isSearchActive) {
-                    isSearchActive = true
-                }
-            },
+            query = uiState.searchQuery,
+            onQueryChange = onSearchQueryChange,
             placeholder = stringResource(R.string.home_search_placeholder),
             mode = SearchBarMode.Ai,
             focusRequester = searchFocusRequester,
-            onFocusChanged = { focused ->
-                if (focused) {
-                    isSearchActive = true
-                }
-            },
+            onFocusChanged = onSearchBarFocusChange,
+            onSearch = ::submitSearch,
             modifier = Modifier.fillMaxWidth(),
         )
 
@@ -226,23 +237,42 @@ fun HomeScreen(
                 .weight(1f)
                 .fillMaxWidth()
                 .clickable(
-                    enabled = isSearchActive && searchQuery.isEmpty(),
+                    enabled = uiState.isSearchActive &&
+                        uiState.searchQuery.isEmpty() &&
+                        !uiState.isShowingSearchResults,
                     interactionSource = dismissInteractionSource,
                     indication = null,
                 ) {
                     focusManager.clearFocus()
-                    isSearchActive = false
                 },
         ) {
             if (categoryContentAlpha > 0f) {
                 HomeCategoryGrid(
-                    categories = categories,
+                    categories = uiState.categories,
                     onCategoryClick = onCategoryClick,
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(top = 24.dp, bottom = 24.dp)
                         .graphicsLayer { alpha = categoryContentAlpha },
                 )
+            }
+
+            if (uiState.isSearchActive) {
+                if (uiState.isShowingSearchResults) {
+                    SearchResultSection(
+                        searchResults = uiState.searchResults,
+                        isLoading = uiState.isSearchLoading,
+                        onSearchResultClick = onSearchResultClick,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                } else {
+                    RecentSearchSection(
+                        recentSearchTerms = uiState.recentSearchTerms,
+                        onRecentSearchClick = onRecentSearchClick,
+                        onRecentSearchDelete = onRecentSearchDelete,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                }
             }
         }
     }
@@ -303,9 +333,6 @@ private fun HomeErrorScreen(
     }
 }
 
-/**
- * 상위에서 Top inset을 consume해도, 플랫폼 raw status bar 높이로 패딩한다.
- */
 @Composable
 private fun rememberRawStatusBarTopPadding(): Dp {
     val view = LocalView.current
@@ -370,10 +397,18 @@ private fun HomeScreenPreview(
 ) {
     ModeraTheme {
         HomeScreen(
-            categories = previewData.categories,
+            uiState = HomeUiState.Success(
+                categories = previewData.categories,
+            ),
             onCalendarClick = {},
             onSettingsClick = {},
             onCategoryClick = {},
+            onSearchQueryChange = {},
+            onSearchBarFocusChange = {},
+            onSearchSubmit = {},
+            onRecentSearchClick = {},
+            onRecentSearchDelete = {},
+            onSearchDeactivate = {},
         )
     }
 }

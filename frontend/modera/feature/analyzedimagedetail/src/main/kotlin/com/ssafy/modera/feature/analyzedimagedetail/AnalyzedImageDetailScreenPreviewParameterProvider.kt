@@ -69,7 +69,6 @@ private val previewAnalyzedImageDetail = AnalyzedImageDetail(
             전일 대비: -24,500원
             등락률: -8.77%
         """.trimIndent(),
-        language = "ko",
         confidence = 0.96,
     ),
     tags = listOf(

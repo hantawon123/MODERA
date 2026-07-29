@@ -9,7 +9,7 @@ import asyncio
 import logging
 import time
 from contextlib import contextmanager
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from . import gemini_client, search, spring_client, storage
@@ -149,6 +149,15 @@ def run_agent_generation(
         )
     tag_rule += "\n"
     language_rule = f"출력 언어는 {language} 로 한다.\n" if language else ""
+    # 캘린더용 일정 추출(schedule). 상대 날짜는 기준 시각(서버 현재 KST)으로 해석한다.
+    # 스크린샷 캡처 시각이 요청에 없어 분석 시각을 기준으로 쓴다(대부분 일정은 절대 날짜라 영향 작음).
+    ref_now = datetime.now(timezone(timedelta(hours=9))).strftime("%Y-%m-%dT%H:%M:%S+09:00")
+    schedule_rule = (
+        "[일정] 예약·티켓·행사·마감처럼 캘린더에 올릴 일정이 화면에 있으면 schedule 로 뽑아라.\n"
+        "- startAt: 행사 시작 시각. endAt: 행사 종료 시각. **마감 기한('~까지')은 endAt 에 넣고 startAt 은 null 로 둬라.**\n"
+        f"- ISO-8601(KST). 시각을 알면 '2026-08-03T14:30:00+09:00', 날짜만 알면 '2026-08-03'. 상대 날짜(내일·이번 주 금요일 등)는 기준 시각 {ref_now} 로 계산.\n"
+        "- 연도가 없으면 기준 시각 기준 가장 가까운 미래로. 확인 안 된 값은 null(추측 금지). 일정이 전혀 없으면 둘 다 null.\n\n"
+    )
     prompt = (
         "OCR 텍스트와 이미지 분석 결과를 종합해 개인 지식 DB용 메타데이터를 생성하라.\n\n"
         "[카테고리]\n"
@@ -158,14 +167,59 @@ def run_agent_generation(
         + tag_rule
         + "[주요정보] 사용자에게 보여줄 핵심 정보를 '항목: 값' 형태 문자열로 담아라. "
         "확인되지 않은 값은 넣지 마라(추측 금지).\n\n"
+        + schedule_rule
         + language_rule
         + "반드시 아래 JSON만 출력. 마크다운·설명 금지.\n"
         '{"title":"...","summary":"...","tags":["..."],"categories":["..."],'
-        '"key_information":["..."],"analysis_confidence":0.0}\n\n'
+        '"key_information":["..."],"analysis_confidence":0.0,'
+        '"schedule":{"startAt":null,"endAt":null}}\n\n'
         f"OCR: {ocr_text}\n"
         f"이미지 분석: {image_analysis}"
     )
     return gemini_client.generate_json(settings.llm_model_name, [prompt])
+
+
+def _split_dt(value: str | None) -> dict[str, Any] | None:
+    """ISO-8601 문자열(날짜 또는 날짜+시각)을 연·월·일 정수와 시각(HH:MM) 문자열로 분해한다.
+
+    시각이 없는 날짜('2026-08-03')는 time 을 null 로 둔다(종일). 빈 값·파싱 불가면 None.
+    타임존 표기(+09:00)는 무시하고 벽시계 시각 그대로 쓴다(계약이 KST 로컬).
+    """
+    s = (value or "").strip()
+    if len(s) < 10:
+        return None
+    try:
+        year, month, day = (int(x) for x in s[:10].split("-"))
+    except ValueError:
+        return None
+    time = None
+    if "T" in s:
+        hm = s.split("T", 1)[1][:5]  # 'HH:MM'
+        if len(hm) == 5 and hm[2] == ":" and hm[:2].isdigit() and hm[3:].isdigit():
+            time = hm
+    return {"year": year, "month": month, "day": day, "time": time}
+
+
+def _build_schedule_data(raw: Any) -> dict[str, Any]:
+    """AGENT 가 뽑은 일정(startAt·endAt ISO)을 콜백 scheduleData 계약 형태로 만든다.
+
+    일정이 있으면 {"type":"schedule","fields":{startYear,startMonth,startDay,startTime,
+    endYear,endMonth,endDay,endTime}}, 없으면 {"type": None, "fields": {}}. 마감 기한은
+    endAt 에 담겨 온다(start*=null). 시각을 모르는 날짜는 startTime/endTime 이 null(종일).
+    """
+    if not isinstance(raw, dict):
+        return {"type": None, "fields": {}}
+    start = _split_dt(raw.get("startAt"))
+    end = _split_dt(raw.get("endAt"))
+    if not start and not end:
+        return {"type": None, "fields": {}}
+    fields: dict[str, Any] = {}
+    for prefix, comp in (("start", start), ("end", end)):
+        fields[prefix + "Year"] = comp["year"] if comp else None
+        fields[prefix + "Month"] = comp["month"] if comp else None
+        fields[prefix + "Day"] = comp["day"] if comp else None
+        fields[prefix + "Time"] = comp["time"] if comp else None
+    return {"type": "schedule", "fields": fields}
 
 
 def _build_candidates(candidates: list[CategoryCandidate]) -> list[CategoryCandidate]:
@@ -280,8 +334,9 @@ async def run_agent_core(
         "category": resolution.name,
         "keyInformation": generated.get("key_information") or [],
         "analysisConfidence": float(generated.get("analysis_confidence", 0.0)),
-        # 일정 데이터는 MVP 범위에서 제외. 형태만 유지한다.
-        "scheduleData": {"type": None, "fields": {}},
+        # 캘린더용 일정. {type:"schedule", fields:{start*/end* 연·월·일·시각(HH:MM)}} 또는
+        # 일정 없으면 {type:null, fields:{}}. 백엔드가 DB 저장 후 앱 캘린더로 서빙한다.
+        "scheduleData": _build_schedule_data(generated.get("schedule")),
         # 신규 카테고리 여부(스프링이 생성 판단에 사용). 계약 확정 필요.
         "categoryCreated": resolution.created,
         # 명세 6-2 categories[].confidence 로 내려줄 값

@@ -310,25 +310,35 @@ class DocumentResponse(CamelModel):
     generated_at: str
 
 
-# ── 검색 (OpenSearch 키워드/BM25) ─────────────────────────────────────────
+# ── 검색 (Spring 이 호출하는 내부 검색 — 하이브리드/cascade) ─────────────
 class SearchRequest(CamelModel):
     user_id: int
     query: str
+    # 필터는 전부 "이름" 으로 받는다. 카테고리·태그의 진짜 ID 는 Spring DB 소관이라,
+    # Spring 이 id→이름으로 바꿔 넘긴다(우리 색인 키가 이름이다).
     category: str | None = None      # 카테고리명으로 필터 (선택)
+    tag: str | None = None           # 태그명으로 필터 (선택)
+    scope: str = "ALL"               # ALL | OCR | TAG (STRUCTURED 는 항상 빈 결과)
+    # relevance(기본) | createdAt,desc | uploadedAt,desc | lastViewedAt,desc | imageId,asc
+    sort: str | None = None
+    page: int = 0                    # 0부터. total 과 함께 페이지네이션에 쓴다.
     size: int = 10
+    # auto(기본) = cascade — BM25 먼저, 빈 결과면 하이브리드(시맨틱) 승격. 사용자 검색 경로.
+    # bm25 = 강제 BM25 — 정확한 total·BM25 점수 스케일이 필요한 시스템성 호출용.
+    mode: str = "auto"
 
 
 class SearchHit(CamelModel):
+    """검색 결과 한 건. 화면 데이터는 Spring 이 imageId 로 자기 DB 를 조인해 채우므로
+    여기서는 '어떤 이미지가, 어떤 순서로' 만 준다. score 는 정렬 근거(스케일 무의미)."""
     image_id: int
-    title: str = ""
-    summary: str = ""
-    tags: list[str] = []
-    category: str | None = None
     score: float = 0.0
 
 
 class SearchResponse(CamelModel):
     total: int
+    page: int = 0
+    size: int = 10
     hits: list[SearchHit] = []
 
 

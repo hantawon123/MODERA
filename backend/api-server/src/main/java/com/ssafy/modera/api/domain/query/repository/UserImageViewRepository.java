@@ -6,9 +6,7 @@ import org.springframework.stereotype.Repository;
 
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
-import java.sql.Timestamp;
 import java.sql.Types;
-import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
 
@@ -18,9 +16,26 @@ public class UserImageViewRepository {
     private static final String UPSERT_SQL = """
             INSERT INTO query_schema.user_image_view (
                 user_id, image_id, file_name, s3_key, thumbnail_key,
-                title, summary, category_name, tag_names, key_information,
-                structured_data, upload_status, analysis_status, favorite, created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                title, summary, category_name, tags, key_information,
+                structured_data, upload_status, analysis_status, favorite
+            ) VALUES (
+                ?, ?, ?, ?, ?, ?, ?, ?,
+                (
+                    SELECT COALESCE(
+                        jsonb_agg(
+                            jsonb_build_object(
+                                'tagId', NULL,
+                                'name', tag_name
+                            )
+                            ORDER BY tag_order
+                        ),
+                        '[]'::jsonb
+                    )
+                    FROM unnest(CAST(? AS text[]))
+                        WITH ORDINALITY AS source_tag(tag_name, tag_order)
+                ),
+                ?, ?, ?, ?, ?
+            )
             ON CONFLICT (user_id, image_id) DO UPDATE SET
                 file_name = EXCLUDED.file_name,
                 s3_key = EXCLUDED.s3_key,
@@ -28,7 +43,7 @@ public class UserImageViewRepository {
                 title = EXCLUDED.title,
                 summary = EXCLUDED.summary,
                 category_name = EXCLUDED.category_name,
-                tag_names = EXCLUDED.tag_names,
+                tags = EXCLUDED.tags,
                 key_information = EXCLUDED.key_information,
                 structured_data = EXCLUDED.structured_data,
                 upload_status = EXCLUDED.upload_status,
@@ -68,7 +83,6 @@ public class UserImageViewRepository {
             } else {
                 ps.setBoolean(i++, row.favorite());
             }
-            ps.setTimestamp(i++, row.createdAt() == null ? null : Timestamp.from(row.createdAt()));
             return ps;
         });
     }
@@ -76,19 +90,15 @@ public class UserImageViewRepository {
     public Optional<UserImageViewDetail> findDetail(Integer userId, Integer imageId) {
         return jdbcTemplate.query(
                         """
-                        SELECT analysis_status, title, favorite, created_at
+                        SELECT analysis_status, title, favorite
                         FROM query_schema.user_image_view
                         WHERE user_id = ? AND image_id = ?
                         """,
                         (rs, rowNum) -> {
-                            Timestamp createdAt = rs.getTimestamp("created_at");
                             return new UserImageViewDetail(
                                     rs.getString("analysis_status"),
                                     rs.getString("title"),
-                                    rs.getObject("favorite", Boolean.class),
-                                    createdAt == null
-                                            ? null
-                                            : createdAt.toInstant().atOffset(ZoneOffset.UTC)
+                                    rs.getObject("favorite", Boolean.class)
                             );
                         },
                         userId,

@@ -59,8 +59,7 @@ public class AnalysisResultEventHandler {
                 payload.structuredFields(),
                 imageAsset.getUploadStatus(),
                 payload.analysisStatus(),
-                false,
-                imageAsset.getCreatedAt().toInstant()
+                false
         ));
     }
 

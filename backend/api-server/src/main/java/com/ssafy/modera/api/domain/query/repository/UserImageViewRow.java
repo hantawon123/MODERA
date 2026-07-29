@@ -1,6 +1,5 @@
 package com.ssafy.modera.api.domain.query.repository;
 
-import java.time.Instant;
 import java.util.List;
 
 /**
@@ -21,7 +20,6 @@ public record UserImageViewRow(
         String structuredDataJson,
         String uploadStatus,
         String analysisStatus,
-        Boolean favorite,
-        Instant createdAt
+        Boolean favorite
 ) {
 }

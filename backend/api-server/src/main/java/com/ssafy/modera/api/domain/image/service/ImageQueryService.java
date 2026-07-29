@@ -44,10 +44,7 @@ public class ImageQueryService {
                 detail == null || detail.title() == null
                         ? imageAsset.getFileName()
                         : detail.title(),
-                detail != null && Boolean.TRUE.equals(detail.favorite()),
-                detail == null || detail.createdAt() == null
-                        ? imageAsset.getCreatedAt()
-                        : detail.createdAt()
+                detail != null && Boolean.TRUE.equals(detail.favorite())
         );
     }
 }

@@ -42,19 +42,15 @@ public class ImageAsset {
     @Column(name = "uploaded_at")
     private OffsetDateTime uploadedAt;
 
-    @Column(name = "created_at", nullable = false)
-    private OffsetDateTime createdAt;
-
     @Builder
     public ImageAsset(Integer imageId, String fileName, String contentHash, Integer fileSize,
-                       String s3Key, String uploadStatus, OffsetDateTime createdAt) {
+                       String s3Key, String uploadStatus) {
         this.imageId = imageId;
         this.fileName = fileName;
         this.contentHash = contentHash;
         this.fileSize = fileSize;
         this.s3Key = s3Key;
         this.uploadStatus = uploadStatus;
-        this.createdAt = createdAt;
     }
 
     public void markUploaded(OffsetDateTime uploadedAt) {

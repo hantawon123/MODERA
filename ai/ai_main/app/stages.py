@@ -425,13 +425,14 @@ async def _index_as_other(
     job_store.update(job_id, "EMPTY", result=result, stage="INDEXING")
 
 
-def _empty_callback_result(reason: str, thumbnail_key: str | None = None) -> dict[str, Any]:
+def _empty_callback_result(thumbnail_key: str | None = None) -> dict[str, Any]:
     """분석을 건너뛴(EMPTY) 경우의 콜백 result.
 
     Spring 의 AnalysisCallbackService 는 EMPTY 도 성공으로 취급해 결과 행을 남기므로
     (`case "COMPLETED", "EMPTY" -> handleSuccess`), **키 구조를 COMPLETED 와 완전히
     동일하게** 맞추고 값만 비운다(2026-07-29 백엔드 요청 — 만들지 않은 값은 null).
-    informative·ocrRefinedText 는 콜백에서 제외(정보성 여부는 status=EMPTY 로 구분).
+    informative·ocrRefinedText·reason 은 콜백에서 제외(백엔드 미사용 확정) —
+    판정 사유(reason)는 서버 로그에 남는다(비정보성 판정 → '기타' 분류 INFO 로그).
     """
     return {
         "title": "",
@@ -449,7 +450,6 @@ def _empty_callback_result(reason: str, thumbnail_key: str | None = None) -> dic
         "embeddingModel": None,
         "embeddingDimension": None,
         "thumbnailKey": thumbnail_key,
-        "reason": reason,
     }
 
 
@@ -552,7 +552,7 @@ async def _run_full_pipeline(
                 await _index_as_other(job_id, image_id, user_id, s3_key, ocr_text)
             timings["TOTAL"] = round(time.perf_counter() - started, 2)
             logger.info("전체 분석 완료(EMPTY) jobId=%s 소요=%s", job_id, timings)
-            return "EMPTY", _empty_callback_result("텍스트 없음", thumbnail_key), None
+            return "EMPTY", _empty_callback_result(thumbnail_key), None
 
         with _timed(timings, "LLM"):
             _, verdict = await asyncio.to_thread(run_llm, ocr_text)
@@ -564,7 +564,7 @@ async def _run_full_pipeline(
                 await _index_as_other(job_id, image_id, user_id, s3_key, ocr_text)
             timings["TOTAL"] = round(time.perf_counter() - started, 2)
             logger.info("전체 분석 완료(비정보성) jobId=%s 소요=%s", job_id, timings)
-            return "EMPTY", _empty_callback_result(reason, thumbnail_key), None
+            return "EMPTY", _empty_callback_result(thumbnail_key), None
 
         # 2) 이미지 분석. 실패해도 OCR 만으로 계속 진행한다.
         #    위에서 이미 돌렸으면(OCR 대체) 다시 부르지 않는다.

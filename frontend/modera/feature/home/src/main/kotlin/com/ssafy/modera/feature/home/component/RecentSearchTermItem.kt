@@ -1,0 +1,64 @@
+package com.ssafy.modera.feature.home.component
+
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.vectorResource
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import com.ssafy.modera.core.designsystem.component.Icon
+import com.ssafy.modera.core.designsystem.component.Text
+import com.ssafy.modera.core.designsystem.icon.ModeraIcons
+import com.ssafy.modera.core.designsystem.theme.ModeraTheme
+import com.ssafy.modera.feature.home.R
+
+@Composable
+internal fun RecentSearchTermItem(
+    text: String,
+    onDeleteClick: () -> Unit,
+    onItemClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier
+            .padding(start = 14.dp, top = 10.dp, end = 4.dp, bottom = 10.dp)
+            .clickable(enabled = true, onClick = onItemClick),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = text,
+            style = ModeraTheme.typography.bodyR16,
+            color = ModeraTheme.colors.gray700,
+        )
+
+        Spacer(Modifier.width(4.dp))
+
+        Icon(
+            imageVector = ImageVector.vectorResource(ModeraIcons.Close),
+            contentDescription = stringResource(R.string.home_search_term_item_close_button),
+            tint = ModeraTheme.colors.gray700,
+            modifier = Modifier.clickable(enabled = true, onClick = onDeleteClick),
+        )
+    }
+}
+
+@Preview
+@Composable
+private fun RecentSearchTermItemPreview() {
+    ModeraTheme {
+        RecentSearchTermItem(
+            text = "최근 검색어가 나온 화면",
+            onDeleteClick = {},
+            onItemClick = {},
+        )
+    }
+}

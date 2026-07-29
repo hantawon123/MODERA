@@ -11,3 +11,5 @@ databaseChangeLog:
       file: db/changelog/005-add-stuck-job-index.sql
   - include:
       file: db/changelog/006-add-active-job-unique-index.sql
+  - include:
+      file: db/changelog/007-add-pending-job-index.sql

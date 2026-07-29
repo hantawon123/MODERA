@@ -22,6 +22,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -115,6 +116,7 @@ fun HomeScreen(
     val searchFocusRequester = remember { FocusRequester() }
     val focusManager = LocalFocusManager.current
     val dismissInteractionSource = remember { MutableInteractionSource() }
+    var wasSearchActive by remember { mutableStateOf(false) }
 
     val upperWeight by animateFloatAsState(
         targetValue = if (uiState.isSearchActive) {
@@ -177,9 +179,16 @@ fun HomeScreen(
     }
 
     LaunchedEffect(uiState.isSearchActive) {
-        if (uiState.isSearchActive && !uiState.isShowingSearchResults) {
-            searchFocusRequester.requestFocus()
+        when {
+            uiState.isSearchActive && !wasSearchActive && !uiState.isShowingSearchResults -> {
+                searchFocusRequester.requestFocus()
+            }
+
+            !uiState.isSearchActive && wasSearchActive -> {
+                focusManager.clearFocus()
+            }
         }
+        wasSearchActive = uiState.isSearchActive
     }
 
     Column(
@@ -244,6 +253,7 @@ fun HomeScreen(
                     indication = null,
                 ) {
                     focusManager.clearFocus()
+                    onSearchDeactivate()
                 },
         ) {
             if (categoryContentAlpha > 0f) {

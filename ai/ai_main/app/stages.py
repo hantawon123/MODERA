@@ -204,8 +204,11 @@ def _build_schedule_data(raw: Any) -> dict[str, Any]:
     """AGENT 가 뽑은 일정(startAt·endAt ISO)을 콜백 scheduleData 계약 형태로 만든다.
 
     일정이 있으면 {"type":"schedule","fields":{startYear,startMonth,startDay,startTime,
-    endYear,endMonth,endDay,endTime}}, 없으면 {"type": None, "fields": {}}. 마감 기한은
-    endAt 에 담겨 온다(start*=null). 시각을 모르는 날짜는 startTime/endTime 이 null(종일).
+    endYear,endMonth,endDay,endTime}}, 없으면 {"type": None, "fields": {}}.
+    시각을 모르는 날짜는 startTime/endTime 이 null(종일).
+
+    백엔드 계약: **시점이 하나뿐인 일정(예약·마감 등)은 end* 에 담는다.**
+    start* 는 기간 일정의 시작에만 쓴다 — 단일 일정은 end만 보면 되도록 통일.
     """
     if not isinstance(raw, dict):
         return {"type": None, "fields": {}}
@@ -213,6 +216,9 @@ def _build_schedule_data(raw: Any) -> dict[str, Any]:
     end = _split_dt(raw.get("endAt"))
     if not start and not end:
         return {"type": None, "fields": {}}
+    if start and not end:
+        # 예약처럼 시작 시점만 뽑힌 경우 → 단일 시점 규칙에 따라 end 로 옮긴다.
+        start, end = None, start
     fields: dict[str, Any] = {}
     for prefix, comp in (("start", start), ("end", end)):
         fields[prefix + "Year"] = comp["year"] if comp else None

@@ -24,6 +24,8 @@ import com.ssafy.modera.core.designsystem.icon.ModeraIcons
 import com.ssafy.modera.core.designsystem.theme.ModeraTheme
 
 /**
+ * 뒤로가기 버튼이 있는 TopBar (제목과 우측 요소 추가 가능)
+ *
  * @param onBackClick 뒤로가기 버튼 클릭 시 실행할 콜백
  * @param modifier TopBar 레이아웃 modifier
  * @param centerContent TopBar 중앙 영역 composable

@@ -16,7 +16,8 @@ CORS 대상이 아니라 그대로 통과한다.
 
 실행:
     python demo/pipeline_viz.py                 # 기본: 공개 서버로 중계
-    python demo/pipeline_viz.py http://127.0.0.1:8000   # 서버 호스트에서 로컬 중계
+    python demo/pipeline_viz.py http://127.0.0.1:8001   # 서버 호스트에서 로컬 중계
+    #   ↑ 포트는 관찰 대상 스택의 호스트 포트다. 배포본 8000, full-stage 8001.
     VIZ_PORT=9000 python demo/pipeline_viz.py
 
 그리고 브라우저에서 http://localhost:8090 을 연다.

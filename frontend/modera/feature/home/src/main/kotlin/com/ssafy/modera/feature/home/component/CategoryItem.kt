@@ -52,7 +52,7 @@ fun CategoryItem(
             Text(
                 text = title,
                 modifier = Modifier.align(Alignment.TopStart),
-                style = ModeraTheme.typography.titleSB18,
+                style = ModeraTheme.typography.bodySB14,
                 color = ModeraTheme.colors.gray900,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,

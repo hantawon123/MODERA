@@ -214,9 +214,30 @@ function setConn(ok){const d=document.getElementById('dot');d.className='dot '+(
 const fmt=s=>s<10?s.toFixed(1)+'s':Math.round(s)+'s';
 const esc=s=>(s==null?'':String(s)).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
+// 관측원(observation source). 서버 코드는 건드리지 않고 있는 API 로만 본다.
+//
+//  1순위 /api/v1/analysis/jobs — stage·progress 까지 나와 가장 좋다. 그러나 AI 쪽
+//        job_store 는 인메모리이고 앱 직결 업로드(4-2)에서만 채워진다.
+//  2순위 /api/v1/images        — 분석이 Spring 으로 넘어가면 worker 가 AI 의
+//        /internal/v1/analyze 만 부르고 job_store 는 건드리지 않아 1순위가 항상 빈다.
+//        색인 문서는 남으므로 이 목록을 쓴다.
+//
+// 2순위의 한계: 색인 문서는 분석이 끝난 뒤 만들어진다(search.set_status 는 호출되는
+// 곳이 없다). 그래서 진행 중인 이미지는 목록에 아예 없고, 단계별 진행은 관측되지
+// 않는다. Spring 의 단건 조회에 analysisStatus 가 있지만 목록 API 가 없어 어떤
+// imageId 를 물어볼지 알 수 없다.
+async function fetchJobs(){
+  const jobs=(await api('/api/v1/analysis/jobs?size=60')).data.list||[];
+  if(jobs.length) return jobs;
+  return ((await api('/api/v1/images?size=60')).data.list||[]).map(i=>({
+    jobId:i.imageId, imageId:i.imageId, fileName:i.fileName,
+    status:i.status||'COMPLETED', stage:'INDEXING', item:i,
+  }));
+}
+
 async function poll(){
   let jobs;
-  try{jobs=(await api('/api/v1/analysis/jobs?size=60')).data.list||[];setConn(true);}
+  try{jobs=await fetchJobs();setConn(true);}
   catch(e){setConn(false);return;}
 
   const now=Date.now();
@@ -226,14 +247,18 @@ async function poll(){
     const id=job.jobId;
     let st=state.get(id);
     if(!st){st={firstSeen:now,node:procNode(job),nodeSince:now,times:{},failed:false,
-                detail:null,fetching:false,total:0,frozen:false};state.set(id,st);}
+                detail:null,fetching:false,total:0,frozen:false,
+                // 이미 끝난 상태로 처음 보인 항목은 시작 시점을 알 수 없다. 페이지를
+                // 연 시각부터 잰 값은 실제 소요가 아니므로 아예 표시하지 않는다.
+                preexisting:isTerminal(job.status)};state.set(id,st);}
     const raw=procNode(job);
     if(isFail(job.status)){st.failed=true;}          // 실패면 마지막 단계 위치를 유지
     else{
       st.failed=false;
       if(raw!==st.node){st.times[st.node]=(now-st.nodeSince)/1000;st.node=raw;st.nodeSince=now;}
     }
-    if(!isTerminal(job.status)) st.total=now-st.firstSeen;
+    if(st.preexisting){/* 소요 미측정 */}
+    else if(!isTerminal(job.status)) st.total=now-st.firstSeen;
     else if(!st.frozen){st.total=now-st.firstSeen;st.frozen=true;}
 
     if(job.status==='QUEUED')counts.QUEUED++;
@@ -276,10 +301,13 @@ function renderHero(job){
     img.src='/api/v1/images/'+job.imageId+'/thumbnail/raw';
   }
 
-  document.getElementById('h-iid').textContent='#'+job.imageId;
+  // fileName·attempt 는 서버가 주면 쓰고, 없는 빌드면 조용히 생략된다.
+  document.getElementById('h-iid').textContent='#'+job.imageId
+    +(job.fileName?' · '+job.fileName:'')
+    +(job.attempt>1?' · 재시도 '+job.attempt:'');
   const badge=document.getElementById('h-st');badge.className='st '+job.status;badge.textContent=job.status;
   heroEl.classList.toggle('failed', st.failed);
-  document.getElementById('h-timer').textContent=fmt(st.total/1000);
+  document.getElementById('h-timer').textContent=st.preexisting?'—':fmt(st.total/1000);
 
   const now=Date.now(), node=st.node, failed=st.failed;
   nodeEls.forEach((el,i)=>{
@@ -297,7 +325,9 @@ function renderHero(job){
 
   const sn=document.getElementById('h-stage');
   if(failed){sn.className='stage-now fail';sn.innerHTML='단계 실패: <b>'+esc(job.errorCode||'ANALYSIS_FAILED')+'</b>';}
-  else{sn.className='stage-now';sn.innerHTML='현재 단계: <b>'+NODES[node].name+'</b>';}
+  else{sn.className='stage-now';sn.innerHTML='현재 단계: <b>'+NODES[node].name+'</b>'
+    // progress 는 서버가 보고하는 값. 노드 위치는 stage 로 정하고 여기에만 덧붙인다.
+    +(job.progress!=null?' · <b>'+esc(job.progress)+'%</b>':'');}
 
   renderResult(job, st);
 }
@@ -331,19 +361,23 @@ function renderResult(job, st){
 
 let recentKey='';
 function renderRecent(jobs){
-  const done=jobs.filter(j=>j.status==='COMPLETED'||j.status==='EMPTY').slice(0,14);
-  const key=done.map(j=>j.imageId).join(',');
+  const ids=jobs.filter(j=>j.status==='COMPLETED'||j.status==='EMPTY')
+                .slice(0,14).map(j=>j.imageId);
+  const key=ids.join(',');
   if(key===recentKey) return;
   recentKey=key;
-  document.getElementById('recent').innerHTML = done.map(j=>
-    `<div class="rthumb"><img loading="lazy" src="/api/v1/images/${j.imageId}/thumbnail/raw" alt="">
-     <span>#${j.imageId}</span></div>`).join('') ||
+  document.getElementById('recent').innerHTML = ids.map(id=>
+    // 썸네일이 MinIO 에 없으면 404 다(색인만 남고 객체가 빠진 경우). 깨진 이미지
+    // 아이콘 대신 빈 타일로 두고 #id 는 남긴다.
+    `<div class="rthumb"><img loading="lazy" src="/api/v1/images/${id}/thumbnail/raw" alt=""
+       onerror="this.style.visibility='hidden'">
+     <span>#${id}</span></div>`).join('') ||
     `<div class="idle" style="padding:14px">아직 완료된 이미지가 없습니다.</div>`;
 }
 
 // 히어로 타이머·현재 단계 시간을 부드럽게 갱신
 setInterval(()=>{
-  const st=state.get(heroId);if(!st)return;
+  const st=state.get(heroId);if(!st||st.preexisting)return;
   const badge=document.getElementById('h-st');if(!badge)return;
   if(!isTerminal(badge.textContent) && !st.failed){
     const now=Date.now();

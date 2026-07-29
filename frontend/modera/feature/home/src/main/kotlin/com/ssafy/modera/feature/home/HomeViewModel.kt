@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.yield
 import javax.inject.Inject
@@ -180,6 +181,7 @@ class HomeViewModel @Inject constructor(
     private suspend fun fetchSearchResults(
         query: String,
     ): List<SearchMaterialResult> {
+        delay(HomeSearchDefaults.SearchLoadingDelayMillis)
         // TODO: 검색 API 연동
         return HomeSearchDummyData.searchResults
     }
@@ -207,6 +209,7 @@ class HomeViewModel @Inject constructor(
     private companion object {
         private object HomeSearchDefaults {
             const val MaxRecentSearchTermCount = 10
+            const val SearchLoadingDelayMillis = 2_000L
         }
     }
 }

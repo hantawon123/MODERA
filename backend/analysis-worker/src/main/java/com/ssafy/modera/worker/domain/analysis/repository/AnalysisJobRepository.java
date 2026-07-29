@@ -21,11 +21,20 @@ public interface AnalysisJobRepository extends JpaRepository<AnalysisJob, Intege
     List<AnalysisJob> findTop100ByStatusAndStartedAtBefore(String status, OffsetDateTime cutoff);
 
     /**
-     * PROCESSING인 job만 골라 FAILED로 확정하고, 실제로 바꾼 행 수를 돌려준다.
+     * 분석이 시작되지 못한 채 방치된 job 조회.
+     *
+     * PENDING 행은 `started_at`이 아직 NULL이라 위 조회에 걸리지 않는다. job을 PENDING으로
+     * 저장한 직후 worker가 죽으면 그 상태로 남으므로 `queued_at`을 기준으로 찾는다.
+     */
+    List<AnalysisJob> findTop100ByStatusAndQueuedAtBefore(String status, OffsetDateTime cutoff);
+
+    /**
+     * 기대한 상태 그대로인 job만 골라 FAILED로 확정하고, 실제로 바꾼 행 수를 돌려준다.
      *
      * 조회 시점과 UPDATE 시점 사이에 AI 콜백이 도착해 job이 COMPLETED가 되었을 수 있다.
      * 엔티티를 읽어 markFailed()로 덮으면 정상 완료를 실패로 오염시키므로, WHERE에 status
-     * 조건을 함께 걸어 "아직 PROCESSING인 경우에만" 바꾼다.
+     * 조건을 함께 걸어 "아직 그 상태인 경우에만" 바꾼다. `expectedStatus`는 호출하는 스윕에
+     * 따라 `PROCESSING`(콜백 미도착) 또는 `PENDING`(분석 미시작)이 된다.
      *
      * 반환값이 1이면 이 호출이 상태를 확정한 것이므로 ANALYSIS_FAILED를 발행해도 된다.
      * 0이면 콜백이 먼저 이겼거나 다른 worker 인스턴스가 먼저 처리한 것이라 발행하지 않는다.
@@ -44,9 +53,10 @@ public interface AnalysisJobRepository extends JpaRepository<AnalysisJob, Intege
                    j.retryable = true,
                    j.completedAt = :now
              WHERE j.jobId = :jobId
-               AND j.status = 'PROCESSING'
+               AND j.status = :expectedStatus
             """)
     int markTimedOut(@Param("jobId") Integer jobId,
+                     @Param("expectedStatus") String expectedStatus,
                      @Param("errorCode") String errorCode,
                      @Param("errorMessage") String errorMessage,
                      @Param("now") OffsetDateTime now);

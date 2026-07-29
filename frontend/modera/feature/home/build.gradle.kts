@@ -9,7 +9,9 @@ android {
 }
 
 dependencies {
+    implementation(libs.androidx.foundation.layout)
     implementation(projects.feature.categoryimages)
     implementation(libs.coil.kt)
     implementation(libs.coil.kt.compose)
+    implementation(libs.androidx.activity.compose)
 }

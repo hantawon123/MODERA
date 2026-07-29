@@ -54,7 +54,10 @@ internal fun SearchResultSection(
         }
 
         else -> {
-            Column {
+            Column(
+                modifier = Modifier
+                    .padding(top = 24.dp, bottom = 24.dp),
+            ) {
                 Text(
                     text = stringResource(R.string.home_search_result_comment),
                     style = ModeraTheme.typography.bodyR14,

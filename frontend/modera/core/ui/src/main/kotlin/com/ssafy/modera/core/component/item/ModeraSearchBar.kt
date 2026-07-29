@@ -13,10 +13,13 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
@@ -74,6 +77,8 @@ fun ModeraSearchBar(
     }
     val shape = SearchBarDefaults.Shape
     val resolvedFocusRequester = focusRequester ?: remember { FocusRequester() }
+    val trailingIconsWidth =
+        SearchBarDefaults.IconSize * 2 + SearchBarDefaults.IconTextSpacing
 
     Box(
         modifier = modifier
@@ -97,7 +102,7 @@ fun ModeraSearchBar(
             modifier = Modifier
                 .focusRequester(resolvedFocusRequester)
                 .fillMaxWidth()
-                .padding(end = SearchBarDefaults.IconSize + SearchBarDefaults.IconTextSpacing)
+                .padding(end = trailingIconsWidth)
                 .onFocusChanged { onFocusChanged(it.isFocused) },
             enabled = enabled,
             singleLine = true,
@@ -123,13 +128,38 @@ fun ModeraSearchBar(
             },
         )
 
-        SearchIcon(
-            mode = mode,
-            accentColor = accentColor,
-            onClick = onSearch,
-            enabled = enabled,
-            modifier = Modifier.align(Alignment.CenterEnd),
-        )
+        Row(
+            modifier = Modifier
+                .align(Alignment.CenterEnd)
+                .width(trailingIconsWidth),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.End,
+        ) {
+            if (query.isNotEmpty()) {
+                Icon(
+                    imageVector = ImageVector.vectorResource(ModeraIcons.CloseCircle),
+                    contentDescription = "초기화",
+                    modifier = Modifier
+                        .size(SearchBarDefaults.IconSize)
+                        .clickable(
+                            enabled = enabled,
+                            indication = null,
+                            interactionSource = remember { MutableInteractionSource() },
+                            onClick = { onQueryChange("") },
+                        ),
+                    tint = colors.gray500,
+                )
+
+                Spacer(Modifier.width(SearchBarDefaults.IconTextSpacing))
+            }
+
+            SearchIcon(
+                mode = mode,
+                accentColor = accentColor,
+                onClick = onSearch,
+                enabled = enabled,
+            )
+        }
     }
 }
 
@@ -226,30 +256,21 @@ private fun SearchBarPreviewHost(content: @Composable () -> Unit) {
 @Composable
 private fun ModeraSearchBarGeneralPlaceholderPreview() {
     SearchBarPreviewHost {
-        ModeraSearchBar(
-            query = "",
-            onQueryChange = {},
-            placeholder = "가장 최근에 저장한 레시피",
-            mode = SearchBarMode.General,
-        )
-    }
-}
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            ModeraSearchBar(
+                query = "",
+                onQueryChange = {},
+                placeholder = "가장 최근에 저장한 레시피",
+                mode = SearchBarMode.General,
+            )
 
-@Preview(
-    showBackground = true,
-    backgroundColor = 0xFFF5F5F3,
-    widthDp = 360,
-    heightDp = 200,
-)
-@Composable
-private fun ModeraSearchBarGeneralQueryPreview() {
-    SearchBarPreviewHost {
-        ModeraSearchBar(
-            query = "검색어를 입력 중일 땐 이렇게",
-            onQueryChange = {},
-            placeholder = "가장 최근에 저장한 레시피",
-            mode = SearchBarMode.General,
-        )
+            ModeraSearchBar(
+                query = "검색어를 입력 중일 땐 이렇게",
+                onQueryChange = {},
+                placeholder = "가장 최근에 저장한 레시피",
+                mode = SearchBarMode.General,
+            )
+        }
     }
 }
 
@@ -271,7 +292,7 @@ private fun ModeraSearchBarAiPreview() {
                 mode = SearchBarMode.Ai,
             )
             ModeraSearchBar(
-                query = "검색어를 입력 중일 땐 이렇게",
+                query = "검색어를 입력 중일 땐 이렇게 검색어를 입력 중일 땐 이렇게",
                 onQueryChange = {},
                 placeholder = "AI에게 물어보기",
                 mode = SearchBarMode.Ai,

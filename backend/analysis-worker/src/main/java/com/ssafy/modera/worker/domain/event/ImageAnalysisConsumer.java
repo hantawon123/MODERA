@@ -15,6 +15,7 @@ import jakarta.annotation.PreDestroy;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.QueryTimeoutException;
 import org.springframework.data.redis.connection.stream.Consumer;
 import org.springframework.data.redis.connection.stream.MapRecord;
@@ -202,7 +203,21 @@ public class ImageAnalysisConsumer {
                 .clientOcrLang(clientOcr == null ? null : clientOcr.lang())
                 .clientOcrConfidence(toFloat(clientOcr == null ? null : clientOcr.confidence()))
                 .build();
-        analysisJobRepository.save(job);
+        try {
+            analysisJobRepository.save(job);
+        } catch (DataIntegrityViolationException e) {
+            if (isDuplicateActiveJob(imageId)) {
+                // uq_analysis_job_active가 잡은 경합이다. 위 조회 가드를 통과한 뒤 INSERT 사이에
+                // 다른 스레드(또는 인스턴스)가 같은 이미지의 job을 먼저 만들었다.
+                // 이건 실패가 아니라 "다른 쪽이 이미 처리 중"이므로 정상 스킵으로 취급한다.
+                // 예외를 그대로 올리면 일시 오류로 분류돼 XACK되지 않고 PEL에 남아, 재처리를
+                // 반복하다 한도 초과로 폐기된다. ANALYSIS_FAILED를 발행해도 안 된다 —
+                // 실제로는 분석이 정상 진행 중인데 사용자에게 실패로 보인다.
+                log.info("동시에 생성된 job이 있어 요청을 건너뛴다: imageId={}", imageId);
+                return;
+            }
+            throw e;
+        }
 
         job.markProcessing(OffsetDateTime.now());
         analysisJobRepository.save(job);
@@ -220,6 +235,20 @@ public class ImageAnalysisConsumer {
                     imageId, payload.userId(), "ANALYSIS_REQUEST_ERROR", String.valueOf(e.getMessage()), true);
             eventPublisher.publish(Streams.ANALYSIS_RESULT, EventTypes.ANALYSIS_FAILED, 1, failedPayload);
         }
+    }
+
+    /**
+     * 제약 위반이 "활성 job 중복" 때문인지 확인한다.
+     *
+     * 인덱스 이름이나 예외 메시지를 문자열로 비교하는 대신 상태를 다시 조회한다 —
+     * 정말 다른 쪽이 job을 만들었다면 지금 조회하면 보인다. NOT NULL 위반 같은 다른
+     * 제약 위반은 여기서 false가 되어 원래대로 예외가 올라간다.
+     *
+     * 인덱스는 PENDING·PROCESSING만 덮지만 조회는 COMPLETED까지 본다. 경쟁에서 이긴 쪽이
+     * 그 사이 분석을 끝냈을 수 있기 때문이다.
+     */
+    private boolean isDuplicateActiveJob(Integer imageId) {
+        return analysisJobRepository.existsByImageIdAndStatusIn(imageId, ACTIVE_JOB_STATUSES);
     }
 
     /** ClientOcr.confidence는 Double, analysis_job.client_ocr_confidence는 REAL이다. */

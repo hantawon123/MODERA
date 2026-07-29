@@ -375,7 +375,7 @@ OpenSearch + AI 서비스를 함께 띄운다.
 
 ## 팀 확인이 필요한 사항
 
-1. **카테고리 대표 벡터.** 지금은 10-5 응답에 벡터가 없어 카테고리 *이름* 임베딩으로 비교합니다. pgvector 에 카테고리 centroid 를 유지하고 10-5 응답에 `representativeVector` 를 실어주면 정확도가 올라갑니다. 스키마는 이미 이 필드를 받도록 준비돼 있습니다.
+1. **카테고리 대표 벡터.** AI 서버가 카테고리별 centroid 를 OpenSearch `{OPENSEARCH_INDEX}_categories` 인덱스에 직접 유지합니다(판정된 카테고리에 그 이미지의 요약 임베딩을 누적 평균으로 반영). 서버를 재기동해도 카테고리와 벡터가 남고, 이미지가 쌓일수록 정확해집니다. 기본 17종 이름 벡터는 기동 시 전역 시드(`user_id=0`)로 심습니다. 10-5 응답에 `representativeVector` 가 오면 그쪽을 우선 씁니다(스키마는 이미 준비돼 있음) — 백엔드가 pgvector centroid 를 유지한다면 어느 쪽을 정본으로 볼지 합의가 필요합니다. **추가 카테고리 벡터를 사용자별로 둘지 공유할지는 미결입니다** — 현재는 사용자별 격리. 트레이드오프와 바꿀 때 손댈 지점은 [docs/CATEGORY_VECTOR_STORE.md](docs/CATEGORY_VECTOR_STORE.md) 참고.
 2. **기본 카테고리 위치.** 쌓인 카테고리가 하나도 없을 때(콜드 스타트) `stages.DEFAULT_CATEGORIES` 17개를 후보로 씁니다. 원칙적으로는 Spring DB 시드로 옮기는 편이 낫습니다.
 3. **`categoryCreated` 필드.** AGENT 결과에 신규 카테고리 여부를 담았습니다. 명세에 없는 필드라 Spring 과 합의가 필요합니다(불필요하면 제거).
 3-1. **`documentVector` 필드.** AGENT 결과에 검색용 문서 임베딩(요약 기준, `DOCUMENT`)을 함께 실어 보냅니다. Spring 은 콜백 한 번으로 메타데이터와 벡터를 같이 받아 pgvector 등에 적재하면 됩니다(임베딩 재호출 불필요). `embeddingModel`·`embeddingDimension` 도 함께 넘어가니 벡터 컬럼 차원과 일치하는지 확인이 필요합니다. 명세 밖 필드라 Spring 과 계약 확정이 필요합니다.

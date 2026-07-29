@@ -169,26 +169,36 @@ def embed(texts: list[str], purpose: str = "DOCUMENT") -> tuple[str, list[list[f
         return settings.embedding_model_name, [
             _mock_vector(t, settings.embedding_dim) for t in texts
         ]
+    if not texts:
+        return settings.embedding_model_name, []
     genai = _genai()
     task_type = "retrieval_query" if purpose == "QUERY" else "retrieval_document"
-    vectors: list[list[float]] = []
-    for text in texts:
-        response = _call_with_retry(
-            "embed_content",
-            lambda text=text: genai.embed_content(
-                model=settings.embedding_model_name,
-                content=text,
-                task_type=task_type,
-                # 차원을 명시해 모델 기본값(3072)이 아닌 합의된 값으로 받는다.
-                output_dimensionality=settings.embedding_dim,
-            ),
+    # content 에 리스트를 주면 SDK 가 batch_embed_contents 로 한 번에 보낸다
+    # (100건 초과는 SDK 가 알아서 쪼갠다). 텍스트당 1회 순차 호출이던 것이 배치가
+    # 되어, 카테고리 이름 17종 콜드 스타트가 17 RTT 에서 1 RTT 로 줄어든다.
+    response = _call_with_retry(
+        "embed_content",
+        lambda: genai.embed_content(
+            model=settings.embedding_model_name,
+            content=texts,
+            task_type=task_type,
+            # 차원을 명시해 모델 기본값(3072)이 아닌 합의된 값으로 받는다.
+            output_dimensionality=settings.embedding_dim,
+        ),
+    )
+    vectors = [list(v) for v in response["embedding"]]
+    # 호출자는 입력 순서와 벡터 순서가 같다고 보고 zip 한다
+    # (stages.seed_default_category_vectors, 10-2 /internal/v1/embed 의 index).
+    # 개수가 어긋나면 이름과 벡터가 밀려 붙으므로 여기서 끊는다.
+    if len(vectors) != len(texts):
+        raise GeminiError(
+            f"임베딩 개수가 입력과 다릅니다: 요청 {len(texts)}, 응답 {len(vectors)}"
         )
-        vector = list(response["embedding"])
-        # 차원이 어긋난 벡터가 저장·색인까지 흘러가면 조용히 깨진다. 여기서 끊는다.
+    # 차원이 어긋난 벡터가 저장·색인까지 흘러가면 조용히 깨진다. 여기서 끊는다.
+    for vector in vectors:
         if len(vector) != settings.embedding_dim:
             raise GeminiError(
                 f"임베딩 차원이 설정과 다릅니다: 기대 {settings.embedding_dim}, "
                 f"실제 {len(vector)} (모델={settings.embedding_model_name})"
             )
-        vectors.append(vector)
     return settings.embedding_model_name, vectors

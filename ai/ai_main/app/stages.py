@@ -13,7 +13,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from . import gemini_client, search, spring_client, storage
-from .category import CategoryResolution, resolve_category
+from .category import CategoryResolution, normalize_name, resolve_category
 from .config import get_settings
 from .jobs import job_registry, job_store
 from .schemas import (
@@ -35,6 +35,35 @@ DEFAULT_CATEGORIES = [
     "미용", "학습", "취업", "IT", "뉴스", "부동산",
     "건강", "엔터", "자동차", "반려동물", "기타",
 ]
+
+
+def seed_default_category_vectors() -> int:
+    """기본 카테고리 이름 벡터를 전역 시드로 심는다(멱등). 심은 개수를 돌려준다.
+
+    이미지가 0장인 카테고리는 centroid 를 만들 수 없어 이름 임베딩으로 대신하는데,
+    그 값은 사용자와 무관하게 같다. 그래서 사용자별로 복제하지 않고 user_id=0
+    문서 17개로 한 번만 저장한다.
+
+    기동마다 부르지만 이미 있는 시드는 다시 임베딩하지 않는다 — 조회 1회로 빠진
+    이름만 골라 배치로 임베딩한다. 임베딩 모델·차원을 바꾸면 조회 필터가 기존
+    시드를 무효로 보므로 자동으로 전량 재생성된다.
+
+    실패해도 예외를 올리지 않는다. 시드가 없으면 콜드 스타트 판정이 이름
+    완전일치로만 동작하고(품질만 떨어진다), 다음 기동에서 다시 시도한다.
+    """
+    try:
+        existing = search.load_category_vectors(search.SEED_USER_ID)
+        missing = [n for n in DEFAULT_CATEGORIES if normalize_name(n) not in existing]
+        if not missing:
+            logger.info("카테고리 시드 %s건 이미 존재 — 임베딩 생략", len(existing))
+            return 0
+        _, vectors = gemini_client.embed(missing, "DOCUMENT")
+        written = search.put_seed_category_vectors(dict(zip(missing, vectors)))
+        logger.info("카테고리 시드 %s건 생성 (기존 %s건)", written, len(existing))
+        return written
+    except Exception as e:
+        logger.warning("카테고리 시드 준비 실패: %s — 콜드 스타트는 이름 일치로 진행", e)
+        return 0
 
 
 def _now_iso() -> str:
@@ -228,12 +257,35 @@ def _build_schedule_data(raw: Any) -> dict[str, Any]:
     return {"type": "schedule", "fields": fields}
 
 
-def _build_candidates(candidates: list[CategoryCandidate]) -> list[CategoryCandidate]:
-    if candidates:
-        return candidates
-    # 이 사용자에게 쌓인 카테고리가 아직 없으면 기본 후보로 시작한다
-    # (categoryId 없음 = 아직 저장되지 않은 후보).
-    return [CategoryCandidate(category_id=None, name=name) for name in DEFAULT_CATEGORIES]
+def _build_candidates(
+    user_id: int, candidates: list[CategoryCandidate]
+) -> list[CategoryCandidate]:
+    """판정에 쓸 카테고리 후보를 모은다. 세 소스를 합친다.
+
+    - Spring 10-5 knowledge.categories — categoryId 를 가진 유일한 소스
+    - 이 서버의 카테고리 벡터 저장소 — 사용자 centroid + 전역 시드. AGENT 가 새로
+      만든 카테고리도 여기 남으므로 Spring 미연동 모드에서도, 재기동 뒤에도 유지된다
+    - 둘 다 비면 DEFAULT_CATEGORIES (시드도 없는 최악의 경우. categoryId 없음)
+
+    대표 벡터는 Spring 의 representativeVector 가 우선, 없으면 저장소 값을 채운다
+    (저장소가 사용자 centroid > 전역 시드 순으로 이미 정리해 준다).
+    """
+    stored = search.load_category_vectors(user_id)
+    merged = list(candidates)
+    seen = {normalize_name(c.name) for c in merged}
+    for key, entry in stored.items():
+        if key not in seen:
+            seen.add(key)
+            merged.append(CategoryCandidate(category_id=None, name=entry["name"]))
+    if not merged:
+        merged = [CategoryCandidate(category_id=None, name=name)
+                  for name in DEFAULT_CATEGORIES]
+    for candidate in merged:
+        if not candidate.representative_vector:
+            entry = stored.get(normalize_name(candidate.name))
+            if entry:
+                candidate.representative_vector = entry["vector"]
+    return merged
 
 
 def _existing_tag_names(
@@ -297,7 +349,10 @@ async def run_agent_core(
 
     # 10-5 기존 태그·카테고리 후보 조회 (실패하면 기본 후보로 진행)
     knowledge = await spring_client.fetch_knowledge_candidates(user_id)
-    candidates = _build_candidates(knowledge.categories)
+    # 저장된 카테고리 벡터를 읽어 합친다(OpenSearch 조회라 스레드로 돌린다).
+    candidates = await asyncio.to_thread(
+        _build_candidates, user_id, knowledge.categories
+    )
     # 태그 난립 방지용 기준점(기존 태그). OpenSearch 집계라 스레드로 돌린다.
     existing_tags = await asyncio.to_thread(_existing_tag_names, user_id, knowledge)
 
@@ -316,18 +371,21 @@ async def run_agent_core(
     embedding_model, vectors = await asyncio.to_thread(
         gemini_client.embed, [summary], "DOCUMENT"
     )
-    resolution: CategoryResolution = await asyncio.to_thread(
-        resolve_category,
-        vectors[0],
-        proposed,
-        candidates,
-        settings.similarity_threshold,
-        lambda texts: gemini_client.embed(texts, "DOCUMENT")[1],
+    # 순수 계산이라 스레드로 안 넘긴다(외부 호출이 없다 — 벡터는 후보에 이미 붙어 있다).
+    resolution: CategoryResolution = resolve_category(
+        vectors[0], proposed, candidates, settings.similarity_threshold
     )
     logger.info(
         "카테고리 판정 imageId=%s 제안=%s → %s (유사도=%.3f, 기준=%s, 신규=%s)",
         image_id, proposed, resolution.name,
         resolution.similarity, resolution.matched_by, resolution.created,
+    )
+
+    # 판정된 카테고리의 대표 벡터를 이 요약 임베딩으로 갱신한다(없으면 생성).
+    # 이 저장이 있어야 카테고리와 그 벡터가 서버 재기동 뒤에도 남고, 이미지가
+    # 쌓일수록 centroid 가 정확해진다.
+    await asyncio.to_thread(
+        search.upsert_category_vector, user_id, resolution.name, vectors[0]
     )
 
     tags = [str(t) for t in (generated.get("tags") or [])][:max_tags]

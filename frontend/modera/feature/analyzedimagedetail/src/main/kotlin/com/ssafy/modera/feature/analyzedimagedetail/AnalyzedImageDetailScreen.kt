@@ -31,6 +31,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ssafy.modera.core.component.ModeraHashtags
 import com.ssafy.modera.core.component.ModeraIconTextButton
 import com.ssafy.modera.core.designsystem.component.IconButton
@@ -51,7 +52,36 @@ import com.ssafy.modera.feature.analyzedimagedetail.component.OcrTextSection
 private val TopBarTitleScrollThreshold = 96.dp
 
 @Composable
-fun AnalyzedImageDetailScreen(
+internal fun AnalyzedImageDetailScreen(
+    viewModel: AnalyzedImageDetailViewModel,
+    onBackClick: () -> Unit,
+    onImageClick: (String) -> Unit,
+    onFavoriteClick: () -> Unit,
+    onDocumentClick: () -> Unit,
+    onScheduleClick: () -> Unit,
+    onReanalyzeClick: () -> Unit,
+    onDeleteClick: () -> Unit,
+    onRelatedImagesClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
+    AnalyzedImageDetailScreen(
+        uiState = uiState,
+        onBackClick = onBackClick,
+        onImageClick = onImageClick,
+        onFavoriteClick = onFavoriteClick,
+        onDocumentClick = onDocumentClick,
+        onScheduleClick = onScheduleClick,
+        onReanalyzeClick = onReanalyzeClick,
+        onDeleteClick = onDeleteClick,
+        onRelatedImagesClick = onRelatedImagesClick,
+        modifier = modifier,
+    )
+}
+
+@Composable
+private fun AnalyzedImageDetailScreen(
     uiState: AnalyzedImageDetailUiState,
     onBackClick: () -> Unit,
     onImageClick: (String) -> Unit,

@@ -27,6 +27,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.lerp
@@ -61,6 +64,8 @@ fun ModeraSearchBar(
     modifier: Modifier = Modifier,
     onSearch: (() -> Unit)? = null,
     enabled: Boolean = true,
+    focusRequester: FocusRequester? = null,
+    onFocusChanged: (Boolean) -> Unit = {},
 ) {
     val colors = ModeraTheme.colors
     val accentColor = when (mode) {
@@ -68,6 +73,7 @@ fun ModeraSearchBar(
         SearchBarMode.Ai -> colors.yellow700
     }
     val shape = SearchBarDefaults.Shape
+    val resolvedFocusRequester = focusRequester ?: remember { FocusRequester() }
 
     Box(
         modifier = modifier
@@ -89,8 +95,10 @@ fun ModeraSearchBar(
             value = query,
             onValueChange = onQueryChange,
             modifier = Modifier
+                .focusRequester(resolvedFocusRequester)
                 .fillMaxWidth()
-                .padding(end = SearchBarDefaults.IconSize + SearchBarDefaults.IconTextSpacing),
+                .padding(end = SearchBarDefaults.IconSize + SearchBarDefaults.IconTextSpacing)
+                .onFocusChanged { onFocusChanged(it.isFocused) },
             enabled = enabled,
             singleLine = true,
             textStyle = ModeraTheme.typography.bodyR16.copy(color = colors.gray900),

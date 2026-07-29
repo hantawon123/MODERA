@@ -425,14 +425,13 @@ async def _index_as_other(
     job_store.update(job_id, "EMPTY", result=result, stage="INDEXING")
 
 
-def _empty_callback_result(reason: str) -> dict[str, Any]:
+def _empty_callback_result(reason: str, thumbnail_key: str | None = None) -> dict[str, Any]:
     """분석을 건너뛴(EMPTY) 경우의 콜백 result.
 
     Spring 의 AnalysisCallbackService 는 EMPTY 도 성공으로 취급해 결과 행을 남기므로
-    (`case "COMPLETED", "EMPTY" -> handleSuccess`), 키는 COMPLETED 와 같게 유지하고
-    값만 비워 둔다. documentVector 는 만들지 않았으므로 넣지 않는다 — 없는 키는
-    Spring 쪽에서 null 로 처리된다. informative·ocrRefinedText 는 콜백에서 제외
-    (2026-07-29 백엔드 합의 — 정보성 여부는 status=EMPTY 가 이미 말해 준다).
+    (`case "COMPLETED", "EMPTY" -> handleSuccess`), **키 구조를 COMPLETED 와 완전히
+    동일하게** 맞추고 값만 비운다(2026-07-29 백엔드 요청 — 만들지 않은 값은 null).
+    informative·ocrRefinedText 는 콜백에서 제외(정보성 여부는 status=EMPTY 로 구분).
     """
     return {
         "title": "",
@@ -441,6 +440,15 @@ def _empty_callback_result(reason: str) -> dict[str, Any]:
         "category": OTHER_CATEGORY,
         "keyInformation": [],
         "analysisConfidence": 0.0,
+        "scheduleData": {"type": None, "fields": {}},
+        # '기타' 는 기본 카테고리라 신규 생성 판단이 필요 없다.
+        "categoryCreated": False,
+        "categoryConfidence": 0.0,
+        # 요약이 없어 임베딩을 만들지 않는다 — 구조만 유지하고 null.
+        "documentVector": None,
+        "embeddingModel": None,
+        "embeddingDimension": None,
+        "thumbnailKey": thumbnail_key,
         "reason": reason,
     }
 
@@ -507,10 +515,15 @@ async def _run_full_pipeline(
         #    정보성 판정보다 먼저 만든다. 여기서 읽은 원본은 이미지 분석에서 재사용한다.
         #    실패해도 분석은 계속한다(썸네일 조회 시 즉석 생성으로 메꿔진다).
         original: bytes | None = None
+        # 썸네일은 원본과 같은 key 로 썸네일 버킷에 저장된다(관례). 성공 시 그 key 를
+        # 콜백 thumbnailKey 로 알려 Spring 이 thumbnail 테이블(image_id, s3_key)을
+        # 채울 수 있게 한다. 실패하면 null — Spring 은 썸네일 없음으로 처리한다.
+        thumbnail_key: str | None = None
         try:
             with _timed(timings, "THUMBNAIL"):
                 original = await asyncio.to_thread(storage.fetch_image, s3_key)
                 await asyncio.to_thread(storage.store_thumbnail, s3_key, original)
+            thumbnail_key = s3_key
         except Exception as e:
             logger.warning("썸네일 저장 실패 imageId=%s: %s (분석은 계속)", image_id, e)
 
@@ -539,7 +552,7 @@ async def _run_full_pipeline(
                 await _index_as_other(job_id, image_id, user_id, s3_key, ocr_text)
             timings["TOTAL"] = round(time.perf_counter() - started, 2)
             logger.info("전체 분석 완료(EMPTY) jobId=%s 소요=%s", job_id, timings)
-            return "EMPTY", _empty_callback_result("텍스트 없음"), None
+            return "EMPTY", _empty_callback_result("텍스트 없음", thumbnail_key), None
 
         with _timed(timings, "LLM"):
             _, verdict = await asyncio.to_thread(run_llm, ocr_text)
@@ -551,7 +564,7 @@ async def _run_full_pipeline(
                 await _index_as_other(job_id, image_id, user_id, s3_key, ocr_text)
             timings["TOTAL"] = round(time.perf_counter() - started, 2)
             logger.info("전체 분석 완료(비정보성) jobId=%s 소요=%s", job_id, timings)
-            return "EMPTY", _empty_callback_result(reason), None
+            return "EMPTY", _empty_callback_result(reason, thumbnail_key), None
 
         # 2) 이미지 분석. 실패해도 OCR 만으로 계속 진행한다.
         #    위에서 이미 돌렸으면(OCR 대체) 다시 부르지 않는다.
@@ -622,6 +635,7 @@ async def _run_full_pipeline(
         # 정보성 여부는 status(COMPLETED/EMPTY)로 구분되고, OCR 원문은 앱이 4-1 로
         # 보낸 것을 Spring 이 자체 보관(image_schema.ocr.content)한다.
         callback_result = dict(generated)
+        callback_result["thumbnailKey"] = thumbnail_key
         return "COMPLETED", callback_result, None
     except Exception as e:
         timings["TOTAL"] = round(time.perf_counter() - started, 2)

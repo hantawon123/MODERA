@@ -172,8 +172,11 @@ POST /internal/v1/analyze          X-Internal-Token: <공유 토큰>
 ```
 
 콜백(10-4)의 `result` 는 `title`·`summary`·`tags`·`category`·`keyInformation`·
-`analysisConfidence`·`scheduleData`·`documentVector`(768차) 를 포함합니다 — worker 의
-`AnalysisCallbackService` 가 읽는 키입니다. `status` 는 `COMPLETED` / `EMPTY` / `FAILED`.
+`analysisConfidence`·`scheduleData`·`documentVector`(768차)·`thumbnailKey` 를 포함합니다 —
+worker 의 `AnalysisCallbackService` 가 읽는 키입니다. `status` 는 `COMPLETED` / `EMPTY` / `FAILED`.
+`thumbnailKey` 는 썸네일 버킷에 저장된 key(원본과 동일 문자열, 버킷만 다름)이고,
+썸네일 생성이 실패한 경우 `null` 입니다. EMPTY 콜백에도 포함됩니다(비정보성 이미지도
+목록에 나오므로 썸네일은 판정 전에 만들어 둡니다).
 `informative`·`ocrRefinedText` 는 보내지 않습니다(2026-07-29 합의) — 정보성 여부는
 `status=EMPTY` 로 구분되고, OCR 원문은 앱이 4-1 로 보낸 것을 Spring 이 자체 보관합니다.
 

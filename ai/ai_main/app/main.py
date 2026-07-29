@@ -616,7 +616,7 @@ async def app_image_upload(user_id: CurrentUserId, request: UploadRequest):
             image_id=image_id, user_id=user_id, s3_key=s3_key,
             file_name=item.file_name, content_hash=item.content_hash,
             file_size=item.file_size, created_at=_now_iso(),
-            raw_text=ocr_text, ocr_lang=item.ocr.lang,
+            raw_text=ocr_text,
             ocr_confidence=item.ocr.confidence,
         )
         batch_hashes[item.content_hash] = image_id
@@ -750,7 +750,7 @@ async def app_submit_ocr(image_id: int, ocr: OcrInput):
                                  f"imageId: {image_id}", http_status=409)
 
     await asyncio.to_thread(search.save_ocr, image_id, incoming,
-                            ocr.lang, ocr.confidence)
+                            None, ocr.confidence)
     return responses.success({
         "imageId": image_id,
         "ocr": {"stage": "OCR", "status": "COMPLETED"},
@@ -877,7 +877,6 @@ async def app_image_detail(image_id: int):
         title=found.get("title", ""),
         summary=found.get("summary", ""),
         ocr=OcrInput(raw_text=found.get("raw_text", ""),
-                     lang=found.get("ocr_lang"),
                      confidence=found.get("ocr_confidence")),
         tags=_tag_refs(found.get("tags") or [], source="AGENT"),
         categories=_category_refs(found.get("category"),

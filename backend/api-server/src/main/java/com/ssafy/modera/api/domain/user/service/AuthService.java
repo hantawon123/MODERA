@@ -64,7 +64,6 @@ public class AuthService {
                 .loginId(request.loginId())
                 .passwordHash(passwordEncoder.encode(request.password()))
                 .email(request.email())
-                .createdAt(now)
                 .updatedAt(now)
                 .build();
         userRepository.save(user);
@@ -173,7 +172,6 @@ public class AuthService {
                 .provider(PROVIDER_KAKAO)
                 .providerId(providerId)
                 .email(email)
-                .createdAt(now)
                 .updatedAt(now)
                 .build());
     }

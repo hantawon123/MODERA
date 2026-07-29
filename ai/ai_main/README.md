@@ -171,9 +171,11 @@ POST /internal/v1/analyze          X-Internal-Token: <공유 토큰>
 → 202 { "jobId": 7001, "imageId": 7001, "stage": "FULL", "accepted": true, "status": "QUEUED" }
 ```
 
-콜백(10-4)의 `result` 는 `summary`·`ocrRefinedText`·`informative`·
-`analysisConfidence`·`documentVector`(768차) 를 포함합니다 — worker 의
+콜백(10-4)의 `result` 는 `title`·`summary`·`tags`·`category`·`keyInformation`·
+`analysisConfidence`·`scheduleData`·`documentVector`(768차) 를 포함합니다 — worker 의
 `AnalysisCallbackService` 가 읽는 키입니다. `status` 는 `COMPLETED` / `EMPTY` / `FAILED`.
+`informative`·`ocrRefinedText` 는 보내지 않습니다(2026-07-29 합의) — 정보성 여부는
+`status=EMPTY` 로 구분되고, OCR 원문은 앱이 4-1 로 보낸 것을 Spring 이 자체 보관합니다.
 
 `FULL` 요청에는 OCR 이 실려 오지 않으므로(worker 가 `input.image` 만 보냄) 이미지
 분석을 먼저 돌려 거기서 읽어낸 텍스트를 OCR 대용으로 씁니다. `input.ocr` 이 오면 그게 우선입니다.

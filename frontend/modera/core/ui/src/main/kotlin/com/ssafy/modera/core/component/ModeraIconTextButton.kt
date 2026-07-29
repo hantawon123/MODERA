@@ -35,6 +35,9 @@ import com.ssafy.modera.core.designsystem.icon.ModeraIcons
 import com.ssafy.modera.core.designsystem.theme.ModeraTheme
 
 /**
+ * icon + text 버튼
+ * default : border 버튼
+ *
  * @param text 버튼에 표시할 텍스트
  * @param icon 버튼 왼쪽에 표시할 아이콘
  * @param onClick 버튼 클릭 시 실행할 콜백

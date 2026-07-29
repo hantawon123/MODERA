@@ -1,8 +1,10 @@
 package com.ssafy.modera.feature.analyzedimagedetail.navigation
 
+import androidx.compose.animation.SharedTransitionScope
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation3.runtime.EntryProviderScope
 import androidx.navigation3.runtime.NavKey
+import androidx.navigation3.ui.LocalNavAnimatedContentScope
 import com.ssafy.modera.core.navigation.Navigator
 import com.ssafy.modera.feature.analyzedimagedetail.AnalyzedImageDetailScreen
 import com.ssafy.modera.feature.analyzedimagedetail.AnalyzedImageDetailViewModel
@@ -10,6 +12,8 @@ import com.ssafy.modera.feature.analyzedimagedetail.AnalyzedImageDetailViewModel
 
 fun EntryProviderScope<NavKey>.analyzedImageDetailEntry(
     navigator: Navigator,
+    sharedTransitionScope: SharedTransitionScope,
+    onImageClick:(String) -> Unit,
 ) {
     entry<AnalyzedImageDetailNavKey> { key ->
         val imageId = key.imageId
@@ -24,9 +28,9 @@ fun EntryProviderScope<NavKey>.analyzedImageDetailEntry(
         AnalyzedImageDetailScreen(
             viewModel = viewModel,
             onBackClick = navigator::goBack,
-            onImageClick = { imageUrl ->
-                // TODO 공통 이미지 Viewer 이슈에서 연결
-            },
+            sharedTransitionScope = sharedTransitionScope,
+            animatedVisibilityScope = LocalNavAnimatedContentScope.current,
+            onImageClick = onImageClick,
             onFavoriteClick = {
                 // TODO ViewModel 즐겨찾기 기능 연결
             },

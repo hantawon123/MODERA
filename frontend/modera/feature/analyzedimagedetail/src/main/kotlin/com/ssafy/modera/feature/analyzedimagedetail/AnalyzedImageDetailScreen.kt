@@ -1,5 +1,9 @@
 package com.ssafy.modera.feature.analyzedimagedetail
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.AnimatedVisibilityScope
+import androidx.compose.animation.SharedTransitionLayout
+import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -54,6 +58,8 @@ private val TopBarTitleScrollThreshold = 96.dp
 @Composable
 internal fun AnalyzedImageDetailScreen(
     viewModel: AnalyzedImageDetailViewModel,
+    sharedTransitionScope: SharedTransitionScope,
+    animatedVisibilityScope: AnimatedVisibilityScope,
     onBackClick: () -> Unit,
     onImageClick: (String) -> Unit,
     onFavoriteClick: () -> Unit,
@@ -68,6 +74,8 @@ internal fun AnalyzedImageDetailScreen(
 
     AnalyzedImageDetailScreen(
         uiState = uiState,
+        sharedTransitionScope = sharedTransitionScope,
+        animatedVisibilityScope = animatedVisibilityScope,
         onBackClick = onBackClick,
         onImageClick = onImageClick,
         onFavoriteClick = onFavoriteClick,
@@ -83,6 +91,8 @@ internal fun AnalyzedImageDetailScreen(
 @Composable
 private fun AnalyzedImageDetailScreen(
     uiState: AnalyzedImageDetailUiState,
+    sharedTransitionScope: SharedTransitionScope,
+    animatedVisibilityScope: AnimatedVisibilityScope,
     onBackClick: () -> Unit,
     onImageClick: (String) -> Unit,
     onFavoriteClick: () -> Unit,
@@ -160,6 +170,8 @@ private fun AnalyzedImageDetailScreen(
             is AnalyzedImageDetailUiState.Success -> {
                 AnalyzedImageDetailContent(
                     image = uiState.image,
+                    sharedTransitionScope = sharedTransitionScope,
+                    animatedVisibilityScope = animatedVisibilityScope,
                     scrollState = scrollState,
                     onImageClick = onImageClick,
                     onFavoriteClick = onFavoriteClick,
@@ -185,6 +197,8 @@ private fun AnalyzedImageDetailScreen(
 @Composable
 private fun AnalyzedImageDetailContent(
     image: AnalyzedImageDetail,
+    sharedTransitionScope: SharedTransitionScope,
+    animatedVisibilityScope: AnimatedVisibilityScope,
     scrollState: ScrollState,
     onImageClick: (String) -> Unit,
     onFavoriteClick: () -> Unit,
@@ -305,12 +319,18 @@ private fun AnalyzedImageDetailContent(
 
         Spacer(modifier = Modifier.height(30.dp))
 
-        ImageSection(
-            imageUrl = image.imageUrl,
-            onImageExpandClick = {
-                onImageClick(image.imageUrl)
-            },
-        )
+        with(sharedTransitionScope) {
+            ImageSection(
+                imageUrl = image.imageUrl,
+                onImageExpandClick = {
+                    onImageClick(image.imageUrl)
+                },
+                modifier = Modifier.sharedBounds(
+                    sharedContentState = rememberSharedContentState(key = "image-${image.imageUrl}"),
+                    animatedVisibilityScope = animatedVisibilityScope,
+                )
+            )
+        }
 
         Spacer(modifier = Modifier.height(20.dp))
 
@@ -339,30 +359,38 @@ private fun AnalyzedImageDetailScreenPreview(
     }
 
     ModeraTheme {
-        AnalyzedImageDetailScreen(
-            uiState = uiState,
-            onBackClick = {},
-            onImageClick = {},
-            onFavoriteClick = {
-                val currentState = uiState
+        SharedTransitionLayout {
+            AnimatedVisibility(
+                visible = true,
+            ) {
+                AnalyzedImageDetailScreen(
+                    uiState = uiState,
+                    sharedTransitionScope = this@SharedTransitionLayout,
+                    animatedVisibilityScope = this@AnimatedVisibility,
+                    onBackClick = {},
+                    onImageClick = {},
+                    onFavoriteClick = {
+                        val currentState = uiState
 
-                if (
-                    currentState
-                            is AnalyzedImageDetailUiState.Success
-                ) {
-                    uiState = currentState.copy(
-                        image = currentState.image.copy(
-                            favorite =
-                                !currentState.image.favorite,
-                        ),
-                    )
-                }
-            },
-            onDocumentClick = {},
-            onScheduleClick = {},
-            onReanalyzeClick = {},
-            onDeleteClick = {},
-            onRelatedImagesClick = {},
-        )
+                        if (
+                            currentState
+                                    is AnalyzedImageDetailUiState.Success
+                        ) {
+                            uiState = currentState.copy(
+                                image = currentState.image.copy(
+                                    favorite =
+                                        !currentState.image.favorite,
+                                ),
+                            )
+                        }
+                    },
+                    onDocumentClick = {},
+                    onScheduleClick = {},
+                    onReanalyzeClick = {},
+                    onDeleteClick = {},
+                    onRelatedImagesClick = {},
+                )
+            }
+        }
     }
 }

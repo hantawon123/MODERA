@@ -425,13 +425,14 @@ async def _index_as_other(
     job_store.update(job_id, "EMPTY", result=result, stage="INDEXING")
 
 
-def _empty_callback_result(ocr_text: str, reason: str) -> dict[str, Any]:
+def _empty_callback_result(reason: str) -> dict[str, Any]:
     """분석을 건너뛴(EMPTY) 경우의 콜백 result.
 
     Spring 의 AnalysisCallbackService 는 EMPTY 도 성공으로 취급해 결과 행을 남기므로
     (`case "COMPLETED", "EMPTY" -> handleSuccess`), 키는 COMPLETED 와 같게 유지하고
     값만 비워 둔다. documentVector 는 만들지 않았으므로 넣지 않는다 — 없는 키는
-    Spring 쪽에서 null 로 처리된다.
+    Spring 쪽에서 null 로 처리된다. informative·ocrRefinedText 는 콜백에서 제외
+    (2026-07-29 백엔드 합의 — 정보성 여부는 status=EMPTY 가 이미 말해 준다).
     """
     return {
         "title": "",
@@ -440,8 +441,6 @@ def _empty_callback_result(ocr_text: str, reason: str) -> dict[str, Any]:
         "category": OTHER_CATEGORY,
         "keyInformation": [],
         "analysisConfidence": 0.0,
-        "informative": False,
-        "ocrRefinedText": ocr_text,
         "reason": reason,
     }
 
@@ -540,7 +539,7 @@ async def _run_full_pipeline(
                 await _index_as_other(job_id, image_id, user_id, s3_key, ocr_text)
             timings["TOTAL"] = round(time.perf_counter() - started, 2)
             logger.info("전체 분석 완료(EMPTY) jobId=%s 소요=%s", job_id, timings)
-            return "EMPTY", _empty_callback_result(ocr_text, "텍스트 없음"), None
+            return "EMPTY", _empty_callback_result("텍스트 없음"), None
 
         with _timed(timings, "LLM"):
             _, verdict = await asyncio.to_thread(run_llm, ocr_text)
@@ -552,7 +551,7 @@ async def _run_full_pipeline(
                 await _index_as_other(job_id, image_id, user_id, s3_key, ocr_text)
             timings["TOTAL"] = round(time.perf_counter() - started, 2)
             logger.info("전체 분석 완료(비정보성) jobId=%s 소요=%s", job_id, timings)
-            return "EMPTY", _empty_callback_result(ocr_text, reason), None
+            return "EMPTY", _empty_callback_result(reason), None
 
         # 2) 이미지 분석. 실패해도 OCR 만으로 계속 진행한다.
         #    위에서 이미 돌렸으면(OCR 대체) 다시 부르지 않는다.
@@ -618,14 +617,11 @@ async def _run_full_pipeline(
         logger.info("전체 분석 완료 jobId=%s imageId=%s category=%s 소요=%s",
                     job_id, image_id, category, timings)
 
-        # 콜백 result. Spring 의 AnalysisCallbackService 가 읽는 키
-        # (summary·ocrRefinedText·analysisConfidence·documentVector·informative)를
-        # 반드시 이 이름으로 담는다.
-        callback_result = {
-            **generated,
-            "informative": True,
-            "ocrRefinedText": ocr_text,
-        }
+        # 콜백 result. Spring 의 AnalysisCallbackService 가 읽는 키를 이 이름으로 담는다.
+        # informative·ocrRefinedText 는 싣지 않는다(2026-07-29 백엔드 합의) —
+        # 정보성 여부는 status(COMPLETED/EMPTY)로 구분되고, OCR 원문은 앱이 4-1 로
+        # 보낸 것을 Spring 이 자체 보관(image_schema.ocr.content)한다.
+        callback_result = dict(generated)
         return "COMPLETED", callback_result, None
     except Exception as e:
         timings["TOTAL"] = round(time.perf_counter() - started, 2)

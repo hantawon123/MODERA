@@ -44,7 +44,9 @@ class DefaultAnalyzedImageRepositoryTest {
     fun getAnalyzedImagesReturnsMappedImageSummaries() =
         runTest(testDispatcher) {
             val query = AnalyzedImageQuery(
-                statuses = setOf(ImageAnalysisStatus.COMPLETED),
+                statuses = setOf(
+                    ImageAnalysisStatus.COMPLETED,
+                ),
             )
 
             val response = AnalyzedImagesResponse(
@@ -56,7 +58,7 @@ class DefaultAnalyzedImageRepositoryTest {
                         summary = "C++ 입문서 정보",
                         status = "COMPLETED",
                         favorite = true,
-                        thumbnailUrl = "https://cdn.example.com/images/1024.jpg",
+                        thumbnailUrl = "/images/1024.jpg",
                         tags = listOf(
                             AnalyzedImageTagResponse(
                                 tagId = 11L,
@@ -99,30 +101,44 @@ class DefaultAnalyzedImageRepositoryTest {
                     val images = awaitItem()
                     val image = images.first()
 
-                    assertEquals(1, images.size)
-                    assertEquals(1024L, image.id)
+                    assertEquals(
+                        1,
+                        images.size,
+                    )
+
+                    assertEquals(
+                        1024L,
+                        image.id,
+                    )
+
                     assertEquals(
                         "C++ 프로그래밍 입문",
                         image.title,
                     )
+
                     assertEquals(
-                        "https://cdn.example.com/images/1024.jpg",
+                        "$BASE_URL/images/1024.jpg",
                         image.imageUrl,
                     )
+
                     assertEquals(
                         listOf("C++", "공부"),
                         image.hashtags,
                     )
+
                     assertEquals(
                         ImageAnalysisStatus.COMPLETED,
                         image.status,
                     )
+
                     assertTrue(image.favorite)
 
                     awaitComplete()
                 }
 
-            verify(analyzedImageClient).fetchAnalyzedImages(
+            verify(
+                analyzedImageClient,
+            ).fetchAnalyzedImages(
                 page = 0,
                 query = query,
             )
@@ -142,7 +158,6 @@ class DefaultAnalyzedImageRepositoryTest {
                 ocr = OcrResponse(
                     rawText = "삼성전자 주가 전망",
                     refinedText = "삼성전자 주가 전망 및 투자 분석",
-                    lang = "ko",
                     confidence = 0.96,
                 ),
                 tags = listOf(
@@ -162,7 +177,7 @@ class DefaultAnalyzedImageRepositoryTest {
                     ),
                 ),
                 analysisConfidence = 0.94,
-                imageUrl = "https://cdn.example.com/images/101/source",
+                imageUrl = "/images/101/source",
                 createdAt = "2026-07-23T06:42:10.000Z",
                 uploadedAt = "2026-07-23T06:42:12.000Z",
                 updatedAt = "2026-07-23T06:43:01.000Z",
@@ -176,38 +191,51 @@ class DefaultAnalyzedImageRepositoryTest {
             ).thenReturn(response)
 
             repository
-                .getAnalyzedImageDetail(imageId = 101L)
+                .getAnalyzedImageDetail(
+                    imageId = 101L,
+                )
                 .test {
                     val image = awaitItem()
 
-                    assertEquals(101L, image.id)
+                    assertEquals(
+                        101L,
+                        image.id,
+                    )
+
                     assertEquals(
                         "Screenshot_20260723_154210.png",
                         image.fileName,
                     )
+
                     assertEquals(
                         ImageAnalysisStatus.COMPLETED,
                         image.status,
                     )
+
                     assertFalse(image.favorite)
+
                     assertEquals(
                         "삼성전자 주가 전망 및 투자 분석",
                         image.title,
                     )
+
                     assertEquals(
                         "삼성전자 주가와 투자 전망을 분석한 이미지입니다.",
                         image.summary,
                     )
+
                     assertEquals(
                         listOf("주식", "삼성전자"),
                         image.tags,
                     )
+
                     assertEquals(
-                        listOf("금융"),
-                        image.categories,
+                        "금융",
+                        image.categories.name,
                     )
+
                     assertEquals(
-                        "https://cdn.example.com/images/101/source",
+                        "$BASE_URL/images/101/source",
                         image.imageUrl,
                     )
 
@@ -215,13 +243,10 @@ class DefaultAnalyzedImageRepositoryTest {
                         "삼성전자 주가 전망",
                         image.ocr?.rawText,
                     )
+
                     assertEquals(
                         "삼성전자 주가 전망 및 투자 분석",
                         image.ocr?.refinedText,
-                    )
-                    assertEquals(
-                        "ko",
-                        image.ocr?.language,
                     )
 
                     assertEquals(
@@ -233,8 +258,15 @@ class DefaultAnalyzedImageRepositoryTest {
                     awaitComplete()
                 }
 
-            verify(analyzedImageClient).fetchAnalyzedImageDetail(
+            verify(
+                analyzedImageClient,
+            ).fetchAnalyzedImageDetail(
                 imageId = 101L,
             )
         }
+
+    private companion object {
+        const val BASE_URL =
+            "https://i15d207.p.ssafy.io"
+    }
 }

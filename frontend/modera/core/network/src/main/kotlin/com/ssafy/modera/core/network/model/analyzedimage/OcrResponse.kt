@@ -7,7 +7,6 @@ import kotlinx.serialization.Serializable
 data class OcrResponse(
     val rawText: String,
     val refinedText: String? = null,
-    val lang: String,
     val confidence: Double,
 )
 
@@ -15,6 +14,5 @@ fun OcrResponse.asExternalModel(): AnalyzedImageOcr =
     AnalyzedImageOcr(
         rawText = rawText,
         refinedText = refinedText,
-        language = lang,
         confidence = confidence,
     )

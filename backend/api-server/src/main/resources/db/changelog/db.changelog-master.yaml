@@ -43,3 +43,5 @@ databaseChangeLog:
       file: db/changelog/021-create-user-category-view.sql
   - include:
       file: db/changelog/022-remove-ocr-lang-and-add-category-image.sql
+  - include:
+      file: db/changelog/023-add-user-image-soft-delete-and-document-deleted-count.sql

@@ -1,11 +1,13 @@
 package com.ssafy.modera.feature.home.component
 
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -29,7 +31,12 @@ internal fun RecentSearchTermItem(
 ) {
     Row(
         modifier = modifier
-            .padding(start = 14.dp, top = 10.dp, end = 4.dp, bottom = 10.dp)
+            .border(
+                width = 1.dp,
+                color = ModeraTheme.colors.gray200,
+                shape = RoundedCornerShape(10.dp),
+            )
+            .padding(start = 14.dp, top = 10.dp, end = 6.dp, bottom = 10.dp)
             .clickable(enabled = true, onClick = onItemClick),
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically,
@@ -40,12 +47,12 @@ internal fun RecentSearchTermItem(
             color = ModeraTheme.colors.gray700,
         )
 
-        Spacer(Modifier.width(4.dp))
+        Spacer(Modifier.width(2.dp))
 
         Icon(
             imageVector = ImageVector.vectorResource(ModeraIcons.Close),
             contentDescription = stringResource(R.string.home_search_term_item_close_button),
-            tint = ModeraTheme.colors.gray700,
+            tint = ModeraTheme.colors.gray500,
             modifier = Modifier.clickable(enabled = true, onClick = onDeleteClick),
         )
     }

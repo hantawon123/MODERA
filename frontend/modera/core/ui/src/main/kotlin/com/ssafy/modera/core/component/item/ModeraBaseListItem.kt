@@ -24,8 +24,10 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import com.ssafy.modera.core.designsystem.component.HorizontalDivider
 import com.ssafy.modera.core.designsystem.component.Icon
 import com.ssafy.modera.core.designsystem.component.Text
 import com.ssafy.modera.core.designsystem.icon.ModeraIcons
@@ -49,44 +51,53 @@ fun ModeraBaseListItem(
     imageCountBadge: Int? = null,
     footer: @Composable ColumnScope.() -> Unit = {},
 ) {
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .clickable(enabled = true, onClick = onClick)
-            .padding(ListItemDefaults.ContentPadding),
-        horizontalArrangement = Arrangement.spacedBy(ListItemDefaults.TextImageSpacing),
-        verticalAlignment = Alignment.Top,
+    Column(
+        modifier = modifier,
     ) {
-        Column(
-            modifier = Modifier.weight(1f),
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable(enabled = true, onClick = onClick)
+                .padding(ListItemDefaults.ContentPadding),
+            horizontalArrangement = Arrangement.spacedBy(ListItemDefaults.TextImageSpacing),
+            verticalAlignment = Alignment.Top,
         ) {
-            Text(
-                text = title,
-                style = ModeraTheme.typography.bodySB16,
-                color = ModeraTheme.colors.gray900,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
+            Column(
+                modifier = Modifier.weight(1f),
+            ) {
+                Text(
+                    text = title,
+                    style = ModeraTheme.typography.bodySB16,
+                    color = ModeraTheme.colors.gray900,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
 
-            Spacer(modifier = Modifier.height(ListItemDefaults.TitleDescriptionSpacing))
+                Spacer(modifier = Modifier.height(ListItemDefaults.TitleDescriptionSpacing))
 
-            Text(
-                text = description,
-                style = ModeraTheme.typography.bodyR14,
-                color = ModeraTheme.colors.gray500,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
+                Text(
+                    text = description,
+                    style = ModeraTheme.typography.bodyR14,
+                    color = ModeraTheme.colors.gray500,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
 
-            footer()
+                footer()
+            }
+
+            if (imageUrl != null) {
+                ListItemThumbnail(
+                    imageUrl = imageUrl,
+                    imageCountBadge = imageCountBadge,
+                )
+            }
         }
 
-        if (imageUrl != null) {
-            ListItemThumbnail(
-                imageUrl = imageUrl,
-                imageCountBadge = imageCountBadge,
-            )
-        }
+        HorizontalDivider(
+            thickness = 1.dp,
+            color = ModeraTheme.colors.gray200,
+        )
     }
 }
 
@@ -137,7 +148,7 @@ private fun ListItemThumbnail(
 }
 
 object ListItemDefaults {
-    val ContentPadding = PaddingValues(horizontal = 20.dp, vertical = 16.dp,)
+    val ContentPadding = PaddingValues(vertical = 16.dp,)
     val TextImageSpacing = 12.dp
     val TitleDescriptionSpacing = 6.dp
     val FooterSpacing = 14.dp
@@ -145,4 +156,16 @@ object ListItemDefaults {
     val MetaIconSize = 16.dp
     val ThumbnailSize = 88.dp
     val ThumbnailShape = RoundedCornerShape(4.dp)
+}
+
+@Preview
+@Composable
+private fun ModeraBaseListItemPreview() {
+    ModeraTheme {
+        ModeraBaseListItem(
+            title = "성심당 좋아요",
+            description = "설명내용 들어가는 부분 설명내용 들어가는 부분 설명내용 들어가는 부분 설명내용 들어가는 부분",
+            onClick = {},
+        )
+    }
 }

@@ -41,3 +41,5 @@ databaseChangeLog:
       file: db/changelog/020-create-schedule-domain.sql
   - include:
       file: db/changelog/021-create-user-category-view.sql
+  - include:
+      file: db/changelog/022-remove-ocr-lang-and-add-category-image.sql

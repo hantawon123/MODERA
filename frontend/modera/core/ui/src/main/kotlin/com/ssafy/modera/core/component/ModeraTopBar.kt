@@ -39,7 +39,8 @@ fun ModeraTopBar(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 10.dp, vertical = 10.dp),
+            .padding(10.dp),
+        contentAlignment = Alignment.Center,
     ) {
         Icon(
             imageVector = ImageVector.vectorResource(R.drawable.ic_arrow_left_24),
@@ -54,7 +55,6 @@ fun ModeraTopBar(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = ModeraTopBarDefaults.HorizontalContentPadding)
                 .align(Alignment.Center),
             contentAlignment = Alignment.Center,
         ) {
@@ -62,19 +62,18 @@ fun ModeraTopBar(
         }
 
         Box(
-            modifier = Modifier.align(Alignment.CenterEnd),
+            modifier = Modifier
+                .align(Alignment.CenterEnd)
+                .padding(end = 8.dp),
             contentAlignment = Alignment.Center,
         ) {
             rightContent()
-
-            Spacer(Modifier.width(6.dp))
         }
     }
 }
 
 object ModeraTopBarDefaults {
     val IconSize = 24.dp
-    val HorizontalContentPadding = 40.dp
 }
 
 @Preview(showBackground = true, name = "ModeraTopBar - 더보기")
@@ -84,10 +83,13 @@ private fun ModeraTopBarMoreMenuPreview() {
         ModeraTopBar(
             onBackClick = {},
             rightContent = {
-                ModeraTopBarIconAction(
-                    iconRes = ModeraIcons.MoreVertical,
+                Icon(
+                    imageVector = ImageVector.vectorResource(ModeraIcons.MoreVertical),
                     contentDescription = "더보기",
-                    onClick = {},
+                    modifier = Modifier
+                        .size(ModeraTopBarDefaults.IconSize)
+                        .clickable(onClick = { }),
+                    tint = ModeraTheme.colors.gray700,
                 )
             },
         )
@@ -101,59 +103,21 @@ private fun ModeraTopBarTitleWithTextActionPreview() {
         ModeraTopBar(
             onBackClick = {},
             centerContent = {
-                ModeraTopBarTitle(text = "스크린샷 관리")
+                Text(
+                    text = "스크린샷 관리",
+                    style = ModeraTheme.typography.bodySB16,
+                    color = ModeraTheme.colors.gray900,
+                    maxLines = 1,
+                )
             },
             rightContent = {
-                ModeraTopBarTextAction(
+                Text(
                     text = "편집",
-                    onClick = {},
+                    modifier = Modifier.clickable(onClick = {}),
+                    style = ModeraTheme.typography.bodySB14,
+                    color = ModeraTheme.colors.blue,
                 )
             },
         )
     }
-}
-
-@Composable
-private fun ModeraTopBarTitle(
-    text: String,
-    modifier: Modifier = Modifier,
-) {
-    Text(
-        text = text,
-        modifier = modifier,
-        style = ModeraTheme.typography.bodySB16,
-        color = ModeraTheme.colors.gray900,
-        maxLines = 1,
-    )
-}
-
-@Composable
-private fun ModeraTopBarIconAction(
-    iconRes: Int,
-    contentDescription: String,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Icon(
-        painter = painterResource(iconRes),
-        contentDescription = contentDescription,
-        modifier = modifier
-            .size(ModeraTopBarDefaults.IconSize)
-            .clickable(onClick = onClick),
-        tint = ModeraTheme.colors.gray700,
-    )
-}
-
-@Composable
-private fun ModeraTopBarTextAction(
-    text: String,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Text(
-        text = text,
-        modifier = modifier.clickable(onClick = onClick),
-        style = ModeraTheme.typography.bodySB14,
-        color = ModeraTheme.colors.blue,
-    )
 }

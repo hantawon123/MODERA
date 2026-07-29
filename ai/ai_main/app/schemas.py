@@ -51,9 +51,9 @@ class PageData(CamelModel, Generic[T]):
 
 # ── 10-1 단계별 분석 실행 요청 ────────────────────────────────────────────
 class OcrInput(CamelModel):
+    # lang 은 계약에서 삭제됨(2026-07-29 백엔드 합의). 백엔드가 보내더라도 무시된다.
     raw_text: str = ""
     refined_text: str | None = None
-    lang: str | None = None
     confidence: float | None = None
 
     model_config = ConfigDict(
@@ -63,7 +63,6 @@ class OcrInput(CamelModel):
         json_schema_extra={
             "example": {
                 "rawText": "오후 4:20 85% 교보문고 C++ 프로그래밍 입문 32,000원",
-                "lang": "ko",
                 "confidence": 0.93,
             }
         },
@@ -403,8 +402,7 @@ class UploadRequest(CamelModel):
                         "fileSize": 384211,
                         "ocr": {
                             "rawText": "교보문고 C++ 프로그래밍 입문 32,000원",
-                            "lang": "ko",
-                            "confidence": 0.93,
+                                        "confidence": 0.93,
                         },
                     }
                 ]

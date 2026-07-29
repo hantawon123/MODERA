@@ -151,6 +151,10 @@ public class AnalysisCallbackService {
     private void handleSuccess(AnalysisJob analysisJob, AnalysisCallbackRequest request) {
         Map<String, Object> result = request.result() == null ? Map.of() : request.result();
 
+        // AI는 이미지 유형에 따라 다른 키로 구조화 데이터를 보낸다(일정이면 scheduleData,
+        // 상품이면 structuredData). 둘 다 { type, fields } 형태라 같은 방식으로 푼다.
+        Map<String, Object> structured = structuredData(result);
+
         boolean inserted = analysisResultRepository.insert(new AnalysisResultRow(
                 analysisJob.getJobId(),
                 analysisJob.getImageId(),
@@ -162,8 +166,8 @@ public class AnalysisCallbackService {
                 analysisJob.getClientOcrConfidence(),
                 str(result, "summary"),
                 bool(result, "informative"),
-                null,                      // structuredType — MVP 제외(AI도 안 보냄)
-                null,                                   // structuredFieldsJson — 위와 동일
+                str(structured, "type"),
+                jsonObject(structured, "fields"),
                 jsonArray(result, "keyInformation"),
                 flt(result, "analysisConfidence"),
                 vector(result, "documentVector"),
@@ -182,14 +186,6 @@ public class AnalysisCallbackService {
             return;
         }
 
-        // AI는 categories를 배열로 보내지만 이미지 1장당 카테고리는 하나로 확정된다
-        // (AGENT가 후보 중 하나를 고르거나 새로 만든 결과). 첫 원소만 쓴다.
-        List<String> categories = strList(result, "categories");
-        String categoryName = categories.isEmpty() ? null : categories.get(0);
-        List<String> tagNames = strList(result, "tags");
-
-        List<String> keyInformation = strList(result, "keyInformation");
-
         // analysisStatus는 AI가 보낸 값을 그대로 넘긴다.
         // EMPTY(OCR이 비었거나 비정보성이라 분석을 생략함)를 COMPLETED로 덮어쓰면
         // api-server의 user_image.analysis_status가 "정상 분석 완료"로 기록돼
@@ -199,20 +195,17 @@ public class AnalysisCallbackService {
                 str(result, "title"),
                 str(result, "summary"),
                 str(result, "ocrRefinedText"),
-                // AI가 분석 중 생성한 썸네일 키(thumbnails 버킷 기준).
-                // AI팀에 콜백 추가를 요청한 상태라 도착 전까지는 null이 흘러간다 —
-                // api는 null이면 썸네일 없음으로 처리하면 된다.
                 str(result, "thumbnailKey"),
                 str(result, "category"),
                 strList(result, "tags"),
                 strList(result, "keyInformation"),
-                jsonArray(structured, "fields"),
+                jsonObject(structured, "fields"),
                 request.status(),
                 request.modelVersion()
-        );        eventPublisher.publish(Streams.ANALYSIS_RESULT, EventTypes.ANALYSIS_COMPLETED, 1, payload);
+        );
+        eventPublisher.publish(Streams.ANALYSIS_RESULT, EventTypes.ANALYSIS_COMPLETED, 1, payload);
         log.info("ANALYSIS_COMPLETED 발행: jobId={} imageId={}", analysisJob.getJobId(), analysisJob.getImageId());
     }
-
     private void handleFailure(AnalysisJob job, AnalysisCallbackRequest req) {
         String code = req.error() == null ? "ANALYSIS_ERROR" : req.error().code();
         String message = req.error() == null ? "unknown" : req.error().message();
@@ -288,6 +281,19 @@ public class AnalysisCallbackService {
         return value instanceof Number n ? n.floatValue() : null;
     }
 
+    /** 중첩 객체를 JSONB 컬럼용 JSON 문자열로 만든다. 비어 있으면 null(= AI가 안 보냄). */
+    private String jsonObject(Map<String, Object> map, String key) {
+        if (!(map.get(key) instanceof Map<?, ?> value) || value.isEmpty()) {
+            return null;
+        }
+        try {
+            return objectMapper.writeValueAsString(value);
+        } catch (JsonProcessingException e) {
+            log.warn("{} 직렬화 실패 — 해당 컬럼만 비우고 저장 진행: {}", key, e.getMessage());
+            return null;
+        }
+    }
+
     /**
      * 문자열 배열을 JSONB 컬럼에 넣을 JSON 문자열로 만든다.
      *
@@ -310,4 +316,21 @@ public class AnalysisCallbackService {
             return null;
         }
     }
+
+    /**
+     * 구조화 데이터를 꺼낸다. AI가 이미지 유형에 따라 키를 달리 쓴다
+     * (일정이면 scheduleData, 상품이면 structuredData). 둘 다 { type, fields } 형태다.
+     * 없으면 빈 Map을 돌려줘 호출부에서 null 검사를 하지 않아도 되게 한다.
+     */
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> structuredData(Map<String, Object> result) {
+        for (String key : List.of("structuredData", "scheduleData")) {
+            if (result.get(key) instanceof Map<?, ?> map) {
+                return (Map<String, Object>) map;
+            }
+        }
+        return Map.of();
+    }
 }
+
+

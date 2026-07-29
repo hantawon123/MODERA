@@ -19,12 +19,14 @@ import com.ssafy.modera.core.component.ModeraDropdownMenuItem
 import com.ssafy.modera.core.component.ModeraTopBar
 import com.ssafy.modera.core.component.ModeraTopBarDefaults
 import com.ssafy.modera.core.designsystem.component.Icon
+import com.ssafy.modera.core.designsystem.component.Text
 import com.ssafy.modera.core.designsystem.icon.ModeraIcons
 import com.ssafy.modera.core.designsystem.theme.ModeraTheme
 import com.ssafy.modera.feature.analyzedimagedetail.R
 
 @Composable
 internal fun AnalyzedImageDetailTopBar(
+    title: String,
     menuExpanded: Boolean,
     onBackClick: () -> Unit,
     onMoreClick: () -> Unit,
@@ -69,6 +71,13 @@ internal fun AnalyzedImageDetailTopBar(
     ModeraTopBar(
         onBackClick = onBackClick,
         modifier = modifier,
+        centerContent = {
+            Text(
+                text = title,
+                style = ModeraTheme.typography.bodySB16,
+                color = ModeraTheme.colors.gray900
+            )
+        },
         rightContent = {
             Box {
                 Icon(
@@ -103,6 +112,7 @@ internal fun AnalyzedImageDetailTopBar(
 private fun AnalyzedImageDetailTopBarPreview() {
     ModeraTheme {
         AnalyzedImageDetailTopBar(
+            title = "",
             menuExpanded = false,
             onBackClick = {},
             onMoreClick = {},
@@ -127,6 +137,7 @@ private fun AnalyzedImageDetailTopBarPreview() {
 private fun AnalyzedImageDetailTopBarMenuPreview() {
     ModeraTheme {
         AnalyzedImageDetailTopBar(
+            title = "",
             menuExpanded = true,
             onBackClick = {},
             onMoreClick = {},

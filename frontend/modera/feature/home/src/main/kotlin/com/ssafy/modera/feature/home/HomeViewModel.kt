@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.yield
 import javax.inject.Inject
 
 @HiltViewModel
@@ -80,20 +81,23 @@ class HomeViewModel @Inject constructor(
 
     fun onSearchBarFocusChanged(isFocused: Boolean) {
         if (isFocused) {
-            searchState.update { state -> state.copy(isSearchActive = true) }
+            searchState.update { state ->
+                state.copy(
+                    isSearchBarFocused = true,
+                    isSearchActive = true,
+                )
+            }
             return
         }
 
         searchState.update { state ->
-            if (state.searchQuery.isBlank()) {
-                state.copy(
-                    isSearchActive = false,
-                    isShowingSearchResults = false,
-                    searchResults = emptyList(),
-                    isSearchLoading = false,
-                )
-            } else {
-                state
+            state.copy(isSearchBarFocused = false)
+        }
+
+        viewModelScope.launch {
+            yield()
+            searchState.update { state ->
+                state.deactivateIfIdle()
             }
         }
     }
@@ -153,11 +157,24 @@ class HomeViewModel @Inject constructor(
             state.copy(
                 searchQuery = "",
                 isSearchActive = false,
+                isSearchBarFocused = false,
                 isShowingSearchResults = false,
                 searchResults = emptyList(),
                 isSearchLoading = false,
             )
         }
+    }
+
+    private fun SearchState.deactivateIfIdle(): SearchState {
+        if (!isSearchBarFocused && searchQuery.isBlank()) {
+            return copy(
+                isSearchActive = false,
+                isShowingSearchResults = false,
+                searchResults = emptyList(),
+                isSearchLoading = false,
+            )
+        }
+        return this
     }
 
     private suspend fun fetchSearchResults(
@@ -180,6 +197,7 @@ class HomeViewModel @Inject constructor(
     private data class SearchState(
         val searchQuery: String = "",
         val isSearchActive: Boolean = false,
+        val isSearchBarFocused: Boolean = false,
         val recentSearchTerms: List<String> = HomeSearchDummyData.recentSearchTerms,
         val searchResults: List<SearchMaterialResult> = emptyList(),
         val isShowingSearchResults: Boolean = false,

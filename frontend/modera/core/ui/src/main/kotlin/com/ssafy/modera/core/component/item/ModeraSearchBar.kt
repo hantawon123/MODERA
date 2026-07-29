@@ -27,6 +27,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -46,6 +47,7 @@ import com.ssafy.modera.core.designsystem.component.Icon
 import com.ssafy.modera.core.designsystem.component.Text
 import com.ssafy.modera.core.designsystem.icon.ModeraIcons
 import com.ssafy.modera.core.designsystem.theme.ModeraTheme
+import kotlinx.coroutines.launch
 
 enum class SearchBarMode {
     General,
@@ -77,6 +79,7 @@ fun ModeraSearchBar(
     }
     val shape = SearchBarDefaults.Shape
     val resolvedFocusRequester = focusRequester ?: remember { FocusRequester() }
+    val coroutineScope = rememberCoroutineScope()
     val trailingIconsWidth =
         SearchBarDefaults.IconSize * 2 + SearchBarDefaults.IconTextSpacing
 
@@ -145,7 +148,12 @@ fun ModeraSearchBar(
                             enabled = enabled,
                             indication = null,
                             interactionSource = remember { MutableInteractionSource() },
-                            onClick = { onQueryChange("") },
+                            onClick = {
+                                onQueryChange("")
+                                coroutineScope.launch {
+                                    resolvedFocusRequester.requestFocus()
+                                }
+                            },
                         ),
                     tint = colors.gray500,
                 )

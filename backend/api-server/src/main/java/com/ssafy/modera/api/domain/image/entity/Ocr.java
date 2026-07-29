@@ -25,16 +25,12 @@ public class Ocr {
     @Column(name = "content", nullable = false, columnDefinition = "TEXT")
     private String content;
 
-    @Column(name = "lang", nullable = false, length = 10)
-    private String lang;
-
     @Column(name = "image_id", nullable = false, unique = true)
     private Integer imageId;
 
     @Builder
-    public Ocr(String content, String lang, Integer imageId) {
+    public Ocr(String content, Integer imageId) {
         this.content = content;
-        this.lang = lang;
         this.imageId = imageId;
     }
 }

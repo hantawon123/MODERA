@@ -2,7 +2,6 @@ package com.ssafy.modera.feature.home
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -21,6 +20,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -31,6 +31,8 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.boundsInParent
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalView
@@ -55,6 +57,7 @@ import com.ssafy.modera.feature.home.component.CategoryItem
 import com.ssafy.modera.feature.home.component.HomeHeroSection
 import com.ssafy.modera.feature.home.component.HomeTopActions
 import com.ssafy.modera.feature.home.component.RecentSearchSection
+import com.ssafy.modera.feature.home.component.SearchBarWithPulsingGlow
 import com.ssafy.modera.feature.home.component.SearchResultSection
 
 @Composable
@@ -117,6 +120,8 @@ fun HomeScreen(
     val focusManager = LocalFocusManager.current
     val dismissInteractionSource = remember { MutableInteractionSource() }
     var wasSearchActive by remember { mutableStateOf(false) }
+    var screenHeightPx by remember { mutableFloatStateOf(0f) }
+    var searchBarCenterPx by remember { mutableFloatStateOf(0f) }
 
     val upperWeight by animateFloatAsState(
         targetValue = if (uiState.isSearchActive) {
@@ -146,17 +151,17 @@ fun HomeScreen(
         ),
         label = "homeSearchCategoryAlpha",
     )
-    val searchActiveTopSpacing by animateDpAsState(
+    val circleExtraOffsetPx by animateFloatAsState(
         targetValue = if (uiState.isSearchActive) {
-            HomeScreenDefaults.SearchActiveTopSpacing
+            0f
         } else {
-            0.dp
+            (screenHeightPx / 2f) - searchBarCenterPx
         },
         animationSpec = tween(
             durationMillis = HomeScreenDefaults.LayoutAnimationDurationMillis,
             easing = FastOutSlowInEasing,
         ),
-        label = "homeSearchActiveTopSpacing",
+        label = "pulseCircleExtraOffset",
     )
 
     val statusBarTopPadding = rememberRawStatusBarTopPadding()
@@ -191,97 +196,119 @@ fun HomeScreen(
         wasSearchActive = uiState.isSearchActive
     }
 
-    Column(
+    Box(
         modifier = modifier
             .fillMaxSize()
             .background(ModeraTheme.colors.white)
             .padding(top = statusBarTopPadding)
-            .padding(horizontal = HomeScreenDefaults.HorizontalPadding),
+            .padding(horizontal = HomeScreenDefaults.HorizontalPadding)
+            .onGloballyPositioned { coordinates ->
+                screenHeightPx = coordinates.size.height.toFloat()
+            },
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(upperWeight)
-                .graphicsLayer { alpha = upperContentAlpha }
-                .then(
-                    if (uiState.isSearchActive) {
-                        Modifier.pointerInput(Unit) {
-                            awaitPointerEventScope {
-                                while (true) {
-                                    val event = awaitPointerEvent(PointerEventPass.Initial)
-                                    event.changes.forEach { it.consume() }
-                                }
-                            }
-                        }
-                    } else {
-                        Modifier
-                    },
-                ),
-            contentAlignment = Alignment.BottomCenter,
+        Column(
+            modifier = Modifier.fillMaxSize(),
         ) {
-            Column(modifier = Modifier.fillMaxWidth()) {
-                HomeTopActions(
-                    onCalendarClick = onCalendarClick,
-                    onSettingsClick = onSettingsClick,
-                )
-                Spacer(Modifier.weight(1f))
-                Spacer(modifier = Modifier.height(searchActiveTopSpacing))
-                HomeHeroSection()
-            }
-        }
-
-        ModeraSearchBar(
-            query = uiState.searchQuery,
-            onQueryChange = onSearchQueryChange,
-            placeholder = stringResource(R.string.home_search_placeholder),
-            mode = SearchBarMode.Ai,
-            focusRequester = searchFocusRequester,
-            onFocusChanged = onSearchBarFocusChange,
-            onSearch = ::submitSearch,
-            modifier = Modifier.fillMaxWidth(),
-        )
-
-        Box(
-            modifier = Modifier
-                .weight(1f)
-                .fillMaxWidth()
-                .clickable(
-                    enabled = uiState.isSearchActive &&
-                        uiState.searchQuery.isEmpty() &&
-                        !uiState.isShowingSearchResults,
-                    interactionSource = dismissInteractionSource,
-                    indication = null,
-                ) {
-                    focusManager.clearFocus()
-                    onSearchDeactivate()
-                },
-        ) {
-            if (categoryContentAlpha > 0f) {
-                HomeCategoryGrid(
-                    categories = uiState.categories,
-                    onCategoryClick = onCategoryClick,
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(upperWeight),
+            ) {
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(top = 24.dp, bottom = 24.dp)
-                        .graphicsLayer { alpha = categoryContentAlpha },
+                        .graphicsLayer { alpha = upperContentAlpha }
+                        .then(
+                            if (uiState.isSearchActive) {
+                                Modifier.pointerInput(Unit) {
+                                    awaitPointerEventScope {
+                                        while (true) {
+                                            val event = awaitPointerEvent(PointerEventPass.Initial)
+                                            event.changes.forEach { it.consume() }
+                                        }
+                                    }
+                                }
+                            } else {
+                                Modifier
+                            },
+                        ),
+                ) {
+                    HomeTopActions(
+                        onCalendarClick = onCalendarClick,
+                        onSettingsClick = onSettingsClick,
+                    )
+
+                    Spacer(Modifier.weight(1f))
+
+                    HomeHeroSection()
+                }
+            }
+
+            SearchBarWithPulsingGlow(
+                circleOffsetYPx = circleExtraOffsetPx,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .onGloballyPositioned { coordinates ->
+                        searchBarCenterPx =
+                            coordinates.boundsInParent().top + (coordinates.size.height / 2f)
+                    },
+            ) {
+                ModeraSearchBar(
+                    query = uiState.searchQuery,
+                    onQueryChange = onSearchQueryChange,
+                    placeholder = stringResource(R.string.home_search_placeholder),
+                    mode = SearchBarMode.Ai,
+                    focusRequester = searchFocusRequester,
+                    onFocusChanged = onSearchBarFocusChange,
+                    onSearch = ::submitSearch,
+                    modifier = Modifier.fillMaxWidth(),
                 )
             }
 
-            if (uiState.isSearchActive) {
-                if (uiState.isShowingSearchResults) {
-                    SearchResultSection(
-                        searchResults = uiState.searchResults,
-                        isLoading = uiState.isSearchLoading,
-                        onSearchResultClick = onSearchResultClick,
-                        modifier = Modifier.fillMaxSize(),
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+                    .clickable(
+                        enabled = uiState.isSearchActive &&
+                                uiState.searchQuery.isEmpty() &&
+                                !uiState.isShowingSearchResults,
+                        interactionSource = dismissInteractionSource,
+                        indication = null,
+                    ) {
+                        focusManager.clearFocus()
+                        onSearchDeactivate()
+                    },
+            ) {
+                if (categoryContentAlpha > 0f) {
+                    HomeCategoryGrid(
+                        categories = uiState.categories,
+                        onCategoryClick = onCategoryClick,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 24.dp, bottom = 24.dp)
+                            .graphicsLayer { alpha = categoryContentAlpha },
                     )
-                } else {
-                    RecentSearchSection(
-                        recentSearchTerms = uiState.recentSearchTerms,
-                        onRecentSearchClick = onRecentSearchClick,
-                        onRecentSearchDelete = onRecentSearchDelete,
-                        modifier = Modifier.fillMaxSize(),
-                    )
+                }
+
+                if (uiState.isSearchActive) {
+                    if (uiState.isShowingSearchResults) {
+                        SearchResultSection(
+                            searchResults = uiState.searchResults,
+                            isLoading = uiState.isSearchLoading,
+                            onSearchResultClick = onSearchResultClick,
+                            modifier = Modifier.fillMaxSize(),
+                        )
+                    } else {
+                        if (uiState.recentSearchTerms.isNotEmpty()) {
+                            RecentSearchSection(
+                                recentSearchTerms = uiState.recentSearchTerms,
+                                onRecentSearchClick = onRecentSearchClick,
+                                onRecentSearchDelete = onRecentSearchDelete,
+                                modifier = Modifier.fillMaxSize(),
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -386,7 +413,6 @@ private fun rememberRawStatusBarTopPadding(): Dp {
 
 private object HomeScreenDefaults {
     val HorizontalPadding = 20.dp
-    val SearchActiveTopSpacing = 8.dp
     val CategoryGridSpacing = 12.dp
     const val CategoryGridColumns = 3
     const val MaxCategoryCount = 6

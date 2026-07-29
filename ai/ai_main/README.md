@@ -378,6 +378,18 @@ OpenSearch + AI 서비스를 함께 띄운다.
 5. **멱등 저장소.** `jobs.py` 는 프로세스 메모리 기반이라 단일 인스턴스 전제입니다. 다중 인스턴스·재시작 대응이 필요하면 Redis 로 옮겨야 합니다.
 6. **SDK.** `google-generativeai` 는 지원 종료 예고 상태입니다. `gemini_client.py` 한 파일만 고치면 `google-genai` 로 옮길 수 있습니다.
 
-## 범위에서 제외
+## 일정 데이터 (scheduleData)
 
-- **일정 데이터(scheduleData)** — MVP 제외. AGENT 는 `{"type": null, "fields": {}}` 빈 형태만 반환합니다. 확장 시 `stages.run_agent_generation` 프롬프트에 유형별 스키마를 추가하세요. 앱 직결 API(6-2)의 `structuredData` 는 이름이 비슷하지만 별개 필드이고 항상 `null` 입니다.
+AGENT 가 스크린샷에서 캘린더용 일정(예약·티켓·행사·마감)을 추출해 10-4 콜백 `result.scheduleData` 로 보냅니다. 저장·앱 캘린더 서빙은 Spring 몫입니다.
+
+```json
+"scheduleData": { "type": "schedule", "fields": {
+    "startYear": 2026, "startMonth": 8, "startDay": 3, "startTime": "14:30",
+    "endYear": 2026, "endMonth": 8, "endDay": 3, "endTime": "16:00" } }
+```
+
+- 연·월·일은 정수, `startTime`/`endTime` 은 `"HH:MM"` 문자열(시각이 없으면 `null` = 종일).
+- **예약** = start만 / **마감("~까지")** = end만 / **기간 행사** = 둘 다.
+- 일정이 없는 스크린샷은 `{"type": null, "fields": {}}` 입니다(필드 자체는 항상 존재).
+- 상대 날짜("내일" 등)는 서버 현재 시각(KST) 기준으로 해석합니다. 확인 안 된 값은 null(추측 금지).
+- 앱 직결 API(6-2)의 `structuredData` 는 이름이 비슷하지만 별개 필드이고 항상 `null` 입니다.

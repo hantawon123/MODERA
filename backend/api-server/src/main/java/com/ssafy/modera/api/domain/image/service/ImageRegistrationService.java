@@ -26,7 +26,6 @@ import software.amazon.awssdk.services.s3.presigner.model.PresignedPutObjectRequ
 import software.amazon.awssdk.services.s3.presigner.model.PutObjectPresignRequest;
 
 import java.time.Duration;
-import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -177,8 +176,7 @@ public class ImageRegistrationService {
                     .orElseGet(
                             () -> createUserImage(
                                     userId,
-                                    existingAsset,
-                                    OffsetDateTime.now()
+                                    existingAsset
                             )
                     );
 
@@ -193,8 +191,6 @@ public class ImageRegistrationService {
                 request.fileName()
         );
 
-        OffsetDateTime now = OffsetDateTime.now();
-
         ImageAsset imageAsset = ImageAsset.builder()
                 .imageId(imageId)
                 .fileName(request.fileName())
@@ -202,15 +198,13 @@ public class ImageRegistrationService {
                 .fileSize(request.fileSize())
                 .s3Key(s3Key)
                 .uploadStatus("PENDING")
-                .createdAt(now)
                 .build();
 
         imageAssetRepository.save(imageAsset);
 
         createUserImage(
                 userId,
-                imageAsset,
-                now
+                imageAsset
         );
 
         return new RegistrationResult(
@@ -222,8 +216,7 @@ public class ImageRegistrationService {
 
     private UserImage createUserImage(
             Integer userId,
-            ImageAsset imageAsset,
-            OffsetDateTime now
+            ImageAsset imageAsset
     ) {
         UserImage userImage = UserImage.builder()
                 .userId(userId)
@@ -247,8 +240,7 @@ public class ImageRegistrationService {
                         null,
                         imageAsset.getUploadStatus(),
                         "NONE",
-                        false,
-                        now.toInstant()
+                        false
                 )
         );
 

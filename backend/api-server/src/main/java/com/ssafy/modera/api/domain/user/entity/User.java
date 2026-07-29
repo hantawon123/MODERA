@@ -42,21 +42,17 @@ public class User {
     @Column(name = "email")
     private String email;
 
-    @Column(name = "created_at", nullable = false)
-    private OffsetDateTime createdAt;
-
     @Column(name = "updated_at", nullable = false)
     private OffsetDateTime updatedAt;
 
     @Builder
     public User(String provider, String providerId, String loginId, String passwordHash, String email,
-                OffsetDateTime createdAt, OffsetDateTime updatedAt) {
+                OffsetDateTime updatedAt) {
         this.provider = provider;
         this.providerId = providerId;
         this.loginId = loginId;
         this.passwordHash = passwordHash;
         this.email = email;
-        this.createdAt = createdAt;
         this.updatedAt = updatedAt;
     }
 

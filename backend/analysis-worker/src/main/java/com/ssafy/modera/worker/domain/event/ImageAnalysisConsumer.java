@@ -27,6 +27,7 @@ import org.springframework.stereotype.Component;
 import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -40,6 +41,11 @@ import java.util.UUID;
 public class ImageAnalysisConsumer {
 
     private static final String MDC_KEY_EVENT_ID = "eventId";
+
+    /**
+     * 이 상태의 job이 이미 있으면 다시 요청하지 않는다. FAILED는 재시도 여지를 남긴다.
+     */
+    private static final Set<String> ACTIVE_JOB_STATUSES = Set.of("PENDING", "PROCESSING", "COMPLETED");
 
     private final StringRedisTemplate redisTemplate;
     private final ObjectMapper objectMapper;
@@ -125,7 +131,7 @@ public class ImageAnalysisConsumer {
      *  - 그 외(예: job 생성 자체가 DB 오류로 실패)는 일시 오류로 간주해 XACK하지 않고
      *    PEL에 남긴다. TODO: XAUTOCLAIM 기반 재처리 배치 추가.
      */
-    private void processRecord(MapRecord<String, String, String> record) {
+    public void processRecord(MapRecord<String, String, String> record) {
         EventEnvelope envelope;
         try {
             envelope = EventEnvelope.fromFieldMap(record.getValue());
@@ -170,6 +176,15 @@ public class ImageAnalysisConsumer {
 
     private void handleImageUploaded(EventEnvelope envelope, ImageUploadedPayload payload) {
         Integer imageId = payload.imageId();
+
+        // 같은 이미지에 이미 진행 중이거나 완료된 job이 있으면 다시 요청하지 않는다.
+        // webhook 재전송이나 PEL 재처리로 같은 IMAGE_UPLOADED가 두 번 도착할 수 있는데,
+        // 그때마다 job이 새로 생기면 AI 호출도 중복된다(analysis_result는 UNIQUE로 막히지만
+        // AI 요청 비용은 그대로 나간다).
+        if (analysisJobRepository.existsByImageIdAndStatusIn(imageId, ACTIVE_JOB_STATUSES)) {
+            log.info("이미 진행 중이거나 완료된 분석이 있어 요청을 건너뛴다: imageId={}", imageId);
+            return;
+        }
 
         // 온디바이스 OCR은 여기서만 손에 들어온다. AI 콜백은 refined 텍스트만 돌려주므로
         // raw/lang/confidence를 결과에 남기려면 job에 실어 콜백 시점까지 들고 가야 한다.

@@ -1,87 +1,78 @@
 package com.ssafy.modera.feature.analyzedimagedetail
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.ssafy.modera.core.designsystem.component.IconButton
 import com.ssafy.modera.core.designsystem.component.LoadingWheel
+import com.ssafy.modera.core.designsystem.component.ModeraIconButtonDefaults
 import com.ssafy.modera.core.designsystem.component.Text
+import com.ssafy.modera.core.designsystem.icon.ModeraIcons
 import com.ssafy.modera.core.designsystem.theme.ModeraTheme
 import com.ssafy.modera.core.model.analyzedimage.AnalyzedImageCategory
 import com.ssafy.modera.core.model.analyzedimage.AnalyzedImageDetail
-import com.ssafy.modera.core.model.analyzedimage.AnalyzedImageOcr
 import com.ssafy.modera.core.model.analyzedimage.ImageAnalysisStatus
-import com.ssafy.modera.feature.analyzedimagedetail.component.AnalyzedImageDetailActionBarAnimated
-import com.ssafy.modera.feature.analyzedimagedetail.component.AnalyzedImageDetailHeroSection
-import com.ssafy.modera.feature.analyzedimagedetail.component.AnalyzedImageDetailOcrSection
-import com.ssafy.modera.feature.analyzedimagedetail.component.AnalyzedImageDetailOverflowMenu
-import com.ssafy.modera.feature.analyzedimagedetail.component.AnalyzedImageDetailSummarySection
-import com.ssafy.modera.feature.analyzedimagedetail.component.AnalyzedImageDetailTopOverlay
+import com.ssafy.modera.feature.analyzedimagedetail.component.AnalysisSummarySection
+import com.ssafy.modera.feature.analyzedimagedetail.component.CategoryLabel
+import com.ssafy.modera.feature.analyzedimagedetail.component.DetailAppBar
+import com.ssafy.modera.feature.analyzedimagedetail.component.ErrorScreen
+import com.ssafy.modera.feature.analyzedimagedetail.component.ImageSection
+import com.ssafy.modera.feature.analyzedimagedetail.component.OcrTextSection
+import com.ssafy.modera.feature.analyzedimagedetail.component.RelatedImagesButton
 
-/**
- * ViewModel 연결 및 UiState 분기 Screen
- */
 @Composable
 fun AnalyzedImageDetailScreen(
+    uiState: AnalyzedImageDetailUiState,
     onBackClick: () -> Unit,
-    onCategoryClick: (Long) -> Unit,
-    onReanalyzeClick: (Long) -> Unit,
-    onRelatedMaterialsClick: (Long) -> Unit,
-    onCopyOcrTextClick: (String) -> Unit,
-    onViewImageInfoClick: (Long) -> Unit,
-    onDeleteClick: (Long) -> Unit,
-    onFavoriteClick: (Long) -> Unit,
+    onImageClick: (String) -> Unit,
+    onDocumentClick: () -> Unit,
+    onReanalyzeClick: () -> Unit,
+    onDeleteClick: () -> Unit,
+    onRelatedImagesClick: () -> Unit,
     modifier: Modifier = Modifier,
-    viewModel: AnalyzedImageDetailViewModel = hiltViewModel()
 ) {
-    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-
-    when (val state = uiState) {
-        is AnalyzedImageDetailUiState.Loading -> {
-            ImageDetailLoadingScreen(
-                modifier = modifier,
-            )
+    when (uiState) {
+        AnalyzedImageDetailUiState.Loading -> {
+            LoadingWheel(modifier = modifier)
         }
 
         is AnalyzedImageDetailUiState.Success -> {
             AnalyzedImageDetailScreen(
-                image = state.image,
+                image = uiState.image,
                 onBackClick = onBackClick,
-                onCategoryClick = onCategoryClick,
+                onImageClick = onImageClick,
+                onDocumentClick = onDocumentClick,
                 onReanalyzeClick = onReanalyzeClick,
-                onRelatedMaterialsClick = onRelatedMaterialsClick,
-                onCopyOcrTextClick = onCopyOcrTextClick,
-                onViewImageInfoClick = onViewImageInfoClick,
                 onDeleteClick = onDeleteClick,
-                onFavoriteClick = onFavoriteClick,
+                onRelatedImagesClick = onRelatedImagesClick,
                 modifier = modifier,
             )
         }
 
         is AnalyzedImageDetailUiState.Error -> {
-            AnalyzedImageDetailErrorScreen(
+            ErrorScreen(
                 onBackClick = onBackClick,
                 modifier = modifier,
             )
@@ -89,198 +80,148 @@ fun AnalyzedImageDetailScreen(
     }
 }
 
-/**
- * 실제 이미지 상세 UI
- */
 @Composable
-fun AnalyzedImageDetailScreen(
+private fun AnalyzedImageDetailScreen(
     image: AnalyzedImageDetail,
     onBackClick: () -> Unit,
-    onCategoryClick: (Long) -> Unit,
-    onReanalyzeClick: (Long) -> Unit,
-    onRelatedMaterialsClick: (Long) -> Unit,
-    onCopyOcrTextClick: (String) -> Unit,
-    onViewImageInfoClick: (Long) -> Unit,
-    onDeleteClick: (Long) -> Unit,
-    onFavoriteClick: (Long) -> Unit,
+    onImageClick: (String) -> Unit,
+    onDocumentClick: () -> Unit,
+    onReanalyzeClick: () -> Unit,
+    onDeleteClick: () -> Unit,
+    onRelatedImagesClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    var entered by remember {
+    var menuExpanded by remember {
         mutableStateOf(false)
     }
 
-    var showOverlay by remember {
-        mutableStateOf(false)
-    }
-
-    var showOverflowMenu by remember {
-        mutableStateOf(false)
-    }
-
-    val scrollState = rememberScrollState()
-
-    val showActionBar by remember {
-        derivedStateOf {
-            scrollState.value > ACTION_BAR_SCROLL_THRESHOLD
-        }
-    }
-
-    LaunchedEffect(Unit) {
-        entered = true
-    }
-
-    AnimatedVisibility(
-        visible = entered,
-        modifier = modifier.fillMaxSize(),
-        enter = slideInVertically(
-            animationSpec = tween(ANIMATION_DURATION),
-            initialOffsetY = { fullHeight ->
-                fullHeight
-            },
-        ) + fadeIn(
-            animationSpec = tween(ANIMATION_DURATION),
-        ),
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .background(ModeraTheme.colors.white)
+            .windowInsetsPadding(WindowInsets.statusBars),
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(ModeraTheme.colors.gray50),
+        Column(
+            modifier = Modifier.fillMaxSize(),
         ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .verticalScroll(scrollState),
-            ) {
-                AnalyzedImageDetailHeroSection(
-                    imageUrl = image.imageUrl,
-                    title = image.title,
-                    showOverlay = showOverlay,
-                    categoryName = image.categories.name,
-                    uploadedAt = image.updatedAt,
-                    hashtags = image.tags,
-                    isFavorite = image.favorite,
-                    onImageClick = {
-                        showOverlay = !showOverlay
-                    },
-                    onCategoryClick = {
-                        onCategoryClick(image.categories.categoryId)
-                    },
-                    onFavoriteClick = {
-                        onFavoriteClick(image.id)
-                    },
-                )
-
-                AnalyzedImageDetailSummarySection(
-                    summary = image.summary,
-                )
-
-                AnalyzedImageDetailOcrSection(
-                    analyzedImageOcr = image.ocr,
-                    onCopyClick = {
-                        onCopyOcrTextClick(
-                            image.ocr?.rawText.orEmpty(),
-                        )
-                    },
-                )
-
-                Spacer(
-                    modifier = Modifier.height(88.dp),
-                )
-            }
-
-            AnalyzedImageDetailTopOverlay(
-                visible = showOverlay,
+            DetailAppBar(
+                menuExpanded = menuExpanded,
                 onBackClick = onBackClick,
-                onReanalyzeClick = {
-                    onReanalyzeClick(image.id)
-                },
                 onMoreClick = {
-                    showOverflowMenu = true
+                    menuExpanded = true
                 },
-                modifier = Modifier.align(Alignment.TopCenter),
-            )
-
-            AnalyzedImageDetailOverflowMenu(
-                expanded = showOverflowMenu,
-                onDismissRequest = {
-                    showOverflowMenu = false
+                onDismissMenu = {
+                    menuExpanded = false
                 },
-                onCopyTextClick = {
-                    showOverflowMenu = false
-
-                    onCopyOcrTextClick(
-                        image.ocr?.rawText.orEmpty(),
-                    )
+                onDocumentClick = {
+                    menuExpanded = false
+                    onDocumentClick()
                 },
-                onViewInfoClick = {
-                    showOverflowMenu = false
-                    onViewImageInfoClick(image.id)
+                onReanalyzeClick = {
+                    menuExpanded = false
+                    onReanalyzeClick()
                 },
                 onDeleteClick = {
-                    showOverflowMenu = false
-                    onDeleteClick(image.id)
+                    menuExpanded = false
+                    onDeleteClick()
                 },
             )
 
-            AnalyzedImageDetailActionBarAnimated(
-                visible = showActionBar,
-                onReanalyzeClick = {
-                    onReanalyzeClick(image.id)
-                },
-                onRelatedMaterialsClick = {
-                    onRelatedMaterialsClick(image.id)
-                },
-                modifier = Modifier.align(Alignment.BottomCenter),
-            )
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .verticalScroll(rememberScrollState())
+                    .padding(
+                        start = 20.dp,
+                        end = 20.dp,
+                        bottom = 32.dp,
+                    ),
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    CategoryLabel(
+                        category = image.categories.name,
+                    )
+
+                    IconButton(
+                        painter = painterResource(ModeraIcons.Star),
+                        contentDescription = "즐겨찾기 토글",
+                        colors = ModeraIconButtonDefaults.iconButtonColors(
+                            contentColor = ModeraTheme.colors.yellow800,
+                        ),
+                        onClick = {},
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Text(
+                    text = image.title,
+                    style = ModeraTheme.typography.titleB22.copy(
+                        color = ModeraTheme.colors.gray900,
+                    ),
+                )
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                Text(
+                    text = image.createdAt,
+                    style = ModeraTheme.typography.captionR12.copy(
+                        color = ModeraTheme.colors.gray500,
+                    ),
+                )
+
+                if (image.tags.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(18.dp))
+
+                    // todo: Tags
+                }
+
+                Spacer(modifier = Modifier.height(30.dp))
+
+                AnalysisSummarySection(image.summary)
+
+                val ocrText = image.ocr
+                    ?.rawText
+                    .orEmpty()
+
+                if (ocrText.isNotBlank()) {
+                    Spacer(modifier = Modifier.height(30.dp))
+
+                    OcrTextSection(
+                        title = "추출된 텍스트",
+                        content = ocrText,
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(30.dp))
+
+                ImageSection(
+                    imageUrl = image.imageUrl,
+                    onImageExpandClick = {
+                        onImageClick(image.imageUrl)
+                    },
+                )
+
+                Spacer(modifier = Modifier.height(30.dp))
+
+                RelatedImagesButton(
+                    onClick = onRelatedImagesClick,
+                )
+            }
         }
-    }
-}
-
-@Composable
-private fun ImageDetailLoadingScreen(
-    modifier: Modifier = Modifier,
-) {
-    Box(
-        modifier = modifier
-            .fillMaxSize()
-            .background(ModeraTheme.colors.gray50),
-        contentAlignment = Alignment.Center,
-    ) {
-        LoadingWheel()
-    }
-}
-
-@Composable
-private fun AnalyzedImageDetailErrorScreen(
-    onBackClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Box(
-        modifier = modifier
-            .fillMaxSize()
-            .background(ModeraTheme.colors.gray50),
-    ) {
-        AnalyzedImageDetailTopOverlay(
-            visible = true,
-            onBackClick = onBackClick,
-            onReanalyzeClick = {},
-            onMoreClick = {},
-            modifier = Modifier.align(Alignment.TopCenter),
-        )
-
-        Text(
-            text = "이미지 정보를 불러오지 못했습니다.",
-            style = ModeraTheme.typography.bodyR14,
-            color = ModeraTheme.colors.gray700,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.align(Alignment.Center),
-        )
     }
 }
 
 @Preview(
-    name = "Analyzed Image Detail",
+    name = "AnalyzedImageDetailScreen",
     showBackground = true,
+    backgroundColor = 0xFFFFFFFF,
+    widthDp = 412,
+    heightDp = 915,
 )
 @Composable
 private fun AnalyzedImageDetailScreenPreview() {
@@ -288,69 +229,37 @@ private fun AnalyzedImageDetailScreenPreview() {
         AnalyzedImageDetailScreen(
             image = previewAnalyzedImageDetail,
             onBackClick = {},
-            onCategoryClick = {},
+            onImageClick = {},
+            onDocumentClick = {},
             onReanalyzeClick = {},
-            onRelatedMaterialsClick = {},
-            onCopyOcrTextClick = {},
-            onViewImageInfoClick = {},
             onDeleteClick = {},
-            onFavoriteClick = {},
-        )
-    }
-}
-
-@Preview(
-    name = "Analyzed Image Detail Loading",
-    showBackground = true,
-)
-@Composable
-private fun AnalyzedImageDetailLoadingScreenPreview() {
-    ModeraTheme {
-        ImageDetailLoadingScreen()
-    }
-}
-
-@Preview(
-    name = "Image Detail Error",
-    showBackground = true,
-)
-@Composable
-private fun AnalyzedImageDetailErrorScreenPreview() {
-    ModeraTheme {
-        AnalyzedImageDetailErrorScreen(
-            onBackClick = {},
+            onRelatedImagesClick = {},
         )
     }
 }
 
 private val previewAnalyzedImageDetail = AnalyzedImageDetail(
     id = 1L,
-    fileName = "ascii_hackathon_poster.jpg",
+    fileName = "hackathon.png",
     status = ImageAnalysisStatus.COMPLETED,
-    favorite = true,
-    title = "ASCII HACKATHON",
-    summary = "2026년도 제1회 대학 연합 해커톤 ASCII HACKATHON 포스터입니다.",
-    ocr = AnalyzedImageOcr(
-        rawText = """
-            ASCII HACKATHON
-            2026. 1. 30. (금) - 1. 31. (토)
-        """.trimIndent(),
-        refinedText = null,
-        language = "ko",
-        confidence = 0.99,
-    ),
+    favorite = false,
+    title = "2026 대학생 연합 해커톤 모집",
+    summary = """
+        대학생과 취업 준비생을 대상으로 진행되는 연합 해커톤 모집 공고입니다.
+        참가자는 팀을 구성해 서비스 아이디어를 기획하고 구현하며,
+        우수 팀에는 상금과 후속 지원이 제공됩니다.
+    """.trimIndent(),
+    ocr = null,
     tags = listOf(
         "해커톤",
-        "SW",
+        "대학생",
+        "공모전",
     ),
     categories = AnalyzedImageCategory(
-        categoryId = 3L,
-        name = "개발",
+        categoryId = 1L,
+        name = "대회/공모전",
     ),
-    imageUrl = "https://picsum.photos/seed/hackathon/800/1200",
-    createdAt = "2026-07-17T19:23:00",
-    updatedAt = "2026-07-17T19:23:00",
+    imageUrl = "https://picsum.photos/600/800",
+    createdAt = "2026.07.29",
+    updatedAt = "2026.07.29",
 )
-
-private const val ACTION_BAR_SCROLL_THRESHOLD = 120
-private const val ANIMATION_DURATION = 320

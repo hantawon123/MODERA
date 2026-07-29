@@ -1,4 +1,4 @@
-package com.ssafy.modera.feature.imagedetail
+package com.ssafy.modera.feature.analyzedimagedetail
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -15,31 +15,31 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 
 @HiltViewModel(
-    assistedFactory = ImageDetailViewModel.Factory::class,
+    assistedFactory = AnalyzedImageDetailViewModel.Factory::class,
 )
-class ImageDetailViewModel @AssistedInject constructor(
+class AnalyzedImageDetailViewModel @AssistedInject constructor(
     analyzedImageRepository: AnalyzedImageRepository,
     @Assisted val imageId: Long,
 ) : ViewModel() {
 
-    val uiState: StateFlow<ImageDetailUiState> =
+    val uiState: StateFlow<AnalyzedImageDetailUiState> =
         analyzedImageRepository
             .getAnalyzedImageDetail(imageId)
             .asResult()
             .map { result ->
                 when (result) {
                     Result.Loading -> {
-                        ImageDetailUiState.Loading
+                        AnalyzedImageDetailUiState.Loading
                     }
 
                     is Result.Success -> {
-                        ImageDetailUiState.Success(
+                        AnalyzedImageDetailUiState.Success(
                             image = result.data,
                         )
                     }
 
                     is Result.Error -> {
-                        ImageDetailUiState.Error(
+                        AnalyzedImageDetailUiState.Error(
                             exception = result.exception,
                         )
                     }
@@ -48,13 +48,13 @@ class ImageDetailViewModel @AssistedInject constructor(
             .stateIn(
                 scope = viewModelScope,
                 started = SharingStarted.WhileSubscribed(5_000),
-                initialValue = ImageDetailUiState.Loading,
+                initialValue = AnalyzedImageDetailUiState.Loading,
             )
 
     @AssistedFactory
     interface Factory {
         fun create(
             imageId: Long,
-        ): ImageDetailViewModel
+        ): AnalyzedImageDetailViewModel
     }
 }

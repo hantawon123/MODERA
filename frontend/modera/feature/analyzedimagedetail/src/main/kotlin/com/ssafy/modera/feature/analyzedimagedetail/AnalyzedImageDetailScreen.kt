@@ -35,8 +35,8 @@ import com.ssafy.modera.core.model.analyzedimage.AnalyzedImageCategory
 import com.ssafy.modera.core.model.analyzedimage.AnalyzedImageDetail
 import com.ssafy.modera.core.model.analyzedimage.ImageAnalysisStatus
 import com.ssafy.modera.feature.analyzedimagedetail.component.AnalysisSummarySection
+import com.ssafy.modera.feature.analyzedimagedetail.component.AnalyzedImageDetailTopBar
 import com.ssafy.modera.feature.analyzedimagedetail.component.CategoryLabel
-import com.ssafy.modera.feature.analyzedimagedetail.component.DetailAppBar
 import com.ssafy.modera.feature.analyzedimagedetail.component.ErrorScreen
 import com.ssafy.modera.feature.analyzedimagedetail.component.ImageSection
 import com.ssafy.modera.feature.analyzedimagedetail.component.OcrTextSection
@@ -55,7 +55,9 @@ fun AnalyzedImageDetailScreen(
 ) {
     when (uiState) {
         AnalyzedImageDetailUiState.Loading -> {
-            LoadingWheel(modifier = modifier)
+            LoadingWheel(
+                modifier = modifier,
+            )
         }
 
         is AnalyzedImageDetailUiState.Success -> {
@@ -104,27 +106,14 @@ private fun AnalyzedImageDetailScreen(
         Column(
             modifier = Modifier.fillMaxSize(),
         ) {
-            DetailAppBar(
+            AnalyzedImageDetailTopBar(
                 menuExpanded = menuExpanded,
                 onBackClick = onBackClick,
-                onMoreClick = {
-                    menuExpanded = true
-                },
-                onDismissMenu = {
-                    menuExpanded = false
-                },
-                onDocumentClick = {
-                    menuExpanded = false
-                    onDocumentClick()
-                },
-                onReanalyzeClick = {
-                    menuExpanded = false
-                    onReanalyzeClick()
-                },
-                onDeleteClick = {
-                    menuExpanded = false
-                    onDeleteClick()
-                },
+                onMoreClick = { menuExpanded = !menuExpanded },
+                onDismissMenu = { menuExpanded = false },
+                onDocumentClick = onDocumentClick,
+                onReanalyzeClick = onReanalyzeClick,
+                onDeleteClick = onDeleteClick,
             )
 
             Column(
@@ -160,29 +149,29 @@ private fun AnalyzedImageDetailScreen(
 
                 Text(
                     text = image.title,
-                    style = ModeraTheme.typography.titleB22.copy(
-                        color = ModeraTheme.colors.gray900,
-                    ),
+                    style = ModeraTheme.typography.titleB22,
+                    color = ModeraTheme.colors.gray900,
                 )
 
                 Spacer(modifier = Modifier.height(10.dp))
 
                 Text(
                     text = image.createdAt,
-                    style = ModeraTheme.typography.captionR12.copy(
-                        color = ModeraTheme.colors.gray500,
-                    ),
+                    style = ModeraTheme.typography.captionR12,
+                    color = ModeraTheme.colors.gray500,
                 )
 
                 if (image.tags.isNotEmpty()) {
                     Spacer(modifier = Modifier.height(18.dp))
 
-                    // todo: Tags
+                    // TODO: Tags
                 }
 
                 Spacer(modifier = Modifier.height(30.dp))
 
-                AnalysisSummarySection(image.summary)
+                AnalysisSummarySection(
+                    content = image.summary,
+                )
 
                 val ocrText = image.ocr
                     ?.rawText

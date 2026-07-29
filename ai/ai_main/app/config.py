@@ -126,10 +126,12 @@ class Settings:
         # 융합 total 은 이 값의 약 2배(BM25∪kNN)를 상한으로 가진다. 코퍼스가 커지면 늘린다.
         self.search_hybrid_pool_size = int(os.environ.get("SEARCH_HYBRID_POOL_SIZE", "200"))
         # 억지 매칭 차단의 핵심. 재계산 코사인(단위벡터 내적)이 이 값 미만인 후보는 버린다.
-        # 살아남는 후보가 없으면 "결과 없음". A/B 캘리브레이션(12문서, bge-m3): 관련쌍 최상위
-        # 0.52~0.64 vs 무관쌍 최상위 0.44~0.45 로 갈려, 0.50 이면 무관 질의를 결과 없음으로
-        # 막으면서 관련 문서는 보존한다. 실데이터로 F5 에서 재확정(0.48~0.52 구간).
-        self.search_knn_min_cosine = float(os.environ.get("SEARCH_KNN_MIN_COSINE", "0.50"))
+        # 살아남는 후보가 없으면 "결과 없음".
+        # 캘리브레이션(잠정): 두 A/B 코퍼스 관측 — 합성 12문서(관련 0.52~0.64 / 무관 0.44~0.45),
+        # demo 8문서(관련 0.45~0.58 / 무관 ≤0.42). 0.50 은 짧은 자연어 질의를 과하게 컷해
+        # (demo 에서 대부분 빈 결과) 0.45 로 낮췄다(정밀도 우선 상단값).
+        # 실서버 실데이터로 최종 재확정 필요(0.43~0.50 구간 탐색).
+        self.search_knn_min_cosine = float(os.environ.get("SEARCH_KNN_MIN_COSINE", "0.45"))
         # 임베딩이 없는 레거시 문서(빈 OCR·F2 이전)에만 적용하는 어휘 컷. 기본 off(하위호환).
         self.search_bm25_min_score = float(os.environ.get("SEARCH_BM25_MIN_SCORE", "0.0"))
 

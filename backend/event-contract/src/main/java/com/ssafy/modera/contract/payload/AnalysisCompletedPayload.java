@@ -8,10 +8,13 @@ import java.util.List;
 public record AnalysisCompletedPayload(
         int imageId,
         int userId,
+        String title,
         String summary,
         String ocrText,
+        String thumbnailKey,
         String categoryName,
         List<String> tagNames,
+        List<String> keyInformation,
         String structuredFields,
         String analysisStatus,
         String modelVersion

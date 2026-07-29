@@ -1,63 +1,25 @@
 """카테고리 분류.
 
-프로토타입의 전역 CategoryStore 를 대체한다. FastAPI 는 상태를 갖지 않고,
-요청마다 Spring 10-5 로 받은 후보를 기준으로 판정한다.
+FastAPI 는 판정 상태를 갖지 않는다. 요청마다 후보와 그 대표 벡터를 받아 판정한다.
 
-대표 벡터 우선순위
-  1. Spring 이 내려준 representativeVector (카테고리 소속 이미지들의 centroid)
-  2. 없으면 카테고리 이름 임베딩 (콜드 스타트 대체)
+대표 벡터 우선순위 (채우는 쪽은 stages._build_candidates)
+  1. Spring 이 내려준 representativeVector
+  2. 이 서버의 사용자 centroid (search 카테고리 인덱스, 그 카테고리 이미지 요약 평균)
+  3. 전역 시드 (카테고리 이름 임베딩 — 이미지가 0장일 때만)
 
-2번은 이름만 비교하므로 1번보다 약하다. pgvector 에 카테고리 centroid 를
-유지하고 10-5 응답에 실어주면 정확도가 올라간다(백엔드와 협의 필요).
+세 개 다 없는 후보는 코사인이 0.0 이 되어 벡터로는 못 뽑힌다(이름 완전일치로만
+잡힌다). 벡터 확보는 저장소 몫이고 여기서 임베딩을 부르지 않는다 — 판정 함수가
+외부 호출을 하면 Gemini 장애가 곧 분류 실패가 된다.
 """
 
 import logging
 import math
-import threading
 import unicodedata
 from dataclasses import dataclass, field
-from typing import Callable
 
 from .schemas import CategoryCandidate
 
 logger = logging.getLogger(__name__)
-
-# 카테고리 이름 임베딩 캐시.
-#
-# 대표 벡터가 없는 후보는 이름을 임베딩해서 대신 쓰는데, 이름 목록은 사용자당
-# 사실상 고정이다(기본 17종). 캐시가 없으면 이미지 한 장마다 17회를 순차로
-# 호출해 건당 Gemini 호출이 2회에서 19회로 뛴다. 이름→벡터는 모델이 같으면
-# 항상 같은 값이므로 프로세스 수명 동안 재사용해도 안전하다.
-# (임베딩 모델·차원을 바꾸면 컨테이너를 재기동해야 한다 — 설정이 프로세스
-#  기동 시 고정되므로 실제로도 재기동이 강제된다.)
-_name_vector_cache: dict[str, list[float]] = {}
-_cache_lock = threading.Lock()
-
-
-def embed_names_cached(
-    names: list[str], embed_fn: Callable[[list[str]], list[list[float]]]
-) -> dict[str, list[float]]:
-    """이름 목록의 임베딩을 돌려준다. 캐시에 없는 것만 한 번에 임베딩한다."""
-    keys = {name: normalize_name(name) for name in names}
-    with _cache_lock:
-        missing = [n for n in names if keys[n] not in _name_vector_cache]
-
-    if missing:
-        logger.info("카테고리 이름 임베딩 %s건 신규 계산 (캐시 %s건)",
-                    len(missing), len(_name_vector_cache))
-        vectors = embed_fn(missing)
-        with _cache_lock:
-            for name, vector in zip(missing, vectors):
-                _name_vector_cache[keys[name]] = vector
-
-    with _cache_lock:
-        return {n: _name_vector_cache[keys[n]] for n in names if keys[n] in _name_vector_cache}
-
-
-def clear_name_vector_cache() -> None:
-    """테스트·운영 점검용. 캐시를 비운다."""
-    with _cache_lock:
-        _name_vector_cache.clear()
 
 
 def cosine_similarity(a: list[float], b: list[float]) -> float:
@@ -87,7 +49,6 @@ def resolve_category(
     proposed_name: str,
     candidates: list[CategoryCandidate],
     threshold: float,
-    embed_fn: Callable[[list[str]], list[list[float]]],
 ) -> CategoryResolution:
     """AGENT 가 제안한 카테고리를 기존 후보와 연결하거나 신규로 판정한다."""
     proposed = (proposed_name or "기타").strip()
@@ -113,13 +74,12 @@ def resolve_category(
         )
 
     # 2) 대표 벡터와 요약 임베딩의 코사인 유사도로 판정
-    missing = [c for c in candidates if not c.representative_vector]
+    #    벡터 없는 후보는 0.0 이 되어 사실상 탈락한다. 조용히 넘기면 "왜 매번
+    #    새 카테고리가 생기는가" 를 추적할 수 없으므로 이름을 남긴다.
+    missing = [c.name for c in candidates if not c.representative_vector]
     if missing:
-        name_vectors = embed_names_cached([c.name for c in missing], embed_fn)
-        for candidate in missing:
-            vector = name_vectors.get(candidate.name)
-            if vector:
-                candidate.representative_vector = vector
+        logger.warning("대표 벡터 없는 카테고리 후보 %s건 — 벡터 판정에서 제외: %s",
+                       len(missing), missing[:10])
 
     scored = [
         (cosine_similarity(summary_embedding, c.representative_vector or []), c)

@@ -4,8 +4,10 @@
 에러는 {"error": CODE, "message": ..., "detail": {}} 형식으로 반환한다.
 """
 
+import asyncio
 import logging
 import os
+from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from typing import Annotated, Any
 
@@ -60,7 +62,7 @@ from .schemas import (
     DuplicatedUpload,
     FailedUpload,
 )
-from .stages import execute_stage, run_app_analysis
+from .stages import execute_stage, run_app_analysis, seed_default_category_vectors
 
 logging.basicConfig(
     level=logging.INFO,
@@ -73,7 +75,21 @@ logger = logging.getLogger(__name__)
 # get_settings() 는 자격증명이 없으면 예외를 던지므로 여기서는 환경변수를 직접 읽는다.
 _docs_enabled = os.environ.get("ENABLE_DOCS", "true").lower() == "true"
 
+
+@asynccontextmanager
+async def _lifespan(app: FastAPI):
+    """기동 시 기본 카테고리 이름 벡터를 전역 시드로 심는다(멱등, best-effort).
+
+    OpenSearch·Gemini 가 아직 안 떴어도 기동을 막지 않는다 — 시드 함수가 예외를
+    삼키고, 다음 기동에서 다시 시도한다. 요청 처리 중이 아니라 기동 시점에 하는
+    이유는, 판정 경로(resolve_category)에서 외부 호출을 없애기 위해서다.
+    """
+    await asyncio.to_thread(seed_default_category_vectors)
+    yield
+
+
 app = FastAPI(
+    lifespan=_lifespan,
     title="Screenshot Knowledge AI",
     description=(
         "스크린샷 지식 DB의 AI 서비스.\n\n"

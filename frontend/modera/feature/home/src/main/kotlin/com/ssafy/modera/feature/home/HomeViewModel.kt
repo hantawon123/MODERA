@@ -11,75 +11,184 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
     categoryRepository: CategoryRepository,
 ) : ViewModel() {
-
-    private val selectedSortType =
-        MutableStateFlow(CategorySortType.NAME_ASC)
-
-    /**
-     * 값이 증가할 때마다 카테고리 목록을 다시 요청한다.
-     */
-    private val refreshKey = MutableStateFlow(0)
+    private val searchState = MutableStateFlow(SearchState())
 
     val uiState: StateFlow<HomeUiState> =
         combine(
-            selectedSortType,
-            refreshKey,
-        ) { sortType, _ ->
-            sortType
-        }
-            .flatMapLatest { sortType ->
-                categoryRepository
-                    .getCategories(sortType)
-                    .asResult()
-                    .map { result ->
-                        when (result) {
-                            is Result.Success -> {
-                                HomeUiState.Success(
-                                    categories = result.data,
-                                    selectedSortType = sortType,
-                                )
-                            }
+            categoryRepository
+                .getCategories(CategorySortType.NAME_ASC)
+                .asResult(),
+            searchState,
+        ) { result, search ->
+            when (result) {
+                is Result.Success -> {
+                    HomeUiState.Success(
+                        categories = result.data,
+                        searchQuery = search.searchQuery,
+                        isSearchActive = search.isSearchActive,
+                        recentSearchTerms = search.recentSearchTerms,
+                        searchResults = search.searchResults,
+                        isShowingSearchResults = search.isShowingSearchResults,
+                        isSearchLoading = search.isSearchLoading,
+                    )
+                }
 
-                            is Result.Error -> {
-                                HomeUiState.Error(
-                                    exception = result.exception,
-                                    selectedSortType = sortType,
-                                )
-                            }
+                is Result.Error -> {
+                    HomeUiState.Error(
+                        exception = result.exception,
+                    )
+                }
 
-                            Result.Loading -> {
-                                HomeUiState.Loading(
-                                    selectedSortType = sortType,
-                                )
-                            }
-                        }
-                    }
+                Result.Loading -> {
+                    HomeUiState.Loading
+                }
             }
+        }
             .stateIn(
                 scope = viewModelScope,
                 started = SharingStarted.WhileSubscribed(5_000),
-                initialValue = HomeUiState.Loading(
-                    selectedSortType = CategorySortType.NAME_ASC,
-                ),
+                initialValue = HomeUiState.Loading,
             )
 
-    fun updateSortType(sortType: CategorySortType) {
-        selectedSortType.value = sortType
+    fun onSearchQueryChanged(query: String) {
+        searchState.update { state ->
+            if (state.isShowingSearchResults) {
+                state.copy(
+                    searchQuery = query,
+                    isSearchActive = true,
+                    isShowingSearchResults = false,
+                    searchResults = emptyList(),
+                    isSearchLoading = false,
+                )
+            } else {
+                state.copy(
+                    searchQuery = query,
+                    isSearchActive = true,
+                )
+            }
+        }
     }
 
-    fun refreshCategories() {
-        refreshKey.update { current ->
-            current + 1
+    fun onSearchBarFocusChanged(isFocused: Boolean) {
+        if (isFocused) {
+            searchState.update { state -> state.copy(isSearchActive = true) }
+            return
+        }
+
+        searchState.update { state ->
+            if (state.searchQuery.isBlank()) {
+                state.copy(
+                    isSearchActive = false,
+                    isShowingSearchResults = false,
+                    searchResults = emptyList(),
+                    isSearchLoading = false,
+                )
+            } else {
+                state
+            }
+        }
+    }
+
+    fun submitSearch() {
+        val trimmedQuery = searchState.value.searchQuery.trim()
+        if (trimmedQuery.isEmpty()) return
+
+        searchState.update { state ->
+            state.copy(
+                searchQuery = trimmedQuery,
+                isSearchActive = true,
+                recentSearchTerms = addRecentSearchTerm(
+                    terms = state.recentSearchTerms,
+                    term = trimmedQuery,
+                ),
+                isShowingSearchResults = true,
+                isSearchLoading = true,
+                searchResults = emptyList(),
+            )
+        }
+
+        viewModelScope.launch {
+            val results = fetchSearchResults(trimmedQuery)
+            searchState.update { state ->
+                if (!state.isShowingSearchResults || state.searchQuery != trimmedQuery) {
+                    return@update state
+                }
+                state.copy(
+                    searchResults = results,
+                    isSearchLoading = false,
+                )
+            }
+        }
+    }
+
+    fun selectRecentSearch(term: String) {
+        searchState.update { state ->
+            state.copy(
+                searchQuery = term,
+                isSearchActive = true,
+            )
+        }
+        submitSearch()
+    }
+
+    fun removeRecentSearchTerm(term: String) {
+        searchState.update { state ->
+            state.copy(
+                recentSearchTerms = state.recentSearchTerms.filterNot { it == term },
+            )
+        }
+    }
+
+    fun deactivateSearch() {
+        searchState.update { state ->
+            state.copy(
+                searchQuery = "",
+                isSearchActive = false,
+                isShowingSearchResults = false,
+                searchResults = emptyList(),
+                isSearchLoading = false,
+            )
+        }
+    }
+
+    private suspend fun fetchSearchResults(
+        query: String,
+    ): List<SearchMaterialResult> {
+        // TODO: 검색 API 연동
+        return HomeSearchDummyData.searchResults
+    }
+
+    private fun addRecentSearchTerm(
+        terms: List<String>,
+        term: String,
+    ): List<String> {
+        return buildList {
+            add(term)
+            addAll(terms.filterNot { it == term })
+        }.take(HomeSearchDefaults.MaxRecentSearchTermCount)
+    }
+
+    private data class SearchState(
+        val searchQuery: String = "",
+        val isSearchActive: Boolean = false,
+        val recentSearchTerms: List<String> = HomeSearchDummyData.recentSearchTerms,
+        val searchResults: List<SearchMaterialResult> = emptyList(),
+        val isShowingSearchResults: Boolean = false,
+        val isSearchLoading: Boolean = false,
+    )
+
+    private companion object {
+        private object HomeSearchDefaults {
+            const val MaxRecentSearchTermCount = 10
         }
     }
 }

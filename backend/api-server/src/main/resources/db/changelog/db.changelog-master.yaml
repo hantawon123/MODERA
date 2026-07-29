@@ -49,3 +49,21 @@ databaseChangeLog:
       file: db/changelog/024-add-soft-delete-to-independent-tables.sql
   - include:
       file: db/changelog/025-create-image-registration-request.sql
+  - include:
+      file: db/changelog/026-create-document-generation-request.sql
+  - include:
+      file: db/changelog/027-unify-user-notification-setting.sql
+  - include:
+      file: db/changelog/028-replace-tag-names-with-tag-objects.sql
+  - include:
+      file: db/changelog/029-remove-network-condition.sql
+  - include:
+      file: db/changelog/030-add-user-image-keyword-search-indexes.sql
+  - include:
+      file: db/changelog/031-remove-image-created-at.sql
+  - include:
+      file: db/changelog/032-remove-redundant-created-at.sql
+  - include:
+      file: db/changelog/033-add-soft-delete-to-request-history.sql
+  - include:
+      file: db/changelog/034-replace-document-image-added-at.sql

@@ -19,7 +19,6 @@ import androidx.compose.ui.unit.dp
 import com.ssafy.modera.core.component.item.ModeraMaterialItem
 import com.ssafy.modera.core.designsystem.component.Text
 import com.ssafy.modera.core.designsystem.theme.ModeraTheme
-import com.ssafy.modera.core.ui.LoadingScreen
 import com.ssafy.modera.feature.home.R
 import com.ssafy.modera.feature.home.SearchMaterialResult
 
@@ -32,7 +31,7 @@ internal fun SearchResultSection(
 ) {
     when {
         isLoading -> {
-            LoadingScreen(
+            SearchAnalyzingScreen(
                 modifier = modifier.fillMaxSize(),
             )
         }
@@ -89,7 +88,7 @@ internal fun SearchResultSection(
     }
 }
 
-@Preview(showBackground = true, widthDp = 360, heightDp = 480)
+@Preview(showBackground = true, widthDp = 360, heightDp = 480, name = "Search Results")
 @Composable
 private fun SearchResultSectionPreview() {
     ModeraTheme {
@@ -111,6 +110,18 @@ private fun SearchResultSectionPreview() {
                 ),
             ),
             isLoading = false,
+            onSearchResultClick = {},
+        )
+    }
+}
+
+@Preview(showBackground = true, widthDp = 360, heightDp = 480, name = "Search Analyzing")
+@Composable
+private fun SearchResultSectionLoadingPreview() {
+    ModeraTheme {
+        SearchResultSection(
+            searchResults = emptyList(),
+            isLoading = true,
             onSearchResultClick = {},
         )
     }

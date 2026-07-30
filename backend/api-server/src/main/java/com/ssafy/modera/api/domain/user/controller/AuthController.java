@@ -45,7 +45,11 @@ public class AuthController {
     })
     @PostMapping("/register")
     public ResponseEntity<ApiResponse<RegisterResponse>> register(@RequestBody @Valid RegisterRequest request) {
-        return ResponseEntity.ok(ApiResponse.success(authService.register(request)));
+        return ResponseEntity.ok(ApiResponse.success(
+                "A201",
+                "회원가입이 완료되었습니다.",
+                authService.register(request)
+        ));
     }
 
     @Operation(
@@ -60,7 +64,7 @@ public class AuthController {
     })
     @PostMapping("/login")
     public ResponseEntity<ApiResponse<TokenResponse>> login(@RequestBody @Valid LoginRequest request) {
-        return ResponseEntity.ok(ApiResponse.success(authService.login(request)));
+        return ResponseEntity.ok(ApiResponse.success("A202", authService.login(request)));
     }
 
     @Operation(summary = "카카오 로그인", description = "카카오 인가 코드를 검증하고 로컬 로그인과 동일한 서비스 토큰을 발급합니다.")
@@ -68,7 +72,7 @@ public class AuthController {
     public ResponseEntity<ApiResponse<TokenResponse>> kakaoLogin(
             @RequestBody @Valid KakaoLoginRequest request
     ) {
-        return ResponseEntity.ok(ApiResponse.success(authService.kakaoLogin(request)));
+        return ResponseEntity.ok(ApiResponse.success("A203", authService.kakaoLogin(request)));
     }
 
     @Operation(
@@ -84,7 +88,7 @@ public class AuthController {
     })
     @PostMapping("/refresh")
     public ResponseEntity<ApiResponse<TokenResponse>> refresh(@RequestBody @Valid RefreshRequest request) {
-        return ResponseEntity.ok(ApiResponse.success(authService.refresh(request)));
+        return ResponseEntity.ok(ApiResponse.success("A204", authService.refresh(request)));
     }
 
     @Operation(
@@ -103,6 +107,6 @@ public class AuthController {
             @AuthenticationPrincipal Integer userId,
             @RequestBody @Valid LogoutRequest request
     ) {
-        return ResponseEntity.ok(ApiResponse.success(authService.logout(userId, request)));
+        return ResponseEntity.ok(ApiResponse.success("A205", authService.logout(userId, request)));
     }
 }

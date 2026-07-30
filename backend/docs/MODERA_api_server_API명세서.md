@@ -15,8 +15,8 @@ Base URL: `https://{host}/api/v1`
 - DTL-002: OCR 텍스트는 수정 불가로 반영(제목·요약·태그·카테고리·구조화 필드만 수정 가능). ※ 헤딩에 취소선이 있어 기능 자체 제외인지 팀 확정 필요
 - SCH-004 검색 대상에서 지식 엔티티·지식 관계 제거
 - 인증은 로컬 ID/PW와 카카오 로그인을 지원한다. 카카오는 최초 로그인 시 자동 가입하며, 동의받은 이메일을 [users.email](http://users.email)에 저장·동기화한다.
-- Swagger 구현 기준(2026-07-28): 현재 `/v3/api-docs`에 노출된 외부 API는 인증 5개와 `POST /api/v1/images`, `GET /api/v1/images/{imageId}` 총 7개다. 해당 7개는 Swagger 경로와 DTO 기준이며, 나머지는 Spring 미완성 설계 초안이다.
-- `A201`, `I201` 같은 도메인 성공 코드는 프론트 디버깅용 명세 값이다. 현재 Spring Swagger 응답 스키마의 성공 code는 `SUCCESS`이므로 서버 반영 전까지 차이가 있다.
+- Swagger 구현 기준(2026-07-30): 현재 `/v3/api-docs`에 노출된 외부 API는 인증 5개와 이미지 등록, 업로드 URL 재발급, 목록, 단건 조회 총 9개다. 해당 API는 Swagger 경로와 DTO 기준이며, 나머지는 Spring 미완성 설계 초안이다.
+- `A201`, `I201` 같은 도메인 성공 코드는 프론트 디버깅과 API별 응답 식별을 위해 Spring 응답에 그대로 사용한다.
 
 ---
 
@@ -93,7 +93,7 @@ Base URL: `https://{host}/api/v1`
 | 시간 | ISO-8601 UTC (`2026-07-16T06:00:00.000Z`) |
 | 페이지네이션 파라미터 | `page`(0-base), `size`(기본 20, 최대 100), `sort`(예: `updatedAt,desc`) |
 | ID | 서버 발급 숫자 ID |
-| 코드 | `result`는 성공 시 `SUCCESS` 고정. 성공 `code`는 도메인별 디버깅 코드(A/I/AN/T/S/U + 3자리), 실패 `code`는 1.3 및 각 API의 에러 코드. 현재 Spring Swagger 구현은 성공 `code=SUCCESS`이므로 추후 서버 반영 필요 |
+| 코드 | `result`는 성공 시 `SUCCESS` 고정. 성공 `code`는 도메인별 디버깅 코드(A/I/AN/T/S/U + 3자리), 실패 `code`는 1.3 및 각 API의 에러 코드. |
 | Request | 요청 envelope는 사용하지 않는다. JSON body에는 DTO 필드만 전달하며 Path Parameter와 Query Parameter는 body와 분리한다. 요청 본문이 없으면 `Request Body: 없음`으로 표기한다. |
 | Response | 외부 API 성공·실패 응답은 항상 1.1 envelope를 사용한다. 각 API의 `Response data` 예시도 확인 편의를 위해 전체 envelope로 표기한다. 단, `/internal/**`, actuator, Swagger 및 S3 직접 업로드 응답은 제외한다. |
 
@@ -480,8 +480,8 @@ Refresh Token은 회전 발급되며 기존 토큰은 즉시 무효화한다.
 
 - API 서버는 `contentHash`로 기존 `image_asset`을 조회하고 실제 MinIO/S3 객체 존재 여부도 확인한다.
 - 신규 해시이면 이미지 메타데이터, 사용자-이미지 관계와 OCR 원문을 저장하고 `registered`에 Presigned URL을 반환한다.
-- 기존 해시이고 스토리지 객체가 존재하면 바이너리를 다시 업로드하지 않는다. 요청 사용자의 `library_schema.user_image` 관계가 없으면 생성하고, `del_yn='Y'`이면 `N`으로 복구한다. 해당 사용자의 `query_schema.user_image_view` 행이 없으면 기존 이미지의 분석 결과를 복사해 새 조회 행을 생성하고, 조회 행이 soft delete 상태이면 `del_yn='N'`으로 복구한 뒤 `duplicated`에 기존 `imageId`를 반환한다.
-- 기존 해시이지만 스토리지 객체가 없으면 기존 `imageId`와 `s3Key`를 재사용하고 사용자 관계를 생성·복구한 뒤 `registered`에 새 Presigned URL을 반환하여 업로드부터 다시 진행한다.
+- 기존 해시이고 스토리지 객체가 존재하면 바이너리를 다시 업로드하지 않는다. `del_yn='Y'`인 데이터는 존재하지 않는 것으로 간주하며 복구하지 않는다. 요청 사용자의 활성 `library_schema.user_image` 관계가 없으면 새 관계를 생성하고, 기존 이미지의 활성 분석 결과를 복사해 새 조회 행을 생성한 뒤 `duplicated`에 기존 `imageId`를 반환한다.
+- 기존 해시이지만 스토리지 객체가 없으면 기존 `imageId`와 `s3Key`를 재사용하고 새 활성 사용자 관계를 생성한 뒤 `registered`에 새 Presigned URL을 반환하여 업로드부터 다시 진행한다.
 - 같은 사용자의 활성 관계가 이미 있으면 새 이미지 객체나 관계를 만들지 않고 `duplicated`에 기존 `imageId`를 반환한다.
 - `clientRequestId`는 클라이언트가 이미지별로 생성하며, `registered`, `duplicated`, `failed` 모든 결과에 그대로 반환한다.
 - 같은 사용자가 동일한 `clientRequestId`로 재요청하면 새 이미지를 만들지 않고 기존 등록 결과를 반환하도록 멱등 처리한다.

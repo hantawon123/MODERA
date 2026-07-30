@@ -48,7 +48,4 @@ public class UserImage {
         this.delYn = "Y";
     }
 
-    public void restore() {
-        this.delYn = "N";
-    }
 }

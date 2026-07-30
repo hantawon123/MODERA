@@ -95,7 +95,10 @@ object ModeraIcons {
     val Settings = R.drawable.ic_settings_24
 
     @DrawableRes
-    val Star = R.drawable.ic_star_24
+    val StarFilled = R.drawable.ic_star_filled_24
+
+    @DrawableRes
+    val StarOutlined = R.drawable.ic_star_outlined_24
 
     @DrawableRes
     val Trash = R.drawable.ic_trash_20

@@ -88,7 +88,7 @@ public class ImageController {
     @PostMapping("/{imageId}/upload-url")
     public ResponseEntity<ApiResponse<ImageUploadUrlResponse>> reissueUploadUrl(
             @AuthenticationPrincipal Integer userId,
-            @PathVariable Integer imageId
+            @PathVariable(name = "imageId") Integer imageId
     ) {
         return ResponseEntity.ok(ApiResponse.success(
                 "I204",
@@ -100,12 +100,12 @@ public class ImageController {
     @GetMapping
     public ResponseEntity<ApiResponse<PageResponse<ImageSummaryResponse>>> getImages(
             @AuthenticationPrincipal Integer userId,
-            @RequestParam(required = false) Boolean favorite,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size,
-            @RequestParam(defaultValue = "UPLOADED_DESC") String sort,
-            @RequestParam(required = false) String keyword,
-            @RequestParam(required = false) Integer categoryId
+            @RequestParam(name = "favorite", required = false) Boolean favorite,
+            @RequestParam(name = "page", defaultValue = "0") int page,
+            @RequestParam(name = "size", defaultValue = "20") int size,
+            @RequestParam(name = "sort", defaultValue = "UPLOADED_DESC") String sort,
+            @RequestParam(name = "keyword", required = false) String keyword,
+            @RequestParam(name = "categoryId", required = false) Integer categoryId
     ) {
         PageResponse<ImageSummaryResponse> response = imageQueryService.getImages(
                 userId, favorite, page, size, sort, keyword, categoryId);
@@ -126,7 +126,7 @@ public class ImageController {
     @GetMapping("/{imageId}")
     public ResponseEntity<ApiResponse<ImageDetailResponse>> getImage(
             @AuthenticationPrincipal Integer userId,
-            @Parameter(description = "조회할 이미지 ID") @PathVariable Integer imageId
+            @Parameter(description = "조회할 이미지 ID") @PathVariable(name = "imageId") Integer imageId
     ) {
         ImageDetailResponse response = imageQueryService.getImage(userId, imageId);
         return ResponseEntity.ok(ApiResponse.success("I206", response));
@@ -165,7 +165,7 @@ public class ImageController {
     @PutMapping("/{imageId}/favorite")
     public ResponseEntity<ApiResponse<ImageFavoriteResponse>> updateFavorite(
             @AuthenticationPrincipal Integer userId,
-            @Parameter(description = "즐겨찾기를 변경할 이미지 ID") @PathVariable Integer imageId,
+            @Parameter(description = "즐겨찾기를 변경할 이미지 ID") @PathVariable(name = "imageId") Integer imageId,
             @RequestBody @Valid ImageFavoriteRequest request
     ) {
         return ResponseEntity.ok(ApiResponse.success(
@@ -220,8 +220,8 @@ public class ImageController {
     @GetMapping("/{imageId}/similar")
     public ResponseEntity<ApiResponse<SimilarImagesResponse>> getSimilarImages(
             @AuthenticationPrincipal Integer userId,
-            @Parameter(description = "기준 이미지 ID") @PathVariable Integer imageId,
-            @Parameter(description = "최대 개수(1~50)") @RequestParam(defaultValue = "10") int limit
+            @Parameter(description = "기준 이미지 ID") @PathVariable(name = "imageId") Integer imageId,
+            @Parameter(description = "최대 개수(1~50)") @RequestParam(name = "limit", defaultValue = "10") int limit
     ) {
         SimilarImagesResponse response = imageSimilarService.getSimilarImages(userId, imageId, limit);
         return ResponseEntity.ok(ApiResponse.success("I210", response));

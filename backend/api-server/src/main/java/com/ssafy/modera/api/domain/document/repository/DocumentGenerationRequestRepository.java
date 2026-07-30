@@ -32,4 +32,13 @@ public interface DocumentGenerationRequestRepository extends JpaRepository<Docum
      */
     Optional<DocumentGenerationRequest> findByUserIdAndClientRequestIdAndDelYn(
             Integer userId, UUID clientRequestId, String delYn);
+
+    /**
+     * 재분석 진행 중 판정용. 접수 시에는 409로 끊고, 상세 조회(8-3)에서는 로딩 표시로 쓴다.
+     *
+     * <p>동시 요청은 이 조회만으로 못 막는다 — 최종 방어선은 036의 부분 유니크 인덱스
+     * (uq_document_generation_request_inflight)다.
+     */
+    boolean existsByUserIdAndSourceDocumentIdAndStatusAndDelYn(
+            Integer userId, Integer sourceDocumentId, String status, String delYn);
 }

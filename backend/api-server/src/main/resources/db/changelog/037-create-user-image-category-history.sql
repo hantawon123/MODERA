@@ -1,6 +1,6 @@
 --liquibase formatted sql
 
---changeset modera-api:036-user-image-category-history
+--changeset modera-api:037-user-image-category-history
 --comment Store the current per-user category, one pending request, and the latest five category results.
 ALTER TABLE library_schema.user_image
     ADD COLUMN current_category_id INTEGER,

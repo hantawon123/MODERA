@@ -83,7 +83,15 @@ public class DocumentAiClient {
             String language        // null 허용
     ) {}
 
-    /** AI 스키마 필드명은 tags/category다(payload의 tagNames/categoryName과 다름 주의). */
+    /**
+     * AI 스키마 필드명은 tags/category다(payload의 tagNames/categoryName과 다름 주의).
+     *
+     * <p><b>어떤 필드도 null로 보내면 안 된다</b>: AI의 DocumentImage는 title·summary·
+     * tags·keyInformation·ocr을 "Optional이 아니고 기본값만 있는" 필드로 선언한다
+     * (schemas.py). 필드를 생략하면 기본값이 들어가지만 명시적 null은 pydantic 검증
+     * 실패(422)라, worker가 4xx를 DOCUMENT_AI_REJECTED로 끊게 된다. category·createdAt은
+     * AI 쪽이 `str | None`이라 null이어도 된다.
+     */
     public record SourceImage(
             Integer imageId,
             String title,
@@ -91,16 +99,20 @@ public class DocumentAiClient {
             List<String> tags,
             String category,
             List<String> keyInformation,
-            Ocr ocr,               // analysis_result가 없는 이미지는 null — AI가 skipped 처리
+            Ocr ocr,               // null 금지 — 텍스트가 없으면 rawText=""인 빈 Ocr을 보낸다
             String createdAt
     ) {}
 
     /**
-     * AI의 OcrInput은 rawText/refinedText를 구분하고 refinedText가 있으면 그쪽을
-     * 우선 쓴다. 우리가 보내는 값은 analysis_result.ocr_refined_text라 refinedText에
-     * 싣는 게 맞다(rawText에 실어도 동작은 하지만 의미가 어긋난다).
+     * AI의 OcrInput은 rawText/refinedText를 구분하고 refinedText가 있으면 그쪽을 우선
+     * 쓴다. 우리가 가진 값은 대부분 앱의 온디바이스 OCR 원문(analysis_result.ocr_raw_text)
+     * 이라 rawText에 싣는다 — refinedText에 실어도 동작은 하지만 정제본이 아니라 의미가
+     * 어긋난다.
+     *
+     * <p>rawText는 AI 쪽이 `str = ""`이라 null을 보내면 422다. 값이 없으면 빈 문자열을
+     * 넣는다. refinedText는 `str | None`이라 null이어도 된다.
      */
-    public record Ocr(String refinedText) {}
+    public record Ocr(String rawText, String refinedText) {}
 
     /**
      * 응답에는 skipped(분석 이력이 없어 건너뛴 이미지)도 오지만 worker는 쓰지 않는다.

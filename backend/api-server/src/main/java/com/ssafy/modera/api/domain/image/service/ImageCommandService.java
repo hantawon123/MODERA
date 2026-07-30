@@ -2,6 +2,8 @@ package com.ssafy.modera.api.domain.image.service;
 
 import com.ssafy.modera.api.domain.image.dto.request.ImageRegisterItemRequest;
 import com.ssafy.modera.api.domain.image.dto.request.ImageRegisterRequest;
+import com.ssafy.modera.api.domain.image.dto.request.ImageDeleteRequest;
+import com.ssafy.modera.api.domain.image.dto.response.ImageDeleteResponse;
 import com.ssafy.modera.api.domain.image.dto.response.ImageRegisterResponse;
 import com.ssafy.modera.api.domain.image.dto.response.ImageUploadUrlResponse;
 import com.ssafy.modera.api.domain.image.entity.ImageAsset;
@@ -9,6 +11,8 @@ import com.ssafy.modera.api.domain.image.entity.ImageRegistrationRequest;
 import com.ssafy.modera.api.domain.image.entity.Ocr;
 import com.ssafy.modera.api.domain.image.exception.ImageErrorCode;
 import com.ssafy.modera.api.domain.image.repository.ImageAssetRepository;
+import com.ssafy.modera.api.domain.image.repository.ImageCommandRepository;
+import com.ssafy.modera.api.domain.image.repository.ImageDeleteStatus;
 import com.ssafy.modera.api.domain.image.repository.ImageQueryRepository;
 import com.ssafy.modera.api.domain.image.repository.ImageRegistrationRequestRepository;
 import com.ssafy.modera.api.domain.image.repository.OcrRepository;
@@ -36,6 +40,7 @@ import software.amazon.awssdk.services.s3.presigner.model.PutObjectPresignReques
 import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
@@ -50,6 +55,7 @@ public class ImageCommandService {
             Set.of("jpg", "jpeg", "png", "webp", "heic", "heif");
 
     private final ImageAssetRepository imageAssetRepository;
+    private final ImageCommandRepository imageCommandRepository;
     private final OcrRepository ocrRepository;
     private final ImageRegistrationRequestRepository registrationRequestRepository;
     private final UserImageRepository userImageRepository;
@@ -119,6 +125,37 @@ public class ImageCommandService {
                 imageId,
                 createPresignedUrl(imageAsset),
                 PUT_URL_TTL.toSeconds()
+        );
+    }
+
+    public ImageDeleteResponse deleteImages(Integer userId, ImageDeleteRequest request) {
+        List<Integer> deletedImageIds = new ArrayList<>();
+        List<Integer> alreadyDeletedImageIds = new ArrayList<>();
+        List<ImageDeleteResponse.Failed> failed = new ArrayList<>();
+
+        for (Integer imageId : new LinkedHashSet<>(request.imageIds())) {
+            try {
+                ImageDeleteStatus status = imageCommandRepository.deleteImage(userId, imageId);
+                switch (status) {
+                    case DELETED -> deletedImageIds.add(imageId);
+                    case ALREADY_DELETED -> alreadyDeletedImageIds.add(imageId);
+                    case NOT_FOUND -> failed.add(new ImageDeleteResponse.Failed(
+                            imageId,
+                            ImageErrorCode.IMAGE_NOT_FOUND.getCode()
+                    ));
+                }
+            } catch (RuntimeException exception) {
+                log.error("이미지 삭제 실패: userId={}, imageId={}", userId, imageId, exception);
+                failed.add(new ImageDeleteResponse.Failed(imageId, "INTERNAL_ERROR"));
+            }
+        }
+
+        return new ImageDeleteResponse(
+                List.copyOf(deletedImageIds),
+                List.copyOf(alreadyDeletedImageIds),
+                List.copyOf(failed),
+                deletedImageIds.size(),
+                failed.size()
         );
     }
 

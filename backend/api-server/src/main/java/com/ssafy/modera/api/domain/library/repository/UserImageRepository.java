@@ -7,7 +7,7 @@ import java.util.Optional;
 
 public interface UserImageRepository extends JpaRepository<UserImage, Integer> {
 
-    Optional<UserImage> findByUserIdAndImageId(Integer userId, Integer imageId);
+    Optional<UserImage> findByUserIdAndImageIdAndDelYn(Integer userId, Integer imageId, String delYn);
 
-    Optional<UserImage> findFirstByImageIdOrderByUserImageIdAsc(Integer imageId);
+    Optional<UserImage> findFirstByImageIdAndDelYnOrderByUserImageIdAsc(Integer imageId, String delYn);
 }

@@ -1,14 +1,17 @@
 package com.ssafy.modera.api.domain.image.controller;
 
-import com.ssafy.modera.api.domain.image.dto.ImageDetailResponse;
-import com.ssafy.modera.api.domain.image.dto.ImageRegisterRequest;
-import com.ssafy.modera.api.domain.image.dto.ImageRegisterResponse;
-import com.ssafy.modera.api.domain.image.dto.SimilarImagesResponse;
+import com.ssafy.modera.api.domain.image.dto.request.ImageRegisterRequest;
+import com.ssafy.modera.api.domain.image.dto.response.ImageDetailResponse;
+import com.ssafy.modera.api.domain.image.dto.response.ImageRegisterResponse;
+import com.ssafy.modera.api.domain.image.dto.response.ImageSummaryResponse;
+import com.ssafy.modera.api.domain.image.dto.response.ImageUploadUrlResponse;
 import com.ssafy.modera.api.domain.image.service.ImageQueryService;
-import com.ssafy.modera.api.domain.image.service.ImageRegistrationService;
+import com.ssafy.modera.api.domain.image.service.ImageCommandService;
+import com.ssafy.modera.api.domain.image.dto.response.SimilarImagesResponse;
 import com.ssafy.modera.api.domain.image.service.ImageSimilarService;
 import com.ssafy.modera.api.global.response.ApiResponse;
 import com.ssafy.modera.api.global.response.ApiV1Controller;
+import com.ssafy.modera.api.global.response.PageResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -27,7 +30,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 
-@Tag(name = "이미지", description = "이미지 등록(presigned URL 발급) · 단건 조회. 목록/검색 API는 아직 없음")
+@Tag(name = "이미지", description = "이미지 등록·업로드 URL 재발급·목록·단건 조회")
 @ApiV1Controller
 @RestController
 @RequestMapping("/api/v1/images")
@@ -35,7 +38,7 @@ import org.springframework.web.bind.annotation.RestController;
 @SecurityRequirement(name = "Bearer Authentication")
 public class ImageController {
 
-    private final ImageRegistrationService imageRegistrationService;
+    private final ImageCommandService imageCommandService;
     private final ImageQueryService imageQueryService;
     private final ImageSimilarService imageSimilarService;
 
@@ -63,8 +66,41 @@ public class ImageController {
             @AuthenticationPrincipal Integer userId,
             @RequestBody @Valid ImageRegisterRequest request
     ) {
-        ImageRegisterResponse response = imageRegistrationService.register(userId, request);
-        return ResponseEntity.ok(ApiResponse.success(response));
+        ImageRegisterResponse response = imageCommandService.register(userId, request);
+        return ResponseEntity.ok(ApiResponse.success("I201", response));
+    }
+
+    @Operation(summary = "이미지 업로드 URL 재발급", description = "업로드 전 만료된 Presigned PUT URL을 재발급한다.")
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "재발급 성공"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "활성 이미지 관계 없음(IMAGE_NOT_FOUND)"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409", description = "업로드 완료 또는 분석 시작")
+    })
+    @PostMapping("/{imageId}/upload-url")
+    public ResponseEntity<ApiResponse<ImageUploadUrlResponse>> reissueUploadUrl(
+            @AuthenticationPrincipal Integer userId,
+            @PathVariable Integer imageId
+    ) {
+        return ResponseEntity.ok(ApiResponse.success(
+                "I204",
+                imageCommandService.reissueUploadUrl(userId, imageId)
+        ));
+    }
+
+    @Operation(summary = "이미지 목록 조회", description = "활성 이미지 목록을 필터링·정렬하여 페이지로 조회한다.")
+    @GetMapping
+    public ResponseEntity<ApiResponse<PageResponse<ImageSummaryResponse>>> getImages(
+            @AuthenticationPrincipal Integer userId,
+            @RequestParam(required = false) Boolean favorite,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "UPLOADED_DESC") String sort,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) Integer categoryId
+    ) {
+        PageResponse<ImageSummaryResponse> response = imageQueryService.getImages(
+                userId, favorite, page, size, sort, keyword, categoryId);
+        return ResponseEntity.ok(ApiResponse.success("I205", response));
     }
 
     @Operation(
@@ -83,7 +119,7 @@ public class ImageController {
             @Parameter(description = "조회할 이미지 ID") @PathVariable Integer imageId
     ) {
         ImageDetailResponse response = imageQueryService.getImage(userId, imageId);
-        return ResponseEntity.ok(ApiResponse.success(response));
+        return ResponseEntity.ok(ApiResponse.success("I206", response));
     }
 
     @Operation(
@@ -114,6 +150,6 @@ public class ImageController {
             @Parameter(description = "최대 개수(1~50)") @RequestParam(defaultValue = "10") int limit
     ) {
         SimilarImagesResponse response = imageSimilarService.getSimilarImages(userId, imageId, limit);
-        return ResponseEntity.ok(ApiResponse.success(response));
+        return ResponseEntity.ok(ApiResponse.success("I207", response));
     }
 }

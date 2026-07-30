@@ -1,9 +1,10 @@
-package com.ssafy.modera.api.domain.image.dto;
+package com.ssafy.modera.api.domain.image.dto.response;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.util.List;
+import java.util.UUID;
 
 public record ImageRegisterResponse(
         List<Registered> registered,
@@ -11,6 +12,7 @@ public record ImageRegisterResponse(
         List<Failed> failed
 ) {
     public record Registered(
+            UUID clientRequestId,
             Integer imageId,
             String fileName,
 
@@ -24,12 +26,14 @@ public record ImageRegisterResponse(
     }
 
     public record Duplicated(
+            UUID clientRequestId,
             String fileName,
             Integer existingImageId
     ) {
     }
 
     public record Failed(
+            UUID clientRequestId,
             String fileName,
             String reason
     ) {

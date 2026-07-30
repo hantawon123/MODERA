@@ -8,9 +8,11 @@ import java.util.Optional;
 
 public interface ImageAssetRepository extends JpaRepository<ImageAsset, Integer> {
 
-    Optional<ImageAsset> findByS3Key(String s3Key);
+    Optional<ImageAsset> findByS3KeyAndDelYn(String s3Key, String delYn);
 
-    Optional<ImageAsset> findByContentHash(String contentHash);
+    Optional<ImageAsset> findByContentHashAndDelYn(String contentHash, String delYn);
+
+    Optional<ImageAsset> findByImageIdAndDelYn(Integer imageId, String delYn);
 
     @Query(value = "SELECT nextval('image_schema.image_asset_image_id_seq')", nativeQuery = true)
     Integer nextImageId();

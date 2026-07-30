@@ -10,7 +10,9 @@ import org.springframework.http.HttpStatus;
 public enum ImageErrorCode implements ErrorCode {
 
     IMAGE_NOT_FOUND(HttpStatus.NOT_FOUND, "IMAGE_NOT_FOUND", "이미지를 찾을 수 없습니다."),
-    DUPLICATE_IMAGE(HttpStatus.CONFLICT, "DUPLICATE_IMAGE", "이미 등록된 이미지입니다.");
+    DUPLICATE_IMAGE(HttpStatus.CONFLICT, "DUPLICATE_IMAGE", "이미 등록된 이미지입니다."),
+    UPLOAD_ALREADY_COMPLETED(HttpStatus.CONFLICT, "UPLOAD_ALREADY_COMPLETED", "이미지 업로드가 이미 완료되었습니다."),
+    ANALYSIS_IN_PROGRESS(HttpStatus.CONFLICT, "ANALYSIS_IN_PROGRESS", "이미지 분석이 이미 시작되었습니다.");
 
     private final HttpStatus status;
     private final String code;

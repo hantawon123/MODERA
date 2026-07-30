@@ -6,6 +6,7 @@ import com.ssafy.modera.contract.payload.DocumentCompletedPayload;
 import com.ssafy.modera.contract.payload.DocumentFailedPayload;
 import com.ssafy.modera.contract.payload.DocumentRequestedPayload;
 import com.ssafy.modera.worker.domain.document.client.DocumentAiClient;
+import com.ssafy.modera.worker.domain.document.repository.DocumentOcr;
 import com.ssafy.modera.worker.domain.document.repository.DocumentOcrRepository;
 import com.ssafy.modera.worker.domain.event.EventPublisher;
 import lombok.RequiredArgsConstructor;
@@ -23,8 +24,8 @@ import java.util.Map;
  * 문서 생성(마크다운) 중개.
  *
  * worker는 문서를 저장하지 않는다 — payload의 재료에 자기 DB의 OCR
- * (analysis_result.ocr_refined_text)만 보태 AI를 동기 호출하고, 결과를
- * DOCUMENT_COMPLETED로 되돌려 보낸다. OCR이 worker DB에만 있어 worker가
+ * (analysis_result의 ocr_raw_text/ocr_refined_text)만 보태 AI를 동기 호출하고, 결과를
+ * DOCUMENT_COMPLETED로 되돌려 보낸다. OCR 사본이 worker DB에 있어 worker가
  * 경유지가 될 뿐, 저장(document_schema)은 api-server 몫이다.
  *
  * <p><b>블로킹 트레이드오프</b>: 이 동기 호출(수 초~수십 초)은 이미지 분석과 같은
@@ -84,8 +85,9 @@ public class DocumentGenerationService {
                 .map(DocumentRequestedPayload.SourceImage::imageId)
                 .toList();
 
-        // 분석 이력이 없는 이미지는 맵에 없다 → ocr null로 실려 AI가 skipped 처리한다.
-        Map<Integer, String> ocrByImageId = documentOcrRepository.findLatestRefinedOcr(imageIds);
+        // 분석 이력이 없는 이미지는 맵에 없다 → 빈 OCR로 실린다. 그래도 title·summary·
+        // keyInformation이 있으면 AI가 문서 재료로 쓰고, 그것마저 비면 AI가 skipped 처리한다.
+        Map<Integer, DocumentOcr> ocrByImageId = documentOcrRepository.findLatestOcr(imageIds);
 
         DocumentAiClient.DocumentRequest request = new DocumentAiClient.DocumentRequest(
                 payload.userId(),
@@ -167,19 +169,41 @@ public class DocumentGenerationService {
         return converted;
     }
 
+    /**
+     * payload 재료 한 건 + 우리 DB의 OCR을 AI 요청 형태로 옮긴다.
+     *
+     * <p>null을 그대로 넘기지 않고 전부 기본값으로 채우는 게 이 메서드의 요점이다 —
+     * AI의 DocumentImage는 이 필드들을 "기본값 있는 필수 필드"로 선언해서, 명시적 null이
+     * 오면 422로 요청 전체를 거절한다(DocumentAiClient.SourceImage javadoc 참고).
+     */
     private DocumentAiClient.SourceImage toSourceImage(
-            DocumentRequestedPayload.SourceImage image, Map<Integer, String> ocrByImageId) {
-        String refinedOcr = ocrByImageId.get(image.imageId());
+            DocumentRequestedPayload.SourceImage image, Map<Integer, DocumentOcr> ocrByImageId) {
         return new DocumentAiClient.SourceImage(
                 image.imageId(),
-                image.title(),
-                image.summary(),
-                image.tagNames(),      // AI 스키마 필드명은 tags
-                image.categoryName(),  // AI 스키마 필드명은 category
-                image.keyInformation(),
-                refinedOcr == null || refinedOcr.isBlank() ? null : new DocumentAiClient.Ocr(refinedOcr),
-                image.createdAt()
+                nullToEmpty(image.title()),
+                nullToEmpty(image.summary()),
+                nullToEmpty(image.tagNames()),      // AI 스키마 필드명은 tags
+                image.categoryName(),               // AI 스키마 필드명은 category, null 허용
+                nullToEmpty(image.keyInformation()),
+                toOcr(ocrByImageId.get(image.imageId())),
+                image.createdAt()                   // AI 쪽 str | None, null 허용
         );
+    }
+
+    /** OCR이 없어도 null이 아니라 빈 Ocr을 보낸다 — null은 AI 검증에서 422다. */
+    private DocumentAiClient.Ocr toOcr(DocumentOcr ocr) {
+        if (ocr == null || ocr.isEmpty()) {
+            return new DocumentAiClient.Ocr("", null);
+        }
+        return new DocumentAiClient.Ocr(nullToEmpty(ocr.rawText()), ocr.refinedText());
+    }
+
+    private String nullToEmpty(String value) {
+        return value == null ? "" : value;
+    }
+
+    private List<String> nullToEmpty(List<String> value) {
+        return value == null ? List.of() : value;
     }
 
     private void publishFailed(DocumentRequestedPayload payload, String errorCode,

@@ -35,6 +35,26 @@ public enum DocumentErrorCode implements ErrorCode {
             HttpStatus.CONFLICT,
             "DUPLICATE_CLIENT_REQUEST",
             "이미 접수된 문서 생성 요청입니다."
+    ),
+
+    /**
+     * 존재하지 않거나 본인 소유가 아닌 documentId. 이미지 단건 조회와 같은 이유로 403이
+     * 아니라 404로 묶는다 — 남의 documentId를 넣어보며 존재를 탐색하는 걸 막는다.
+     */
+    DOCUMENT_NOT_FOUND(
+            HttpStatus.NOT_FOUND,
+            "DOCUMENT_NOT_FOUND",
+            "문서를 찾을 수 없습니다."
+    ),
+
+    /**
+     * 같은 문서에 대한 재분석이 아직 진행 중이다. 두 요청이 겹치면 나중에 도착한 완료
+     * 이벤트가 앞선 결과를 덮어써 사용자가 무엇을 보게 될지 예측할 수 없다.
+     */
+    DOCUMENT_REGENERATION_IN_PROGRESS(
+            HttpStatus.CONFLICT,
+            "DOCUMENT_REGENERATION_IN_PROGRESS",
+            "이미 재분석이 진행 중인 문서입니다."
     );
 
     private final HttpStatus status;

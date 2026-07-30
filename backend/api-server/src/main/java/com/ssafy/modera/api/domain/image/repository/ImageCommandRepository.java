@@ -14,6 +14,71 @@ public class ImageCommandRepository {
     private final JdbcTemplate jdbcTemplate;
 
     @Transactional
+    public Integer updateFavorite(Integer userId, Integer imageId, boolean favorite) {
+        if (!hasUserImage(userId, imageId, "N")) {
+            return null;
+        }
+
+        if (favorite) {
+            jdbcTemplate.update(
+                    """
+                    INSERT INTO library_schema.user_favorite_image (
+                        user_id, image_id, del_yn
+                    )
+                    VALUES (?, ?, 'N')
+                    ON CONFLICT (user_id, image_id)
+                    DO UPDATE SET del_yn = 'N'
+                    """,
+                    userId,
+                    imageId
+            );
+        } else {
+            jdbcTemplate.update(
+                    """
+                    UPDATE library_schema.user_favorite_image
+                    SET del_yn = 'Y'
+                    WHERE user_id = ?
+                      AND image_id = ?
+                      AND del_yn = 'N'
+                    """,
+                    userId,
+                    imageId
+            );
+        }
+
+        jdbcTemplate.update(
+                """
+                UPDATE query_schema.user_image_view
+                SET favorite = ?
+                WHERE user_id = ?
+                  AND image_id = ?
+                  AND del_yn = 'N'
+                """,
+                favorite,
+                userId,
+                imageId
+        );
+
+        Integer favoriteCount = jdbcTemplate.queryForObject(
+                """
+                SELECT COUNT(*)
+                FROM query_schema.user_image_view image_view
+                JOIN library_schema.user_image user_image
+                  ON user_image.user_id = image_view.user_id
+                 AND user_image.image_id = image_view.image_id
+                 AND user_image.del_yn = 'N'
+                WHERE image_view.user_id = ?
+                  AND image_view.favorite = TRUE
+                  AND image_view.del_yn = 'N'
+                  AND image_view.analysis_status IN ('COMPLETED', 'EMPTY')
+                """,
+                Integer.class,
+                userId
+        );
+        return favoriteCount == null ? 0 : favoriteCount;
+    }
+
+    @Transactional
     public ImageDeleteStatus deleteImage(Integer userId, Integer imageId) {
         if (!hasUserImage(userId, imageId, "N")) {
             return hasUserImage(userId, imageId, "Y")

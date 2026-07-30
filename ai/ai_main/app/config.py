@@ -39,7 +39,7 @@ class Settings:
         # 붙으면 이 스위치와 require_internal_token 의 분기를 함께 지운다.
         # /internal/v1/* 은 이 값과 무관하게 항상 토큰을 요구한다.
         self.app_api_auth = os.environ.get("APP_API_AUTH", "false").lower() == "true"
-        # Spring 내부 호출 타임아웃(초). Gemini 용 http_timeout(30) 과 분리한다.
+        # Spring 내부 호출 타임아웃(초). Gemini 용 gemini_timeout 과 분리한다.
         # 같은 네트워크 안의 내부 호출이라 길게 잡을 이유가 없다.
         self.spring_timeout = float(os.environ.get("SPRING_TIMEOUT", "3"))
 
@@ -183,6 +183,10 @@ class Settings:
         self.gemini_backoff_base = float(os.environ.get("GEMINI_BACKOFF_BASE", "1.0"))
         # Gemini 가 40초 이상 대기를 요구하는 경우가 있어 상한을 넉넉히 둔다.
         self.gemini_backoff_max = float(os.environ.get("GEMINI_BACKOFF_MAX", "60"))
+        # Gemini 호출 1회당 타임아웃(초). 없으면 SDK 가 무제한으로 기다려서, 응답이
+        # 오지 않는 요청 하나가 asyncio.to_thread 스레드를 영구 점유한다.
+        # nginx 의 proxy_read_timeout(120s) 안에 재시도 여유까지 두고 90 으로 잡는다.
+        self.gemini_timeout = float(os.environ.get("GEMINI_TIMEOUT", "90"))
 
 
 @lru_cache(maxsize=1)

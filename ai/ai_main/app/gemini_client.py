@@ -63,6 +63,16 @@ def _call_with_retry(label: str, fn: Callable[[], Any]) -> Any:
             time.sleep(delay)
 
 
+def _request_options() -> dict[str, Any]:
+    """SDK 호출 1회의 타임아웃. 기본값은 무제한이라 반드시 넘긴다.
+
+    무제한이면 응답이 오지 않는 요청 하나가 asyncio.to_thread 스레드를 붙잡고,
+    분석은 max_concurrent_stages(4)만큼 쌓이면 파이프라인 전체가 멈춘다.
+    타임아웃은 429 가 아니므로 _call_with_retry 가 재시도하지 않고 바로 올린다.
+    """
+    return {"timeout": get_settings().gemini_timeout}
+
+
 def _genai():
     try:
         import google.generativeai as genai
@@ -152,7 +162,8 @@ def generate_json(model_name: str, parts: list[Any]) -> dict[str, Any]:
     genai = _genai()
     model = genai.GenerativeModel(model_name)
     response = _call_with_retry(
-        f"generate_content:{model_name}", lambda: model.generate_content(parts)
+        f"generate_content:{model_name}",
+        lambda: model.generate_content(parts, request_options=_request_options()),
     )
     return parse_json_response(response.text)
 
@@ -190,6 +201,7 @@ def embed(texts: list[str], purpose: str = "DOCUMENT") -> tuple[str, list[list[f
             task_type=task_type,
             # 차원을 명시해 모델 기본값(3072)이 아닌 합의된 값으로 받는다.
             output_dimensionality=settings.embedding_dim,
+            request_options=_request_options(),
         ),
     )
     vectors = [list(v) for v in response["embedding"]]

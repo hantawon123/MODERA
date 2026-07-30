@@ -23,8 +23,8 @@ public class ImageQueryRepository {
             INSERT INTO query_schema.user_image_view (
                 user_id, image_id, file_name, s3_key, thumbnail_key,
                 title, summary, category_name, tags, key_information,
-                structured_data, upload_status, analysis_status, favorite
-                , del_yn
+                structured_data, upload_status, analysis_status, favorite,
+                uploaded_at, del_yn
             ) VALUES (
                 ?, ?, ?, ?, ?, ?, ?, ?,
                 (
@@ -41,7 +41,7 @@ public class ImageQueryRepository {
                     FROM unnest(CAST(? AS text[]))
                         WITH ORDINALITY AS source_tag(tag_name, tag_order)
                 ),
-                ?, ?, ?, ?, ?, 'N'
+                ?, ?, ?, ?, ?, ?, 'N'
             )
             ON CONFLICT (user_id, image_id) DO UPDATE SET
                 file_name = EXCLUDED.file_name,
@@ -55,7 +55,8 @@ public class ImageQueryRepository {
                 structured_data = EXCLUDED.structured_data,
                 upload_status = EXCLUDED.upload_status,
                 analysis_status = EXCLUDED.analysis_status,
-                favorite = EXCLUDED.favorite
+                favorite = EXCLUDED.favorite,
+                uploaded_at = EXCLUDED.uploaded_at
             WHERE query_schema.user_image_view.del_yn = 'N'
             """;
 
@@ -93,6 +94,7 @@ public class ImageQueryRepository {
             } else {
                 ps.setBoolean(i++, row.favorite());
             }
+            ps.setObject(i++, row.uploadedAt());
             return ps;
         });
     }
@@ -141,10 +143,13 @@ public class ImageQueryRepository {
                 SELECT ?, image_id, file_name, s3_key, thumbnail_key,
                        title, summary, category_id, category_name, tags,
                        key_information, structured_data, upload_status, analysis_status,
-                       favorite, uploaded_at, 'N', is_documented_yn, is_calendared_yn
+                       false, uploaded_at, 'N', false, false
                 FROM query_schema.user_image_view
-                WHERE image_id = ? AND del_yn = 'N'
-                ORDER BY CASE WHEN user_id = ? THEN 0 ELSE 1 END
+                WHERE image_id = ?
+                  AND del_yn = 'N'
+                  AND analysis_status IN ('COMPLETED', 'EMPTY')
+                ORDER BY CASE WHEN user_id = ? THEN 0 ELSE 1 END,
+                         uploaded_at DESC NULLS LAST
                 LIMIT 1
                 ON CONFLICT (user_id, image_id) DO UPDATE SET
                     file_name = EXCLUDED.file_name,
@@ -159,10 +164,7 @@ public class ImageQueryRepository {
                     structured_data = EXCLUDED.structured_data,
                     upload_status = EXCLUDED.upload_status,
                     analysis_status = EXCLUDED.analysis_status,
-                    favorite = EXCLUDED.favorite,
-                    uploaded_at = EXCLUDED.uploaded_at,
-                    is_documented_yn = EXCLUDED.is_documented_yn,
-                    is_calendared_yn = EXCLUDED.is_calendared_yn
+                    uploaded_at = EXCLUDED.uploaded_at
                 WHERE query_schema.user_image_view.del_yn = 'N'
                 """,
                 userId,

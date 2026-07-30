@@ -31,8 +31,8 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ssafy.modera.core.component.ModeraTopBar
 import com.ssafy.modera.core.component.item.ModeraMaterialItem
-import com.ssafy.modera.core.component.item.ModeraSearchBar
-import com.ssafy.modera.core.component.item.SearchBarMode
+import com.ssafy.modera.core.component.ModeraSearchBar
+import com.ssafy.modera.core.component.SearchBarMode
 import com.ssafy.modera.core.designsystem.component.Text
 import com.ssafy.modera.core.designsystem.theme.ModeraTheme
 import com.ssafy.modera.core.model.analyzedimage.AnalyzedImage

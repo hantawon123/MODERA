@@ -50,19 +50,29 @@ public class AnalysisResultEventHandler {
                 imageId,
                 imageAsset.getFileName(),
                 imageAsset.getS3Key(),
-                thumbnailRepository.findByImageId(imageId)
-                        .map(thumbnail -> thumbnail.getS3Key())
-                        .orElse(null),
-                imageAsset.getFileName(),
+                resolveThumbnailKey(payload, imageId),
+                payload.title() == null || payload.title().isBlank()
+                        ? imageAsset.getFileName()
+                        : payload.title(),
                 payload.summary(),
                 payload.categoryName(),
                 payload.tagNames(),
-                java.util.List.of(),
+                payload.keyInformation(),
                 payload.structuredFields(),
                 imageAsset.getUploadStatus(),
                 payload.analysisStatus(),
-                false
+                false,
+                imageAsset.getUploadedAt()
         ));
+    }
+
+    private String resolveThumbnailKey(AnalysisCompletedPayload payload, Integer imageId) {
+        if (payload.thumbnailKey() != null && !payload.thumbnailKey().isBlank()) {
+            return payload.thumbnailKey();
+        }
+        return thumbnailRepository.findByImageId(imageId)
+                .map(thumbnail -> thumbnail.getS3Key())
+                .orElse(null);
     }
 
     @Transactional

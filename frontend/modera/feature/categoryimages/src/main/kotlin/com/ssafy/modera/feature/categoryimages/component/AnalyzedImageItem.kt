@@ -28,13 +28,13 @@ import com.ssafy.modera.core.designsystem.component.ClickableSurface
 import com.ssafy.modera.core.designsystem.component.Icon
 import com.ssafy.modera.core.designsystem.component.Text
 import com.ssafy.modera.core.designsystem.theme.ModeraTheme
-import com.ssafy.modera.core.model.analyzedimage.AnalyzedImageSummary
+import com.ssafy.modera.core.model.analyzedimage.AnalyzedImage
 import com.ssafy.modera.core.model.analyzedimage.ImageAnalysisStatus
 import com.ssafy.modera.feature.categoryimages.R
 
 @Composable
 internal fun AnalyzedImageItem(
-    analyzedImageSummary: AnalyzedImageSummary,
+    analyzedImage: AnalyzedImage,
     selected: Boolean,
     selectionMode: Boolean,
     onClick: () -> Unit,
@@ -57,10 +57,10 @@ internal fun AnalyzedImageItem(
                     .background(Color.White),
             ) {
                 AsyncImage(
-                    model = analyzedImageSummary.thumbnailUrl,
+                    model = analyzedImage.thumbnailUrl,
                     contentDescription = stringResource(
                         R.string.category_image_content_description,
-                        analyzedImageSummary.title,
+                        analyzedImage.title,
                     ),
                     modifier = Modifier
                         .fillMaxSize()
@@ -91,8 +91,8 @@ internal fun AnalyzedImageItem(
             }
 
             AnalyzedImageInfo(
-                title = analyzedImageSummary.title,
-                hashtags = analyzedImageSummary.hashtags,
+                title = analyzedImage.title,
+                hashtags = analyzedImage.hashtags,
                 modifier = Modifier.padding(
                     top = 8.dp,
                     start = 2.dp,
@@ -188,7 +188,7 @@ private fun SelectionIndicator(
 private fun AnalyzedImageItemDefaultPreview() {
     ModeraTheme {
         AnalyzedImageItem(
-            analyzedImageSummary = previewAnalyzedImageSummary,
+            analyzedImage = previewAnalyzedImage,
             selected = false,
             selectionMode = false,
             onClick = {},
@@ -206,7 +206,7 @@ private fun AnalyzedImageItemDefaultPreview() {
 private fun AnalyzedImageItemSelectionModePreview() {
     ModeraTheme {
         AnalyzedImageItem(
-            analyzedImageSummary = previewAnalyzedImageSummary,
+            analyzedImage = previewAnalyzedImage,
             selected = false,
             selectionMode = true,
             onClick = {},
@@ -224,7 +224,7 @@ private fun AnalyzedImageItemSelectionModePreview() {
 private fun AnalyzedImageItemSelectedPreview() {
     ModeraTheme {
         AnalyzedImageItem(
-            analyzedImageSummary = previewAnalyzedImageSummary,
+            analyzedImage = previewAnalyzedImage,
             selected = true,
             selectionMode = true,
             onClick = {},
@@ -233,7 +233,7 @@ private fun AnalyzedImageItemSelectedPreview() {
     }
 }
 
-private val previewAnalyzedImageSummary = AnalyzedImageSummary(
+private val previewAnalyzedImage = AnalyzedImage(
     id = 1L,
     title = "삼성전자 주가 전망 및 투자 분석",
     summary = "삼성전자 주가 전망 및 투자 분석",

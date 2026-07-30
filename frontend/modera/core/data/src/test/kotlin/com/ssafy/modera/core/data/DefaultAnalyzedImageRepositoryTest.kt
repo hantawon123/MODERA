@@ -7,7 +7,7 @@ import com.ssafy.modera.core.model.analyzedimage.AnalyzedImageQuery
 import com.ssafy.modera.core.model.analyzedimage.ImageAnalysisStatus
 import com.ssafy.modera.core.network.model.analyzedimage.AnalyzedImageCategoryResponse
 import com.ssafy.modera.core.network.model.analyzedimage.AnalyzedImageDetailResponse
-import com.ssafy.modera.core.network.model.analyzedimage.AnalyzedImageSummaryResponse
+import com.ssafy.modera.core.network.model.analyzedimage.AnalyzedImageResponse
 import com.ssafy.modera.core.network.model.analyzedimage.AnalyzedImageTagResponse
 import com.ssafy.modera.core.network.model.analyzedimage.AnalyzedImagesResponse
 import com.ssafy.modera.core.network.model.analyzedimage.OcrResponse
@@ -51,7 +51,7 @@ class DefaultAnalyzedImageRepositoryTest {
 
             val response = AnalyzedImagesResponse(
                 list = listOf(
-                    AnalyzedImageSummaryResponse(
+                    AnalyzedImageResponse(
                         imageId = 1024L,
                         fileName = "Screenshot_20260716_101010.png",
                         title = "C++ 프로그래밍 입문",

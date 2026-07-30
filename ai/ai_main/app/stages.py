@@ -535,6 +535,68 @@ async def run_app_analysis(
         await _run_full_pipeline(job_id, image_id, user_id, s3_key, ocr_text)
 
 
+# 재큐잉 태스크 참조 보관용. asyncio 는 실행 중인 태스크를 약참조로만 들고 있어서
+# 여기에 담아 두지 않으면 도중에 GC 되어 분석이 조용히 사라질 수 있다.
+_requeued: set[asyncio.Task] = set()
+
+# 한 번에 되살릴 최대 건수. 넘치면 다음 기동에서 이어 받는다.
+REQUEUE_LIMIT = 500
+
+
+async def requeue_interrupted() -> None:
+    """재기동으로 끊긴 분석을 다시 큐에 넣는다(기동 시 1회, best-effort).
+
+    job_store 는 프로세스 메모리라 재시작하면 사라지는데 색인 문서는
+    status=PROCESSING 으로 남는다. 이 서버에 재분석 트리거가 따로 없어서
+    (4-2 upload-complete 재호출이 유일한데, 앱은 '진행 중' 으로만 보여 다시 부를
+    이유를 모른다) 그대로 두면 그 사진은 영원히 분석 중이다. 재업로드로도 못 푼다
+    — uploaded_at 이 이미 찍혀 있어 4-1 중복 판정에 걸린다(search.find_by_content_hash).
+
+    QUEUED 는 건드리지 않는다. 4-1 등록만 되고 스토리지 업로드가 아직 안 끝난
+    상태일 수 있어서, 여기서 분석을 시작하면 원본이 없는 채로 실패시켜 버린다.
+
+    ⚠️ 단일 프로세스 전제. uvicorn 워커를 늘리면 워커마다 같은 문서를 재큐잉해
+    같은 이미지를 중복 분석한다 — jobs.py 가 말하는 Redis 이전 시점에 함께 볼 것.
+    """
+    try:
+        stuck = await asyncio.to_thread(
+            search.find_by_status, "PROCESSING", REQUEUE_LIMIT
+        )
+    except Exception as e:
+        logger.warning("끊긴 분석 조회 실패: %s — 재큐잉을 건너뛴다", e)
+        return
+    if not stuck:
+        return
+    if len(stuck) >= REQUEUE_LIMIT:
+        logger.warning("끊긴 분석이 상한 %s건에 걸렸다 — 나머지는 다음 기동에서 이어 받는다",
+                       REQUEUE_LIMIT)
+
+    requeued = 0
+    for doc in stuck:
+        image_id, s3_key = doc.get("image_id"), doc.get("s3_key")
+        if not image_id or not s3_key:
+            # 원본 key 가 없으면 되살릴 수 없다. PROCESSING 인데 s3_key 가 비는
+            # 경로는 없지만, 남겨 두면 영원히 재시도되므로 실패로 끊는다.
+            logger.warning("재큐잉 불가(원본 key 없음) imageId=%s", image_id)
+            if image_id:
+                try:
+                    await asyncio.to_thread(search.set_status, image_id, "FAILED")
+                except Exception as e:
+                    logger.warning("status 갱신 실패 imageId=%s: %s", image_id, e)
+            continue
+        user_id = doc.get("user_id") or 0
+        job = job_store.create(user_id, s3_key, image_id)
+        task = asyncio.create_task(run_app_analysis(
+            job["job_id"], image_id, user_id, s3_key, doc.get("raw_text") or "",
+        ))
+        _requeued.add(task)
+        task.add_done_callback(_requeued.discard)
+        requeued += 1
+
+    logger.warning("재기동으로 끊긴 분석 %s건 재큐잉 (동시 %s건씩 순차 소화)",
+                   requeued, get_settings().max_concurrent_stages)
+
+
 async def _run_full_pipeline(
     job_id: int,
     image_id: int,

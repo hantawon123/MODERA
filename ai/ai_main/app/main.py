@@ -62,7 +62,12 @@ from .schemas import (
     DuplicatedUpload,
     FailedUpload,
 )
-from .stages import execute_stage, run_app_analysis, seed_default_category_vectors
+from .stages import (
+    execute_stage,
+    requeue_interrupted,
+    run_app_analysis,
+    seed_default_category_vectors,
+)
 
 logging.basicConfig(
     level=logging.INFO,
@@ -83,9 +88,15 @@ async def _lifespan(app: FastAPI):
     OpenSearch·Gemini 가 아직 안 떴어도 기동을 막지 않는다 — 시드 함수가 예외를
     삼키고, 다음 기동에서 다시 시도한다. 요청 처리 중이 아니라 기동 시점에 하는
     이유는, 판정 경로(resolve_category)에서 외부 호출을 없애기 위해서다.
+
+    이어서 재기동으로 끊긴 분석을 되살린다. 조회·재큐잉이 오래 걸릴 수 있어
+    태스크로 흘려보내고 기동은 막지 않는다(헬스체크가 먼저 통과해야 한다).
     """
     await asyncio.to_thread(seed_default_category_vectors)
+    _startup = asyncio.create_task(requeue_interrupted())
     yield
+    # 남아 있으면 취소한다. 종료 중에 새 분석을 시작해 봐야 어차피 끊긴다.
+    _startup.cancel()
 
 
 app = FastAPI(
@@ -241,14 +252,18 @@ class _MissingUserId(Exception):
 @app.exception_handler(_MissingUserId)
 async def _missing_user_id_handler(request: Request, exc: _MissingUserId) -> JSONResponse:
     return responses.failure("INVALID_PARAMETER", "요청 값이 올바르지 않습니다.",
-                             [{"field": "userId", "message": "필수 값입니다."}])
+                             [{"field": "userId", "message": "1 이상의 값이 필요합니다."}])
 
 
 def resolve_user_id(requested: int | None) -> int:
     fixed = get_settings().fixed_user_id
     if fixed:
         return fixed
-    if requested is None:
+    # 0 이하는 사용자 id 로 받지 않는다. 0 은 카테고리 벡터 저장소에서 전역 시드의
+    # 소유자(search.SEED_USER_ID)로 이미 쓰고 있어서, 실제 사용자로 들어오면
+    # upsert_category_vector 가 문서 id `0:{이름}` 으로 시드를 덮어쓴다 —
+    # 그 뒤로는 모든 사용자의 콜드 스타트 판정이 한 사람의 centroid 로 오염된다.
+    if requested is None or requested <= 0:
         raise _MissingUserId()
     return requested
 
@@ -548,6 +563,26 @@ async def _resolve_filters(
     return category, tag
 
 
+async def _owned_image(image_id: int, user_id: int) -> dict[str, Any] | None:
+    """이미지를 읽고 요청자 소유인지 확인한다. 없거나 남의 것이면 None.
+
+    imageId 하나로 문서를 찾는 경로(상세·썸네일·원본·업로드 완료·OCR 제출·URL
+    재발급)는 전부 이걸 거친다. search.get_image 에는 사용자 필터가 없어서
+    (목록·검색·집계에만 user_id term 이 걸려 있다) 여기서 대조하지 않으면
+    imageId 를 바꿔가며 남의 원본 이미지와 OCR 원문을 그대로 가져갈 수 있다.
+
+    FIXED_USER_ID 가 켜져 있는 동안은 전원이 같은 사용자라 항상 통과하지만,
+    그 스위치를 끄는 순간 이 검사가 유일한 격리 장치가 된다.
+
+    **없는 것과 남의 것을 구분해 주지 않는다**(둘 다 None → 404). 403 으로 갈라
+    주면 "그 imageId 는 존재한다" 를 알려 주는 셈이라 남의 imageId 열거에 쓰인다.
+    """
+    found = await asyncio.to_thread(search.get_image, image_id)
+    if found is None or found.get("user_id") != user_id:
+        return None
+    return found
+
+
 # ── 4-1 이미지 등록 및 업로드 URL 발급 ───────────────────────────────────
 # 명세대로 **바이너리를 받지 않는다.** 메타데이터를 등록하고 콘텐츠 해시로 중복을
 # 판정한 뒤 presigned PUT URL 을 발급한다. 앱이 그 URL 로 스토리지에 직접 올리고
@@ -672,16 +707,16 @@ async def app_image_upload(user_id: CurrentUserId, request: UploadRequest):
 @app.post("/api/v1/images/{image_id}/upload-complete",
           dependencies=[Depends(require_internal_token)],
           response_model=ApiResponse[UploadCompleteResponse])
-async def app_upload_complete(image_id: int, background_tasks: BackgroundTasks):
+async def app_upload_complete(
+    image_id: int, user_id: CurrentUserId, background_tasks: BackgroundTasks
+):
     """스토리지 업로드 완료를 통지받고 분석 파이프라인을 시작한다(명세 4-2).
 
     명세는 이 API 가 분석 작업을 만들지 않고 OCR 제출 후 LLM 부터 시작한다고 하지만,
     개정으로 OCR 이 4-1 요청에 합쳐졌다. 그래서 원본과 OCR 이 모두 갖춰지는 시점이
     바로 여기이고, 여기서 파이프라인을 시작한다.
     """
-    import asyncio
-
-    found = await asyncio.to_thread(search.get_image, image_id)
+    found = await _owned_image(image_id, user_id)
     if found is None:
         return responses.failure("IMAGE_NOT_FOUND", "이미지를 찾을 수 없습니다.",
                                  f"imageId: {image_id}", http_status=404)
@@ -713,11 +748,11 @@ async def app_upload_complete(image_id: int, background_tasks: BackgroundTasks):
 @app.post("/api/v1/images/{image_id}/upload-url",
           dependencies=[Depends(require_internal_token)],
           response_model=ApiResponse[UploadUrlResponse])
-async def app_reissue_upload_url(image_id: int):
+async def app_reissue_upload_url(image_id: int, user_id: CurrentUserId):
     """presigned URL 이 만료됐는데 아직 업로드가 안 끝난 이미지에 새 URL 을 준다(명세 4-5)."""
     import asyncio
 
-    found = await asyncio.to_thread(search.get_image, image_id)
+    found = await _owned_image(image_id, user_id)
     if found is None:
         return responses.failure("IMAGE_NOT_FOUND", "이미지를 찾을 수 없습니다.",
                                  f"imageId: {image_id}", http_status=404)
@@ -745,7 +780,7 @@ async def app_reissue_upload_url(image_id: int):
 @app.post("/api/v1/images/{image_id}/ocr",
           dependencies=[Depends(require_internal_token)],
           response_model=ApiResponse[OcrSubmitResponse])
-async def app_submit_ocr(image_id: int, ocr: OcrInput):
+async def app_submit_ocr(image_id: int, user_id: CurrentUserId, ocr: OcrInput):
     """모바일 OCR 결과를 저장한다(명세 4-3).
 
     개정 명세는 OCR 을 4-1 요청에 함께 받도록 바뀌었지만, 명세표에 4-3 이 그대로
@@ -753,7 +788,7 @@ async def app_submit_ocr(image_id: int, ocr: OcrInput):
     """
     import asyncio
 
-    found = await asyncio.to_thread(search.get_image, image_id)
+    found = await _owned_image(image_id, user_id)
     if found is None:
         return responses.failure("IMAGE_NOT_FOUND", "이미지를 찾을 수 없습니다.",
                                  f"imageId: {image_id}", http_status=404)
@@ -865,10 +900,9 @@ async def app_image_list(
 # ── 6-2 이미지 상세 ───────────────────────────────────────────────────────
 @app.get("/api/v1/images/{image_id}", dependencies=[Depends(require_internal_token)],
          response_model=ApiResponse[ImageDetail])
-async def app_image_detail(image_id: int):
+async def app_image_detail(image_id: int, user_id: CurrentUserId):
     try:
-        import asyncio
-        found = await asyncio.to_thread(search.get_image, image_id)
+        found = await _owned_image(image_id, user_id)
     except Exception as e:
         logger.exception("이미지 상세 조회 실패")
         return responses.failure("INTERNAL_ERROR", "이미지를 조회하지 못했습니다.",
@@ -916,15 +950,13 @@ async def app_image_detail(image_id: int):
 @app.get("/api/v1/images/{image_id}/thumbnail",
          dependencies=[Depends(require_internal_token)],
          response_model=ApiResponse[ThumbnailResponse])
-async def app_image_thumbnail_meta(image_id: int):
+async def app_image_thumbnail_meta(image_id: int, user_id: CurrentUserId):
     """명세 6-6 Response data: `{thumbnailUrl, title, tags}`.
 
     `thumbnailUrl` 은 아래 `/raw` 경로를 가리킨다. 만료가 없어 앱이 캐시하기 좋고,
     스토리지를 외부에 공개하지 않아도 된다.
     """
-    import asyncio
-
-    found = await asyncio.to_thread(search.get_image, image_id)
+    found = await _owned_image(image_id, user_id)
     if found is None:
         return responses.failure("IMAGE_NOT_FOUND", "이미지를 찾을 수 없습니다.",
                                  f"imageId: {image_id}", http_status=404)
@@ -944,7 +976,7 @@ async def app_image_thumbnail_meta(image_id: int):
          response_class=Response,
          responses={200: {"content": {"image/jpeg": {}},
                           "description": "썸네일 JPEG 바이너리"}})
-async def app_image_thumbnail(image_id: int):
+async def app_image_thumbnail(image_id: int, user_id: CurrentUserId):
     """썸네일 바이너리(명세 6-6 의 thumbnailUrl 이 가리키는 실제 이미지).
 
     명세 6-6 본문은 `{thumbnailUrl, title, tags}` JSON 이라 그 형식은 상위 경로가
@@ -958,9 +990,7 @@ async def app_image_thumbnail(image_id: int):
     presigned URL 을 저장했다가 돌려주면 만료로 깨지므로 주소는 이 경로로 고정한다.
     이 응답만 공통 envelope 를 쓰지 않는다.
     """
-    import asyncio
-
-    found = await asyncio.to_thread(search.get_image, image_id)
+    found = await _owned_image(image_id, user_id)
     if found is None:
         return responses.failure("IMAGE_NOT_FOUND", "이미지를 찾을 수 없습니다.",
                                  f"imageId: {image_id}", http_status=404)
@@ -995,7 +1025,7 @@ async def app_image_thumbnail(image_id: int):
          response_class=Response,
          responses={200: {"content": {"image/*": {}},
                           "description": "원본 이미지 바이너리"}})
-async def app_image_source(image_id: int):
+async def app_image_source(image_id: int, user_id: CurrentUserId):
     """원본 이미지를 그대로 돌려준다.
 
     썸네일(`/thumbnail/raw`)은 정사각으로 잘려 있어 스크린샷 내용이 다 안 보인다.
@@ -1006,7 +1036,7 @@ async def app_image_source(image_id: int):
     """
     import asyncio
 
-    found = await asyncio.to_thread(search.get_image, image_id)
+    found = await _owned_image(image_id, user_id)
     if found is None:
         return responses.failure("IMAGE_NOT_FOUND", "이미지를 찾을 수 없습니다.",
                                  f"imageId: {image_id}", http_status=404)

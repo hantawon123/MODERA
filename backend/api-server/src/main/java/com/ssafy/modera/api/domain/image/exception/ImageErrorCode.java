@@ -19,7 +19,12 @@ public enum ImageErrorCode implements ErrorCode {
     UPLOAD_ALREADY_COMPLETED(HttpStatus.CONFLICT, "UPLOAD_ALREADY_COMPLETED", "이미지 업로드가 이미 완료되었습니다."),
     ANALYSIS_IN_PROGRESS(HttpStatus.CONFLICT, "ANALYSIS_IN_PROGRESS", "이미지 분석이 이미 시작되었습니다."),
     AI_SEARCH_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "AI_SEARCH_FAILED", "AI 이미지 검색에 실패했습니다."),
-    AI_SEARCH_TIMEOUT(HttpStatus.GATEWAY_TIMEOUT, "AI_SEARCH_TIMEOUT", "AI 이미지 검색 응답 시간이 초과되었습니다.");
+    AI_SEARCH_TIMEOUT(HttpStatus.GATEWAY_TIMEOUT, "AI_SEARCH_TIMEOUT", "AI 이미지 검색 응답 시간이 초과되었습니다."),
+    CATEGORY_REANALYSIS_UNAVAILABLE(
+            HttpStatus.CONFLICT,
+            "CATEGORY_REANALYSIS_UNAVAILABLE",
+            "카테고리 재분석을 요청할 수 없는 상태입니다."
+    );
 
     private final HttpStatus status;
     private final String code;

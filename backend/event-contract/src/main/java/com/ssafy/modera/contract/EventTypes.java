@@ -8,6 +8,7 @@ public final class EventTypes {
     public static final String IMAGE_UPLOADED = "IMAGE_UPLOADED";
     public static final String ANALYSIS_COMPLETED = "ANALYSIS_COMPLETED";
     public static final String ANALYSIS_FAILED = "ANALYSIS_FAILED";
+    public static final String INITIAL_CATEGORY_RESOLVED = "INITIAL_CATEGORY_RESOLVED";
 
     // 문서 생성(마크다운). 전용 스트림을 만들지 않고 기존 스트림에 실어 보낸다 —
     // DOCUMENT_REQUESTED는 image-analysis(api→worker), COMPLETED/FAILED는
@@ -22,6 +23,9 @@ public final class EventTypes {
             "IMAGE_SEMANTIC_SEARCH_REQUESTED";
     public static final String IMAGE_SEARCH_COMPLETED = "IMAGE_SEARCH_COMPLETED";
     public static final String IMAGE_SEARCH_FAILED = "IMAGE_SEARCH_FAILED";
+    public static final String CATEGORY_REANALYSIS_REQUESTED = "CATEGORY_REANALYSIS_REQUESTED";
+    public static final String CATEGORY_REANALYSIS_COMPLETED = "CATEGORY_REANALYSIS_COMPLETED";
+    public static final String CATEGORY_REANALYSIS_FAILED = "CATEGORY_REANALYSIS_FAILED";
 
     private EventTypes() {
     }

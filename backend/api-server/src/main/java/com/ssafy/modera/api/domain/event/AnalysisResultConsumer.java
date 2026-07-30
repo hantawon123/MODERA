@@ -1,6 +1,7 @@
 package com.ssafy.modera.api.domain.event;
 
 import com.ssafy.modera.api.domain.document.event.DocumentResultEventHandler;
+import com.ssafy.modera.api.domain.category.service.CategoryCommandService;
 import com.ssafy.modera.api.domain.image.event.AnalysisResultEventHandler;
 import com.ssafy.modera.api.domain.image.event.ImageSearchResultCoordinator;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -9,10 +10,13 @@ import com.ssafy.modera.contract.EventTypes;
 import com.ssafy.modera.contract.Streams;
 import com.ssafy.modera.contract.payload.AnalysisCompletedPayload;
 import com.ssafy.modera.contract.payload.AnalysisFailedPayload;
+import com.ssafy.modera.contract.payload.CategoryReanalysisCompletedPayload;
+import com.ssafy.modera.contract.payload.CategoryReanalysisFailedPayload;
 import com.ssafy.modera.contract.payload.DocumentCompletedPayload;
 import com.ssafy.modera.contract.payload.DocumentFailedPayload;
 import com.ssafy.modera.contract.payload.ImageSearchCompletedPayload;
 import com.ssafy.modera.contract.payload.ImageSearchFailedPayload;
+import com.ssafy.modera.contract.payload.InitialCategoryResolvedPayload;
 import io.lettuce.core.RedisCommandTimeoutException;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
@@ -51,6 +55,7 @@ public class AnalysisResultConsumer {
     private final AnalysisResultEventHandler eventHandler;
     private final ImageSearchResultCoordinator imageSearchResultCoordinator;
     private final DocumentResultEventHandler documentResultEventHandler;
+    private final CategoryCommandService categoryCommandService;
 
     private volatile boolean running = true;
     private Thread consumerThread;
@@ -180,6 +185,15 @@ public class AnalysisResultConsumer {
             imageSearchResultCoordinator.fail(payload.correlationId(), payload.reason());
             log.info("IMAGE_SEARCH_FAILED 처리 완료: eventId={}, correlationId={}",
                     envelope.eventId(), payload.correlationId());
+        } else if (EventTypes.CATEGORY_REANALYSIS_COMPLETED.equals(envelope.eventType())) {
+            categoryCommandService.complete(
+                    readPayload(envelope, CategoryReanalysisCompletedPayload.class));
+        } else if (EventTypes.CATEGORY_REANALYSIS_FAILED.equals(envelope.eventType())) {
+            categoryCommandService.fail(
+                    readPayload(envelope, CategoryReanalysisFailedPayload.class));
+        } else if (EventTypes.INITIAL_CATEGORY_RESOLVED.equals(envelope.eventType())) {
+            categoryCommandService.initialize(
+                    readPayload(envelope, InitialCategoryResolvedPayload.class));
         } else if (EventTypes.DOCUMENT_COMPLETED.equals(envelope.eventType())) {
             DocumentCompletedPayload payload = readPayload(envelope, DocumentCompletedPayload.class);
             documentResultEventHandler.handleCompleted(payload);

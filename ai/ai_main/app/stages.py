@@ -36,6 +36,36 @@ DEFAULT_CATEGORIES = [
     "건강", "엔터", "자동차", "반려동물", "기타",
 ]
 
+# 프롬프트가 참조하는 카테고리명. 목록을 개편할 때 프롬프트 본문을 뒤지지 않도록
+# 여기 한 곳에 모은다 — 예전엔 '예약' 같은 이름이 프롬프트 문장에 박혀 있어서
+# 목록만 바꾸면 프롬프트가 없는 카테고리를 가리키는 사고가 났다.
+#
+# TIE_BREAK_CATEGORY: 여러 주제에 걸치는 이미지의 우선 카테고리. 반드시 목록에 있어야 한다.
+# EMPTY_CATEGORY    : 비정보성(EMPTY) 전용 기본값. 정보성 이미지는 여기로 보내지 않는다
+#                     (프롬프트가 "고르지 마라" 로 막고, 안 맞으면 신규 생성을 시킨다).
+# NEW_NAME_EXAMPLES : 신규 이름의 '입도' 예시(few-shot). 기본 목록에 없는 것만 써야
+#                     "이미 있는 걸 신규 예시로 드는" 모순이 안 생긴다.
+TIE_BREAK_CATEGORY = "예약"
+EMPTY_CATEGORY = "기타"
+NEW_NAME_EXAMPLES = ["게임", "MBTI", "자격증"]
+
+
+def _check_category_config() -> list[str]:
+    """카테고리 상수와 기본 목록의 정합성을 확인한다. 문제 목록을 돌려준다(기동 시 경고).
+
+    개편 회의 결과를 반영할 때 목록만 고치고 상수를 잊는 것이 가장 흔한 사고다.
+    죽이지 않고 경고만 한다 — 분류 품질은 떨어지지만 서비스는 계속 돌아야 한다.
+    """
+    problems = []
+    if TIE_BREAK_CATEGORY not in DEFAULT_CATEGORIES:
+        problems.append(f"TIE_BREAK_CATEGORY '{TIE_BREAK_CATEGORY}' 가 DEFAULT_CATEGORIES 에 없다")
+    if EMPTY_CATEGORY not in DEFAULT_CATEGORIES:
+        problems.append(f"EMPTY_CATEGORY '{EMPTY_CATEGORY}' 가 DEFAULT_CATEGORIES 에 없다")
+    overlap = [n for n in NEW_NAME_EXAMPLES if n in DEFAULT_CATEGORIES]
+    if overlap:
+        problems.append(f"NEW_NAME_EXAMPLES 가 기본 목록과 겹친다(신규 예시로 부적절): {overlap}")
+    return problems
+
 
 def seed_default_category_vectors() -> int:
     """기본 카테고리 이름 벡터를 전역 시드로 심는다(멱등). 심은 개수를 돌려준다.
@@ -51,6 +81,8 @@ def seed_default_category_vectors() -> int:
     실패해도 예외를 올리지 않는다. 시드가 없으면 콜드 스타트 판정이 이름
     완전일치로만 동작하고(품질만 떨어진다), 다음 기동에서 다시 시도한다.
     """
+    for problem in _check_category_config():
+        logger.warning("카테고리 설정 불일치: %s", problem)
     try:
         existing = search.load_category_vectors(search.SEED_USER_ID)
         missing = [n for n in DEFAULT_CATEGORIES if normalize_name(n) not in existing]
@@ -192,15 +224,19 @@ def run_agent_generation(
         "[카테고리]\n"
         # C+1 확정 문구 (2026-07-30, 실사진 55장 프롬프트 A/B/C+1 실측 — 카테고리_프롬프트_실험_보고서 참조).
         # 바꾼 것: "가능한 한"(억지 유도) 제거, 신규 자격 규칙(주제 단위·브랜드 금지),
-        # 기존 표기 재사용 강제(A/A' 파편화 0 실측), 다주제 tie-break, few-shot 4종.
-        # ⚠️ '예약' 등 카테고리명 참조는 DEFAULT_CATEGORIES 개편 회의 결과에 맞춰 치환할 것.
+        # 기존 표기 재사용 강제(A/A' 파편화 0 실측), 다주제 tie-break, few-shot.
+        # 카테고리명은 모듈 상수(TIE_BREAK_CATEGORY·EMPTY_CATEGORY·NEW_NAME_EXAMPLES)에서
+        # 가져온다 — 목록을 개편할 때 상수만 고치면 프롬프트가 따라오고,
+        # _check_category_config() 가 기동 시 정합성을 검사한다.
         f"기존 카테고리 후보: {candidate_names}. 내용과 무리 없이 맞는 후보가 있으면 그것을 골라라. "
         "단, 어느 후보도 맞지 않는데 억지로 끼워 맞추지는 마라 — 그때만 새 카테고리 이름을 제안하라(2~6자). "
-        "새 이름은 여러 이미지가 공유할 수 있는 주제 단위(예: 게임, MBTI, 자격증)여야 한다. "
+        f"새 이름은 여러 이미지가 공유할 수 있는 주제 단위(예: {', '.join(NEW_NAME_EXAMPLES)})여야 한다. "
         "브랜드명·상호명·장소명·제품명은 카테고리로 만들지 마라 — 그런 구체 정보는 태그와 주요정보에 담는다. "
         "새 이름을 제안하기 전에 후보에 같은 주제가 이미 있으면 반드시 그 표기를 그대로 재사용하라(축약·변형 금지). "
-        "여러 주제에 걸치는 이미지는 우선순위를 지켜라: 시간이 정해진 약속·모임·예약 정보가 중심이면 '예약'을 우선한다. "
-        "예: 특정 게임 아이템 화면 → '게임', 특정 호텔의 식당 안내 → 기존 후보(음식), 성격유형 콘텐츠 → 'MBTI', 모임 공지(일시·장소·참석자) → 기존 후보(예약). "
+        f"여러 주제에 걸치는 이미지는 우선순위를 지켜라: 시간이 정해진 약속·모임·예약 정보가 중심이면 '{TIE_BREAK_CATEGORY}'을 우선한다. "
+        f"'{EMPTY_CATEGORY}'는 고르지 마라 — 어느 후보도 맞지 않으면 반드시 새 이름을 제안하라. "
+        f"예: 특정 게임 아이템 화면 → '{NEW_NAME_EXAMPLES[0]}', 특정 호텔의 식당 안내 → 기존 후보(음식), "
+        f"모임 공지(일시·장소·참석자) → 기존 후보({TIE_BREAK_CATEGORY}). "
         "categories 에는 최종 카테고리명 하나만 넣어라.\n\n"
         + tag_rule
         + "[주요정보] 사용자에게 보여줄 핵심 정보를 '항목: 값' 형태 문자열로 담아라. "

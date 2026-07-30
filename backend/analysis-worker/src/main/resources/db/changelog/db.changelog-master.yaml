@@ -15,3 +15,5 @@ databaseChangeLog:
       file: db/changelog/007-add-pending-job-index.sql
   - include:
       file: db/changelog/008-add-s3-key-and-retry-index.sql
+  - include:
+      file: db/changelog/009-create-category-reanalysis-job.sql

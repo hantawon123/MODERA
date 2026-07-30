@@ -6,6 +6,7 @@ import com.ssafy.modera.contract.EventTypes;
 import com.ssafy.modera.contract.Streams;
 import com.ssafy.modera.contract.payload.AnalysisCompletedPayload;
 import com.ssafy.modera.contract.payload.AnalysisFailedPayload;
+import com.ssafy.modera.contract.payload.InitialCategoryResolvedPayload;
 import com.ssafy.modera.worker.domain.analysis.callback.dto.request.AnalysisCallbackRequest;
 import com.ssafy.modera.worker.domain.analysis.entity.AnalysisJob;
 import com.ssafy.modera.worker.domain.analysis.repository.AnalysisJobRepository;
@@ -205,8 +206,34 @@ public class AnalysisCallbackService {
                 request.modelVersion()
         );
         eventPublisher.publish(Streams.ANALYSIS_RESULT, EventTypes.ANALYSIS_COMPLETED, 1, payload);
+        publishInitialCategory(analysisJob, result);
         log.info("ANALYSIS_COMPLETED 발행: jobId={} imageId={}", analysisJob.getJobId(), analysisJob.getImageId());
     }
+
+    private void publishInitialCategory(AnalysisJob job, Map<String, Object> result) {
+        Integer categoryId = integer(result, "categoryId");
+        String categoryName = str(result, "category");
+        if (categoryId == null || categoryName == null || categoryName.isBlank()) {
+            log.warn("AI categoryId/category 누락으로 초기 카테고리 이벤트를 생략합니다: imageId={}",
+                    job.getImageId());
+            return;
+        }
+        try {
+            eventPublisher.publish(
+                    Streams.ANALYSIS_RESULT,
+                    EventTypes.INITIAL_CATEGORY_RESOLVED,
+                    1,
+                    new InitialCategoryResolvedPayload(
+                            job.getImageId(), job.getUserId(), categoryId, categoryName)
+            );
+        } catch (Exception exception) {
+            // Initial category replication is auxiliary. A Redis failure here must not
+            // turn an already persisted and completed full analysis into FAILED.
+            log.error("초기 카테고리 이벤트 발행 실패(일반 분석 완료 상태는 유지): imageId={}",
+                    job.getImageId(), exception);
+        }
+    }
+
     private void handleFailure(AnalysisJob job, AnalysisCallbackRequest req) {
         String code = req.error() == null ? "ANALYSIS_ERROR" : req.error().code();
         String message = req.error() == null ? "unknown" : req.error().message();
@@ -280,6 +307,11 @@ public class AnalysisCallbackService {
     private Float flt(Map<String, Object> map, String key) {
         Object value = map.get(key);
         return value instanceof Number n ? n.floatValue() : null;
+    }
+
+    private Integer integer(Map<String, Object> map, String key) {
+        Object value = map.get(key);
+        return value instanceof Number number ? number.intValue() : null;
     }
 
     /** 중첩 객체를 JSONB 컬럼용 JSON 문자열로 만든다. 비어 있으면 null(= AI가 안 보냄). */

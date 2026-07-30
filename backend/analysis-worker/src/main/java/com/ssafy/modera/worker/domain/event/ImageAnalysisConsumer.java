@@ -5,12 +5,14 @@ import com.ssafy.modera.contract.EventEnvelope;
 import com.ssafy.modera.contract.EventTypes;
 import com.ssafy.modera.contract.Streams;
 import com.ssafy.modera.contract.payload.AnalysisFailedPayload;
+import com.ssafy.modera.contract.payload.CategoryReanalysisRequestedPayload;
 import com.ssafy.modera.contract.payload.DocumentRequestedPayload;
 import com.ssafy.modera.contract.payload.ImageUploadedPayload;
 import com.ssafy.modera.worker.domain.analysis.client.AnalysisClient;
 import com.ssafy.modera.worker.domain.analysis.entity.AnalysisJob;
 import com.ssafy.modera.worker.domain.analysis.repository.AnalysisJobRepository;
 import com.ssafy.modera.worker.domain.document.DocumentGenerationService;
+import com.ssafy.modera.worker.domain.category.service.CategoryReanalysisService;
 import io.lettuce.core.RedisCommandTimeoutException;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
@@ -56,6 +58,7 @@ public class ImageAnalysisConsumer {
     private final AnalysisClient analysisClient;
     private final EventPublisher eventPublisher;
     private final DocumentGenerationService documentGenerationService;
+    private final CategoryReanalysisService categoryReanalysisService;
 
     private volatile boolean running = true;
     private Thread consumerThread;
@@ -150,6 +153,9 @@ public class ImageAnalysisConsumer {
             if (EventTypes.IMAGE_UPLOADED.equals(envelope.eventType())) {
                 ImageUploadedPayload payload = readPayload(envelope, ImageUploadedPayload.class);
                 handleImageUploaded(envelope, payload);
+            } else if (EventTypes.CATEGORY_REANALYSIS_REQUESTED.equals(envelope.eventType())) {
+                categoryReanalysisService.handle(
+                        readPayload(envelope, CategoryReanalysisRequestedPayload.class));
             } else if (EventTypes.DOCUMENT_REQUESTED.equals(envelope.eventType())) {
                 // 문서 생성도 이 스트림에 실려 온다 — 전용 스트림을 파지 않은 이유는
                 // 이 컨슈머 루프와 PEL 회수(PelReclaimScanner)가 그대로 적용되기

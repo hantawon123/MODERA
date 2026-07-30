@@ -1,7 +1,7 @@
 package com.ssafy.modera.feature.relatedimages
 
 import androidx.compose.ui.tooling.preview.PreviewParameterProvider
-import com.ssafy.modera.core.model.analyzedimage.AnalyzedImageSummary
+import com.ssafy.modera.core.model.analyzedimage.AnalyzedImage
 import com.ssafy.modera.core.model.analyzedimage.ImageAnalysisStatus
 
 internal data class RelatedImagesScreenPreviewData(
@@ -45,7 +45,7 @@ internal class RelatedImagesScreenPreviewParameterProvider :
 }
 
 private val previewRelatedImages = List(3) { index ->
-    AnalyzedImageSummary(
+    AnalyzedImage(
         id = (index + 1).toLong(),
         title = "성심당 케이크 리스트",
         summary = "올해 성심당 케이크 메뉴 리스트로, 샤인머스켓 시루와 귤 시루 등을 소개합니다.",

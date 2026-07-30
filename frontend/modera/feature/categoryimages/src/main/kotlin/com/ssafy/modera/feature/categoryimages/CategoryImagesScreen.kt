@@ -25,7 +25,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ssafy.modera.core.designsystem.component.Text
 import com.ssafy.modera.core.designsystem.theme.ModeraTheme
-import com.ssafy.modera.core.model.analyzedimage.AnalyzedImageSummary
+import com.ssafy.modera.core.model.analyzedimage.AnalyzedImage
 import com.ssafy.modera.core.model.analyzedimage.ImageAnalysisStatus
 import com.ssafy.modera.core.ui.LoadingScreen
 import com.ssafy.modera.feature.categoryimages.component.AnalyzedImageItem
@@ -73,7 +73,7 @@ fun CategoryImagesScreen(
 @Composable
 fun CategoryImagesScreen(
     categoryName: String,
-    images: List<AnalyzedImageSummary>,
+    images: List<AnalyzedImage>,
     onBackClick: () -> Unit,
     onImageClick: (Long) -> Unit,
     onDeleteImages: (Set<Long>) -> Unit,
@@ -144,10 +144,10 @@ fun CategoryImagesScreen(
                 ) {
                     items(
                         items = images,
-                        key = AnalyzedImageSummary::id,
+                        key = AnalyzedImage::id,
                     ) { image ->
                         AnalyzedImageItem(
-                            analyzedImageSummary = image,
+                            analyzedImage = image,
                             selected = image.id in selectedImageIds,
                             selectionMode = selectionMode,
                             onClick = {
@@ -283,7 +283,7 @@ private fun CategoryImagesErrorScreenPreview() {
 }
 
 private val previewAnalyzedImageSummaries = List(12) { index ->
-    AnalyzedImageSummary(
+    AnalyzedImage(
         id = index.toLong(),
         title = "삼성전자 주가 전망 및 투자 분석",
         summary = "삼성전자 주가 전망 및 투자 분석",

@@ -4,7 +4,7 @@ import com.skydoves.sandwich.getOrThrow
 import com.ssafy.modera.core.model.analyzedimage.AnalyzedImageQuery
 import com.ssafy.modera.core.network.model.analyzedimage.AnalyzedImageCategoryResponse
 import com.ssafy.modera.core.network.model.analyzedimage.AnalyzedImageDetailResponse
-import com.ssafy.modera.core.network.model.analyzedimage.AnalyzedImageSummaryResponse
+import com.ssafy.modera.core.network.model.analyzedimage.AnalyzedImageResponse
 import com.ssafy.modera.core.network.model.analyzedimage.AnalyzedImageTagResponse
 import com.ssafy.modera.core.network.model.analyzedimage.AnalyzedImagesResponse
 import kotlinx.coroutines.delay
@@ -46,7 +46,7 @@ class AnalyzedImageClient @Inject constructor(
 
     suspend fun fetchRelatedImages(
         imageId: Long,
-    ): List<AnalyzedImageSummaryResponse> {
+    ): List<AnalyzedImageResponse> {
         delay(300L.milliseconds)
 
         return createMockRelatedImages(
@@ -57,11 +57,11 @@ class AnalyzedImageClient @Inject constructor(
 
 private fun createMockRelatedImages(
     sourceImageId: Long,
-): List<AnalyzedImageSummaryResponse> =
+): List<AnalyzedImageResponse> =
     List(10) { index ->
         val sequence = index + 1
 
-        AnalyzedImageSummaryResponse(
+        AnalyzedImageResponse(
             imageId = sourceImageId * 300L + sequence,
             fileName = "related_image_$sequence.png",
             title = "성심당 케이크 리스트",

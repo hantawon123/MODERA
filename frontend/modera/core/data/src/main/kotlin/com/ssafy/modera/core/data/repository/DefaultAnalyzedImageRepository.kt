@@ -4,7 +4,7 @@ import com.ssafy.modera.core.common.network.Dispatcher
 import com.ssafy.modera.core.common.network.ModeraDispatcher
 import com.ssafy.modera.core.model.analyzedimage.AnalyzedImageDetail
 import com.ssafy.modera.core.model.analyzedimage.AnalyzedImageQuery
-import com.ssafy.modera.core.model.analyzedimage.AnalyzedImageSummary
+import com.ssafy.modera.core.model.analyzedimage.AnalyzedImage
 import com.ssafy.modera.core.network.model.analyzedimage.asExternalModel
 import com.ssafy.modera.core.network.service.AnalyzedImageClient
 import kotlinx.coroutines.CoroutineDispatcher
@@ -21,7 +21,7 @@ class DefaultAnalyzedImageRepository @Inject constructor(
     override fun getAnalyzedImages(
         page: Int,
         query: AnalyzedImageQuery,
-    ): Flow<List<AnalyzedImageSummary>> = flow {
+    ): Flow<List<AnalyzedImage>> = flow {
         val response = analyzedImageClient.fetchAnalyzedImages(
             page = page,
             query = query,
@@ -42,7 +42,7 @@ class DefaultAnalyzedImageRepository @Inject constructor(
 
     override fun getRelatedImages(
         imageId: Long,
-    ): Flow<List<AnalyzedImageSummary>> = flow {
+    ): Flow<List<AnalyzedImage>> = flow {
         val relatedImages = analyzedImageClient
             .fetchRelatedImages(imageId)
             .map { response ->

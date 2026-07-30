@@ -58,9 +58,7 @@ internal fun RelatedImagesHeader(
     }
 
     Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(vertical = 20.dp),
+        modifier = modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
@@ -92,7 +90,7 @@ private fun RelatedImagesHeaderPreview() {
         RelatedImagesHeader(
             sourceTitle = "ASCII 해커톤",
             relatedImageCount = 3,
-            modifier = Modifier.padding(horizontal = 20.dp)
+            modifier = Modifier.padding(20.dp)
         )
     }
 }

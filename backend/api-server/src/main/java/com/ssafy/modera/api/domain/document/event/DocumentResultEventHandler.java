@@ -1,15 +1,9 @@
 package com.ssafy.modera.api.domain.document.event;
 
-import com.ssafy.modera.api.domain.document.entity.Document;
 import com.ssafy.modera.api.domain.document.entity.DocumentGenerationRequest;
-import com.ssafy.modera.api.domain.document.repository.DocumentCommandRepository;
 import com.ssafy.modera.api.domain.document.repository.DocumentGenerationRequestRepository;
-import com.ssafy.modera.api.domain.document.repository.DocumentRepository;
-import com.ssafy.modera.api.domain.document.repository.DocumentViewRepository;
-import com.ssafy.modera.api.domain.library.entity.ImageDocument;
-import com.ssafy.modera.api.domain.library.entity.UserDocument;
-import com.ssafy.modera.api.domain.library.repository.ImageDocumentRepository;
-import com.ssafy.modera.api.domain.library.repository.UserDocumentRepository;
+import com.ssafy.modera.api.domain.document.service.DocumentGenerationResult;
+import com.ssafy.modera.api.domain.document.service.DocumentPersistService;
 import com.ssafy.modera.contract.payload.DocumentCompletedPayload;
 import com.ssafy.modera.contract.payload.DocumentFailedPayload;
 import lombok.RequiredArgsConstructor;
@@ -18,13 +12,17 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
-import java.util.List;
 
 /**
- * 문서 생성 결과 이벤트 처리(8-2의 7번 단계).
+ * 문서 생성 결과 이벤트 처리.
  *
- * <p>원본·관계·조회 모델을 하나의 트랜잭션으로 저장한다. 하나라도 실패하면 전부 롤백되고
- * 요청은 QUEUED로 남아, 컨슈머의 일시 오류 정책(XACK 보류 → PEL 재전달)으로 다시 시도된다.
+ * <p><b>지금은 쓰이지 않는 경로다</b> — 문서 생성이 api-server의 동기 호출로 바뀌면서
+ * api는 더 이상 DOCUMENT_REQUESTED를 발행하지 않는다. 그래도 남겨 두는 이유는 두
+ * 가지다. 첫째, 배포 시점 차이로 아직 스트림에 남아 있던 요청의 결과가 뒤늦게 도착할
+ * 수 있다. 둘째, 이벤트 경유 방식으로 되돌릴 여지를 남긴다(worker 쪽 경로도 그대로다).
+ *
+ * <p>저장 자체는 동기 경로와 같은 {@link DocumentPersistService}를 쓴다 — 두 벌로
+ * 갈라지면 한쪽만 고치는 사고가 난다.
  */
 @Slf4j
 @Component
@@ -32,11 +30,7 @@ import java.util.List;
 public class DocumentResultEventHandler {
 
     private final DocumentGenerationRequestRepository documentGenerationRequestRepository;
-    private final DocumentRepository documentRepository;
-    private final UserDocumentRepository userDocumentRepository;
-    private final ImageDocumentRepository imageDocumentRepository;
-    private final DocumentViewRepository documentViewRepository;
-    private final DocumentCommandRepository documentCommandRepository;
+    private final DocumentPersistService documentPersistService;
 
     @Transactional
     public void handleCompleted(DocumentCompletedPayload payload) {
@@ -45,104 +39,12 @@ public class DocumentResultEventHandler {
             return;
         }
 
-        OffsetDateTime now = OffsetDateTime.now();
-        // AI가 내용 없는 이미지를 건너뛰면 요청보다 적을 수 있다. 요청 목록이 아니라
-        // 실제로 문서에 쓰인 목록으로 관계를 만든다.
-        List<Integer> imageIds = payload.sourceImageIds() == null ? List.of() : payload.sourceImageIds();
-
-        if (request.isRegeneration()) {
-            applyRegeneration(request, payload, imageIds, now);
-            return;
-        }
-        createDocument(request, payload, imageIds, now);
-    }
-
-    private void createDocument(DocumentGenerationRequest request, DocumentCompletedPayload payload,
-                                List<Integer> imageIds, OffsetDateTime now) {
-        Document document = documentRepository.save(
-                new Document(payload.title(), payload.summary(), payload.markdown(), now));
-        userDocumentRepository.save(UserDocument.builder()
-                .userId(request.getUserId())
-                .documentId(document.getDocumentId())
-                .build());
-
-        for (Integer imageId : imageIds) {
-            ImageDocument relation = imageDocumentRepository.save(ImageDocument.builder()
-                    .imageId(imageId)
-                    .documentId(document.getDocumentId())
-                    .updatedAt(now)
-                    .build());
-            boolean copied = documentViewRepository.insertDocumentImageView(
-                    relation.getImageDocumentId(), request.getUserId(),
-                    document.getDocumentId(), imageId, now);
-            if (!copied) {
-                // 접수 때 검증한 이미지라 정상 경로에서는 있어야 한다. 없다는 건 그 사이
-                // 삭제됐거나, AI가 요청하지 않은 imageId를 돌려줬다는 뜻이다. 관계는 남기고
-                // 조회 모델만 비는 상태가 되므로 조용히 넘기지 않고 흔적을 남긴다.
-                log.warn("조회 모델에 복사할 이미지를 찾지 못했다: documentId={} imageId={}",
-                        document.getDocumentId(), imageId);
-            }
-        }
-
-        documentViewRepository.insertUserDocumentView(
-                request.getUserId(), document.getDocumentId(),
-                document.getName(), document.getSummary(), document.getContent(), imageIds.size(), now);
-        documentViewRepository.markDocumented(request.getUserId(), imageIds);
-
-        request.complete(document.getDocumentId(), now);
-
-        log.info("문서 저장 완료: documentRequestId={} documentId={} images={}",
-                request.getId(), document.getDocumentId(), imageIds.size());
-    }
-
-    /**
-     * 재분석 결과 반영. 새 문서를 만들지 않고 기존 document_id의 내용과 관계를 갈아끼운다.
-     *
-     * <p>관계는 통째로 지우고 다시 넣는 대신 diff로 처리한다 — 유지되는 이미지의
-     * image_document 행이 그대로 남아야 조회 모델의 PK(image_document_id)도 유지되고,
-     * "언제 이 문서에 들어왔는지"가 재분석마다 초기화되지 않는다.
-     */
-    private void applyRegeneration(DocumentGenerationRequest request, DocumentCompletedPayload payload,
-                                   List<Integer> imageIds, OffsetDateTime now) {
-        Integer userId = request.getUserId();
-        Integer documentId = request.getSourceDocumentId();
-
-        Document document = documentRepository.findById(documentId).orElse(null);
-        if (document == null || "Y".equals(document.getDelYn())) {
-            // 재분석 중에 사용자가 문서를 지운 경우. 되살리면 "지웠는데 다시 나타나는" 문서가
-            // 되므로 요청만 실패로 닫는다.
-            log.warn("재분석 대상 문서가 없어 결과를 버린다: documentRequestId={} documentId={}",
-                    request.getId(), documentId);
-            request.fail("DOCUMENT_DELETED", now);
-            return;
-        }
-
-        document.update(payload.title(), payload.summary(), payload.markdown(), now);
-
-        List<Integer> removed = documentCommandRepository.findActiveImageIds(documentId).stream()
-                .filter(imageId -> !imageIds.contains(imageId))
-                .toList();
-        documentCommandRepository.softDeleteRelations(userId, documentId, removed, now);
-
-        for (Integer imageId : imageIds) {
-            Integer imageDocumentId = documentCommandRepository.upsertRelation(documentId, imageId, now);
-            boolean copied = documentCommandRepository.upsertDocumentImageView(
-                    imageDocumentId, userId, documentId, imageId, now);
-            if (!copied) {
-                log.warn("조회 모델에 복사할 이미지를 찾지 못했다: documentId={} imageId={}", documentId, imageId);
-            }
-        }
-
-        documentViewRepository.updateUserDocumentView(
-                userId, documentId,
-                document.getName(), document.getSummary(), document.getContent(), imageIds.size(), now);
-        documentViewRepository.markDocumented(userId, imageIds);
-        documentViewRepository.unmarkDocumentedIfOrphan(userId, removed);
-
-        request.complete(documentId, now);
-
-        log.info("문서 재분석 반영 완료: documentRequestId={} documentId={} images={} removed={}",
-                request.getId(), documentId, imageIds.size(), removed.size());
+        documentPersistService.persist(request.getId(), new DocumentGenerationResult(
+                payload.title(),
+                payload.summary(),
+                payload.markdown(),
+                payload.sourceImageIds()
+        ));
     }
 
     @Transactional

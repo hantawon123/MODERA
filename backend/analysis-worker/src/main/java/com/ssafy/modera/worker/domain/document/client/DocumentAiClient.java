@@ -103,15 +103,30 @@ public class DocumentAiClient {
     public record Ocr(String refinedText) {}
 
     /**
-     * 응답에는 sections/skipped/summary도 오지만 worker는 전달자 역할이라
-     * markdown(최종 산출물)과 메타데이터만 꺼내 쓴다 — 나머지는 무시한다.
+     * 응답에는 skipped(분석 이력이 없어 건너뛴 이미지)도 오지만 worker는 쓰지 않는다.
+     * summary·sections는 api-server가 문서 목록·상세를 구성하는 데 필요해 그대로 옮긴다.
      */
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record DocumentResponse(
             String title,
+            String summary,
             String markdown,
+            List<Section> sections,
             List<Integer> sourceImageIds,
             String modelVersion,
             String generatedAt
+    ) {}
+
+    /**
+     * AI가 내려주는 본문 단락. 필드명은 AI 스키마 그대로다(heading/body) —
+     * 명세 6-3의 이름(contentTitle/contentText)으로 바꾸는 건 DocumentGenerationService의
+     * 매핑이 담당한다. sequence는 AI가 주지 않아 여기에도 없다.
+     */
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record Section(
+            String heading,
+            String body,
+            List<String> bullets,
+            List<Integer> imageIds
     ) {}
 }

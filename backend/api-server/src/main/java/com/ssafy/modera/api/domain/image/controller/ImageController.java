@@ -1,6 +1,8 @@
 package com.ssafy.modera.api.domain.image.controller;
 
+import com.ssafy.modera.api.domain.image.dto.request.ImageDeleteRequest;
 import com.ssafy.modera.api.domain.image.dto.request.ImageRegisterRequest;
+import com.ssafy.modera.api.domain.image.dto.response.ImageDeleteResponse;
 import com.ssafy.modera.api.domain.image.dto.response.ImageDetailResponse;
 import com.ssafy.modera.api.domain.image.dto.response.ImageRegisterResponse;
 import com.ssafy.modera.api.domain.image.dto.response.ImageSummaryResponse;
@@ -22,6 +24,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -124,6 +127,26 @@ public class ImageController {
     }
 
     @Operation(
+            summary = "이미지 선택 삭제",
+            description = "하나 이상의 이미지 ID를 받아 사용자별 이미지 관계와 조회 데이터를 soft delete한다."
+    )
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "항목별 삭제 결과 반환"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "imageIds가 비어 있거나 100개를 초과함"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "accessToken 없음/무효(UNAUTHORIZED)")
+    })
+    @DeleteMapping
+    public ResponseEntity<ApiResponse<ImageDeleteResponse>> deleteImages(
+            @AuthenticationPrincipal Integer userId,
+            @RequestBody @Valid ImageDeleteRequest request
+    ) {
+        return ResponseEntity.ok(ApiResponse.success(
+                "I207",
+                imageCommandService.deleteImages(userId, request)
+        ));
+    }
+
+    @Operation(
             summary = "연관 이미지 조회",
             description = """
                     기준 이미지와 내용이 비슷한 본인 이미지를 유사도 내림차순으로 반환한다.
@@ -151,6 +174,6 @@ public class ImageController {
             @Parameter(description = "최대 개수(1~50)") @RequestParam(defaultValue = "10") int limit
     ) {
         SimilarImagesResponse response = imageSimilarService.getSimilarImages(userId, imageId, limit);
-        return ResponseEntity.ok(ApiResponse.success("I207", response));
+        return ResponseEntity.ok(ApiResponse.success("I210", response));
     }
 }

@@ -46,6 +46,15 @@ analysis:
   # 상태 전이 저장이 실패했다는 뜻이라, 오래 기다릴 이유가 없다.
   pending-timeout: ${PENDING_TIMEOUT:PT1M}
 
+  # [Auto Retry] FAILED + retryable=true로 끝난 job을 AnalysisRetryScanner가 자동 재시도한다.
+  # retry-backoff: 실패 확정 후 이만큼 지나야 재시도한다. 실패 직후 바로 다시 보내면
+  #   같은 원인(AI 다운 등)으로 그대로 실패해 attempt만 소모한다. stuck-timeout(5분)과
+  #   조합하면 최악 경로(요청→콜백 미도착→타임아웃→백오프)의 한 사이클이 약 7분이다.
+  # retry-max-attempt: 최초 시도를 포함한 총 시도 상한. 3이면 "처음 1번 + 재시도 2번".
+  retry-scan-interval: ${RETRY_SCAN_INTERVAL:PT1M}
+  retry-backoff: ${RETRY_BACKOFF:PT2M}
+  retry-max-attempt: ${RETRY_MAX_ATTEMPT:3}
+
   # [PEL Reclaim] 컨슈머가 메시지를 가져간 뒤 XACK 없이 죽으면 그 메시지는 Redis PEL에
   # 남아 아무도 다시 가져가지 않는다 (새 컨슈머는 '>' 오프셋으로 새 메시지만 읽는다.)
   # PelReclaimScanner가 주기적으로 그런 메시지를 회수해 재처리한다.

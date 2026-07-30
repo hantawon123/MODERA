@@ -67,4 +67,36 @@ public interface AnalysisJobRepository extends JpaRepository<AnalysisJob, Intege
      * AI 호출까지 중복되는 걸 막는 용도이다.
      */
     boolean existsByImageIdAndStatusIn(Integer imageId, Collection<String> statuses);
+
+    /**
+     * 자동 재시도 후보: "그 이미지의 가장 최근 job"이 FAILED + retryable인 것.
+     *
+     * NOT EXISTS(더 최신 job)로 최신 행만 고르는 것이 핵심이다 — 재시도 job을 만들면
+     * 그 행이 최신이 되므로, 원래 FAILED 행은 별도 마킹 없이도 다음 스윕부터 자연히
+     * 빠진다. 재시도가 또 실패하면 새 FAILED 행(attempt+1)이 최신이 되어 다시 후보가
+     * 되고, attempt 상한에서 멈춘다.
+     *
+     * 나머지 조건들:
+     *  - s3_key IS NULL 제외: 008 이전 행은 AI에 다시 보낼 재료가 없다.
+     *  - completed_at(실패 확정 시각) < :failedBefore — 백오프. 실패 직후 바로 다시
+     *    요청하면 같은 원인(AI 다운 등)으로 그대로 실패해 attempt만 태운다.
+     *  - LIMIT 100: StuckJobScanner의 Top100과 같은 이유(한 사이클 시간 예측).
+     */
+    @Query(value = """
+            SELECT j.* FROM analysis_job j
+            WHERE j.status = 'FAILED'
+              AND j.retryable = TRUE
+              AND j.s3_key IS NOT NULL
+              AND j.attempt < :maxAttempt
+              AND j.completed_at < :failedBefore
+              AND NOT EXISTS (
+                  SELECT 1 FROM analysis_job newer
+                  WHERE newer.image_id = j.image_id
+                    AND newer.job_id > j.job_id
+              )
+            ORDER BY j.job_id
+            LIMIT 100
+            """, nativeQuery = true)
+    List<AnalysisJob> findRetryCandidates(@Param("maxAttempt") int maxAttempt,
+                                          @Param("failedBefore") OffsetDateTime failedBefore);
 }

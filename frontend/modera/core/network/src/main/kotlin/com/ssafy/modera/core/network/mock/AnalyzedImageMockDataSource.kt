@@ -23,14 +23,14 @@ internal object AnalyzedImageMockDataSource {
         imageId: Long,
     ) {
         validateImageId(imageId)
-        delay(ActionDelay)
+        delay(ReanalyzeDelay)
     }
 
     suspend fun deleteImage(
         imageId: Long,
     ) {
         validateImageId(imageId)
-        delay(ActionDelay)
+        delay(DeleteDelay)
     }
 
     private fun createRelatedImages(
@@ -81,7 +81,8 @@ internal object AnalyzedImageMockDataSource {
     }
 
     private val RelatedImagesDelay = 300L.milliseconds
-    private val ActionDelay = 500L.milliseconds
+    private val DeleteDelay = 500L.milliseconds
+    private val ReanalyzeDelay = 3000L.milliseconds
 
     private const val RelatedImageCount = 10
 }

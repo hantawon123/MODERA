@@ -51,6 +51,7 @@ import com.ssafy.modera.core.ui.ErrorScreen
 import com.ssafy.modera.core.ui.LoadingScreen
 import com.ssafy.modera.feature.analyzedimagedetail.component.AnalysisSummarySection
 import com.ssafy.modera.feature.analyzedimagedetail.component.AnalyzedImageDetailActionItem
+import com.ssafy.modera.feature.analyzedimagedetail.component.AnalyzedImageDetailSkeleton
 import com.ssafy.modera.feature.analyzedimagedetail.component.AnalyzedImageDetailTopBar
 import com.ssafy.modera.feature.analyzedimagedetail.component.CategoryLabel
 import com.ssafy.modera.feature.analyzedimagedetail.component.ImageSection
@@ -155,7 +156,9 @@ private fun AnalyzedImageDetailScreen(
             menuExpanded = menuExpanded,
             onBackClick = onBackClick,
             onMoreClick = {
-                menuExpanded = !menuExpanded
+                if (uiState is AnalyzedImageDetailUiState.Success) {
+                    menuExpanded = !menuExpanded
+                }
             },
             onDismissMenu = {
                 menuExpanded = false
@@ -202,8 +205,9 @@ private fun AnalyzedImageDetailScreen(
                 )
             }
 
-            else -> {
-                LoadingScreen(
+            is AnalyzedImageDetailUiState.Reanalyzing -> {
+                AnalyzedImageDetailSkeleton(
+                    scrollState = scrollState,
                     modifier = Modifier.weight(1f),
                 )
             }

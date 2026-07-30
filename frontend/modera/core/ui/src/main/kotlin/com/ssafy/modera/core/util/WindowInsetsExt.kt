@@ -1,11 +1,14 @@
-package com.ssafy.modera.feature.home.util
+package com.ssafy.modera.core.util
 
+import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.composed
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.Dp
@@ -14,7 +17,7 @@ import androidx.core.view.WindowInsetsAnimationCompat
 import androidx.core.view.WindowInsetsCompat
 
 @Composable
-internal fun rememberRawStatusBarTopPadding(): Dp {
+fun rememberRawStatusBarTopPadding(): Dp {
     val view = LocalView.current
     val density = LocalDensity.current
     var topPx by remember { mutableIntStateOf(0) }
@@ -30,7 +33,7 @@ internal fun rememberRawStatusBarTopPadding(): Dp {
         readTopPx()
 
         val callback = object : WindowInsetsAnimationCompat.Callback(
-            WindowInsetsAnimationCompat.Callback.DISPATCH_MODE_CONTINUE_ON_SUBTREE,
+            DISPATCH_MODE_CONTINUE_ON_SUBTREE,
         ) {
             override fun onProgress(
                 insets: WindowInsetsCompat,
@@ -52,4 +55,8 @@ internal fun rememberRawStatusBarTopPadding(): Dp {
     }
 
     return with(density) { topPx.toDp() }
+}
+
+fun Modifier.statusBarTopPadding(): Modifier = composed {
+    padding(top = rememberRawStatusBarTopPadding())
 }

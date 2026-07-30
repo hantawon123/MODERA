@@ -35,8 +35,8 @@ import com.ssafy.modera.core.designsystem.component.Text
 import com.ssafy.modera.core.designsystem.icon.ModeraIcons
 import com.ssafy.modera.core.designsystem.theme.ModeraTheme
 import com.ssafy.modera.core.model.category.CategorySortType
+import com.ssafy.modera.core.util.statusBarTopPadding
 import com.ssafy.modera.feature.category.component.CategoryTopSheet
-import com.ssafy.modera.feature.category.search.rememberRawStatusBarTopPadding
 
 data class CategoryMaterialUiModel(
     val id: Int,
@@ -132,8 +132,6 @@ fun CategoryScreen(
     onItemClick: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val statusBarTopPadding = rememberRawStatusBarTopPadding()
-
     Box(
         modifier = modifier
             .fillMaxSize()
@@ -142,7 +140,7 @@ fun CategoryScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(top = statusBarTopPadding),
+                .statusBarTopPadding(),
         ) {
             ModeraTopBar(
                 onBackClick = {},

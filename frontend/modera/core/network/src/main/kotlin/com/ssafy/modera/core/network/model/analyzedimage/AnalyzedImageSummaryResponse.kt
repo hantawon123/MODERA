@@ -22,7 +22,7 @@ fun AnalyzedImageSummaryResponse.asExternalModel(): AnalyzedImageSummary =
     AnalyzedImageSummary(
         id = imageId,
         title = title,
-        imageUrl = "https://i15d207.p.ssafy.io${thumbnailUrl.orEmpty()}",
+        thumbnailUrl = "https://i15d207.p.ssafy.io${thumbnailUrl.orEmpty()}",
         hashtags = tags.map { it.name },
         status = when (status) {
             "QUEUED" -> ImageAnalysisStatus.QUEUED

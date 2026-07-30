@@ -8,7 +8,7 @@ import com.ssafy.modera.feature.category.search.CategorySearchRoute
 fun EntryProviderScope<NavKey>.categoryEntry(
     onBackClick: () -> Unit,
     onSearchIconClick: () -> Unit,
-    onItemClick: (Int) -> Unit,
+    onItemClick: (Long) -> Unit,
 ) {
     entry<CategoryNavKey> {
         CategoryRoute(

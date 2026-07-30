@@ -17,25 +17,16 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.core.view.ViewCompat
-import androidx.core.view.WindowInsetsAnimationCompat
-import androidx.core.view.WindowInsetsCompat
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ssafy.modera.core.component.ModeraTopBar
@@ -44,6 +35,7 @@ import com.ssafy.modera.core.component.item.ModeraSearchBar
 import com.ssafy.modera.core.component.item.SearchBarMode
 import com.ssafy.modera.core.designsystem.component.Text
 import com.ssafy.modera.core.designsystem.theme.ModeraTheme
+import com.ssafy.modera.core.model.analyzedimage.AnalyzedImage
 import com.ssafy.modera.core.ui.LoadingScreen
 import com.ssafy.modera.feature.category.CategoryMaterialUiModel
 import com.ssafy.modera.feature.category.R
@@ -51,7 +43,7 @@ import com.ssafy.modera.feature.category.R
 @Composable
 fun CategorySearchRoute(
     onBackClick: () -> Unit,
-    onItemClick: (Int) -> Unit,
+    onItemClick: (Long) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: CategorySearchViewModel = hiltViewModel(),
 ) {
@@ -119,7 +111,7 @@ fun CategorySearchScreen(
     uiState: CategorySearchUiState.Success,
     onSearchQueryChange: (String) -> Unit,
     onBackClick: () -> Unit,
-    onItemClick: (Int) -> Unit,
+    onItemClick: (Long) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val searchFocusRequester = remember { FocusRequester() }
@@ -211,8 +203,8 @@ private fun RecentMaterialsEmptySection(
 
 @Composable
 private fun RecentMaterialsSection(
-    materials: List<CategoryMaterialUiModel>,
-    onItemClick: (Int) -> Unit,
+    materials: List<AnalyzedImage>,
+    onItemClick: (Long) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     LazyColumn(modifier = modifier) {
@@ -226,10 +218,9 @@ private fun RecentMaterialsSection(
         ) { material ->
             ModeraMaterialItem(
                 title = material.title,
-                description = material.description,
-                tags = material.tags,
-                imageUrl = material.imageUrl,
-                imageCountBadge = material.imageCount,
+                description = material.summary,
+                tags = material.hashtags,
+                imageUrl = material.thumbnailUrl,
                 onClick = { onItemClick(material.id) },
                 modifier = Modifier.fillMaxWidth(),
             )
@@ -251,8 +242,8 @@ private fun RecentMaterialsHeader(
 
 @Composable
 private fun CategorySearchResultSection(
-    searchResults: List<CategoryMaterialUiModel>,
-    onItemClick: (Int) -> Unit,
+    searchResults: List<AnalyzedImage>,
+    onItemClick: (Long) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     if (searchResults.isEmpty()) {
@@ -294,10 +285,9 @@ private fun CategorySearchResultSection(
         ) { material ->
             ModeraMaterialItem(
                 title = material.title,
-                description = material.description,
-                tags = material.tags,
-                imageUrl = material.imageUrl,
-                imageCountBadge = material.imageCount,
+                description = material.summary,
+                tags = material.hashtags,
+                imageUrl = material.thumbnailUrl,
                 onClick = { onItemClick(material.id) },
                 modifier = Modifier.fillMaxWidth(),
             )

@@ -2,6 +2,7 @@ package com.ssafy.modera.feature.category.search
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.ssafy.modera.core.model.analyzedimage.AnalyzedImage
 import com.ssafy.modera.feature.category.CategoryMaterialUiModel
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -55,14 +56,14 @@ class CategorySearchViewModel @Inject constructor() : ViewModel() {
 
     private fun filterMaterials(
         query: String,
-        materials: List<CategoryMaterialUiModel>,
-    ): List<CategoryMaterialUiModel> {
+        materials: List<AnalyzedImage>,
+    ): List<AnalyzedImage> {
         if (query.isBlank()) return emptyList()
 
         return materials.filter { material ->
             material.title.contains(query, ignoreCase = true) ||
-                material.description.contains(query, ignoreCase = true) ||
-                material.tags.any { tag -> tag.contains(query, ignoreCase = true) }
+                material.summary.contains(query, ignoreCase = true) ||
+                material.hashtags.any { tag -> tag.contains(query, ignoreCase = true) }
         }
     }
 }

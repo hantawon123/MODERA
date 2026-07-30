@@ -1,11 +1,11 @@
 package com.ssafy.modera.core.network.model.analyzedimage
 
-import com.ssafy.modera.core.model.analyzedimage.AnalyzedImageSummary
+import com.ssafy.modera.core.model.analyzedimage.AnalyzedImage
 import com.ssafy.modera.core.model.analyzedimage.ImageAnalysisStatus
 import kotlinx.serialization.Serializable
 
 @Serializable
-data class AnalyzedImageSummaryResponse(
+data class AnalyzedImageResponse(
     val imageId: Long,
     val fileName: String,
     val title: String,
@@ -18,8 +18,8 @@ data class AnalyzedImageSummaryResponse(
     val createdAt: String,
 )
 
-fun AnalyzedImageSummaryResponse.asExternalModel(): AnalyzedImageSummary =
-    AnalyzedImageSummary(
+fun AnalyzedImageResponse.asExternalModel(): AnalyzedImage =
+    AnalyzedImage(
         id = imageId,
         title = title,
         summary = summary,

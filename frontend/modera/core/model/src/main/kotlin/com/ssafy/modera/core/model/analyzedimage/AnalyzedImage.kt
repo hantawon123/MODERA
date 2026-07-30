@@ -1,6 +1,6 @@
 package com.ssafy.modera.core.model.analyzedimage
 
-data class AnalyzedImageSummary(
+data class AnalyzedImage(
     val id: Long,
     val title: String,
     val summary: String,

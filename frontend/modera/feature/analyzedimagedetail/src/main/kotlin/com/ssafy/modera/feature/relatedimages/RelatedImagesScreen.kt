@@ -25,7 +25,7 @@ import com.ssafy.modera.core.component.item.ModeraMaterialItem
 import com.ssafy.modera.core.designsystem.component.HorizontalDivider
 import com.ssafy.modera.core.designsystem.component.Text
 import com.ssafy.modera.core.designsystem.theme.ModeraTheme
-import com.ssafy.modera.core.model.analyzedimage.AnalyzedImageSummary
+import com.ssafy.modera.core.model.analyzedimage.AnalyzedImage
 import com.ssafy.modera.core.ui.ErrorScreen
 import com.ssafy.modera.core.ui.LoadingScreen
 import com.ssafy.modera.feature.analyzedimagedetail.R
@@ -117,7 +117,7 @@ fun RelatedImagesScreen(
 @Composable
 private fun RelatedImagesContent(
     sourceTitle: String,
-    relatedImages: List<AnalyzedImageSummary>,
+    relatedImages: List<AnalyzedImage>,
     onRelatedImageClick: (Long) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -137,7 +137,7 @@ private fun RelatedImagesContent(
 
         items(
             items = relatedImages,
-            key = AnalyzedImageSummary::id,
+            key = AnalyzedImage::id,
         ) { image ->
             ModeraMaterialItem(
                 title = image.title,

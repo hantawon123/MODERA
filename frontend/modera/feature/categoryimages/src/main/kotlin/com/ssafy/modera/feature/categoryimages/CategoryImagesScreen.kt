@@ -286,7 +286,8 @@ private val previewAnalyzedImageSummaries = List(12) { index ->
     AnalyzedImageSummary(
         id = index.toLong(),
         title = "삼성전자 주가 전망 및 투자 분석",
-        imageUrl = "https://picsum.photos/seed/category_$index/400/600",
+        summary = "삼성전자 주가 전망 및 투자 분석",
+        thumbnailUrl = "https://picsum.photos/seed/category_$index/400/600",
         hashtags = listOf(
             "주식",
             "삼성전자",

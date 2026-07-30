@@ -22,7 +22,8 @@ fun AnalyzedImageSummaryResponse.asExternalModel(): AnalyzedImageSummary =
     AnalyzedImageSummary(
         id = imageId,
         title = title,
-        imageUrl = "https://api.example.com${thumbnailUrl.orEmpty()}",
+        summary = summary,
+        thumbnailUrl = "https://api.example.com${thumbnailUrl.orEmpty()}",
         hashtags = tags.map { it.name },
         status = when (status) {
             "QUEUED" -> ImageAnalysisStatus.QUEUED

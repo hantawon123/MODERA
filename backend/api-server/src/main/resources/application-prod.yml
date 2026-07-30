@@ -89,6 +89,10 @@ internal:
 worker:
   base-url: ${WORKER_BASE_URL:http://modera-worker:8081}
 
+# [AI] 문서 생성 동기 호출. fallback 없이 환경변수만 쓴다.
+ai:
+  base-url: ${AI_SERVER_URL}
+
 logging:
   level:
     root: INFO

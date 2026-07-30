@@ -87,6 +87,8 @@ pipeline {
                     # opensearch 는 없을 때만 생성한다. --no-deps 가 없으면
                     # --force-recreate 가 의존 서비스인 opensearch 까지 재생성한다.
                     docker compose up -d opensearch
+                    # Dashboards 도 없을 때만 생성한다(--no-deps: opensearch 재생성 방지).
+                    docker compose up -d --no-deps opensearch-dashboards
                     docker compose up -d --force-recreate --no-deps ai-service
                 '''
                 echo 'AI Server Health check'

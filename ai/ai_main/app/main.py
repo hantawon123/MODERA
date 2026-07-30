@@ -16,7 +16,9 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse, Response
 from fastapi.security import APIKeyHeader
 
-from . import document, gemini_client, related, responses, search, storage
+from . import (
+    doc_selection, document, gemini_client, related, responses, search, storage,
+)
 from .config import get_settings
 from .jobs import job_registry, job_store
 from .schemas import (
@@ -204,6 +206,8 @@ async def require_internal_token(
 
 # 연관 이미지(연쇄 선택). 기능 전체가 related.py 안에 있어 여기는 이 한 줄만 닿는다.
 app.include_router(related.router, dependencies=[Depends(require_internal_token)])
+# 문서화 이미지 선택. 검색·격리는 related 를 재사용하고 화면 계약만 따로 든다.
+app.include_router(doc_selection.router, dependencies=[Depends(require_internal_token)])
 
 
 @app.exception_handler(search.InvalidSortError)
@@ -241,8 +245,16 @@ async def _validation_handler(request: Request, exc: RequestValidationError) -> 
         ]
         return responses.failure("INVALID_PARAMETER", "요청 값이 올바르지 않습니다.",
                                  fields, http_status=400)
+    # pydantic v2 는 커스텀 validator 가 올린 **예외 객체 자체**를 ctx 에 담아 준다.
+    # 그대로 응답에 넣으면 json.dumps 가 터져 400 이 500(스택트레이스)으로 바뀐다.
+    # 문자열로 확정된 키만 남긴다.
     return _error("INVALID_REQUEST", "요청 값이 올바르지 않습니다.",
-                  detail={"errors": exc.errors()[:5]}, http_status=400)
+                  detail={"errors": [
+                      {"loc": [str(p) for p in e.get("loc", ())],
+                       "msg": str(e.get("msg", "")),
+                       "type": str(e.get("type", ""))}
+                      for e in exc.errors()[:5]
+                  ]}, http_status=400)
 
 
 # ── 사용자 식별 ───────────────────────────────────────────────────────────

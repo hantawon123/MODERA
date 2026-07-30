@@ -1,6 +1,7 @@
 package com.ssafy.modera.api.domain.image.controller;
 
 import com.ssafy.modera.api.domain.image.dto.request.ImageDeleteRequest;
+import com.ssafy.modera.api.domain.image.dto.request.ImageDocumentizeRequest;
 import com.ssafy.modera.api.domain.image.dto.request.ImageFavoriteRequest;
 import com.ssafy.modera.api.domain.image.dto.request.ImageRegisterRequest;
 import com.ssafy.modera.api.domain.image.dto.request.ImageSemanticSearchRequest;
@@ -229,5 +230,38 @@ public class ImageController {
     ) {
         SimilarImagesResponse response = imageSimilarService.getSimilarImages(userId, imageId, limit);
         return ResponseEntity.ok(ApiResponse.success("I210", response));
+    }
+
+    @Operation(
+            summary = "다중 이미지 문서화 관련 자료 검색",
+            description = """
+                    문서로 만들려고 고른 기준 이미지들과 내용이 비슷한 다른 이미지를 추천한다.
+                    이미지 선택 화면의 "이것도 관련 있어요" 목록을 채우는 용도다 — 문서를 만들지
+                    않으며, 몇 번을 불러도 조회만 일어난다.
+
+                    기준 이미지들의 임베딩 평균(centroid)으로 검색하므로 개별 이미지가 아니라
+                    공통 주제에 가까운 것이 잡힌다. 유사도 0.6 미만은 제외되어 결과가 10개보다
+                    적거나 빈 배열일 수 있다. 페이지는 0/10 고정이고 페이징을 지원하지 않는다.
+
+                    검색 서버 장애 시에는 에러 대신 빈 목록을 반환한다(추천이 안 떠도 선택
+                    화면은 동작해야 한다).
+                    """
+    )
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "검색 성공. 추천이 없으면 빈 list. 항목은 5-1 목록 DTO와 동일"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "imageIds가 비었거나 중복(INVALID_PARAMETER)"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "accessToken 없음/무효(UNAUTHORIZED)"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "본인 소유가 아니거나 존재하지 않는 이미지 포함(IMAGE_NOT_FOUND)"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409", description = "분석 미완료 이미지 포함(IMAGE_ANALYSIS_NOT_COMPLETED)")
+    })
+    @PostMapping("/documentize")
+    public ResponseEntity<ApiResponse<PageResponse<ImageSummaryResponse>>> documentize(
+            @AuthenticationPrincipal Integer userId,
+            @RequestBody @Valid ImageDocumentizeRequest request
+    ) {
+        return ResponseEntity.ok(ApiResponse.success(
+                "I211",
+                imageSimilarService.findDocumentizeCandidates(userId, request.imageIds())
+        ));
     }
 }

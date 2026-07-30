@@ -50,6 +50,30 @@ public class SimilarImageController {
         );
     }
 
+    /**
+     * 다중 기준 연관 이미지 조회(5-7 문서화 관련 자료 검색).
+     *
+     * <p>기준 이미지들의 임베딩 평균(centroid)과 가까운 순이다. imageIds는 Spring이
+     * ?imageIds=1,2,3 또는 반복 파라미터를 List로 바인딩한다.
+     */
+    @GetMapping("/images/similar")
+    public MultiSimilarImagesResponse findSimilarToAll(
+            @RequestHeader(value = "X-Internal-Token", required = false) String token,
+            @RequestParam List<Integer> imageIds,
+            @RequestParam int userId,
+            @RequestParam(defaultValue = "10") int limit
+    ) {
+        verifyToken(token);
+
+        List<SimilarImageRow> rows = similarImageService.findSimilarToAll(imageIds, userId, limit);
+        log.info("다중 연관 이미지 조회: base={}장 userId={} -> {}건", imageIds.size(), userId, rows.size());
+
+        return new MultiSimilarImagesResponse(
+                imageIds,
+                rows.stream().map(r -> new SimilarImage(r.imageId(), r.score())).toList()
+        );
+    }
+
     private void verifyToken(String token) {
         if (token == null || !token.equals(expectedToken)) {
             log.warn("연관 이미지 조회 토큰 불일치 — 요청 거부");
@@ -59,6 +83,8 @@ public class SimilarImageController {
 
     /** api-server가 imageIds로 자기 DB(user_image_view)를 조회해 화면을 조립한다. */
     public record SimilarImagesResponse(int baseImageId, List<SimilarImage> results) {}
+
+    public record MultiSimilarImagesResponse(List<Integer> baseImageIds, List<SimilarImage> results) {}
 
     public record SimilarImage(int imageId, float score) {}
 }

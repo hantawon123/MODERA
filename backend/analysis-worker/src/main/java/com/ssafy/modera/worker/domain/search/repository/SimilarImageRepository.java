@@ -4,6 +4,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
+import java.sql.Array;
+import java.sql.PreparedStatement;
+import java.util.ArrayList;
 import java.util.List;
 
 @Repository
@@ -62,6 +65,64 @@ public class SimilarImageRepository {
                         rs.getInt("image_id"),
                         rs.getFloat("score")),
                 imageId, userId, imageId, MIN_SCORE, limit);
+    }
+
+    /**
+     * 여러 기준 이미지의 임베딩 평균(centroid)과 가까운 순으로 같은 사용자의 이미지를
+     * 찾는다(5-7 문서화 관련 자료 검색).
+     *
+     * <p>평균을 쓰는 이유: 기준이 항공권·숙소 캡처라면 centroid는 "그 여행"쯤의 지점이
+     * 되어, 개별 이미지 어느 하나가 아니라 공통 주제에 가까운 것이 잡힌다. 이미지별로
+     * 검색해 합치는 방식보다 쿼리가 하나로 끝나고 순위 병합 규칙도 필요 없다.
+     *
+     * - 기준 이미지들 자신은 결과에서 제외
+     * - 유사도 하한(MIN_SCORE)은 단일 검색과 동일하게 적용
+     * - 기준 이미지 전부에 임베딩이 없으면 AVG가 NULL이 되어 0건이다(비정보성만 고른 경우)
+     */
+    public List<SimilarImageRow> findSimilarToAll(List<Integer> imageIds, int userId, int limit) {
+        String sql = """
+                WITH latest AS (
+                    SELECT DISTINCT ON (image_id) image_id, embedding
+                    FROM analysis_result
+                    WHERE image_id = ANY(?) AND embedding IS NOT NULL
+                    ORDER BY image_id, result_id DESC
+                ),
+                base AS (
+                    SELECT AVG(embedding) AS embedding FROM latest
+                ),
+                candidates AS (
+                    SELECT DISTINCT ON (r.image_id)
+                           r.image_id,
+                           r.embedding
+                    FROM analysis_result r
+                    JOIN analysis_job j ON j.job_id = r.job_id
+                    WHERE j.user_id = ?
+                      AND r.image_id <> ALL(?)
+                      AND r.embedding IS NOT NULL
+                    ORDER BY r.image_id, r.result_id DESC
+                )
+                SELECT c.image_id,
+                       1 - (c.embedding <=> b.embedding) AS score
+                FROM candidates c, base b
+                WHERE b.embedding IS NOT NULL
+                  AND 1 - (c.embedding <=> b.embedding) >= ?
+                ORDER BY c.embedding <=> b.embedding
+                LIMIT ?
+                """;
+        List<SimilarImageRow> rows = new ArrayList<>();
+        jdbcTemplate.query(con -> {
+            PreparedStatement ps = con.prepareStatement(sql);
+            Array ids = con.createArrayOf("integer", imageIds.toArray(new Integer[0]));
+            ps.setArray(1, ids);
+            ps.setInt(2, userId);
+            ps.setArray(3, ids);
+            ps.setDouble(4, MIN_SCORE);
+            ps.setInt(5, limit);
+            return ps;
+        }, rs -> {
+            rows.add(new SimilarImageRow(rs.getInt("image_id"), rs.getFloat("score")));
+        });
+        return rows;
     }
 
     public record SimilarImageRow(int imageId, float score) {}

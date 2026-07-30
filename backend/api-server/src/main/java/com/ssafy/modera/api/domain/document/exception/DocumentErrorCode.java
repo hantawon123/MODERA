@@ -30,11 +30,26 @@ public enum DocumentErrorCode implements ErrorCode {
             "본인이 소유한 이미지만 문서로 만들 수 있습니다."
     ),
 
-    /** 같은 clientRequestId로 이미 접수된 요청이 있다. 재발행하지 않고 차단한다. */
+    /**
+     * 같은 clientRequestId의 요청이 이미 처리됐는데 그 결과 문서를 돌려줄 수 없다 —
+     * 만들어진 뒤 삭제된 경우다. 되살리면 "지웠는데 다시 나타나는 문서"가 되므로,
+     * 정말 다시 만들려면 새 clientRequestId로 요청해야 한다.
+     */
     DUPLICATE_CLIENT_REQUEST(
             HttpStatus.CONFLICT,
             "DUPLICATE_CLIENT_REQUEST",
-            "이미 접수된 문서 생성 요청입니다."
+            "이미 처리된 요청입니다."
+    ),
+
+    /**
+     * 같은 clientRequestId의 요청이 아직 처리 중이다. 클라이언트가 응답을 못 받고 다시
+     * 보냈는데 첫 요청이 여전히 AI를 기다리는 중일 때 나온다 — 잠시 후 다시 시도하면
+     * 완료된 문서를 그대로 받는다.
+     */
+    DOCUMENT_GENERATION_IN_PROGRESS(
+            HttpStatus.CONFLICT,
+            "DOCUMENT_GENERATION_IN_PROGRESS",
+            "같은 요청이 아직 처리 중입니다. 잠시 후 다시 시도해 주세요."
     ),
 
     /**

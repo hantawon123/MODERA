@@ -58,16 +58,20 @@ public class DocumentController {
                     imageIds 순서는 그대로 유지되며 첫 번째가 중심 자료로 쓰인다. 분석이 끝나지
                     않은 이미지는 문서에 넣을 내용이 없어 요청 단계에서 거부한다.
 
-                    clientRequestId 기준으로 중복을 막는다 — 같은 값으로 다시 호출하면 새로 만들지
-                    않고 409로 끊는다. 재시도가 아니라 새 문서를 만들려면 새 UUID를 쓴다.
+                    **응답을 못 받았으면 같은 clientRequestId로 그대로 다시 보내면 된다.** 서버가
+                    이미 문서를 만들었다면 그 문서를 200으로 돌려주고(재생성하지 않는다), 실패로
+                    끝난 요청이었다면 다시 실행한다. 아직 처리 중이면 409
+                    DOCUMENT_GENERATION_IN_PROGRESS이니 잠시 후 다시 보내면 된다.
+
+                    새 문서를 만들려는 것이라면 반드시 새 UUID를 쓴다 — 같은 값은 재시도로 해석된다.
                     """
     )
     @ApiResponses({
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "생성 완료. data는 상세 조회(8-3)와 같은 형식"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "생성 완료(또는 같은 요청의 재시도라 기존 문서 반환). data는 상세 조회(8-3)와 같은 형식"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "imageIds가 비었거나 중복·개수 초과(INVALID_DOCUMENT_IMAGES)"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "accessToken 없음/무효(UNAUTHORIZED)"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "본인 소유가 아닌 이미지 포함(DOCUMENT_IMAGE_NOT_OWNED)"),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409", description = "분석 미완료 이미지 포함 또는 중복 요청"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409", description = "분석 미완료 이미지 포함, 같은 요청 처리 중(DOCUMENT_GENERATION_IN_PROGRESS), 또는 결과 문서가 삭제됨(DUPLICATE_CLIENT_REQUEST)"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "502", description = "AI 장애·타임아웃(DOCUMENT_GENERATION_FAILED) 또는 요청 거부(DOCUMENT_AI_REJECTED)")
     })
     @PostMapping
@@ -176,11 +180,13 @@ public class DocumentController {
                     imageIds를 생략하면 현재 구성 이미지로 내용만 다시 정리한다. 값을 주면 그것이
                     최종 구성이 되므로 이미지 추가·제외도 이 API 하나로 처리한다.
 
-                    한 문서에 동시에 두 번 재분석할 수는 없다(409).
+                    한 문서에 동시에 두 번 재분석할 수는 없다(409). 재시도 규칙은 문서 생성과 같다 —
+                    같은 clientRequestId로 다시 보내면 끝난 결과를 그대로 받고, 실패한 요청이면
+                    다시 실행된다.
                     """
     )
     @ApiResponses({
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "재분석 완료. data는 상세 조회(8-3)와 같은 형식"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "재분석 완료(또는 같은 요청의 재시도라 기존 결과 반환). data는 상세 조회(8-3)와 같은 형식"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "imageIds가 중복·개수 초과이거나 남는 이미지가 없음(INVALID_DOCUMENT_IMAGES)"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "본인 소유가 아닌 이미지 포함(DOCUMENT_IMAGE_NOT_OWNED)"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "본인 소유가 아니거나 존재하지 않는 documentId(DOCUMENT_NOT_FOUND)"),

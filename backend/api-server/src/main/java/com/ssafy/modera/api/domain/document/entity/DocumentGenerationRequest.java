@@ -137,6 +137,25 @@ public class DocumentGenerationRequest {
         return STATUS_QUEUED.equals(status);
     }
 
+    public boolean isCompleted() {
+        return STATUS_COMPLETED.equals(status);
+    }
+
+    /**
+     * 실패했거나 처리 도중 끊긴 요청을 같은 멱등키로 다시 실행한다.
+     *
+     * <p>새 행을 만들지 않고 이 행을 되돌리는 이유는 멱등키가 하나뿐이기 때문이다 —
+     * 같은 (user_id, client_request_id)로 두 행을 만들 수 없다(유니크 제약). 이력의
+     * 관점에서도 "한 번의 사용자 의도"가 한 행으로 남는 편이 읽기 쉽다.
+     */
+    public void requeue(OffsetDateTime now) {
+        this.status = STATUS_QUEUED;
+        this.failureReason = null;
+        this.resultDocumentId = null;
+        this.completedAt = null;
+        this.updatedAt = now;
+    }
+
     private static String truncateReason(String reason) {
         if (reason == null || reason.isBlank()) {
             return "unknown";

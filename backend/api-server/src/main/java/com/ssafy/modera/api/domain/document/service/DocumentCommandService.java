@@ -22,12 +22,14 @@ import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClientException;
 
+import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
@@ -67,6 +69,16 @@ public class DocumentCommandService {
      */
     private static final String DEFAULT_INSTRUCTION = "선택한 자료들을 정리해 하나의 문서로 만들어 줘";
 
+    /**
+     * 이 시간이 지나도 QUEUED면 처리 중이 아니라 끊긴 요청으로 본다.
+     *
+     * <p>AI read 타임아웃(90초)에 저장 시간을 더해도 100초를 넘는 정상 요청은 없다.
+     * 짧게 잡으면 진행 중인 요청을 죽었다고 오판해 문서를 두 번 만들고, 길게 잡으면
+     * 굳은 멱등키가 그만큼 오래 막힌다(사용자는 새 키로 우회 가능). 오판 쪽이 훨씬
+     * 비싸므로 넉넉한 값을 쓴다.
+     */
+    private static final Duration STALE_QUEUED_TIMEOUT = Duration.ofMinutes(3);
+
     private final ImageQueryRepository imageQueryRepository;
     private final DocumentQueryRepository documentQueryRepository;
     private final DocumentGenerationRequestRepository documentGenerationRequestRepository;
@@ -77,6 +89,13 @@ public class DocumentCommandService {
     private final TransactionTemplate transactionTemplate;
 
     public DocumentDetailResponse create(Integer userId, DocumentCreateRequest request) {
+        // 재시도(같은 멱등키)면 재료 검증 이전에 끝낸다. 첫 요청 이후 재료 이미지가 하나
+        // 삭제됐다는 이유로 이미 만들어진 문서를 못 받는 건 말이 안 된다.
+        Integer replayed = replayDocumentId(userId, request.clientRequestId());
+        if (replayed != null) {
+            return documentQueryService.getDocument(userId, replayed);
+        }
+
         List<Integer> imageIds = validateImageIds(request.imageIds());
         List<DocumentSourceImage> sources = loadSources(userId, imageIds);
 
@@ -95,6 +114,11 @@ public class DocumentCommandService {
             Integer userId, Integer documentId, DocumentRegenerateRequest request) {
         if (!documentQueryRepository.existsDocument(userId, documentId)) {
             throw new BusinessException(DocumentErrorCode.DOCUMENT_NOT_FOUND);
+        }
+
+        Integer replayed = replayDocumentId(userId, request.clientRequestId());
+        if (replayed != null) {
+            return documentQueryService.getDocument(userId, replayed);
         }
 
         List<Integer> requestedImageIds =
@@ -260,24 +284,100 @@ public class DocumentCommandService {
     }
 
     /**
+     * 같은 멱등키로 이미 만들어진 문서가 있으면 그 documentId를 돌려준다(=replay).
+     *
+     * <p>이 API가 동기라 응답을 기다리는 시간이 길고, 그만큼 연결이 끊길 창도 넓다.
+     * 끊긴 사이 서버는 문서를 끝까지 만들어 저장하므로, 앱이 같은 키로 다시 보내면
+     * "이미 만든 그 문서"를 돌려주는 게 맞다 — 여기서 409로 끊으면 앱은 결과를 받을
+     * 길이 없어 새 키로 다시 만들게 되고, 그게 우리가 막으려던 중복 생성이다.
+     *
+     * <p>처리 중이거나(잠시 후 재시도) 결과 문서가 삭제됐으면(새 키 필요) 각각 409로
+     * 끊는다. 실패했거나 처리 도중 끊긴 요청은 여기서 걸러지지 않고 enqueue가 되살린다.
+     *
+     * @return 돌려줄 문서 ID. 재실행해야 하거나 처음 보는 요청이면 null
+     */
+    private Integer replayDocumentId(Integer userId, UUID clientRequestId) {
+        DocumentGenerationRequest existing = documentGenerationRequestRepository
+                .findByUserIdAndClientRequestIdAndDelYn(userId, clientRequestId, "N")
+                .orElse(null);
+        if (existing == null) {
+            return null;
+        }
+
+        if (existing.isCompleted()) {
+            if (existing.getResultDocumentId() == null
+                    || !documentQueryRepository.existsDocument(userId, existing.getResultDocumentId())) {
+                // 만들어진 뒤 삭제된 문서. 같은 키로 되살리지 않는다.
+                throw new BusinessException(DocumentErrorCode.DUPLICATE_CLIENT_REQUEST);
+            }
+            log.info("같은 clientRequestId의 완료된 요청을 그대로 응답한다: documentRequestId={} documentId={}",
+                    existing.getId(), existing.getResultDocumentId());
+            return existing.getResultDocumentId();
+        }
+
+        if (existing.isQueued() && !isStale(existing)) {
+            throw new BusinessException(DocumentErrorCode.DOCUMENT_GENERATION_IN_PROGRESS);
+        }
+
+        return null;   // FAILED이거나 정체된 QUEUED — enqueue에서 같은 행을 되살려 재실행한다
+    }
+
+    /**
+     * 처리 도중 끊겨 QUEUED로 굳은 행인지 판정한다.
+     *
+     * <p>서버가 재시작·배포로 죽으면 상태를 바꿔 줄 주체가 사라져 그 행은 영원히 QUEUED로
+     * 남고, 그 멱등키는 영구히 막힌다. 살아 있는 요청과 구분할 단서는 경과 시간뿐이다 —
+     * 정상 요청은 AI read 타임아웃(90초)에 저장 시간을 더해도 100초를 넘길 수 없으므로,
+     * 그보다 확실히 큰 값이면 진행 중인 요청을 죽었다고 오판하지 않는다.
+     */
+    private boolean isStale(DocumentGenerationRequest request) {
+        return request.getUpdatedAt() != null
+                && request.getUpdatedAt().isBefore(OffsetDateTime.now().minus(STALE_QUEUED_TIMEOUT));
+    }
+
+    /**
      * 요청 이력을 남긴다. UNIQUE(user_id, client_request_id)가 최종 방어선이지만, 먼저
-     * 조회해 409를 돌려줘야 "왜 거부됐는지"가 응답에 드러난다.
+     * 조회해야 "왜 거부됐는지"가 응답에 드러난다.
      *
      * <p>AI 호출 전에 커밋해 두는 이유는 이력이 곧 중복 방지 장치라서다 — 같은
      * clientRequestId로 두 번째 요청이 들어오면 첫 요청이 아직 AI를 기다리는 중이어도
      * 막혀야 한다.
+     *
+     * <p>실패했거나 정체된 행은 새로 만들지 않고 되살린다. 멱등키가 유니크라 두 행을
+     * 만들 수 없기 때문이고, 이력도 "한 번의 사용자 의도 = 한 행"으로 남는다.
      */
     private DocumentGenerationRequest enqueue(Integer userId, DocumentCreateRequest request) {
         return transactionTemplate.execute(status -> {
-            documentGenerationRequestRepository
+            DocumentGenerationRequest existing = documentGenerationRequestRepository
                     .findByUserIdAndClientRequestIdAndDelYn(userId, request.clientRequestId(), "N")
-                    .ifPresent(existing -> {
-                        throw new BusinessException(DocumentErrorCode.DUPLICATE_CLIENT_REQUEST);
-                    });
+                    .orElse(null);
+            if (existing != null) {
+                return requeue(existing);
+            }
 
             return documentGenerationRequestRepository.save(
                     DocumentGenerationRequest.create(userId, request.clientRequestId(), OffsetDateTime.now()));
         });
+    }
+
+    /**
+     * 실패·정체된 요청을 다시 QUEUED로 돌린다.
+     *
+     * <p>replayDocumentId가 이미 걸러낸 상태(완료·진행 중)가 여기까지 오는 건 동시 요청
+     * 뿐이다 — 두 요청이 나란히 조회를 통과한 경우라, 여기서 다시 확인해 늦게 온 쪽을 끊는다.
+     */
+    private DocumentGenerationRequest requeue(DocumentGenerationRequest existing) {
+        if (existing.isCompleted()) {
+            throw new BusinessException(DocumentErrorCode.DUPLICATE_CLIENT_REQUEST);
+        }
+        if (existing.isQueued() && !isStale(existing)) {
+            throw new BusinessException(DocumentErrorCode.DOCUMENT_GENERATION_IN_PROGRESS);
+        }
+
+        log.info("실패했거나 정체된 요청을 같은 멱등키로 재실행한다: documentRequestId={} status={}",
+                existing.getId(), existing.getStatus());
+        existing.requeue(OffsetDateTime.now());
+        return existing;
     }
 
     /**
@@ -290,23 +390,28 @@ public class DocumentCommandService {
      */
     private DocumentGenerationRequest enqueueRegeneration(
             Integer userId, Integer documentId, DocumentRegenerateRequest request) {
-        if (documentGenerationRequestRepository.existsByUserIdAndSourceDocumentIdAndStatusAndDelYn(
-                userId, documentId, DocumentGenerationRequest.STATUS_QUEUED, "N")) {
-            throw new BusinessException(DocumentErrorCode.DOCUMENT_REGENERATION_IN_PROGRESS);
-        }
-
         return transactionTemplate.execute(status -> {
-            documentGenerationRequestRepository
+            DocumentGenerationRequest existing = documentGenerationRequestRepository
                     .findByUserIdAndClientRequestIdAndDelYn(userId, request.clientRequestId(), "N")
-                    .ifPresent(existing -> {
-                        throw new BusinessException(DocumentErrorCode.DUPLICATE_CLIENT_REQUEST);
-                    });
+                    .orElse(null);
+            if (existing != null) {
+                // 같은 키의 재시도다. 되살리기 전에 "이 문서에 다른 재분석이 도는 중"인지는
+                // 볼 필요가 없다 — 되살릴 행 자체가 그 문서의 요청이기 때문이다.
+                return requeue(existing);
+            }
+
+            // 다른 키로 들어온 새 재분석. 이 문서에 이미 도는 요청이 있으면 막는다.
+            if (documentGenerationRequestRepository.existsByUserIdAndSourceDocumentIdAndStatusAndDelYn(
+                    userId, documentId, DocumentGenerationRequest.STATUS_QUEUED, "N")) {
+                throw new BusinessException(DocumentErrorCode.DOCUMENT_REGENERATION_IN_PROGRESS);
+            }
 
             try {
                 return documentGenerationRequestRepository.saveAndFlush(
                         DocumentGenerationRequest.regenerate(
                                 userId, request.clientRequestId(), documentId, OffsetDateTime.now()));
             } catch (DataIntegrityViolationException exception) {
+                // 조회를 나란히 통과한 동시 요청. 036의 부분 유니크 인덱스가 최종 방어선이다.
                 throw new BusinessException(DocumentErrorCode.DOCUMENT_REGENERATION_IN_PROGRESS);
             }
         });

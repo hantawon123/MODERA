@@ -36,6 +36,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 /**
@@ -172,11 +173,94 @@ class DocumentCommandServiceTest {
         verify(documentPersistService).markFailed(any(), eq("DOCUMENT_EMPTY_RESULT"));
     }
 
+    @Test
+    @DisplayName("완료된 요청을 같은 키로 다시 보내면 AI를 부르지 않고 그 문서를 돌려준다")
+    void replaysCompletedRequest() {
+        DocumentGenerationRequest completed =
+                DocumentGenerationRequest.create(USER_ID, UUID.randomUUID(), OffsetDateTime.now());
+        completed.complete(101, OffsetDateTime.now());
+        givenExisting(completed);
+        given(documentQueryRepository.existsDocument(USER_ID, 101)).willReturn(true);
+
+        documentCommandService.create(USER_ID, createRequest(7));
+
+        verify(documentAiClient, never()).generate(any());
+        verify(documentQueryService).getDocument(USER_ID, 101);
+    }
+
+    @Test
+    @DisplayName("완료됐지만 그 문서가 삭제됐으면 되살리지 않고 409로 끊는다")
+    void rejectsReplayWhenDocumentDeleted() {
+        DocumentGenerationRequest completed =
+                DocumentGenerationRequest.create(USER_ID, UUID.randomUUID(), OffsetDateTime.now());
+        completed.complete(101, OffsetDateTime.now());
+        givenExisting(completed);
+        given(documentQueryRepository.existsDocument(USER_ID, 101)).willReturn(false);
+
+        assertThatThrownBy(() -> documentCommandService.create(USER_ID, createRequest(7)))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", DocumentErrorCode.DUPLICATE_CLIENT_REQUEST);
+
+        verify(documentAiClient, never()).generate(any());
+    }
+
+    @Test
+    @DisplayName("아직 처리 중인 요청을 같은 키로 다시 보내면 진행 중이라고 알린다")
+    void rejectsWhileInProgress() {
+        givenExisting(DocumentGenerationRequest.create(USER_ID, UUID.randomUUID(), OffsetDateTime.now()));
+
+        assertThatThrownBy(() -> documentCommandService.create(USER_ID, createRequest(7)))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", DocumentErrorCode.DOCUMENT_GENERATION_IN_PROGRESS);
+
+        verify(documentAiClient, never()).generate(any());
+    }
+
+    @Test
+    @DisplayName("실패한 요청은 같은 키로 다시 실행한다")
+    void rerunsFailedRequest() {
+        DocumentGenerationRequest failed =
+                DocumentGenerationRequest.create(USER_ID, UUID.randomUUID(), OffsetDateTime.now());
+        failed.fail("DOCUMENT_AI_ERROR", OffsetDateTime.now());
+        givenExisting(failed);
+        givenSources(source(7, "제목", "요약"));
+        given(ocrRepository.findByImageIdIn(anyList())).willReturn(List.of());
+        given(documentAiClient.generate(any())).willReturn(aiResponse());
+
+        documentCommandService.create(USER_ID, createRequest(7));
+
+        verify(documentAiClient).generate(any());
+        assertThat(failed.isQueued()).isTrue();
+        assertThat(failed.getFailureReason()).isNull();
+    }
+
+    @Test
+    @DisplayName("처리 도중 끊겨 QUEUED로 굳은 요청도 같은 키로 다시 실행한다")
+    void rerunsStaleQueuedRequest() {
+        DocumentGenerationRequest stale = DocumentGenerationRequest.create(
+                USER_ID, UUID.randomUUID(), OffsetDateTime.now().minusMinutes(10));
+        givenExisting(stale);
+        givenSources(source(7, "제목", "요약"));
+        given(ocrRepository.findByImageIdIn(anyList())).willReturn(List.of());
+        given(documentAiClient.generate(any())).willReturn(aiResponse());
+
+        documentCommandService.create(USER_ID, createRequest(7));
+
+        verify(documentAiClient).generate(any());
+    }
+
+    private void givenExisting(DocumentGenerationRequest existing) {
+        given(documentGenerationRequestRepository.findByUserIdAndClientRequestIdAndDelYn(
+                any(), any(), any())).willReturn(java.util.Optional.of(existing));
+    }
+
+    /**
+     * 기존 요청 이력 조회는 스텁하지 않는다 — Mockito 기본값이 Optional.empty()라
+     * "처음 보는 요청"이 되고, 재시도 시나리오는 givenExisting()이 따로 덮어쓴다.
+     */
     private void givenSources(DocumentSourceImage... sources) {
         given(imageQueryRepository.findDocumentSources(eq(USER_ID), anyList()))
                 .willReturn(List.of(sources));
-        given(documentGenerationRequestRepository.findByUserIdAndClientRequestIdAndDelYn(
-                any(), any(), any())).willReturn(java.util.Optional.empty());
     }
 
     private DocumentAiClient.SourceImage captureFirstImage() {

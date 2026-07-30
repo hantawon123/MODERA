@@ -38,6 +38,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ssafy.modera.core.common.datetime.ModeraDateFormatter
 import com.ssafy.modera.core.common.datetime.ModeraDateStyle
+import com.ssafy.modera.core.component.ModeraConfirmDialog
 import com.ssafy.modera.core.component.ModeraHashtags
 import com.ssafy.modera.core.component.ModeraIconTextButton
 import com.ssafy.modera.core.designsystem.component.IconButton
@@ -110,7 +111,9 @@ private fun AnalyzedImageDetailScreen(
     }
 
     val scrollState = rememberScrollState()
-
+    var dialog by remember {
+        mutableStateOf<AnalyzedImageDetailDialog?>(null)
+    }
     val title = if (
         uiState is AnalyzedImageDetailUiState.Success
     ) {
@@ -158,8 +161,14 @@ private fun AnalyzedImageDetailScreen(
                 menuExpanded = false
             },
             onDocumentClick = onDocumentClick,
-            onReanalyzeClick = onReanalyzeClick,
-            onDeleteClick = onDeleteClick,
+            onReanalyzeClick = {
+                menuExpanded = false
+                dialog = AnalyzedImageDetailDialog.REANALYZE
+            },
+            onDeleteClick = {
+                menuExpanded = false
+                dialog = AnalyzedImageDetailDialog.DELETE
+            },
         )
 
         when (uiState) {
@@ -190,6 +199,46 @@ private fun AnalyzedImageDetailScreen(
                         R.string.analyzed_image_detail_load_error,
                     ),
                     modifier = Modifier.weight(1f),
+                )
+            }
+        }
+
+        if (uiState is AnalyzedImageDetailUiState.Success) {
+            dialog?.let { activeDialog ->
+                val confirmButtonColor = when (activeDialog) {
+                    AnalyzedImageDetailDialog.REANALYZE -> {
+                        ModeraTheme.colors.yellow800
+                    }
+
+                    AnalyzedImageDetailDialog.DELETE -> {
+                        ModeraTheme.colors.red
+                    }
+                }
+
+                ModeraConfirmDialog(
+                    icon = painterResource(activeDialog.iconRes),
+                    targetTitle = uiState.image.title,
+                    title = stringResource(activeDialog.titleRes),
+                    description = stringResource(activeDialog.descriptionRes),
+                    confirmText = stringResource(activeDialog.confirmTextRes),
+                    dismissText = stringResource(
+                        R.string.analyzed_image_detail_dialog_cancel,
+                    ),
+                    confirmButtonColor = confirmButtonColor,
+                    onConfirm = {
+                        dialog = null
+
+                        when (activeDialog) {
+                            AnalyzedImageDetailDialog.REANALYZE -> {
+                                onReanalyzeClick()
+                            }
+
+                            AnalyzedImageDetailDialog.DELETE -> {
+                                onDeleteClick()
+                            }
+                        }
+                    },
+                    onDismiss = { dialog = null },
                 )
             }
         }

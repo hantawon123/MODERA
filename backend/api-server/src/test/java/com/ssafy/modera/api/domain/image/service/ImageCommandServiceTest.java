@@ -1,11 +1,14 @@
 package com.ssafy.modera.api.domain.image.service;
 
+import com.ssafy.modera.api.domain.image.dto.request.ImageDeleteRequest;
 import com.ssafy.modera.api.domain.image.dto.request.ImageRegisterItemRequest;
 import com.ssafy.modera.api.domain.image.dto.request.ImageRegisterOcrRequest;
 import com.ssafy.modera.api.domain.image.dto.request.ImageRegisterRequest;
 import com.ssafy.modera.api.domain.image.entity.ImageAsset;
 import com.ssafy.modera.api.domain.image.exception.ImageErrorCode;
 import com.ssafy.modera.api.domain.image.repository.ImageAssetRepository;
+import com.ssafy.modera.api.domain.image.repository.ImageCommandRepository;
+import com.ssafy.modera.api.domain.image.repository.ImageDeleteStatus;
 import com.ssafy.modera.api.domain.image.repository.ImageQueryRepository;
 import com.ssafy.modera.api.domain.image.repository.ImageRegistrationRequestRepository;
 import com.ssafy.modera.api.domain.image.repository.OcrRepository;
@@ -35,11 +38,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.times;
 
 @ExtendWith(MockitoExtension.class)
 class ImageCommandServiceTest {
 
     @Mock ImageAssetRepository imageAssetRepository;
+    @Mock ImageCommandRepository imageCommandRepository;
     @Mock OcrRepository ocrRepository;
     @Mock ImageRegistrationRequestRepository registrationRequestRepository;
     @Mock UserImageRepository userImageRepository;
@@ -160,5 +166,30 @@ class ImageCommandServiceTest {
             assertThat(item.clientRequestId()).isEqualTo(invalidRequestId);
             assertThat(item.reason()).isEqualTo("UNSUPPORTED_FORMAT");
         });
+    }
+
+    @Test
+    void deletesMultipleImagesAndContinuesAfterItemFailure() {
+        when(imageCommandRepository.deleteImage(1, 10)).thenReturn(ImageDeleteStatus.DELETED);
+        when(imageCommandRepository.deleteImage(1, 11)).thenReturn(ImageDeleteStatus.ALREADY_DELETED);
+        when(imageCommandRepository.deleteImage(1, 12)).thenReturn(ImageDeleteStatus.NOT_FOUND);
+        when(imageCommandRepository.deleteImage(1, 13)).thenThrow(new RuntimeException("database error"));
+
+        var response = imageCommandService.deleteImages(
+                1,
+                new ImageDeleteRequest(List.of(10, 11, 12, 13, 10))
+        );
+
+        assertThat(response.deletedImageIds()).containsExactly(10);
+        assertThat(response.alreadyDeletedImageIds()).containsExactly(11);
+        assertThat(response.failed()).extracting(
+                item -> item.imageId() + ":" + item.reason()
+        ).containsExactly(
+                "12:IMAGE_NOT_FOUND",
+                "13:INTERNAL_ERROR"
+        );
+        assertThat(response.deletedCount()).isEqualTo(1);
+        assertThat(response.failedCount()).isEqualTo(2);
+        verify(imageCommandRepository, times(1)).deleteImage(1, 10);
     }
 }

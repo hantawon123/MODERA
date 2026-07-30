@@ -13,13 +13,6 @@ public record RegisterRequest(
         @NotBlank @Size(min = 8) String password,
 
         @Schema(description = "이메일", example = "user@example.com")
-        @NotBlank @Email @Size(max = 255) String email,
-
-        @Schema(
-                description = "하위 호환용 필드이며 현재 저장하지 않습니다.",
-                example = "모데라",
-                deprecated = true
-        )
-        @Size(max = 30) String nickname
+        @NotBlank @Email @Size(max = 255) String email
 ) {
 }

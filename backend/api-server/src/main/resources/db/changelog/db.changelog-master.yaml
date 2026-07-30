@@ -67,3 +67,5 @@ databaseChangeLog:
       file: db/changelog/033-add-soft-delete-to-request-history.sql
   - include:
       file: db/changelog/034-replace-document-image-added-at.sql
+  - include:
+      file: db/changelog/035-treat-soft-deleted-data-as-absent.sql

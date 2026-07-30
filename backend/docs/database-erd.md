@@ -174,7 +174,7 @@ erDiagram
 | `image_schema` | `image_asset` | `image_id` | `content_hash` UNIQUE, `s3_key` UNIQUE, `upload_status='PENDING'` | 스토리지 이미지 원본 메타데이터. 해시 UNIQUE로 동일 파일은 전역에서 한 번만 저장한다. |
 | `image_schema` | `thumbnail` | `thumbnail_id` | `image_id` UNIQUE/FK, `s3_key` UNIQUE | 이미지당 썸네일 최대 1개. 이미지 물리 삭제 시 CASCADE 삭제된다. |
 | `image_schema` | `ocr` | `ocr_id` | `image_id` UNIQUE/FK | 이미지당 OCR 결과 최대 1개. 이미지 물리 삭제 시 CASCADE 삭제된다. |
-| `image_schema` | `image_registration_request` | `image_registration_request_id` | `(user_id, client_request_id)` UNIQUE, `status='PROCESSING'`, `image_id` nullable/FK, `del_yn='N'` | 4-1 이미지 등록 요청의 멱등성 및 처리 결과를 관리한다. `user_id`는 논리 참조이고 사진 정보는 `image_asset`에만 보관한다. 등록 전·실패 상태에서는 `image_id`가 NULL일 수 있으며 이미지 물리 삭제 시 요청 이력의 `image_id`만 NULL로 변경된다. 저장 데이터 초기화 시 사용자 요청 이력을 soft delete한다. |
+| `image_schema` | `image_registration_request` | `image_registration_request_id` | 활성 행 `(user_id, client_request_id)` 부분 UNIQUE, `status='PROCESSING'`, `image_id` nullable/FK, `del_yn='N'` | 4-1 이미지 등록 요청의 멱등성 및 처리 결과를 관리한다. `del_yn='Y'`인 이력은 존재하지 않는 것으로 간주하고 복구하지 않는다. |
 | `taxonomy_schema` | `category` | `category_id` | `name` NOT NULL UNIQUE, `image_s3_key` UNIQUE, `del_yn='N'` | 모든 사용자가 공유하는 카테고리 사전. `image_s3_key`에는 카테고리 이미지의 MinIO/S3 객체 키를 저장하며 물리 삭제 대신 soft delete한다. |
 | `taxonomy_schema` | `tag` | `tag_id` | `name` NOT NULL UNIQUE, `del_yn='N'` | 모든 사용자가 공유하는 태그 사전. 이미지당 최대 5개 정책은 애플리케이션에서 보장하며 물리 삭제 대신 soft delete한다. |
 | `document_schema` | `document` | `document_id` | `content=''`, `del_yn='N'` | Markdown 문서 원본. 이미지 관계와 소유자는 `library_schema`에서 관리한다. |
@@ -302,7 +302,7 @@ erDiagram
 
 | 테이블 | 관계 | UNIQUE 제약 | 비고 |
 |---|---|---|---|
-| `user_image` | 사용자 N:M 이미지 | `(user_id, image_id)` | 하나의 이미지 원본을 여러 사용자가 공유할 수 있다. 같은 사용자의 동일 이미지 중복 등록은 불가능하다. `del_yn`은 NOT NULL, 기본값 `N`, 허용값 `Y/N`이며 사용자별 삭제 상태를 관리한다. |
+| `user_image` | 사용자 N:M 이미지 | 활성 행 `(user_id, image_id)` 부분 UNIQUE | 하나의 이미지 원본을 여러 사용자가 공유할 수 있다. `del_yn='Y'`인 관계는 존재하지 않는 것으로 간주하고 복구하지 않으며, 동일 이미지 재등록 시 새 활성 관계를 생성한다. |
 | `user_document` | 사용자 1:N 문서 | `(user_id, document_id)`, `document_id` | 문서마다 소유자는 정확히 한 명이며 `del_yn`으로 관계를 soft delete한다. |
 | `image_category` | 이미지 N:1 카테고리 | `image_id` | 이미지 하나에는 카테고리 최대 1개가 연결되며 `del_yn`으로 관계를 soft delete한다. |
 | `image_tag` | 이미지 N:M 태그 | `(image_id, tag_id)` | 동일 이미지에 같은 태그를 중복 연결할 수 없다. 최대 5개 제한은 Spring/AI 로직에서 보장하며 `del_yn`으로 관계를 soft delete한다. |

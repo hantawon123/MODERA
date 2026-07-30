@@ -1,4 +1,4 @@
-package com.ssafy.modera.api.domain.query.repository;
+package com.ssafy.modera.api.domain.image.repository;
 
 import java.util.List;
 

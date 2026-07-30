@@ -1,4 +1,4 @@
-package com.ssafy.modera.api.domain.image.dto;
+package com.ssafy.modera.api.domain.image.dto.request;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
@@ -7,9 +7,11 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Positive;
 
+import java.util.UUID;
+
 public record ImageRegisterItemRequest(
         @Schema(example = "d95db8b7-897e-412c-8924-eef3c7bca039")
-        @NotBlank String clientRequestId,
+        @NotNull UUID clientRequestId,
 
         @Schema(example = "60.jpg")
         @NotBlank String fileName,

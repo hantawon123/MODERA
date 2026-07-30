@@ -1,4 +1,4 @@
-package com.ssafy.modera.api.domain.image.dto;
+package com.ssafy.modera.api.domain.image.dto.request;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;

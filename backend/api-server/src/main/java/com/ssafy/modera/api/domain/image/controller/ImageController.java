@@ -1,9 +1,11 @@
 package com.ssafy.modera.api.domain.image.controller;
 
 import com.ssafy.modera.api.domain.image.dto.request.ImageDeleteRequest;
+import com.ssafy.modera.api.domain.image.dto.request.ImageFavoriteRequest;
 import com.ssafy.modera.api.domain.image.dto.request.ImageRegisterRequest;
 import com.ssafy.modera.api.domain.image.dto.response.ImageDeleteResponse;
 import com.ssafy.modera.api.domain.image.dto.response.ImageDetailResponse;
+import com.ssafy.modera.api.domain.image.dto.response.ImageFavoriteResponse;
 import com.ssafy.modera.api.domain.image.dto.response.ImageRegisterResponse;
 import com.ssafy.modera.api.domain.image.dto.response.ImageSummaryResponse;
 import com.ssafy.modera.api.domain.image.dto.response.ImageUploadUrlResponse;
@@ -27,6 +29,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -143,6 +146,28 @@ public class ImageController {
         return ResponseEntity.ok(ApiResponse.success(
                 "I207",
                 imageCommandService.deleteImages(userId, request)
+        ));
+    }
+
+    @Operation(
+            summary = "즐겨찾기 설정/해제",
+            description = "이미지의 사용자별 즐겨찾기 여부를 변경하고 변경 직후의 전체 즐겨찾기 개수를 반환한다."
+    )
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "즐겨찾기 변경 성공"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "favorite 누락 또는 형식 오류"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "accessToken 없음/무효(UNAUTHORIZED)"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "본인 소유가 아니거나 삭제된 이미지(IMAGE_NOT_FOUND)")
+    })
+    @PutMapping("/{imageId}/favorite")
+    public ResponseEntity<ApiResponse<ImageFavoriteResponse>> updateFavorite(
+            @AuthenticationPrincipal Integer userId,
+            @Parameter(description = "즐겨찾기를 변경할 이미지 ID") @PathVariable Integer imageId,
+            @RequestBody @Valid ImageFavoriteRequest request
+    ) {
+        return ResponseEntity.ok(ApiResponse.success(
+                "I208",
+                imageCommandService.updateFavorite(userId, imageId, request)
         ));
     }
 

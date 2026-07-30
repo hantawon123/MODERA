@@ -3,7 +3,9 @@ package com.ssafy.modera.api.domain.image.service;
 import com.ssafy.modera.api.domain.image.dto.request.ImageRegisterItemRequest;
 import com.ssafy.modera.api.domain.image.dto.request.ImageRegisterRequest;
 import com.ssafy.modera.api.domain.image.dto.request.ImageDeleteRequest;
+import com.ssafy.modera.api.domain.image.dto.request.ImageFavoriteRequest;
 import com.ssafy.modera.api.domain.image.dto.response.ImageDeleteResponse;
+import com.ssafy.modera.api.domain.image.dto.response.ImageFavoriteResponse;
 import com.ssafy.modera.api.domain.image.dto.response.ImageRegisterResponse;
 import com.ssafy.modera.api.domain.image.dto.response.ImageUploadUrlResponse;
 import com.ssafy.modera.api.domain.image.entity.ImageAsset;
@@ -156,6 +158,27 @@ public class ImageCommandService {
                 List.copyOf(failed),
                 deletedImageIds.size(),
                 failed.size()
+        );
+    }
+
+    public ImageFavoriteResponse updateFavorite(
+            Integer userId,
+            Integer imageId,
+            ImageFavoriteRequest request
+    ) {
+        int favoriteCount = java.util.Optional.ofNullable(
+                        imageCommandRepository.updateFavorite(
+                                userId,
+                                imageId,
+                                request.favorite()
+                        )
+                )
+                .orElseThrow(() -> new BusinessException(ImageErrorCode.IMAGE_NOT_FOUND));
+
+        return new ImageFavoriteResponse(
+                imageId,
+                request.favorite(),
+                favoriteCount
         );
     }
 

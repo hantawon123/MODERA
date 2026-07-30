@@ -1,6 +1,7 @@
 package com.ssafy.modera.api.domain.image.service;
 
 import com.ssafy.modera.api.domain.image.dto.request.ImageDeleteRequest;
+import com.ssafy.modera.api.domain.image.dto.request.ImageFavoriteRequest;
 import com.ssafy.modera.api.domain.image.dto.request.ImageRegisterItemRequest;
 import com.ssafy.modera.api.domain.image.dto.request.ImageRegisterOcrRequest;
 import com.ssafy.modera.api.domain.image.dto.request.ImageRegisterRequest;
@@ -65,6 +66,33 @@ class ImageCommandServiceTest {
         assertThatThrownBy(() -> imageCommandService.reissueUploadUrl(1, 10))
                 .isInstanceOfSatisfying(BusinessException.class, exception ->
                         assertThat(exception.getErrorCode()).isEqualTo(ImageErrorCode.IMAGE_NOT_FOUND));
+    }
+
+    @Test
+    void updatesFavoriteAndReturnsCurrentFavoriteCount() {
+        when(imageCommandRepository.updateFavorite(1, 10, true)).thenReturn(7);
+
+        var response = imageCommandService.updateFavorite(
+                1,
+                10,
+                new ImageFavoriteRequest(true)
+        );
+
+        assertThat(response.imageId()).isEqualTo(10);
+        assertThat(response.favorite()).isTrue();
+        assertThat(response.favoriteCount()).isEqualTo(7);
+    }
+
+    @Test
+    void hidesMissingFavoriteTargetAsNotFound() {
+        when(imageCommandRepository.updateFavorite(1, 10, false)).thenReturn(null);
+
+        assertThatThrownBy(() -> imageCommandService.updateFavorite(
+                1,
+                10,
+                new ImageFavoriteRequest(false)
+        )).isInstanceOfSatisfying(BusinessException.class, exception ->
+                assertThat(exception.getErrorCode()).isEqualTo(ImageErrorCode.IMAGE_NOT_FOUND));
     }
 
     @Test

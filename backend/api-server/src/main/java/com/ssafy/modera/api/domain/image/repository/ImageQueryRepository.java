@@ -102,6 +102,7 @@ public class ImageQueryRepository {
             ps.setObject(i++, row.uploadedAt());
             return ps;
         });
+        synchronizeUserCategories(row.userId());
     }
 
     public Optional<UserImageViewDetail> findDetail(Integer userId, Integer imageId) {
@@ -161,7 +162,7 @@ public class ImageQueryRepository {
                 imageId
         );
 
-        return jdbcTemplate.update(
+        boolean copied = jdbcTemplate.update(
                 """
                 INSERT INTO query_schema.user_image_view (
                     user_id, image_id, file_name, s3_key, thumbnail_key,
@@ -200,6 +201,94 @@ public class ImageQueryRepository {
                 imageId,
                 userId
         ) > 0;
+        if (copied) {
+            synchronizeUserCategories(userId);
+        }
+        return copied;
+    }
+
+    /**
+     * 사용자 이미지 Read Model을 기준으로 카테고리 Read Model을 동기화한다.
+     * 새 카테고리는 생성하고, 재분석으로 카테고리가 바뀐 경우 이전 카테고리는
+     * 삭제하지 않은 채 image_count=0, latest_uploaded_at=null 상태로 유지한다.
+     */
+    public void synchronizeUserCategories(Integer userId) {
+        jdbcTemplate.update(
+                """
+                INSERT INTO query_schema.user_category_view (
+                    user_id,
+                    category_id,
+                    category_name,
+                    image_count,
+                    latest_uploaded_at,
+                    image_s3_key,
+                    del_yn
+                )
+                SELECT image_view.user_id,
+                       image_view.category_id,
+                       MAX(image_view.category_name),
+                       COUNT(*)::INTEGER,
+                       MAX(image_view.uploaded_at),
+                       MAX(category.image_s3_key),
+                       'N'
+                FROM query_schema.user_image_view image_view
+                JOIN library_schema.user_image user_image
+                  ON user_image.user_id = image_view.user_id
+                 AND user_image.image_id = image_view.image_id
+                 AND user_image.del_yn = 'N'
+                LEFT JOIN taxonomy_schema.category category
+                  ON category.category_id = image_view.category_id
+                 AND category.del_yn = 'N'
+                WHERE image_view.user_id = ?
+                  AND image_view.category_id IS NOT NULL
+                  AND image_view.del_yn = 'N'
+                GROUP BY image_view.user_id, image_view.category_id
+                ON CONFLICT (user_id, category_id) DO UPDATE SET
+                    category_name = EXCLUDED.category_name,
+                    image_count = EXCLUDED.image_count,
+                    latest_uploaded_at = EXCLUDED.latest_uploaded_at,
+                    image_s3_key = EXCLUDED.image_s3_key,
+                    del_yn = 'N'
+                """,
+                userId
+        );
+
+        jdbcTemplate.update(
+                """
+                UPDATE query_schema.user_category_view category_view
+                SET image_count = (
+                        SELECT COUNT(*)
+                        FROM query_schema.user_image_view image_view
+                        JOIN library_schema.user_image user_image
+                          ON user_image.user_id = image_view.user_id
+                         AND user_image.image_id = image_view.image_id
+                         AND user_image.del_yn = 'N'
+                        WHERE image_view.user_id = category_view.user_id
+                          AND image_view.category_id = category_view.category_id
+                          AND image_view.del_yn = 'N'
+                    ),
+                    latest_uploaded_at = (
+                        SELECT MAX(image_view.uploaded_at)
+                        FROM query_schema.user_image_view image_view
+                        JOIN library_schema.user_image user_image
+                          ON user_image.user_id = image_view.user_id
+                         AND user_image.image_id = image_view.image_id
+                         AND user_image.del_yn = 'N'
+                        WHERE image_view.user_id = category_view.user_id
+                          AND image_view.category_id = category_view.category_id
+                          AND image_view.del_yn = 'N'
+                    ),
+                    image_s3_key = (
+                        SELECT category.image_s3_key
+                        FROM taxonomy_schema.category category
+                        WHERE category.category_id = category_view.category_id
+                          AND category.del_yn = 'N'
+                    )
+                WHERE category_view.user_id = ?
+                  AND category_view.del_yn = 'N'
+                """,
+                userId
+        );
     }
 
     public void updateAnalysisStatus(

@@ -1,12 +1,15 @@
 package com.ssafy.modera.api.domain.event;
 
 import com.ssafy.modera.api.domain.image.event.AnalysisResultEventHandler;
+import com.ssafy.modera.api.domain.image.event.ImageSearchResultCoordinator;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ssafy.modera.contract.EventEnvelope;
 import com.ssafy.modera.contract.EventTypes;
 import com.ssafy.modera.contract.Streams;
 import com.ssafy.modera.contract.payload.AnalysisCompletedPayload;
 import com.ssafy.modera.contract.payload.AnalysisFailedPayload;
+import com.ssafy.modera.contract.payload.ImageSearchCompletedPayload;
+import com.ssafy.modera.contract.payload.ImageSearchFailedPayload;
 import io.lettuce.core.RedisCommandTimeoutException;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
@@ -43,6 +46,7 @@ public class AnalysisResultConsumer {
     private final StringRedisTemplate redisTemplate;
     private final ObjectMapper objectMapper;
     private final AnalysisResultEventHandler eventHandler;
+    private final ImageSearchResultCoordinator imageSearchResultCoordinator;
 
     private volatile boolean running = true;
     private Thread consumerThread;
@@ -160,6 +164,18 @@ public class AnalysisResultConsumer {
             AnalysisFailedPayload payload = readPayload(envelope, AnalysisFailedPayload.class);
             eventHandler.handleFailed(payload);
             log.info("ANALYSIS_FAILED 처리 완료: eventId={}, imageId={}", envelope.eventId(), payload.imageId());
+        } else if (EventTypes.IMAGE_SEARCH_COMPLETED.equals(envelope.eventType())) {
+            ImageSearchCompletedPayload payload =
+                    readPayload(envelope, ImageSearchCompletedPayload.class);
+            imageSearchResultCoordinator.complete(payload);
+            log.info("IMAGE_SEARCH_COMPLETED 처리 완료: eventId={}, correlationId={}",
+                    envelope.eventId(), payload.correlationId());
+        } else if (EventTypes.IMAGE_SEARCH_FAILED.equals(envelope.eventType())) {
+            ImageSearchFailedPayload payload =
+                    readPayload(envelope, ImageSearchFailedPayload.class);
+            imageSearchResultCoordinator.fail(payload.correlationId(), payload.reason());
+            log.info("IMAGE_SEARCH_FAILED 처리 완료: eventId={}, correlationId={}",
+                    envelope.eventId(), payload.correlationId());
         } else {
             log.warn("알 수 없는 eventType이라 무시한다: eventId={}, eventType={}", envelope.eventId(), envelope.eventType());
         }

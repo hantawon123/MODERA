@@ -14,7 +14,9 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
+import software.amazon.awssdk.services.s3.presigner.model.PresignedGetObjectRequest;
 
+import java.net.URI;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -22,6 +24,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.any;
 
 @ExtendWith(MockitoExtension.class)
 class ImageQueryServiceTest {
@@ -87,5 +90,43 @@ class ImageQueryServiceTest {
                 .satisfies(exception -> assertThat(
                         ((BusinessException) exception).getErrorCode().getCode()
                 ).isEqualTo("IMAGE_ANALYSIS_NOT_COMPLETED"));
+    }
+
+    @Test
+    void returnsCompletedImageDetail() throws Exception {
+        when(imageQueryRepository.findDetail(1, 10))
+                .thenReturn(Optional.of(new UserImageViewDetail(
+                        "1/10-image.jpg",
+                        null,
+                        "UPLOADED",
+                        "COMPLETED",
+                        "image.jpg",
+                        true,
+                        "summary",
+                        "공부",
+                        List.of("C++"),
+                        List.of("가격: 32000원"),
+                        null,
+                        false,
+                        false
+                )));
+        StorageProperties.Bucket bucket = new StorageProperties.Bucket();
+        bucket.setPictures("pictures");
+        when(storageProperties.getBucket()).thenReturn(bucket);
+        PresignedGetObjectRequest presigned =
+                org.mockito.Mockito.mock(PresignedGetObjectRequest.class);
+        when(presigned.url()).thenReturn(
+                URI.create("https://storage.example/image").toURL()
+        );
+        when(s3Presigner.presignGetObject(any(
+                software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest.class
+        ))).thenReturn(presigned);
+
+        var response = imageQueryService.getImage(1, 10);
+
+        assertThat(response.imageId()).isEqualTo(10);
+        assertThat(response.imageUrl()).isEqualTo("https://storage.example/image");
+        assertThat(response.favorite()).isTrue();
+        assertThat(response.tags()).containsExactly("C++");
     }
 }

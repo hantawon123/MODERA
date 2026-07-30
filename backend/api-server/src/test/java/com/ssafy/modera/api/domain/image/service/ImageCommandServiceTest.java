@@ -115,6 +115,41 @@ class ImageCommandServiceTest {
     }
 
     @Test
+    void reissuesUploadUrlBeforeUploadCompletes() throws Exception {
+        ImageAsset asset = ImageAsset.builder()
+                .imageId(10)
+                .fileName("image.jpg")
+                .contentHash("a".repeat(64))
+                .fileSize(100)
+                .s3Key("1/10-image.jpg")
+                .uploadStatus("PENDING")
+                .build();
+        StorageProperties.Bucket bucket = new StorageProperties.Bucket();
+        bucket.setPictures("pictures");
+        when(userImageRepository.findByUserIdAndImageIdAndDelYn(1, 10, "N"))
+                .thenReturn(Optional.of(UserImage.builder().userId(1).imageId(10).build()));
+        when(imageAssetRepository.findByImageIdAndDelYn(10, "N"))
+                .thenReturn(Optional.of(asset));
+        when(imageQueryRepository.findDetail(1, 10)).thenReturn(Optional.empty());
+        when(storageProperties.getBucket()).thenReturn(bucket);
+        PresignedPutObjectRequest presigned =
+                org.mockito.Mockito.mock(PresignedPutObjectRequest.class);
+        when(presigned.url()).thenReturn(
+                URI.create("https://storage.example/reissued").toURL()
+        );
+        when(s3Presigner.presignPutObject(any(
+                software.amazon.awssdk.services.s3.presigner.model.PutObjectPresignRequest.class
+        ))).thenReturn(presigned);
+
+        var response = imageCommandService.reissueUploadUrl(1, 10);
+
+        assertThat(response.imageId()).isEqualTo(10);
+        assertThat(response.presignedUrl())
+                .isEqualTo("https://storage.example/reissued");
+        assertThat(response.uploadExpiresIn()).isEqualTo(600);
+    }
+
+    @Test
     void processesMultipleImagesIndependently() throws Exception {
         String newHash = "a".repeat(64);
         String duplicateHash = "b".repeat(64);

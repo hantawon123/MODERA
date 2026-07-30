@@ -1,0 +1,293 @@
+package com.ssafy.modera.feature.category
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.vectorResource
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import com.ssafy.modera.core.component.ModeraSortSection
+import com.ssafy.modera.core.component.ModeraTopBar
+import com.ssafy.modera.core.component.ModeraTopBarDefaults
+import com.ssafy.modera.core.component.item.ModeraMaterialItem
+import com.ssafy.modera.core.designsystem.component.HorizontalDivider
+import com.ssafy.modera.core.designsystem.component.Icon
+import com.ssafy.modera.core.designsystem.component.Text
+import com.ssafy.modera.core.designsystem.icon.ModeraIcons
+import com.ssafy.modera.core.designsystem.theme.ModeraTheme
+import com.ssafy.modera.core.model.category.CategorySortType
+import com.ssafy.modera.feature.category.component.CategoryTopSheet
+import com.ssafy.modera.feature.category.search.rememberRawStatusBarTopPadding
+
+data class CategoryMaterialUiModel(
+    val id: Int,
+    val title: String,
+    val description: String,
+    val tags: List<String>,
+    val imageUrl: String? = null,
+    val imageCount: Int? = null,
+)
+
+@Composable
+fun CategoryRoute(
+    onItemClick: (Int) -> Unit,
+    onSearchIconClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    var selectedCategory by rememberSaveable { mutableStateOf("쇼핑") }
+    var selectedSortType by rememberSaveable {
+        mutableStateOf(CategorySortType.UPDATED_AT_ASC)
+    }
+    var showCategorySheet by rememberSaveable { mutableStateOf(false) }
+    var showSortPopup by rememberSaveable { mutableStateOf(false) }
+
+    val categories = remember { /* TODO: viewModel로 이동 */
+        listOf(
+            CategorySheetItem("기사", 123),
+            CategorySheetItem("기사", 123, isNew = true),
+            CategorySheetItem("스포츠", 123),
+            CategorySheetItem("스포츠", 123, isNew = true),
+            CategorySheetItem("뉴스", 123),
+            CategorySheetItem("뉴스", 123),
+            CategorySheetItem("예약", 123),
+            CategorySheetItem("예약", 123),
+            CategorySheetItem("음식", 123),
+            CategorySheetItem("음식", 123),
+            CategorySheetItem("일정", 123),
+            CategorySheetItem("예약", 123),
+            CategorySheetItem("쇼핑", 123),
+            CategorySheetItem("음식", 123),
+            CategorySheetItem("음식", 1),
+        )
+    }
+    val materials = remember {
+        List(16) { index ->
+            CategoryMaterialUiModel(
+                id = index + 1,
+                title = "성심당 케이크 리스트",
+                description = "올해 성심당 케이크 메뉴 리스트로, 샤인머스켓 시루, 귤 시루, 맛있겠다.",
+                tags = listOf("기차", "예약", "KTX"),
+                imageUrl = "",
+                imageCount = 4,
+            )
+        }
+    }
+
+    CategoryScreen(
+        selectedCategory = selectedCategory,
+        categories = categories,
+        materials = materials,
+        selectedSortType = selectedSortType,
+        showCategorySheet = showCategorySheet,
+        showSortPopup = showSortPopup,
+        onSearchIconClick = onSearchIconClick,
+        onCategoryTitleClick = { showCategorySheet = true },
+        onCategorySheetDismiss = { showCategorySheet = false },
+        onCategorySelect = { selectedCategory = it },
+        onSortClick = { showSortPopup = true },
+        onSortPopupDismiss = { showSortPopup = false },
+        onSortTypeSelect = {
+            selectedSortType = it
+            showSortPopup = false
+        },
+        onItemClick = onItemClick,
+        modifier = modifier,
+    )
+}
+
+@Composable
+fun CategoryScreen(
+    selectedCategory: String,
+    categories: List<CategorySheetItem>,
+    materials: List<CategoryMaterialUiModel>,
+    selectedSortType: CategorySortType,
+    showCategorySheet: Boolean,
+    showSortPopup: Boolean,
+    onSearchIconClick: () -> Unit,
+    onCategoryTitleClick: () -> Unit,
+    onCategorySheetDismiss: () -> Unit,
+    onCategorySelect: (String) -> Unit,
+    onSortClick: () -> Unit,
+    onSortPopupDismiss: () -> Unit,
+    onSortTypeSelect: (CategorySortType) -> Unit,
+    onItemClick: (Int) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val statusBarTopPadding = rememberRawStatusBarTopPadding()
+
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .background(ModeraTheme.colors.white),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(top = statusBarTopPadding),
+        ) {
+            ModeraTopBar(
+                onBackClick = {},
+                leftContent = {
+                    Row(
+                        modifier = Modifier
+                            .padding(4.dp)
+                            .clickable(onClick = onCategoryTitleClick),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = selectedCategory,
+                            style = ModeraTheme.typography.titleSB20,
+                            color = ModeraTheme.colors.gray900,
+                        )
+                        Icon(
+                            painter = painterResource(ModeraIcons.ArrowDown),
+                            contentDescription = stringResource(
+                                R.string.category_title_picker_description,
+                            ),
+                            tint = ModeraTheme.colors.gray700,
+                            modifier = Modifier
+                                .padding(start = 4.dp)
+                                .size(16.dp),
+                        )
+                    }
+                },
+                rightContent = {
+                    Icon(
+                        imageVector = ImageVector.vectorResource(ModeraIcons.Search),
+                        contentDescription = stringResource(R.string.icon_search_description),
+                        tint = ModeraTheme.colors.gray700,
+                        modifier = Modifier
+                            .size(ModeraTopBarDefaults.IconSize)
+                            .clickable(onClick = onSearchIconClick),
+                    )
+                },
+            )
+
+            Box() {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = CategoryScreenDefaults.HorizontalPadding),
+                ) {
+                    item {
+                        Column {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 8.dp, bottom = 8.dp),
+                            ) {
+                                Text(
+                                    text = stringResource(
+                                        R.string.category_item_count,
+                                        materials.size,
+                                    ),
+                                    modifier = Modifier.align(Alignment.CenterStart),
+                                    style = ModeraTheme.typography.bodyR14,
+                                    color = ModeraTheme.colors.gray500,
+                                )
+
+                                ModeraSortSection(
+                                    selectedLabel = selectedSortType.label,
+                                    expanded = showSortPopup,
+                                    options = CategorySortType.entries,
+                                    selectedOption = selectedSortType,
+                                    labelOf = { it.label },
+                                    onSortClick = onSortClick,
+                                    onDismissRequest = onSortPopupDismiss,
+                                    onOptionClick = onSortTypeSelect,
+                                )
+                            }
+
+                            HorizontalDivider(
+                                thickness = 1.dp,
+                                color = ModeraTheme.colors.gray200,
+                            )
+                        }
+                    }
+
+                    items(
+                        items = materials,
+                        key = { it.id },
+                    ) { material ->
+                        ModeraMaterialItem(
+                            title = material.title,
+                            description = material.description,
+                            tags = material.tags,
+                            imageUrl = material.imageUrl,
+                            imageCountBadge = material.imageCount,
+                            onClick = { onItemClick(material.id) },
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
+                }
+
+                CategoryTopSheet(
+                    visible = showCategorySheet,
+                    categories = categories,
+                    selectedCategory = selectedCategory,
+                    onCategoryClick = { onCategorySelect(it.name) },
+                    onDismissRequest = onCategorySheetDismiss,
+                )
+            }
+        }
+    }
+}
+
+internal object CategoryScreenDefaults {
+    val HorizontalPadding = 20.dp
+}
+
+@Preview(showBackground = true, widthDp = 360, heightDp = 780)
+@Composable
+private fun CategoryScreenPreview() {
+    ModeraTheme {
+        CategoryScreen(
+            selectedCategory = "쇼핑",
+            categories = listOf(
+                CategorySheetItem("쇼핑", 123),
+                CategorySheetItem("음식", 1),
+                CategorySheetItem("여행", 10, isNew = true),
+            ),
+            materials = listOf(
+                CategoryMaterialUiModel(
+                    id = 1,
+                    title = "성심당 케이크 리스트",
+                    description = "올해 성심당 케이크 메뉴 리스트로, 샤인머스켓 시루, 귤 시루, 맛있겠다.",
+                    tags = listOf("기차", "예약", "KTX"),
+                    imageUrl = "",
+                    imageCount = 4,
+                ),
+            ),
+            selectedSortType = CategorySortType.UPDATED_AT_ASC,
+            showCategorySheet = false,
+            showSortPopup = false,
+            onSearchIconClick = {},
+            onCategoryTitleClick = {},
+            onCategorySheetDismiss = {},
+            onCategorySelect = {},
+            onSortClick = {},
+            onSortPopupDismiss = {},
+            onSortTypeSelect = {},
+            onItemClick = {},
+        )
+    }
+}

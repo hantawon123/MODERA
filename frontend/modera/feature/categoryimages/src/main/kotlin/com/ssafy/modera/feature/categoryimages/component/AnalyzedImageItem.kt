@@ -236,6 +236,7 @@ private fun AnalyzedImageItemSelectedPreview() {
 private val previewAnalyzedImageSummary = AnalyzedImageSummary(
     id = 1L,
     title = "삼성전자 주가 전망 및 투자 분석",
+    summary = "삼성전자 주가 전망 및 투자 분석",
     thumbnailUrl = "https://picsum.photos/seed/modera_stock/400/400",
     hashtags = listOf(
         "주식",

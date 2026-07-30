@@ -49,6 +49,7 @@ import com.ssafy.modera.core.navigation.Navigator
 import com.ssafy.modera.core.navigation.toEntries
 import com.ssafy.modera.feature.analyzedimagedetail.navigation.analyzedImageDetailEntry
 import com.ssafy.modera.feature.analyzedimagedetail.navigation.navigateToImageDetail
+import com.ssafy.modera.feature.category.navigation.categoryEntry
 import com.ssafy.modera.feature.categoryimages.navigation.categoryImagesEntry
 import com.ssafy.modera.feature.categoryimages.navigation.navigateToCategoryImages
 import com.ssafy.modera.feature.home.HomeAnalysisState
@@ -59,7 +60,6 @@ import com.ssafy.modera.feature.imageviewer.navigation.imageViewerEntry
 import com.ssafy.modera.feature.imageviewer.navigation.navigateToImageViewer
 import com.ssafy.modera.media.rememberGalleryPickerLauncher
 import com.ssafy.modera.navigation.BOTTOM_NAV_ITEMS
-import com.ssafy.modera.navigation.CategoryNavKey
 import com.ssafy.modera.navigation.DocumentsNavKey
 import com.ssafy.modera.navigation.FavoritesNavKey
 import com.ssafy.modera.navigation.TOP_LEVEL_NAV_ITEMS
@@ -219,7 +219,10 @@ internal fun ModeraApp(
                                     navigator = navigator,
                                     onCategoryClick = navigator::navigateToCategoryImages,
                                 )
-                                categoryEntry()
+                                categoryEntry(
+                                    onSearchIconClick = { /* TODO: 검색 화면 연결 */ },
+                                    onItemClick = { /* TODO: 자료 상세 연결 */ },
+                                )
                                 favoritesEntry()
                                 documentsEntry()
                                 categoryImagesEntry(
@@ -251,10 +254,6 @@ internal fun ModeraApp(
 }
 
 // TODO : 추후 각 NavigationProvider에 추가
-fun EntryProviderScope<NavKey>.categoryEntry() {
-    entry<CategoryNavKey> {}
-}
-
 fun EntryProviderScope<NavKey>.favoritesEntry() {
     entry<FavoritesNavKey> {}
 }

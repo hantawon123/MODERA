@@ -5,6 +5,7 @@ import androidx.annotation.StringRes
 import androidx.navigation3.runtime.NavKey
 import com.ssafy.modera.R
 import com.ssafy.modera.core.designsystem.icon.ModeraIcons
+import com.ssafy.modera.feature.category.navigation.CategoryNavKey
 import com.ssafy.modera.feature.home.navigation.HomeNavKey
 import kotlinx.serialization.Serializable
 
@@ -73,9 +74,6 @@ val BOTTOM_NAV_ITEMS = listOf(
 )
 
 /* TODO: 추후 코드 이동 */
-@Serializable
-object CategoryNavKey : NavKey
-
 @Serializable
 object RegisterNavKey : NavKey
 

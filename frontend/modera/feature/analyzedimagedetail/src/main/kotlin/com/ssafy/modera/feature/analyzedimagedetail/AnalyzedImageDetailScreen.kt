@@ -68,8 +68,6 @@ internal fun AnalyzedImageDetailScreen(
     onFavoriteClick: () -> Unit,
     onDocumentClick: () -> Unit,
     onScheduleClick: () -> Unit,
-    onReanalyzeClick: () -> Unit,
-    onDeleteClick: () -> Unit,
     onRelatedImagesClick: (Long, String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -84,8 +82,10 @@ internal fun AnalyzedImageDetailScreen(
         onFavoriteClick = onFavoriteClick,
         onDocumentClick = onDocumentClick,
         onScheduleClick = onScheduleClick,
-        onReanalyzeClick = onReanalyzeClick,
-        onDeleteClick = onDeleteClick,
+        onReanalyzeClick = viewModel::reanalyzeAnalyzedImage,
+        onDeleteClick = {
+            viewModel.deleteAnalyzedImage { onBackClick() }
+        },
         onRelatedImagesClick = onRelatedImagesClick,
         modifier = modifier,
     )
@@ -198,6 +198,12 @@ private fun AnalyzedImageDetailScreen(
                     message = stringResource(
                         R.string.analyzed_image_detail_load_error,
                     ),
+                    modifier = Modifier.weight(1f),
+                )
+            }
+
+            else -> {
+                LoadingScreen(
                     modifier = Modifier.weight(1f),
                 )
             }

@@ -17,7 +17,8 @@ from fastapi.responses import JSONResponse, Response
 from fastapi.security import APIKeyHeader
 
 from . import (
-    doc_selection, document, gemini_client, related, responses, search, storage,
+    doc_selection, document, gemini_client, reanalyze, related, responses, search,
+    storage,
 )
 from .config import get_settings
 from .jobs import job_registry, job_store
@@ -208,6 +209,8 @@ async def require_internal_token(
 app.include_router(related.router, dependencies=[Depends(require_internal_token)])
 # 문서화 이미지 선택. 검색·격리는 related 를 재사용하고 화면 계약만 따로 든다.
 app.include_router(doc_selection.router, dependencies=[Depends(require_internal_token)])
+# 카테고리 재분석(결과가 맘에 안 들 때). 판정 코어는 category/stages 를 재사용한다.
+app.include_router(reanalyze.router, dependencies=[Depends(require_internal_token)])
 
 
 @app.exception_handler(search.InvalidSortError)

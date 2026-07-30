@@ -145,6 +145,7 @@ OCR 이 비었거나 정보성이 없다고 판정되면 분석을 건너뛰고 
 | 10-2 | POST | `/internal/v1/embed` | 동기 |
 | 10-3 | POST | `/internal/v1/query/parse` | 동기. 실패 시 `parsedConditions: null` 로 degrade |
 | — | POST | `/internal/v1/search` | 동기. OpenSearch 키워드(BM25) 검색. `userId` 로 격리 |
+| — | POST | `/internal/v1/search/related` | 동기. 연관 이미지(연쇄 선택). 아래 참고 |
 | — | POST | `/internal/v1/documents` | 동기. Spring 이 보낸 분석 결과 여러 건 → 마크다운 문서 |
 | — | GET | `/health` | 헬스체크 (토큰 불필요) |
 
@@ -377,6 +378,56 @@ OpenSearch + AI 서비스를 함께 띄운다.
 
 > 색인은 best-effort 다. OpenSearch 가 잠시 죽어도 분석·콜백은 정상 진행되고,
 > 해당 이미지는 검색 인덱스에만 누락된다(재분석 시 덮어쓰기).
+
+### 연관 이미지 — `POST /internal/v1/search/related`
+
+사용자가 이미지 한 장을 고르고 '연관 이미지 선택' 을 누르면 Spring 이 `imageId` 를
+넘긴다. AI 는 그 이미지의 **색인된 요약 벡터를 그대로 질의로 써서** kNN 으로 인근
+이미지를 찾는다(임베딩 호출 0회). 결과 중 한 장을 골라 다시 부르면 연쇄가 이어진다 —
+서버는 상태를 들고 있지 않아 매 호출이 독립이다.
+
+```json
+POST /internal/v1/search/related   X-Internal-Token: <공유 토큰>
+{ "userId": 1, "imageId": 101, "correlationId": "2207708f-...", "page": 0, "size": 10 }
+```
+
+```json
+{ "eventType": "IMAGE_SEARCH_COMPLETED", "version": 1,
+  "payload": { "correlationId": "2207708f-...", "total": 2, "page": 0, "size": 10,
+    "hits": [ { "imageId": 101, "score": 3.9987202 }, { "imageId": 102, "score": 1.8765116 } ] } }
+```
+
+- `correlationId` 는 생략하면 서버가 UUID 를 만든다(응답에는 항상 있다).
+- `score` 는 코사인 유사도. `SEARCH_KNN_MIN_COSINE`(기본 0.45) 미만은 잘라낸다 —
+  "인근" 이 없으면 `hits` 는 빈 배열이고, 억지로 채우지 않는다.
+- 기준 이미지 자신은 결과에서 뺀다. 요약 벡터가 없는 이미지(빈 OCR 등)도 빈 결과다.
+- 남의 `imageId` 나 없는 `imageId` 는 둘 다 `404 IMAGE_NOT_FOUND` 다(존재 여부를
+  알려 주면 남의 imageId 열거에 쓰인다).
+- `total` 은 고정 후보풀 위의 생존자 수라 페이지를 넘겨도 흔들리지 않는다.
+
+**사용자 격리.** 벡터는 사용자별 인덱스가 아니라 **하나의 인덱스·하나의 `embedding`
+필드**에 전부 들어 있다 — 벡터 공간은 물리적으로 공유된다. 격리는 공간 분리가 아니라
+모든 질의에 걸리는 `user_id` term 필터로 한다(목록·검색·집계 전부 같은 방식).
+연관 이미지는 여기서 한 겹 더 건다:
+
+1. kNN 질의의 pre-filter — `{"term": {"user_id": ...}}` 를 `knn` 필드객체 안에 둔다
+   (OpenSearch 2.4+ lucene efficient pre-filtering).
+2. 돌아온 hit 마다 `user_id` 를 **다시 대조**해 안 맞으면 버리고 `ERROR` 로 남긴다.
+
+2번을 둔 이유는 1번이 OpenSearch 버전·엔진 지원에 의존하기 때문이다. 필터가 어떤
+이유로든 안 먹으면 남의 이미지가 결과에 섞이는데, 코드가 그 사실을 스스로 알 방법이
+없다. 그래서 값을 직접 본다. 로그에 이 `ERROR` 가 뜨면 인덱스 매핑·OpenSearch
+버전을 확인해야 한다(결과가 새지는 않는다 — 버리고 나간다).
+
+`userId` 는 0 이하를 거부한다(400). 0 은 카테고리 벡터 저장소에서 전역 시드
+소유자(`search.SEED_USER_ID`)로 쓰는 값이다. `FIXED_USER_ID=0` 은 "고정 해제"
+(요청 값 사용)를 의미하고, 그때부터 이 필터가 유일한 격리 장치다.
+
+기능 전체가 **[app/related.py](app/related.py)** 한 파일에 있다(스키마·검색·라우터).
+`main.py` 는 `include_router` 한 줄만 닿고 `search.py`·`schemas.py` 는 안 닿는다 —
+머지 충돌을 피하려는 의도이고, 되돌릴 때도 그 파일과 한 줄만 지우면 된다.
+점검: `python test/test_related.py` (OpenSearch 없이 돈다).
+결과 기록은 [test/results/test_related.md](test/results/test_related.md).
 
 ## 팀 확인이 필요한 사항
 

@@ -2,6 +2,7 @@ package com.ssafy.modera.api.domain.document.service;
 
 import com.ssafy.modera.api.domain.document.client.DocumentAiClient;
 import com.ssafy.modera.api.domain.document.dto.request.DocumentCreateRequest;
+import com.ssafy.modera.api.domain.document.dto.request.DocumentImagesRequest;
 import com.ssafy.modera.api.domain.document.dto.request.DocumentRegenerateRequest;
 import com.ssafy.modera.api.domain.document.dto.response.DocumentDetailResponse;
 import com.ssafy.modera.api.domain.document.entity.DocumentGenerationRequest;
@@ -31,6 +32,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * 문서 생성·재분석. <b>동기 처리</b>다 — 요청이 끝나야 응답이 나가고, 응답 본문에 완성된
@@ -112,31 +114,104 @@ public class DocumentCommandService {
      */
     public DocumentDetailResponse regenerate(
             Integer userId, Integer documentId, DocumentRegenerateRequest request) {
-        if (!documentQueryRepository.existsDocument(userId, documentId)) {
-            throw new BusinessException(DocumentErrorCode.DOCUMENT_NOT_FOUND);
-        }
+        List<Integer> current = requireOwnedDocumentImages(userId, documentId);
 
         Integer replayed = replayDocumentId(userId, request.clientRequestId());
         if (replayed != null) {
             return documentQueryService.getDocument(userId, replayed);
         }
 
-        List<Integer> requestedImageIds =
+        List<Integer> finalImageIds =
                 request.imageIds() == null || request.imageIds().isEmpty()
-                        ? documentQueryRepository.findDocumentImageIds(userId, documentId)
+                        ? current
                         : request.imageIds();
-        // 재료가 하나도 없는 문서는 만들 수 없다 — 구성 이미지가 전부 삭제된 문서를 그대로
-        // 재분석하려 할 때 여기 걸린다(AI에 보내봐야 400으로 돌아온다).
-        if (requestedImageIds.isEmpty()) {
+
+        return rebuild(userId, documentId, finalImageIds, request.clientRequestId(),
+                DocumentGenerationRequest.OPERATION_REGENERATE);
+    }
+
+    /**
+     * 이미지 추가(8-6). 현재 구성에 요청 이미지를 더한 목록으로 문서를 다시 만든다.
+     *
+     * <p>이미 포함된 이미지를 또 추가하면 조용히 무시된다(중복 제거) — 앱이 같은 요청을
+     * 두 번 보내도 결과가 같아야 한다.
+     */
+    public DocumentDetailResponse addImages(
+            Integer userId, Integer documentId, DocumentImagesRequest request) {
+        List<Integer> current = requireOwnedDocumentImages(userId, documentId);
+
+        Integer replayed = replayDocumentId(userId, request.clientRequestId());
+        if (replayed != null) {
+            return documentQueryService.getDocument(userId, replayed);
+        }
+
+        // 기존 이미지를 앞에 둔다 — 첫 번째가 중심 자료라는 순서 의미를 추가로 뒤집지 않는다.
+        List<Integer> merged = Stream.concat(current.stream(), request.imageIds().stream())
+                .distinct()
+                .toList();
+
+        return rebuild(userId, documentId, merged, request.clientRequestId(),
+                DocumentGenerationRequest.OPERATION_ADD_IMAGES);
+    }
+
+    /**
+     * 이미지 제외(8-7). 현재 구성에서 요청 이미지를 뺀 목록으로 문서를 다시 만든다.
+     *
+     * <p>전부 빼는 건 허용하지 않는다 — 재료가 없는 문서는 만들 수 없고, 그건 문서를
+     * 지우겠다는 뜻이므로 삭제(8-5)를 써야 한다.
+     */
+    public DocumentDetailResponse excludeImages(
+            Integer userId, Integer documentId, DocumentImagesRequest request) {
+        List<Integer> current = requireOwnedDocumentImages(userId, documentId);
+
+        Integer replayed = replayDocumentId(userId, request.clientRequestId());
+        if (replayed != null) {
+            return documentQueryService.getDocument(userId, replayed);
+        }
+
+        if (!current.containsAll(request.imageIds())) {
+            throw new BusinessException(DocumentErrorCode.DOCUMENT_IMAGE_NOT_FOUND);
+        }
+
+        List<Integer> remaining = current.stream()
+                .filter(imageId -> !request.imageIds().contains(imageId))
+                .toList();
+        if (remaining.isEmpty()) {
             throw new BusinessException(DocumentErrorCode.INVALID_DOCUMENT_IMAGES);
         }
 
-        List<Integer> imageIds = validateImageIds(requestedImageIds);
+        return rebuild(userId, documentId, remaining, request.clientRequestId(),
+                DocumentGenerationRequest.OPERATION_EXCLUDE_IMAGES);
+    }
+
+    /**
+     * 재분석·추가·제외가 공유하는 본체. 최종 이미지 목록을 정하는 방법만 다르고, 여기서부터는
+     * 완전히 같다 — 검증도, 진행 중 잠금도, AI 호출도, upsert 저장도.
+     */
+    private DocumentDetailResponse rebuild(Integer userId, Integer documentId,
+                                           List<Integer> finalImageIds, UUID clientRequestId,
+                                           String operationType) {
+        // 재료가 하나도 없는 문서는 만들 수 없다 — 구성 이미지가 전부 삭제된 문서를 그대로
+        // 재분석하려 할 때 여기 걸린다(AI에 보내봐야 400으로 돌아온다).
+        if (finalImageIds.isEmpty()) {
+            throw new BusinessException(DocumentErrorCode.INVALID_DOCUMENT_IMAGES);
+        }
+
+        List<Integer> imageIds = validateImageIds(finalImageIds);
         List<DocumentSourceImage> sources = loadSources(userId, imageIds);
 
-        DocumentGenerationRequest saved = enqueueRegeneration(userId, documentId, request);
+        DocumentGenerationRequest saved =
+                enqueueRegeneration(userId, documentId, clientRequestId, operationType);
 
         return generate(saved, userId, sources);
+    }
+
+    /** 문서 소유 여부를 확인하면서 현재 구성 이미지를 읽는다. 남의 문서는 404다. */
+    private List<Integer> requireOwnedDocumentImages(Integer userId, Integer documentId) {
+        if (!documentQueryRepository.existsDocument(userId, documentId)) {
+            throw new BusinessException(DocumentErrorCode.DOCUMENT_NOT_FOUND);
+        }
+        return documentQueryRepository.findDocumentImageIds(userId, documentId);
     }
 
     /**
@@ -389,10 +464,10 @@ public class DocumentCommandService {
      * 인덱스다. 그 예외를 그대로 두면 500이 나가므로 같은 409로 번역한다.
      */
     private DocumentGenerationRequest enqueueRegeneration(
-            Integer userId, Integer documentId, DocumentRegenerateRequest request) {
+            Integer userId, Integer documentId, UUID clientRequestId, String operationType) {
         return transactionTemplate.execute(status -> {
             DocumentGenerationRequest existing = documentGenerationRequestRepository
-                    .findByUserIdAndClientRequestIdAndDelYn(userId, request.clientRequestId(), "N")
+                    .findByUserIdAndClientRequestIdAndDelYn(userId, clientRequestId, "N")
                     .orElse(null);
             if (existing != null) {
                 // 같은 키의 재시도다. 되살리기 전에 "이 문서에 다른 재분석이 도는 중"인지는
@@ -409,7 +484,7 @@ public class DocumentCommandService {
             try {
                 return documentGenerationRequestRepository.saveAndFlush(
                         DocumentGenerationRequest.regenerate(
-                                userId, request.clientRequestId(), documentId, OffsetDateTime.now()));
+                                userId, clientRequestId, documentId, operationType, OffsetDateTime.now()));
             } catch (DataIntegrityViolationException exception) {
                 // 조회를 나란히 통과한 동시 요청. 036의 부분 유니크 인덱스가 최종 방어선이다.
                 throw new BusinessException(DocumentErrorCode.DOCUMENT_REGENERATION_IN_PROGRESS);

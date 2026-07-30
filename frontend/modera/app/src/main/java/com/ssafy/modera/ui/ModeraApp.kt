@@ -59,6 +59,7 @@ import com.ssafy.modera.feature.home.navigation.HomeNavKey
 import com.ssafy.modera.feature.home.navigation.homeEntry
 import com.ssafy.modera.feature.imageviewer.navigation.imageViewerEntry
 import com.ssafy.modera.feature.imageviewer.navigation.navigateToImageViewer
+import com.ssafy.modera.feature.relatedimages.navigation.relatedImagesEntry
 import com.ssafy.modera.media.rememberGalleryPickerLauncher
 import com.ssafy.modera.navigation.BOTTOM_NAV_ITEMS
 import com.ssafy.modera.navigation.DocumentsNavKey
@@ -240,6 +241,7 @@ internal fun ModeraApp(
                                     sharedTransitionScope = this@SharedTransitionLayout,
                                     onBackClick = navigator::goBack
                                 )
+                                relatedImagesEntry(navigator)
                             }
 
                             NavDisplay(

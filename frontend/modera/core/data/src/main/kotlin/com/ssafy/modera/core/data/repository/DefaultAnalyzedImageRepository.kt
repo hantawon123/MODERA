@@ -39,4 +39,16 @@ class DefaultAnalyzedImageRepository @Inject constructor(
 
         emit(response.asExternalModel())
     }.flowOn(ioDispatcher)
+
+    override fun getRelatedImages(
+        imageId: Long,
+    ): Flow<List<AnalyzedImageSummary>> = flow {
+        val relatedImages = analyzedImageClient
+            .fetchRelatedImages(imageId)
+            .map { response ->
+                response.asExternalModel()
+            }
+
+        emit(relatedImages)
+    }.flowOn(ioDispatcher)
 }

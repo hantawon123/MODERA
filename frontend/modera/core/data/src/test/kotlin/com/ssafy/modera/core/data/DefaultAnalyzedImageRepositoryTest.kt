@@ -118,7 +118,7 @@ class DefaultAnalyzedImageRepositoryTest {
 
                     assertEquals(
                         "$BASE_URL/images/1024.jpg",
-                        image.imageUrl,
+                        image.thumbnailUrl,
                     )
 
                     assertEquals(

@@ -11,4 +11,8 @@
     <string name="analyzed_image_detail_load_error">이미지 정보를 불러오지 못했습니다.</string>
     <string name="analyzed_image_detail_add_favorite">즐겨찾기 등록</string>
     <string name="analyzed_image_detail_remove_favorite">즐겨찾기 해제</string>
+
+    <string name="related_images_title">연관 자료</string>
+    <string name="related_images_source_title_format">“%1$s”</string>
+    <string name="related_images_header_suffix">의 연관 자료</string>
 </resources>

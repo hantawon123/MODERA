@@ -15,4 +15,8 @@ interface AnalyzedImageRepository {
     fun getAnalyzedImageDetail(
         imageId: Long,
     ): Flow<AnalyzedImageDetail>
+
+    fun getRelatedImages(
+        imageId: Long,
+    ): Flow<List<AnalyzedImageSummary>>
 }

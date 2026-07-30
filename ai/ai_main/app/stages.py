@@ -418,12 +418,26 @@ async def run_agent_core(
     proposed = (generated.get("categories") or ["기타"])[0]
 
     # 요약 임베딩: 카테고리 판정에 쓰고, 검색 적재용으로 콜백에도 실어 보낸다.
+    # AGENT 가 후보에 없는 새 이름을 제안한 경우(희귀 경로)에는 이름 중복 관문용
+    # 이름 임베딩(제안 + 후보 전부)을 같은 배치에 실어 보낸다 — 추가 호출 0회.
+    proposed_key = normalize_name(proposed)
+    name_matched = any(normalize_name(c.name) == proposed_key for c in candidates)
+    name_slots: list[str] = []
+    if not name_matched and candidates:
+        name_slots = [proposed] + [c.name for c in candidates]
     embedding_model, vectors = await asyncio.to_thread(
-        gemini_client.embed, [summary], "DOCUMENT"
+        gemini_client.embed, [summary] + name_slots, "DOCUMENT"
     )
-    # 순수 계산이라 스레드로 안 넘긴다(외부 호출이 없다 — 벡터는 후보에 이미 붙어 있다).
+    name_vectors = {
+        normalize_name(name): vec
+        for name, vec in zip(name_slots, vectors[1:])
+    }
+    # 순수 계산이라 스레드로 안 넘긴다(외부 호출이 없다 — 벡터는 위에서 준비했다).
     resolution: CategoryResolution = resolve_category(
-        vectors[0], proposed, candidates, settings.similarity_threshold
+        vectors[0], proposed, candidates,
+        settings.category_name_dup_threshold,
+        name_vectors=name_vectors,
+        proposed_name_vector=name_vectors.get(proposed_key),
     )
     logger.info(
         "카테고리 판정 imageId=%s 제안=%s → %s (유사도=%.3f, 기준=%s, 신규=%s)",
@@ -440,7 +454,7 @@ async def run_agent_core(
     # 들어가면 자가 교정 경로가 없다(동의서→금융 오염 실측, 2026-07-30).
     # 첫 이미지(centroid 부재 → 감사 코사인 1.0)는 이 가드로 못 막는다.
     guard = settings.category_guard_min_cosine
-    if (guard > 0 and resolution.matched_by == "name"
+    if (guard > 0 and resolution.matched_by in ("name", "name-variant", "name-dup")
             and resolution.similarity < guard):
         logger.warning(
             "카테고리 오염 가드: '%s' 이름 일치지만 감사 코사인 %.3f < %.2f — centroid 누적 생략",

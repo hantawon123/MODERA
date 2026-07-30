@@ -1,6 +1,6 @@
 package com.ssafy.modera.feature.category.search
 
-import com.ssafy.modera.feature.category.CategoryMaterialUiModel
+import com.ssafy.modera.core.model.analyzedimage.AnalyzedImage
 
 sealed interface CategorySearchUiState {
 
@@ -8,8 +8,8 @@ sealed interface CategorySearchUiState {
 
     data class Success(
         val searchQuery: String = "",
-        val recentMaterials: List<CategoryMaterialUiModel> = emptyList(),
-        val searchResults: List<CategoryMaterialUiModel> = emptyList(),
+        val recentMaterials: List<AnalyzedImage> = emptyList(),
+        val searchResults: List<AnalyzedImage> = emptyList(),
     ) : CategorySearchUiState {
         val content: Content
             get() = when {
@@ -27,23 +27,22 @@ sealed interface CategorySearchUiState {
         data object RecentEmpty : Content
 
         data class RecentMaterials(
-            val materials: List<CategoryMaterialUiModel>,
+            val materials: List<AnalyzedImage>,
         ) : Content
 
         data class SearchResults(
-            val results: List<CategoryMaterialUiModel>,
+            val results: List<AnalyzedImage>,
         ) : Content
     }
 }
 
 internal object CategorySearchDummyData {
-    val sampleMaterial = CategoryMaterialUiModel(
+    val sampleMaterial = AnalyzedImage(
         id = 1,
         title = "성심당 케이크 리스트",
-        description = "올해 성심당 케이크 메뉴 리스트로, 샤인머스켓 시루, 귤 시루, 맛있겠다.",
-        tags = listOf("기차", "예약", "KTX"),
-        imageUrl = "",
-        imageCount = 4,
+        summary = "올해 성심당 케이크 메뉴 리스트로, 샤인머스켓 시루, 귤 시루, 맛있겠다.",
+        hashtags = listOf("기차", "예약", "KTX"),
+        thumbnailUrl = "",
     )
 
     val recentMaterials = listOf(
@@ -52,6 +51,6 @@ internal object CategorySearchDummyData {
     )
 
     val allMaterials = List(3) { index ->
-        sampleMaterial.copy(id = index + 1)
+        sampleMaterial.copy(id = (index + 1).toLong())
     }
 }

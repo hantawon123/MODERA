@@ -34,6 +34,7 @@ import com.ssafy.modera.core.designsystem.component.Icon
 import com.ssafy.modera.core.designsystem.component.Text
 import com.ssafy.modera.core.designsystem.icon.ModeraIcons
 import com.ssafy.modera.core.designsystem.theme.ModeraTheme
+import com.ssafy.modera.core.model.analyzedimage.AnalyzedImage
 import com.ssafy.modera.core.model.category.CategorySheetItem
 import com.ssafy.modera.core.model.category.CategorySortType
 import com.ssafy.modera.core.util.statusBarTopPadding
@@ -42,15 +43,14 @@ import com.ssafy.modera.feature.category.component.CategoryTopSheet
 data class CategoryMaterialUiModel(
     val id: Int,
     val title: String,
-    val description: String,
-    val tags: List<String>,
-    val imageUrl: String? = null,
-    val imageCount: Int? = null,
+    val summary: String,
+    val hashtags: List<String>,
+    val thumbnailUrl: String? = null,
 )
 
 @Composable
 fun CategoryRoute(
-    onItemClick: (Int) -> Unit,
+    onItemClick: (Long) -> Unit,
     onSearchIconClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -82,13 +82,12 @@ fun CategoryRoute(
     }
     val materials = remember {
         List(16) { index ->
-            CategoryMaterialUiModel(
-                id = index + 1,
+            AnalyzedImage(
+                id = (index + 1).toLong(),
                 title = "성심당 케이크 리스트",
-                description = "올해 성심당 케이크 메뉴 리스트로, 샤인머스켓 시루, 귤 시루, 맛있겠다.",
-                tags = listOf("기차", "예약", "KTX"),
-                imageUrl = "",
-                imageCount = 4,
+                summary = "올해 성심당 케이크 메뉴 리스트로, 샤인머스켓 시루, 귤 시루, 맛있겠다.",
+                hashtags = listOf("기차", "예약", "KTX"),
+                thumbnailUrl = "",
             )
         }
     }
@@ -119,7 +118,7 @@ fun CategoryRoute(
 fun CategoryScreen(
     selectedCategory: String,
     categories: List<CategorySheetItem>,
-    materials: List<CategoryMaterialUiModel>,
+    materials: List<AnalyzedImage>,
     selectedSortType: CategorySortType,
     showCategorySheet: Boolean,
     showSortPopup: Boolean,
@@ -130,7 +129,7 @@ fun CategoryScreen(
     onSortClick: () -> Unit,
     onSortPopupDismiss: () -> Unit,
     onSortTypeSelect: (CategorySortType) -> Unit,
-    onItemClick: (Int) -> Unit,
+    onItemClick: (Long) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Box(
@@ -229,10 +228,9 @@ fun CategoryScreen(
                     ) { material ->
                         ModeraMaterialItem(
                             title = material.title,
-                            description = material.description,
-                            tags = material.tags,
-                            imageUrl = material.imageUrl,
-                            imageCountBadge = material.imageCount,
+                            description = material.summary,
+                            tags = material.hashtags,
+                            imageUrl = material.thumbnailUrl,
                             onClick = { onItemClick(material.id) },
                             modifier = Modifier.fillMaxWidth(),
                         )
@@ -267,13 +265,12 @@ private fun CategoryScreenPreview() {
                 CategorySheetItem(1,"여행", 10, isNew = true),
             ),
             materials = listOf(
-                CategoryMaterialUiModel(
-                    id = 1,
+                AnalyzedImage(
+                    id = 1.toLong(),
                     title = "성심당 케이크 리스트",
-                    description = "올해 성심당 케이크 메뉴 리스트로, 샤인머스켓 시루, 귤 시루, 맛있겠다.",
-                    tags = listOf("기차", "예약", "KTX"),
-                    imageUrl = "",
-                    imageCount = 4,
+                    summary = "올해 성심당 케이크 메뉴 리스트로, 샤인머스켓 시루, 귤 시루, 맛있겠다.",
+                    hashtags = listOf("기차", "예약", "KTX"),
+                    thumbnailUrl = "",
                 ),
             ),
             selectedSortType = CategorySortType.UPDATED_AT_ASC,

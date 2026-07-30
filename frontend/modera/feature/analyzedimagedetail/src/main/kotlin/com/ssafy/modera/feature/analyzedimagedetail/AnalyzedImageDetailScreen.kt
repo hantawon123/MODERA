@@ -69,7 +69,7 @@ internal fun AnalyzedImageDetailScreen(
     onScheduleClick: () -> Unit,
     onReanalyzeClick: () -> Unit,
     onDeleteClick: () -> Unit,
-    onRelatedImagesClick: () -> Unit,
+    onRelatedImagesClick: (Long, String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -102,7 +102,7 @@ private fun AnalyzedImageDetailScreen(
     onScheduleClick: () -> Unit,
     onReanalyzeClick: () -> Unit,
     onDeleteClick: () -> Unit,
-    onRelatedImagesClick: () -> Unit,
+    onRelatedImagesClick: (Long, String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var menuExpanded by remember {
@@ -206,7 +206,7 @@ private fun AnalyzedImageDetailContent(
     onFavoriteClick: () -> Unit,
     onDocumentClick: () -> Unit,
     onScheduleClick: () -> Unit,
-    onRelatedImagesClick: () -> Unit,
+    onRelatedImagesClick: (Long, String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -344,7 +344,7 @@ private fun AnalyzedImageDetailContent(
                 R.string.analyzed_image_detail_related_images,
             ),
             icon = painterResource(ModeraIcons.FileSearch),
-            onClick = onRelatedImagesClick,
+            onClick = { onRelatedImagesClick(image.id, image.title) },
             modifier = Modifier.fillMaxWidth(),
             buttonColor = ModeraTheme.colors.white,
             contentColor = ModeraTheme.colors.yellow500,
@@ -393,7 +393,7 @@ private fun AnalyzedImageDetailScreenPreview(
                     onScheduleClick = {},
                     onReanalyzeClick = {},
                     onDeleteClick = {},
-                    onRelatedImagesClick = {},
+                    onRelatedImagesClick = { _, _ -> },
                 )
             }
         }

@@ -9,6 +9,7 @@ import com.ssafy.modera.core.navigation.Navigator
 import com.ssafy.modera.feature.analyzedimagedetail.AnalyzedImageDetailScreen
 import com.ssafy.modera.feature.analyzedimagedetail.AnalyzedImageDetailViewModel
 import com.ssafy.modera.feature.analyzedimagedetail.AnalyzedImageDetailViewModel.Factory
+import com.ssafy.modera.feature.relatedimages.navigation.navigateToRelatedImages
 
 fun EntryProviderScope<NavKey>.analyzedImageDetailEntry(
     navigator: Navigator,
@@ -46,8 +47,8 @@ fun EntryProviderScope<NavKey>.analyzedImageDetailEntry(
             onDeleteClick = {
                 // TODO ViewModel 삭제 기능 연결
             },
-            onRelatedImagesClick = {
-                // TODO 연관 이미지 화면 이동
+            onRelatedImagesClick = { imageId, sourceTitle ->
+                navigator.navigateToRelatedImages(imageId, sourceTitle)
             },
         )
     }

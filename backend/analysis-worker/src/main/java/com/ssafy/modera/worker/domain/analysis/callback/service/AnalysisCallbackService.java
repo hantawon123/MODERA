@@ -199,6 +199,7 @@ public class AnalysisCallbackService {
                 str(result, "category"),
                 strList(result, "tags"),
                 strList(result, "keyInformation"),
+                str(structured, "type"),
                 jsonObject(structured, "fields"),
                 request.status(),
                 request.modelVersion()

@@ -10,6 +10,7 @@ import org.springframework.stereotype.Repository;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.Types;
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -321,6 +322,59 @@ public class ImageQueryRepository {
 
     private String escapeLike(String value) {
         return value.replace("!", "!!").replace("%", "!%").replace("_", "!_");
+    }
+
+    /**
+     * 문서 생성(8-2) 재료 조회. 소유권 검증과 재료 수집을 한 번에 한다 — user_image 조인이
+     * 곧 "이 사용자 것인가"의 답이라, 돌아온 행 수가 요청한 imageIds보다 적으면 남의
+     * 이미지이거나 삭제된 것이다.
+     *
+     * <p>순서는 보장하지 않는다(IN 절). 이벤트 payload의 이미지 순서는 클라이언트가 준
+     * 순서를 따라야 하므로 서비스 계층에서 다시 정렬한다.
+     */
+    public List<DocumentSourceImage> findDocumentSources(Integer userId, List<Integer> imageIds) {
+        if (imageIds == null || imageIds.isEmpty()) {
+            return List.of();
+        }
+
+        String placeholders = String.join(",", Collections.nCopies(imageIds.size(), "?"));
+        String sql = """
+                SELECT image_view.image_id,
+                       image_view.title,
+                       image_view.summary,
+                       image_view.category_name,
+                       image_view.tags,
+                       image_view.key_information,
+                       image_view.uploaded_at,
+                       image_view.analysis_status
+                  FROM query_schema.user_image_view image_view
+                  JOIN library_schema.user_image user_image
+                    ON user_image.user_id = image_view.user_id
+                   AND user_image.image_id = image_view.image_id
+                   AND user_image.del_yn = 'N'
+                 WHERE image_view.user_id = ?
+                   AND image_view.del_yn = 'N'
+                   AND image_view.image_id IN (%s)
+                """.formatted(placeholders);
+
+        List<Object> parameters = new ArrayList<>();
+        parameters.add(userId);
+        parameters.addAll(imageIds);
+
+        return jdbcTemplate.query(
+                sql,
+                (rs, rowNum) -> new DocumentSourceImage(
+                        rs.getInt("image_id"),
+                        rs.getString("title"),
+                        rs.getString("summary"),
+                        rs.getString("category_name"),
+                        parseTagNames(rs.getString("tags")),
+                        toStringList(rs.getArray("key_information")),
+                        rs.getObject("uploaded_at", OffsetDateTime.class),
+                        rs.getString("analysis_status")
+                ),
+                parameters.toArray()
+        );
     }
 
     private List<String> parseTagNames(String tagsJson) {

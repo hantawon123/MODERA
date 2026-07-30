@@ -1,5 +1,6 @@
 package com.ssafy.modera.api.domain.event;
 
+import com.ssafy.modera.api.domain.document.event.DocumentResultEventHandler;
 import com.ssafy.modera.api.domain.image.event.AnalysisResultEventHandler;
 import com.ssafy.modera.api.domain.image.event.ImageSearchResultCoordinator;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -8,6 +9,8 @@ import com.ssafy.modera.contract.EventTypes;
 import com.ssafy.modera.contract.Streams;
 import com.ssafy.modera.contract.payload.AnalysisCompletedPayload;
 import com.ssafy.modera.contract.payload.AnalysisFailedPayload;
+import com.ssafy.modera.contract.payload.DocumentCompletedPayload;
+import com.ssafy.modera.contract.payload.DocumentFailedPayload;
 import com.ssafy.modera.contract.payload.ImageSearchCompletedPayload;
 import com.ssafy.modera.contract.payload.ImageSearchFailedPayload;
 import io.lettuce.core.RedisCommandTimeoutException;
@@ -47,6 +50,7 @@ public class AnalysisResultConsumer {
     private final ObjectMapper objectMapper;
     private final AnalysisResultEventHandler eventHandler;
     private final ImageSearchResultCoordinator imageSearchResultCoordinator;
+    private final DocumentResultEventHandler documentResultEventHandler;
 
     private volatile boolean running = true;
     private Thread consumerThread;
@@ -176,6 +180,16 @@ public class AnalysisResultConsumer {
             imageSearchResultCoordinator.fail(payload.correlationId(), payload.reason());
             log.info("IMAGE_SEARCH_FAILED 처리 완료: eventId={}, correlationId={}",
                     envelope.eventId(), payload.correlationId());
+        } else if (EventTypes.DOCUMENT_COMPLETED.equals(envelope.eventType())) {
+            DocumentCompletedPayload payload = readPayload(envelope, DocumentCompletedPayload.class);
+            documentResultEventHandler.handleCompleted(payload);
+            log.info("DOCUMENT_COMPLETED 처리 완료: eventId={}, documentRequestId={}",
+                    envelope.eventId(), payload.documentRequestId());
+        } else if (EventTypes.DOCUMENT_FAILED.equals(envelope.eventType())) {
+            DocumentFailedPayload payload = readPayload(envelope, DocumentFailedPayload.class);
+            documentResultEventHandler.handleFailed(payload);
+            log.info("DOCUMENT_FAILED 처리 완료: eventId={}, documentRequestId={}",
+                    envelope.eventId(), payload.documentRequestId());
         } else {
             log.warn("알 수 없는 eventType이라 무시한다: eventId={}, eventType={}", envelope.eventId(), envelope.eventType());
         }

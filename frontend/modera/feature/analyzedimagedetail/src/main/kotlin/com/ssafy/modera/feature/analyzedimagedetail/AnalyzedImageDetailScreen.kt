@@ -36,6 +36,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.ssafy.modera.core.common.datetime.ModeraDateFormatter
+import com.ssafy.modera.core.common.datetime.ModeraDateStyle
 import com.ssafy.modera.core.component.ModeraHashtags
 import com.ssafy.modera.core.component.ModeraIconTextButton
 import com.ssafy.modera.core.designsystem.component.IconButton
@@ -261,7 +263,10 @@ private fun AnalyzedImageDetailContent(
         Spacer(modifier = Modifier.height(6.dp))
 
         Text(
-            text = image.createdAt,
+            text = ModeraDateFormatter.formatMillis(
+                image.updatedAt,
+                ModeraDateStyle.YEAR_MONTH_DAY_TIME
+            ),
             style = ModeraTheme.typography.captionR12,
             color = ModeraTheme.colors.gray500,
         )

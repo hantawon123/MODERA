@@ -629,6 +629,7 @@ GET /api/v1/images?keyword=C%2B%2B&page=0&size=20
 
 ### 조회 규칙
 
+- `analysis_status`가 `COMPLETED` 또는 `EMPTY`인 이미지만 목록에 반환한다. `EMPTY`는 OCR·분석 결과가 비어 있는 정상 처리 상태이므로 이미지 자체는 목록에 노출한다.
 - 로그인한 사용자와 이미지의 `library_schema.user_image.del_yn='N'`이고, 대응하는 `query_schema.user_image_view.del_yn='N'`인 이미지만 목록에 반환한다.
 - 두 관계 중 하나라도 `del_yn='Y'`이면 목록과 페이지 집계(`totalElements`, `totalPages`)에서 제외한다.
 - `categoryId`와 `keyword`는 선택값이다.
@@ -645,7 +646,7 @@ GET /api/v1/images?keyword=C%2B%2B&page=0&size=20
 | API | `GET /api/v1/images/{imageId}` |
 | 인증 | Bearer |
 | Swagger operationId | `getImage` |
-| 설명 | 본인이 등록한 이미지 중 분석이 완료된 이미지의 상세 정보를 조회한다. 분석 대기·진행 중·실패 상태의 이미지는 상세 조회할 수 없다. 다른 사용자 소유이거나 존재하지 않는 imageId는 리소스 존재 여부를 숨기기 위해 모두 IMAGE_NOT_FOUND(404)로 응답한다. |
+| 설명 | 본인이 등록한 이미지 중 분석이 완료됐거나 분석할 내용이 없어 `EMPTY`로 정상 종료된 이미지의 상세 정보를 조회한다. 분석 대기·진행 중·실패 상태의 이미지는 상세 조회할 수 없다. 다른 사용자 소유이거나 존재하지 않는 imageId는 리소스 존재 여부를 숨기기 위해 모두 IMAGE_NOT_FOUND(404)로 응답한다. |
 
 ### Path Parameter
 
@@ -690,7 +691,8 @@ GET /api/v1/images?keyword=C%2B%2B&page=0&size=20
 
 ### 처리 규칙
 
-- `query_schema.user_image_view.analysis_status='COMPLETED'`인 이미지만 상세 조회한다.
+- `query_schema.user_image_view.analysis_status`가 `COMPLETED` 또는 `EMPTY`인 이미지만 상세 조회한다.
+- `EMPTY`는 OCR·분석 결과가 비어 있는 정상 처리 상태이므로 이미지와 존재하는 메타데이터를 반환한다.
 - 분석 상태가 `QUEUED`, `PROCESSING`, `FAILED` 또는 그 밖의 미완료 상태이면 `IMAGE_ANALYSIS_NOT_COMPLETED`(409)로 응답한다.
 
 ### 에러

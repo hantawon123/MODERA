@@ -1,5 +1,8 @@
 package com.ssafy.modera.api.domain.image.event;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.ssafy.modera.api.domain.image.entity.ImageAsset;
 import com.ssafy.modera.api.domain.image.repository.ImageAssetRepository;
 import com.ssafy.modera.api.domain.image.repository.ThumbnailRepository;
@@ -27,6 +30,7 @@ public class AnalysisResultEventHandler {
     private final ImageAssetRepository imageAssetRepository;
     private final ThumbnailRepository thumbnailRepository;
     private final ImageQueryRepository imageQueryRepository;
+    private final ObjectMapper objectMapper;
 
     @Transactional
     public void handleCompleted(AnalysisCompletedPayload payload) {
@@ -58,7 +62,7 @@ public class AnalysisResultEventHandler {
                 payload.categoryName(),
                 payload.tagNames(),
                 payload.keyInformation(),
-                payload.structuredFields(),
+                structuredData(payload),
                 imageAsset.getUploadStatus(),
                 payload.analysisStatus(),
                 false,
@@ -73,6 +77,27 @@ public class AnalysisResultEventHandler {
         return thumbnailRepository.findByImageId(imageId)
                 .map(thumbnail -> thumbnail.getS3Key())
                 .orElse(null);
+    }
+
+    private String structuredData(AnalysisCompletedPayload payload) {
+        boolean hasType = payload.structuredType() != null && !payload.structuredType().isBlank();
+        boolean hasFields = payload.structuredFields() != null && !payload.structuredFields().isBlank();
+        if (!hasType && !hasFields) {
+            return null;
+        }
+
+        ObjectNode structuredData = objectMapper.createObjectNode();
+        if (hasType) {
+            structuredData.put("type", payload.structuredType());
+        }
+        if (hasFields) {
+            try {
+                structuredData.set("fields", objectMapper.readTree(payload.structuredFields()));
+            } catch (JsonProcessingException exception) {
+                log.warn("구조화 데이터 fields JSON 파싱 실패: imageId={}", payload.imageId(), exception);
+            }
+        }
+        return structuredData.toString();
     }
 
     @Transactional

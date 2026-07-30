@@ -81,8 +81,9 @@
 | --- | --- | --- |
 | rawText | String | 선택. 기본 `""`. OCR 원문 |
 | refinedText | String | 선택. 있으면 `rawText` 대신 쓴다(분석 단계와 같은 규칙) |
-| lang | String | 선택. **미사용.** 스키마 재사용으로 받기만 한다 |
-| confidence | Number | 선택. **미사용.** 상동 |
+| confidence | Number | 선택. **미사용.** 스키마 재사용으로 받기만 한다 |
+
+> `lang` 은 계약에서 삭제됐다(2026-07-29 백엔드 합의). 보내도 무시되며 요청은 거부되지 않는다.
 
 > 필수는 `userId` / `images` / `images[].imageId` **셋뿐**이다. 나머지는 기본값이 있어
 > 빠져도 요청이 거부되지 않지만, 그만큼 문서가 부실해진다.
@@ -105,7 +106,7 @@
   "markdown": "# C++ 입문서 구매 후보 비교\n\n같은 책을 두 곳에서 …",
   "sourceImageIds": [101, 102],
   "skipped": [],
-  "modelVersion": "gemini-3.5-flash",
+  "modelVersion": "gemini-2.5-flash-lite",
   "generatedAt": "2026-07-16T06:10:00.000Z"
 }
 ```
@@ -118,7 +119,7 @@
 | markdown | String | **최종 산출물.** 위 구조를 렌더링한 마크다운 전문 |
 | sourceImageIds | Number[] | 문서 재료로 쓴 imageId (= 요청 − `skipped`). 출처 표에 그대로 실린다. 모델이 어떤 이미지를 어느 섹션에도 인용하지 않아도 여기에는 남는다 |
 | skipped | Array | 재료에서 빠진 항목 |
-| modelVersion | String | 사용한 LLM 모델명 |
+| modelVersion | String | 사용한 LLM 모델명. `LLM_MODEL_NAME` 값(기본 `gemini-2.5-flash-lite`)을 그대로 실어 보낸다 |
 | generatedAt | String | 생성 시각. ISO-8601 UTC, 밀리초 3자리 |
 
 **sections[]**
@@ -195,6 +196,9 @@
 | `ocr` 텍스트가 1500자 초과 | 앞 1500자만 사용. **Spring이 미리 자르지 말 것** |
 | 모델이 요청에 없는 `imageId`를 출처로 반환 | 해당 id 제거. 거짓 근거가 문서에 남지 않게 한다 |
 | 모델 응답의 제목·항목에 줄바꿈 포함 | 공백으로 치환. 마크다운 구조가 깨지지 않게 한다 |
+| `summary`·`body` 줄 앞에 `#`·`>`·`\|` | `\` 로 escape. `#` 이 그대로 나가면 섹션이 문서 최상위 제목으로 승격된다 |
+| `summary`·`body` 에 코드펜스(```` ``` ````) | 그 줄을 버린다. 펜스가 열리면 뒤따르는 출처 표까지 코드 블록에 먹힌다 |
+| 모델이 `sections` 를 하나도 주지 않음 | **현재는 200.** 제목 + 출처 표만 있는 문서가 나간다(실패로 끊지 않는다) |
 
 상한값 — `MAX_IMAGES = 30`(요청당 이미지 수), `OCR_CHARS = 1500`(이미지당 OCR 길이).
 둘 다 `app/document.py` 상수이며 프롬프트 크기 = 지연·비용과 직결된다. 실측 후 조정한다.
@@ -230,6 +234,11 @@
 **응답 시간.** Gemini 호출 1회라 이미지 수에 비례해 늘지는 않지만 프롬프트가 커지면
 함께 길어진다. Spring의 HTTP 클라이언트 타임아웃을 **60초 이상**으로 잡는다.
 
+단, 429가 오면 재시도가 붙는다 — `GEMINI_MAX_ATTEMPTS`(기본 5회) × `GEMINI_TIMEOUT`
+(기본 90초, 호출 1회당 상한) + 백오프 대기(1·2·4·8초)라 최악의 경우 훨씬 길어진다.
+정상 경로는 한 번에 끝나지만, Spring은 **자기 타임아웃을 먼저 끊고** `DOCUMENT_GENERATION_FAILED`
+와 같이 처리하는 편이 안전하다. 앞단 nginx의 `proxy_read_timeout` 은 120초다.
+
 ### 열려 있는 사항
 
 | 항목 | 내용 |
@@ -244,4 +253,8 @@
 실제 출력 샘플: [`samples/`](samples/) — 이 API 를 호출해 받은 마크다운·응답 JSON
 
 구현: [`app/document.py`](../app/document.py) · 엔드포인트 [`app/main.py`](../app/main.py) ·
-자체 점검 `python test/test_document.py` · Swagger `/docs` 의 Example Value 에 실행 가능한 예시 포함
+자체 점검 `python test/test_document.py` (네트워크·Gemini 키 불필요) ·
+Swagger `/docs` 의 Example Value 에 실행 가능한 예시 포함
+
+> `ai/ai_main/test/` 는 `.gitignore` 대상이라 저장소에 올라가지 않는다. clone 만 한
+> 상태에서는 이 파일이 없다 — 로컬에서 직접 두고 쓴다.

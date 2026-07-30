@@ -250,13 +250,13 @@ Spring → AI   POST /internal/v1/documents
   "markdown": "# C++ 입문서 구매 후보 비교\n\n...",
   "sourceImageIds": [101, 102, 103],
   "skipped": [],
-  "modelVersion": "gemini-3.5-flash",
+  "modelVersion": "gemini-2.5-flash-lite",
   "generatedAt": "2026-07-16T06:10:00.000Z"
 }
 ```
 
 - **`markdown` 이 최종 산출물입니다.** `sections` 는 Spring/앱이 직접 재조립하고 싶을 때 쓰는 원자료입니다.
-- 마크다운을 모델에게 시키지 않고 구조(JSON)만 받아 서버가 렌더합니다. 출력 모양이 항상 같고 코드펜스·잡문이 섞이지 않습니다.
+- 마크다운을 모델에게 시키지 않고 구조(JSON)만 받아 서버가 렌더합니다. 출력 모양이 항상 같고 코드펜스·잡문이 섞이지 않습니다. 모델이 규칙을 어기고 `summary`·`body` 에 마크다운을 넣어도 서버가 중화합니다(줄 앞 `#`·`>`·`|` 는 escape, 코드펜스 줄은 폐기).
 - `title`·`summary`·`keyInformation`·`ocr` 이 **전부 빈** 항목은 `skipped: NO_CONTENT` 로 빠집니다(빈 블록을 넣으면 모델이 지어냅니다). 한 장도 못 쓰면 `NO_DOCUMENT_SOURCE`(400).
 - 한 번에 **최대 30장**(`document.MAX_IMAGES`), 이미지당 OCR **1500자**까지 프롬프트에 넣습니다. OCR 은 자르지 말고 전체를 보내면 AI 가 자릅니다. 30장 초과는 400.
 - `ocr` 은 `refinedText` 가 있으면 그쪽을, 없으면 `rawText` 를 씁니다(분석 단계와 같은 규칙).
@@ -266,6 +266,11 @@ Spring → AI   POST /internal/v1/documents
 ```bash
 python test/test_document.py   # N→1 묶기·건너뛰기·렌더링 자체 점검 (네트워크 불필요)
 ```
+
+`ai/ai_main/test/` 는 `.gitignore` 대상입니다 — clone 만 한 상태에는 이 파일이 없습니다.
+Gemini 호출은 `gemini_client.generate_json` 을 가짜 응답으로 바꿔치기해 대신하므로 키가
+필요 없고, 확인하는 것은 모델 품질이 아니라 우리 코드의 계약(중복·빈 항목·거짓 출처
+제거·제목 고정·렌더 형태)입니다.
 
 ### Spring 쪽에 필요한 작업
 

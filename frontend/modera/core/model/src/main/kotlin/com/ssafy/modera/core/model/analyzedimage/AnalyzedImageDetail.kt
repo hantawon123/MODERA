@@ -11,6 +11,5 @@ data class AnalyzedImageDetail(
     val tags: List<String>,
     val categories: AnalyzedImageCategory,
     val imageUrl: String,
-    val createdAt: String,
     val updatedAt: Long,
 )

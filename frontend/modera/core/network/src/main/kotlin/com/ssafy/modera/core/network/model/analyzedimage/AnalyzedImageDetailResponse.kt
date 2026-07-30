@@ -48,6 +48,5 @@ fun AnalyzedImageDetailResponse.asExternalModel(): AnalyzedImageDetail =
             categories.first().name
         ),
         imageUrl = "https://api.example.com$imageUrl",
-        createdAt = createdAt,
         updatedAt = Instant.parse(updatedAt).toEpochMilli(),
     )

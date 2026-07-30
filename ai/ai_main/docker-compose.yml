@@ -24,6 +24,28 @@ services:
       # 9200 을 외부에 열지 않는다. 같은 호스트의 FastAPI 만 접근.
       - "127.0.0.1:9200:9200"
 
+  opensearch-dashboards:
+    # 공식 이미지를 그대로 쓴다(레지스트리에서 pull). 버전은 클러스터(2.17.0)와 맞춘다.
+    image: opensearchproject/opensearch-dashboards:2.17.0
+    restart: unless-stopped
+    environment:
+      - TZ=Asia/Seoul
+      # 클러스터가 security 플러그인으로 HTTPS + 인증을 쓰므로 https 로 붙는다.
+      - OPENSEARCH_HOSTS=["https://opensearch:9200"]
+      # self-signed 인증서라 검증을 끈다(같은 docker 네트워크 내부 통신).
+      - OPENSEARCH_SSL_VERIFICATIONMODE=none
+      # Dashboards 서버가 클러스터에 붙을 때 쓰는 계정.
+      # 데모 설정의 kibanaserver 계정은 신뢰할 수 없어 admin 을 그대로 쓴다.
+      - OPENSEARCH_USERNAME=admin
+      - OPENSEARCH_PASSWORD=${OPENSEARCH_INITIAL_ADMIN_PASSWORD}
+    depends_on:
+      - opensearch
+    ports:
+      # 9200 과 같은 원칙: 외부에 열지 않는다. SSH 터널로만 접근.
+      #   ssh -i <key>.pem -L 5601:127.0.0.1:5601 -N ubuntu@i15d207.p.ssafy.io
+      # 브라우저에서 http://localhost:5601, 로그인은 admin / .env 의 비밀번호.
+      - "127.0.0.1:5601:5601"
+
   ai-service:
     image: ai-main:latest              # Jenkins 'AI Build' 단계에서 이 태그로 빌드됨
     restart: unless-stopped

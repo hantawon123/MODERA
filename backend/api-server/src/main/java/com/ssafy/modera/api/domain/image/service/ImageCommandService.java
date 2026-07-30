@@ -20,6 +20,7 @@ import com.ssafy.modera.api.domain.image.repository.ImageRegistrationRequestRepo
 import com.ssafy.modera.api.domain.image.repository.OcrRepository;
 import com.ssafy.modera.api.domain.image.repository.UserImageViewRow;
 import com.ssafy.modera.api.domain.image.repository.UserImageViewDetail;
+import com.ssafy.modera.api.domain.category.repository.CategoryCommandRepository;
 import com.ssafy.modera.api.domain.library.entity.UserImage;
 import com.ssafy.modera.api.domain.library.repository.UserImageRepository;
 import com.ssafy.modera.api.global.config.StorageProperties;
@@ -62,6 +63,7 @@ public class ImageCommandService {
     private final ImageRegistrationRequestRepository registrationRequestRepository;
     private final UserImageRepository userImageRepository;
     private final ImageQueryRepository imageQueryRepository;
+    private final CategoryCommandRepository categoryCommandRepository;
     private final StorageProperties storageProperties;
     private final S3Client s3Client;
     private final S3Presigner s3Presigner;
@@ -198,7 +200,8 @@ public class ImageCommandService {
             ImageAsset previousAsset = imageAssetRepository.findByImageIdAndDelYn(history.getImageId(), "N")
                     .orElseThrow(() -> new BusinessException(ImageErrorCode.IMAGE_NOT_FOUND));
             ensureUserImage(userId, previousAsset);
-            RegistrationResult replayed = resultAccordingToObjectExistence(previousAsset);
+            RegistrationResult replayed =
+                    resultAccordingToHistory(userId, history, previousAsset);
             history.complete(previousAsset.getImageId(), replayed.duplicated(), OffsetDateTime.now());
             return replayed;
         }
@@ -224,8 +227,20 @@ public class ImageCommandService {
             if (!imageAsset.getFileSize().equals(request.fileSize())) {
                 throw new BusinessException(ImageErrorCode.DUPLICATE_IMAGE);
             }
+            boolean alreadyOwned = userImageRepository
+                    .findByUserIdAndImageIdAndDelYn(
+                            userId, imageAsset.getImageId(), "N")
+                    .isPresent();
+            boolean analysisActiveOrCompleted = alreadyOwned
+                    && imageQueryRepository.isAnalysisActiveOrCompleted(
+                            userId, imageAsset.getImageId());
             ensureUserImage(userId, imageAsset);
-            duplicated = objectExists(imageAsset);
+            // "duplicated" means this user already owns the image. If only the
+            // shared asset exists, connect it to this user and keep the ordinary
+            // registered response/PUT flow with the same object key.
+            duplicated = alreadyOwned
+                    && analysisActiveOrCompleted
+                    && objectExists(imageAsset);
         }
 
         history.complete(imageAsset.getImageId(), duplicated, OffsetDateTime.now());
@@ -255,9 +270,10 @@ public class ImageCommandService {
                     .userId(userId)
                     .imageId(imageAsset.getImageId())
                     .build();
-            userImageRepository.save(userImage);
+            userImageRepository.saveAndFlush(userImage);
         }
 
+        categoryCommandRepository.initializeFromDefault(userId, imageAsset.getImageId());
         if (!imageQueryRepository.copyExistingView(userId, imageAsset.getImageId())) {
             upsertInitialView(userId, imageAsset);
         }
@@ -280,6 +296,23 @@ public class ImageCommandService {
 
     private RegistrationResult resultAccordingToObjectExistence(ImageAsset imageAsset) {
         return objectExists(imageAsset) ? duplicated(imageAsset.getImageId()) : registered(imageAsset);
+    }
+
+    private RegistrationResult resultAccordingToHistory(
+            Integer userId,
+            ImageRegistrationRequest history,
+            ImageAsset imageAsset) {
+        if ("REGISTERED".equals(history.getStatus())) {
+            return registered(imageAsset);
+        }
+        if ("DUPLICATED".equals(history.getStatus())) {
+            if (!imageQueryRepository.isAnalysisActiveOrCompleted(
+                    userId, imageAsset.getImageId())) {
+                return registered(imageAsset);
+            }
+            return duplicated(imageAsset.getImageId());
+        }
+        return resultAccordingToObjectExistence(imageAsset);
     }
 
     private boolean objectExists(ImageAsset imageAsset) {

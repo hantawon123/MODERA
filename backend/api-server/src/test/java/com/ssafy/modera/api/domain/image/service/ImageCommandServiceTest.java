@@ -1,5 +1,6 @@
 package com.ssafy.modera.api.domain.image.service;
 
+import com.ssafy.modera.api.domain.category.repository.CategoryCommandRepository;
 import com.ssafy.modera.api.domain.image.dto.request.ImageDeleteRequest;
 import com.ssafy.modera.api.domain.image.dto.request.ImageFavoriteRequest;
 import com.ssafy.modera.api.domain.image.dto.request.ImageRegisterItemRequest;
@@ -51,6 +52,7 @@ class ImageCommandServiceTest {
     @Mock ImageRegistrationRequestRepository registrationRequestRepository;
     @Mock UserImageRepository userImageRepository;
     @Mock ImageQueryRepository imageQueryRepository;
+    @Mock CategoryCommandRepository categoryCommandRepository;
     @Mock StorageProperties storageProperties;
     @Mock S3Client s3Client;
     @Mock S3Presigner s3Presigner;
@@ -180,6 +182,8 @@ class ImageCommandServiceTest {
         when(imageAssetRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
         when(userImageRepository.findByUserIdAndImageIdAndDelYn(1, 20, "N"))
                 .thenReturn(Optional.of(UserImage.builder().userId(1).imageId(20).build()));
+        when(imageQueryRepository.isAnalysisActiveOrCompleted(1, 20))
+                .thenReturn(true);
         when(imageQueryRepository.copyExistingView(1, 20)).thenReturn(true);
         when(s3Client.headObject(any(HeadObjectRequest.class)))
                 .thenReturn(HeadObjectResponse.builder().build());
@@ -229,6 +233,119 @@ class ImageCommandServiceTest {
             assertThat(item.clientRequestId()).isEqualTo(invalidRequestId);
             assertThat(item.reason()).isEqualTo("UNSUPPORTED_FORMAT");
         });
+    }
+
+    @Test
+    void returnsTheExistingObjectPresignedUrlWhenAnotherUserRegistersIt()
+            throws Exception {
+        String contentHash = "d".repeat(64);
+        UUID requestId = UUID.randomUUID();
+        ImageAsset sharedAsset = ImageAsset.builder()
+                .imageId(20)
+                .fileName("shared.jpg")
+                .contentHash(contentHash)
+                .fileSize(200)
+                .s3Key("1/20-shared.jpg")
+                .uploadStatus("UPLOADED")
+                .build();
+        StorageProperties.Bucket bucket = new StorageProperties.Bucket();
+        bucket.setPictures("pictures");
+
+        when(transactionManager.getTransaction(any())).thenReturn(transactionStatus);
+        when(storageProperties.getBucket()).thenReturn(bucket);
+        when(registrationRequestRepository.findByUserIdAndClientRequestIdAndDelYn(
+                2, requestId, "N")).thenReturn(Optional.empty());
+        when(registrationRequestRepository.save(any()))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        when(imageAssetRepository.findByContentHashAndDelYn(contentHash, "N"))
+                .thenReturn(Optional.of(sharedAsset));
+        when(userImageRepository.findByUserIdAndImageIdAndDelYn(2, 20, "N"))
+                .thenReturn(Optional.empty());
+        when(imageQueryRepository.copyExistingView(2, 20)).thenReturn(true);
+
+        PresignedPutObjectRequest presignedRequest =
+                org.mockito.Mockito.mock(PresignedPutObjectRequest.class);
+        when(presignedRequest.url()).thenReturn(
+                URI.create("https://storage.example/1/20-shared.jpg").toURL());
+        when(s3Presigner.presignPutObject(any(
+                software.amazon.awssdk.services.s3.presigner.model.PutObjectPresignRequest.class)))
+                .thenReturn(presignedRequest);
+
+        var response = imageCommandService.register(
+                2,
+                new ImageRegisterRequest(List.of(new ImageRegisterItemRequest(
+                        requestId,
+                        "shared.jpg",
+                        contentHash,
+                        200,
+                        new ImageRegisterOcrRequest("shared image text")
+                )))
+        );
+
+        assertThat(response.duplicated()).isEmpty();
+        assertThat(response.registered()).singleElement().satisfies(item -> {
+            assertThat(item.clientRequestId()).isEqualTo(requestId);
+            assertThat(item.imageId()).isEqualTo(20);
+            assertThat(item.presignedUrl())
+                    .isEqualTo("https://storage.example/1/20-shared.jpg");
+        });
+        verify(userImageRepository).saveAndFlush(any(UserImage.class));
+    }
+
+    @Test
+    void reissuesRegisteredUploadForAnExistingNoneAnalysisView()
+            throws Exception {
+        String contentHash = "e".repeat(64);
+        UUID requestId = UUID.randomUUID();
+        ImageAsset asset = ImageAsset.builder()
+                .imageId(7)
+                .fileName("60.jpg")
+                .contentHash(contentHash)
+                .fileSize(200)
+                .s3Key("6/7-60.jpg")
+                .uploadStatus("UPLOADED")
+                .build();
+        StorageProperties.Bucket bucket = new StorageProperties.Bucket();
+        bucket.setPictures("pictures");
+
+        when(transactionManager.getTransaction(any())).thenReturn(transactionStatus);
+        when(storageProperties.getBucket()).thenReturn(bucket);
+        when(registrationRequestRepository.findByUserIdAndClientRequestIdAndDelYn(
+                6, requestId, "N")).thenReturn(Optional.empty());
+        when(registrationRequestRepository.save(any()))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        when(imageAssetRepository.findByContentHashAndDelYn(contentHash, "N"))
+                .thenReturn(Optional.of(asset));
+        when(userImageRepository.findByUserIdAndImageIdAndDelYn(6, 7, "N"))
+                .thenReturn(Optional.of(
+                        UserImage.builder().userId(6).imageId(7).build()));
+        when(imageQueryRepository.isAnalysisActiveOrCompleted(6, 7))
+                .thenReturn(false);
+        when(imageQueryRepository.copyExistingView(6, 7)).thenReturn(false);
+
+        PresignedPutObjectRequest presignedRequest =
+                org.mockito.Mockito.mock(PresignedPutObjectRequest.class);
+        when(presignedRequest.url()).thenReturn(
+                URI.create("https://storage.example/6/7-60.jpg").toURL());
+        when(s3Presigner.presignPutObject(any(
+                software.amazon.awssdk.services.s3.presigner.model.PutObjectPresignRequest.class)))
+                .thenReturn(presignedRequest);
+
+        var response = imageCommandService.register(
+                6,
+                new ImageRegisterRequest(List.of(new ImageRegisterItemRequest(
+                        requestId,
+                        "60.jpg",
+                        contentHash,
+                        200,
+                        new ImageRegisterOcrRequest("retry")
+                )))
+        );
+
+        assertThat(response.duplicated()).isEmpty();
+        assertThat(response.registered()).singleElement().satisfies(item ->
+                assertThat(item.presignedUrl())
+                        .isEqualTo("https://storage.example/6/7-60.jpg"));
     }
 
     @Test

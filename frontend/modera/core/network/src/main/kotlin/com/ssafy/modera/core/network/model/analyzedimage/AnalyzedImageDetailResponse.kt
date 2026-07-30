@@ -4,6 +4,7 @@ import com.ssafy.modera.core.model.analyzedimage.AnalyzedImageCategory
 import com.ssafy.modera.core.model.analyzedimage.AnalyzedImageDetail
 import com.ssafy.modera.core.model.analyzedimage.ImageAnalysisStatus
 import kotlinx.serialization.Serializable
+import java.time.Instant
 
 @Serializable
 data class AnalyzedImageDetailResponse(
@@ -47,6 +48,5 @@ fun AnalyzedImageDetailResponse.asExternalModel(): AnalyzedImageDetail =
             categories.first().name
         ),
         imageUrl = "https://i15d207.p.ssafy.io$imageUrl",
-        createdAt = createdAt,
-        updatedAt = updatedAt,
+        updatedAt = Instant.parse(updatedAt).toEpochMilli(),
     )

@@ -48,6 +48,5 @@ fun AnalyzedImageDetailResponse.asExternalModel(): AnalyzedImageDetail =
             categories.first().name
         ),
         imageUrl = "https://i15d207.p.ssafy.io$imageUrl",
-        createdAt = createdAt,
         updatedAt = Instant.parse(updatedAt).toEpochMilli(),
     )

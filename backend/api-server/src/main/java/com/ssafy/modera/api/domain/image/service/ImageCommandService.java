@@ -215,7 +215,7 @@ public class ImageCommandService {
         imageQueryRepository.upsert(new UserImageViewRow(
                 userId, imageAsset.getImageId(), imageAsset.getFileName(), imageAsset.getS3Key(),
                 null, imageAsset.getFileName(), null, null, List.of(), List.of(), null,
-                imageAsset.getUploadStatus(), "NONE", false));
+                imageAsset.getUploadStatus(), "NONE", false, imageAsset.getUploadedAt()));
     }
 
     private RegistrationResult resultAccordingToObjectExistence(ImageAsset imageAsset) {

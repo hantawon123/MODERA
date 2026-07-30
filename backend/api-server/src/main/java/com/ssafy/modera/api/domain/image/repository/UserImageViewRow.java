@@ -1,5 +1,6 @@
 package com.ssafy.modera.api.domain.image.repository;
 
+import java.time.OffsetDateTime;
 import java.util.List;
 
 /**
@@ -20,6 +21,7 @@ public record UserImageViewRow(
         String structuredDataJson,
         String uploadStatus,
         String analysisStatus,
-        Boolean favorite
+        Boolean favorite,
+        OffsetDateTime uploadedAt
 ) {
 }

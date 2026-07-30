@@ -1,5 +1,8 @@
 package com.ssafy.modera.api.domain.image.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ssafy.modera.api.domain.image.dto.response.ImageDetailResponse;
 import com.ssafy.modera.api.domain.image.dto.response.ImageSummaryResponse;
 import com.ssafy.modera.api.domain.image.exception.ImageErrorCode;
@@ -40,19 +43,31 @@ public class ImageQueryService {
     private final StorageProperties storageProperties;
     private final S3Client s3Client;
     private final S3Presigner s3Presigner;
+    private final ObjectMapper objectMapper;
 
     public ImageDetailResponse getImage(Integer userId, Integer imageId) {
         UserImageViewDetail detail = imageQueryRepository
                 .findDetail(userId, imageId)
                 .orElseThrow(() -> new BusinessException(ImageErrorCode.IMAGE_NOT_FOUND));
 
+        if (!"COMPLETED".equals(detail.analysisStatus())
+                && !"EMPTY".equals(detail.analysisStatus())) {
+            throw new BusinessException(ImageErrorCode.IMAGE_ANALYSIS_NOT_COMPLETED);
+        }
+
         return new ImageDetailResponse(
                 imageId,
-                detail.s3Key(),
-                detail.uploadStatus(),
-                detail.analysisStatus() == null ? "NONE" : detail.analysisStatus(),
+                createImageUrl(detail.s3Key()),
+                createThumbnailUrl(detail.thumbnailKey()),
                 detail.title(),
-                Boolean.TRUE.equals(detail.favorite())
+                Boolean.TRUE.equals(detail.favorite()),
+                detail.summary(),
+                detail.categoryName(),
+                detail.tagNames(),
+                detail.keyInformation(),
+                parseStructuredData(detail.structuredDataJson()),
+                detail.documented(),
+                detail.calendared()
         );
     }
 
@@ -126,6 +141,30 @@ public class ImageQueryService {
                         .build())
                 .url()
                 .toString();
+    }
+
+    private String createImageUrl(String s3Key) {
+        GetObjectRequest getObjectRequest = GetObjectRequest.builder()
+                .bucket(storageProperties.getBucket().getPictures())
+                .key(s3Key)
+                .build();
+        return s3Presigner.presignGetObject(GetObjectPresignRequest.builder()
+                        .signatureDuration(THUMBNAIL_URL_TTL)
+                        .getObjectRequest(getObjectRequest)
+                        .build())
+                .url()
+                .toString();
+    }
+
+    private JsonNode parseStructuredData(String structuredDataJson) {
+        if (structuredDataJson == null || structuredDataJson.isBlank()) {
+            return null;
+        }
+        try {
+            return objectMapper.readTree(structuredDataJson);
+        } catch (JsonProcessingException exception) {
+            throw new IllegalStateException("이미지 구조화 데이터를 읽을 수 없습니다.", exception);
+        }
     }
 
     private boolean thumbnailExists(String thumbnailKey) {

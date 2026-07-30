@@ -22,11 +22,13 @@ public class ImageQueryRepository {
     private static final String UPSERT_SQL = """
             INSERT INTO query_schema.user_image_view (
                 user_id, image_id, file_name, s3_key, thumbnail_key,
-                title, summary, category_name, tags, key_information,
+                title, summary, category_id, category_name, tags, key_information,
                 structured_data, upload_status, analysis_status, favorite,
                 uploaded_at, del_yn
             ) VALUES (
-                ?, ?, ?, ?, ?, ?, ?, ?,
+                ?, ?, ?, ?, ?, ?, ?,
+                (SELECT category_id FROM taxonomy_schema.category WHERE name = ?),
+                ?,
                 (
                     SELECT COALESCE(
                         jsonb_agg(
@@ -49,6 +51,7 @@ public class ImageQueryRepository {
                 thumbnail_key = EXCLUDED.thumbnail_key,
                 title = EXCLUDED.title,
                 summary = EXCLUDED.summary,
+                category_id = EXCLUDED.category_id,
                 category_name = EXCLUDED.category_name,
                 tags = EXCLUDED.tags,
                 key_information = EXCLUDED.key_information,
@@ -80,6 +83,7 @@ public class ImageQueryRepository {
             ps.setString(i++, row.title());
             ps.setString(i++, row.summary());
             ps.setString(i++, row.categoryName());
+            ps.setString(i++, row.categoryName());
             ps.setArray(i++, con.createArrayOf("text", toArray(row.tagNames())));
             ps.setArray(i++, con.createArrayOf("text", toArray(row.keyInformation())));
             if (row.structuredDataJson() == null) {
@@ -102,19 +106,43 @@ public class ImageQueryRepository {
     public Optional<UserImageViewDetail> findDetail(Integer userId, Integer imageId) {
         return jdbcTemplate.query(
                         """
-                        SELECT s3_key, upload_status, analysis_status, title, favorite
-                        FROM query_schema.user_image_view
-                        WHERE user_id = ? AND image_id = ? AND del_yn = 'N'
+                        SELECT image_view.s3_key,
+                               image_view.thumbnail_key,
+                               image_view.upload_status,
+                               image_view.analysis_status,
+                               image_view.title,
+                               image_view.favorite,
+                               image_view.summary,
+                               image_view.category_name,
+                               image_view.tags,
+                               image_view.key_information,
+                               image_view.structured_data,
+                               image_view.is_documented_yn,
+                               image_view.is_calendared_yn
+                        FROM query_schema.user_image_view image_view
+                        JOIN library_schema.user_image user_image
+                          ON user_image.user_id = image_view.user_id
+                         AND user_image.image_id = image_view.image_id
+                         AND user_image.del_yn = 'N'
+                        WHERE image_view.user_id = ?
+                          AND image_view.image_id = ?
+                          AND image_view.del_yn = 'N'
                         """,
-                        (rs, rowNum) -> {
-                            return new UserImageViewDetail(
+                        (rs, rowNum) -> new UserImageViewDetail(
                                     rs.getString("s3_key"),
+                                    rs.getString("thumbnail_key"),
                                     rs.getString("upload_status"),
                                     rs.getString("analysis_status"),
                                     rs.getString("title"),
-                                    rs.getObject("favorite", Boolean.class)
-                            );
-                        },
+                                    rs.getObject("favorite", Boolean.class),
+                                    rs.getString("summary"),
+                                    rs.getString("category_name"),
+                                    parseTagNames(rs.getString("tags")),
+                                    toStringList(rs.getArray("key_information")),
+                                    rs.getString("structured_data"),
+                                    "Y".equals(rs.getString("is_documented_yn")),
+                                    "Y".equals(rs.getString("is_calendared_yn"))
+                            ),
                         userId,
                         imageId
                 )
@@ -220,6 +248,7 @@ public class ImageQueryRepository {
                  AND user_image.del_yn = 'N'
                 WHERE image_view.user_id = ?
                   AND image_view.del_yn = 'N'
+                  AND image_view.analysis_status IN ('COMPLETED', 'EMPTY')
                 """);
         List<Object> parameters = new ArrayList<>();
         parameters.add(userId);
@@ -315,6 +344,17 @@ public class ImageQueryRepository {
 
     private String[] toArray(List<String> values) {
         return values == null ? new String[0] : values.toArray(new String[0]);
+    }
+
+    private List<String> toStringList(java.sql.Array sqlArray) throws SQLException {
+        if (sqlArray == null) {
+            return List.of();
+        }
+        Object value = sqlArray.getArray();
+        if (!(value instanceof String[] strings)) {
+            return List.of();
+        }
+        return List.of(strings);
     }
 
     private PGobject toJsonb(String json) throws SQLException {

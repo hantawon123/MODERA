@@ -1,29 +1,18 @@
 package com.ssafy.modera.feature.home
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -34,37 +23,24 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ssafy.modera.core.designsystem.component.Text
 import com.ssafy.modera.core.designsystem.theme.ModeraTheme
 import com.ssafy.modera.core.model.category.Category
-import com.ssafy.modera.core.model.category.CategorySortType
 import com.ssafy.modera.core.ui.LoadingScreen
-import com.ssafy.modera.feature.home.component.AiAnalysisProgressBanner
-import com.ssafy.modera.feature.home.component.CategoryCard
-import com.ssafy.modera.feature.home.component.CategorySortPopup
-import com.ssafy.modera.feature.home.component.Header
-import com.ssafy.modera.feature.home.component.SortSection
+import com.ssafy.modera.feature.home.component.HomeBottomSection
+import com.ssafy.modera.feature.home.component.HomeSearchBarSection
+import com.ssafy.modera.feature.home.component.HomeSearchFocusEffect
+import com.ssafy.modera.feature.home.component.HomeUpperSection
+import com.ssafy.modera.feature.home.component.rememberHomeSearchLayoutState
+import com.ssafy.modera.feature.home.util.rememberRawStatusBarTopPadding
 
 @Composable
-fun HomeScreen(
+fun HomeRoute(
+    onCalendarClick: () -> Unit,
+    onSettingsClick: () -> Unit,
     onCategoryClick: (Category) -> Unit,
+    onSearchResultClick: (Int) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val analysisState = LocalHomeAnalysisState.current
-
-    var previousShowBanner by remember {
-        mutableStateOf(analysisState.showBanner)
-    }
-
-    LaunchedEffect(analysisState.showBanner) {
-        val analysisFinished =
-            previousShowBanner && !analysisState.showBanner
-
-        if (analysisFinished) {
-            viewModel.refreshCategories()
-        }
-
-        previousShowBanner = analysisState.showBanner
-    }
 
     when (val state = uiState) {
         is HomeUiState.Loading -> {
@@ -74,14 +50,18 @@ fun HomeScreen(
         }
 
         is HomeUiState.Success -> {
-            HomeScreen(
-                categories = state.categories,
-                selectedSortType = state.selectedSortType,
-                onSortTypeChange = viewModel::updateSortType,
+            HomeSuccessScreen(
+                uiState = state,
+                onCalendarClick = onCalendarClick,
+                onSettingsClick = onSettingsClick,
                 onCategoryClick = onCategoryClick,
-                showAnalysisBanner = analysisState.showBanner,
-                analysisImageCount = analysisState.imageCount,
-                onDismissAnalysisBanner = analysisState::dismissBanner,
+                onSearchQueryChange = viewModel::onSearchQueryChanged,
+                onSearchBarFocusChange = viewModel::onSearchBarFocusChanged,
+                onSearchSubmit = viewModel::submitSearch,
+                onRecentSearchClick = viewModel::selectRecentSearch,
+                onRecentSearchDelete = viewModel::removeRecentSearchTerm,
+                onSearchDeactivate = viewModel::deactivateSearch,
+                onSearchResultClick = onSearchResultClick,
                 modifier = modifier,
             )
         }
@@ -95,96 +75,84 @@ fun HomeScreen(
 }
 
 @Composable
-fun HomeScreen(
-    categories: List<Category>,
-    selectedSortType: CategorySortType,
-    onSortTypeChange: (CategorySortType) -> Unit,
+private fun HomeSuccessScreen(
+    uiState: HomeUiState.Success,
+    onCalendarClick: () -> Unit,
+    onSettingsClick: () -> Unit,
     onCategoryClick: (Category) -> Unit,
+    onSearchQueryChange: (String) -> Unit,
+    onSearchBarFocusChange: (Boolean) -> Unit,
+    onSearchSubmit: () -> Unit,
+    onRecentSearchClick: (String) -> Unit,
+    onRecentSearchDelete: (String) -> Unit,
+    onSearchDeactivate: () -> Unit,
+    onSearchResultClick: (Int) -> Unit,
     modifier: Modifier = Modifier,
-    showAnalysisBanner: Boolean = false,
-    analysisImageCount: Int = 0,
-    onDismissAnalysisBanner: () -> Unit = {},
 ) {
-    var sortMenuExpanded by remember { mutableStateOf(false) }
-    var sortButtonBounds by remember { mutableStateOf<Rect?>(null) }
+    val searchFocusRequester = remember { FocusRequester() }
+    val focusManager = LocalFocusManager.current
+    val searchLayoutState = rememberHomeSearchLayoutState(uiState.isSearchActive)
+    val statusBarTopPadding = rememberRawStatusBarTopPadding()
+
+    HomeSearchFocusEffect(
+        isSearchActive = uiState.isSearchActive,
+        isShowingSearchResults = uiState.isShowingSearchResults,
+        searchFocusRequester = searchFocusRequester,
+        onSearchDeactivate = {
+            onSearchDeactivate()
+            focusManager.clearFocus()
+        },
+    )
 
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(ModeraTheme.colors.gray50)
-            .padding(horizontal = 12.dp),
+            .background(ModeraTheme.colors.white)
+            .padding(top = statusBarTopPadding)
+            .padding(horizontal = HomeScreenDefaults.HorizontalPadding)
+            .then(searchLayoutState.screenHeightModifier),
     ) {
         Column(
             modifier = Modifier.fillMaxSize(),
         ) {
-            Header(
-                title = stringResource(R.string.home_header_title),
-                subtitle = stringResource(R.string.home_header_subtitle),
-            )
-
-            AnimatedVisibility(
-                visible = showAnalysisBanner && analysisImageCount > 0,
-                enter = fadeIn() + expandVertically(),
-                exit = fadeOut() + shrinkVertically(),
-            ) {
-                AiAnalysisProgressBanner(
-                    imageCount = analysisImageCount,
-                    onDismiss = onDismissAnalysisBanner,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 12.dp),
-                )
-            }
-
-            SortSection(
-                selectedSortType = selectedSortType,
-                onSortClick = {
-                    sortMenuExpanded = true
-                },
-                onPositioned = { bounds ->
-                    sortButtonBounds = bounds
-                },
-            )
-
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(2),
+            Box(
                 modifier = Modifier
-                    .fillMaxSize(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
+                    .fillMaxWidth()
+                    .weight(searchLayoutState.upperWeight),
             ) {
-                items(
-                    items = categories,
-                    key = Category::id,
-                ) { category ->
-                    CategoryCard(
-                        title = category.title,
-                        imageUrl = category.thumbnailUrl,
-                        itemCount = category.itemCount,
-                        tags = category.tags,
-                        modifier = Modifier.fillMaxWidth(),
-                        onClick = {
-                            onCategoryClick(category)
-                        },
-                    )
-                }
-            }
-        }
-
-        if (sortMenuExpanded) {
-            sortButtonBounds?.let { bounds ->
-                CategorySortPopup(
-                    anchorBounds = bounds,
-                    selectedSortType = selectedSortType,
-                    onDismissRequest = {
-                        sortMenuExpanded = false
-                    },
-                    onSortTypeClick = { sortType ->
-                        onSortTypeChange(sortType)
-                        sortMenuExpanded = false
-                    },
+                HomeUpperSection(
+                    upperContentAlpha = searchLayoutState.upperContentAlpha,
+                    isSearchActive = uiState.isSearchActive,
+                    onCalendarClick = onCalendarClick,
+                    onSettingsClick = onSettingsClick,
                 )
             }
+
+            HomeSearchBarSection(
+                query = uiState.searchQuery,
+                circleExtraOffsetPx = searchLayoutState.circleExtraOffsetPx,
+                searchFocusRequester = searchFocusRequester,
+                positionModifier = searchLayoutState.searchBarPositionModifier,
+                onQueryChange = onSearchQueryChange,
+                onFocusChange = onSearchBarFocusChange,
+                onSearch = {
+                    if (uiState.searchQuery.trim().isNotEmpty()) {
+                        focusManager.clearFocus()
+                        onSearchSubmit()
+                    }
+                },
+            )
+
+            HomeBottomSection(
+                uiState = uiState,
+                categoryContentAlpha = searchLayoutState.categoryContentAlpha,
+                onCategoryClick = onCategoryClick,
+                onRecentSearchClick = onRecentSearchClick,
+                onRecentSearchDelete = onRecentSearchDelete,
+                onSearchDeactivate = onSearchDeactivate,
+                onSearchResultClick = onSearchResultClick,
+                modifier = Modifier.weight(1f),
+            )
         }
     }
 }
@@ -219,27 +187,20 @@ private fun HomeScreenPreview(
     previewData: HomeScreenPreviewData,
 ) {
     ModeraTheme {
-        HomeScreen(
-            categories = previewData.categories,
-            selectedSortType = previewData.selectedSortType,
-            onSortTypeChange = {},
+        HomeSuccessScreen(
+            uiState = HomeUiState.Success(
+                categories = previewData.categories,
+            ),
+            onCalendarClick = {},
+            onSettingsClick = {},
             onCategoryClick = {},
+            onSearchQueryChange = {},
+            onSearchBarFocusChange = {},
+            onSearchSubmit = {},
+            onRecentSearchClick = {},
+            onRecentSearchDelete = {},
+            onSearchDeactivate = {},
+            onSearchResultClick = {},
         )
-    }
-}
-
-@Preview(
-    name = "Home Loading",
-    showBackground = true,
-)
-
-@Preview(
-    name = "Home Error",
-    showBackground = true,
-)
-@Composable
-private fun HomeErrorScreenPreview() {
-    ModeraTheme {
-        HomeErrorScreen()
     }
 }

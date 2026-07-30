@@ -187,7 +187,7 @@ assert search.load_category_vectors(7) == {}
 stages.search.load_category_vectors = lambda user_id: {
     "부동산": {"name": "부동산", "vector": [0.3] * DIM, "count": 2},
 }
-candidates = stages._build_candidates(1, [])
+candidates = stages.build_candidates(1, [])
 names = [c.name for c in candidates]
 assert names == ["부동산"], names
 assert candidates[0].representative_vector == [0.3] * DIM
@@ -202,7 +202,7 @@ spring = [
     CategoryCandidate(category_id=12, name="음식",
                       representative_vector=[0.9] * DIM),
 ]
-candidates = stages._build_candidates(1, spring)
+candidates = stages.build_candidates(1, spring)
 by_name = {c.name: c for c in candidates}
 assert set(by_name) == {"쇼핑", "음식", "부동산"}, set(by_name)
 assert by_name["쇼핑"].category_id == 11, "Spring 의 categoryId 가 사라졌다"
@@ -212,7 +212,7 @@ assert by_name["부동산"].category_id is None
 
 # 14) 저장소도 Spring 도 비면 기본 후보로 콜드 스타트한다.
 stages.search.load_category_vectors = lambda user_id: {}
-assert [c.name for c in stages._build_candidates(1, [])] == stages.DEFAULT_CATEGORIES
+assert [c.name for c in stages.build_candidates(1, [])] == stages.DEFAULT_CATEGORIES
 
 # 15) 시드는 user_id=0, count=0 으로 들어간다 — 사용자 centroid 와 id 가 겹치지 않아
 #     단어 임베딩이 문장 centroid 에 누적되는 경로가 없다.

@@ -156,7 +156,7 @@ new = (기존 × count + 요약벡터) / (count + 1)
   `terms` 목록에 승격 문서를 더한다
 - `search.upsert_category_vector` — 문서 id 규칙. 공유로 가면 `{user_id}:` 접두가
   사라지거나 승격 문서를 따로 갱신해야 한다
-- `stages._build_candidates` — 후보 병합·우선순위. 상위 N 컷이 필요하면 여기
+- `stages.build_candidates` — 후보 병합·우선순위. 상위 N 컷이 필요하면 여기
 - 프롬프트 — 후보 목록이 길어지면 `stages.run_agent_generation` 의 후보 전달 방식
 
 판정 로직(`category.resolve_category`)은 후보와 벡터를 받아 코사인만 돌기 때문에

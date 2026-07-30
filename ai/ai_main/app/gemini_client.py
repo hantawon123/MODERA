@@ -130,6 +130,8 @@ def _mock_json(parts: list[Any]) -> dict[str, Any]:
             "key_information": ["항목: MOCK 값"],
             "analysis_confidence": 0.9,
         }
+    if '"category"' in prompt:  # 카테고리 재분석(reanalyze._pick_category)
+        return {"category": "게임", "reason": "MOCK 재분석 판정"}
     if '"price_min"' in prompt:
         return {"keywords": ["mock"], "price_min": None, "price_max": None,
                 "brand": None, "category_hints": [], "date_from": None,

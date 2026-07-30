@@ -2,7 +2,7 @@
 
 FastAPI 는 판정 상태를 갖지 않는다. 요청마다 후보와 그 대표 벡터를 받아 판정한다.
 
-대표 벡터 우선순위 (채우는 쪽은 stages._build_candidates)
+대표 벡터 우선순위 (채우는 쪽은 stages.build_candidates)
   1. Spring 이 내려준 representativeVector
   2. 이 서버의 사용자 centroid (search 카테고리 인덱스, 그 카테고리 이미지 요약 평균)
   3. 전역 시드 (카테고리 이름 임베딩 — 이미지가 0장일 때만)

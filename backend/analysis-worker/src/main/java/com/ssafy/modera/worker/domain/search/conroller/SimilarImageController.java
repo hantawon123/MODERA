@@ -35,7 +35,7 @@ public class SimilarImageController {
     @GetMapping("/images/{imageId}/similar")
     public SimilarImagesResponse findSimilar(
             @RequestHeader(value = "X-Internal-Token", required = false) String token,
-            @PathVariable int imageId,
+            @PathVariable(name = "imageId") int imageId,
             @RequestParam int userId,
             @RequestParam(defaultValue = "10") int limit
     ) {

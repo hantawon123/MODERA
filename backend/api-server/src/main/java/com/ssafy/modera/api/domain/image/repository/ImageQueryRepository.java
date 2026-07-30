@@ -152,6 +152,25 @@ public class ImageQueryRepository {
                 .findFirst();
     }
 
+    public boolean isAnalysisActiveOrCompleted(Integer userId, Integer imageId) {
+        Boolean exists = jdbcTemplate.queryForObject(
+                """
+                SELECT EXISTS (
+                    SELECT 1
+                    FROM query_schema.user_image_view
+                    WHERE user_id = ?
+                      AND image_id = ?
+                      AND del_yn = 'N'
+                      AND analysis_status IN ('PROCESSING', 'COMPLETED', 'EMPTY')
+                )
+                """,
+                Boolean.class,
+                userId,
+                imageId
+        );
+        return Boolean.TRUE.equals(exists);
+    }
+
     public boolean copyExistingView(Integer userId, Integer imageId) {
         jdbcTemplate.update(
                 """
@@ -170,16 +189,25 @@ public class ImageQueryRepository {
                     key_information, structured_data, upload_status, analysis_status,
                     favorite, uploaded_at, del_yn, is_documented_yn, is_calendared_yn
                 )
-                SELECT ?, image_id, file_name, s3_key, thumbnail_key,
-                       title, summary, category_id, category_name, tags,
-                       key_information, structured_data, upload_status, analysis_status,
-                       false, uploaded_at, 'N', 'N', 'N'
-                FROM query_schema.user_image_view
-                WHERE image_id = ?
-                  AND del_yn = 'N'
-                  AND analysis_status IN ('COMPLETED', 'EMPTY')
-                ORDER BY CASE WHEN user_id = ? THEN 0 ELSE 1 END,
-                         uploaded_at DESC NULLS LAST
+                SELECT ?, source.image_id, source.file_name, source.s3_key,
+                       source.thumbnail_key, source.title, source.summary,
+                       COALESCE(default_category.category_id, source.category_id),
+                       COALESCE(category.name, source.category_name),
+                       source.tags, source.key_information, source.structured_data,
+                       source.upload_status, source.analysis_status,
+                       false, source.uploaded_at, 'N', 'N', 'N'
+                FROM query_schema.user_image_view source
+                LEFT JOIN library_schema.image_category default_category
+                  ON default_category.image_id = source.image_id
+                 AND default_category.del_yn = 'N'
+                LEFT JOIN taxonomy_schema.category category
+                  ON category.category_id = default_category.category_id
+                 AND category.del_yn = 'N'
+                WHERE source.image_id = ?
+                  AND source.del_yn = 'N'
+                  AND source.analysis_status IN ('COMPLETED', 'EMPTY')
+                ORDER BY CASE WHEN source.user_id = ? THEN 0 ELSE 1 END,
+                         source.uploaded_at DESC NULLS LAST
                 LIMIT 1
                 ON CONFLICT (user_id, image_id) DO UPDATE SET
                     file_name = EXCLUDED.file_name,

@@ -265,7 +265,7 @@ private fun AnalyzedImageDetailContent(
         Text(
             text = ModeraDateFormatter.formatMillis(
                 image.updatedAt,
-                ModeraDateStyle.MONTH_DAY_TIME
+                ModeraDateStyle.YEAR_MONTH_DAY_TIME
             ),
             style = ModeraTheme.typography.captionR12,
             color = ModeraTheme.colors.gray500,

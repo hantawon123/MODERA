@@ -18,6 +18,7 @@ OpenSearch 가 죽어 있어도 문서화는 동작한다.
 """
 
 import logging
+import re
 from datetime import datetime, timezone
 from typing import Any
 
@@ -151,7 +152,7 @@ def generate_document(
             continue
         sections.append({
             "heading": _oneline(raw.get("heading", "")),
-            "body": str(raw.get("body", "") or ""),
+            "body": _prose(raw.get("body", "")),
             "bullets": [_oneline(b) for b in (raw.get("bullets") or []) if str(b).strip()],
             # 모델이 없는 번호를 지어내면 출처 표기가 거짓이 된다. 실제 소스만 남긴다.
             "image_ids": [i for i in (raw.get("imageIds") or []) if i in valid_ids],
@@ -161,7 +162,7 @@ def generate_document(
         # 요청이 제목을 지정했으면 그 값으로 고정한다. 프롬프트로 부탁만 하면
         # 모델이 다른 제목을 내놨을 때 그게 채택돼 계약이 깨진다.
         "title": _oneline(title or parsed.get("title") or "문서"),
-        "summary": str(parsed.get("summary", "") or ""),
+        "summary": _prose(parsed.get("summary", "")),
         "sections": sections,
     }
 
@@ -169,6 +170,25 @@ def generate_document(
 def _oneline(value: Any) -> str:
     """제목·항목에 줄바꿈이 섞이면 마크다운 구조가 깨진다."""
     return " ".join(str(value or "").split())
+
+
+# 프롬프트로 "마크다운 기호를 넣지 마라" 라고 부탁하지만 모델은 종종 어긴다.
+# body·summary 는 여러 줄 서술이라 _oneline 으로 뭉갤 수 없어 줄 앞 구조 기호만 막는다.
+# `#` 이 들어오면 섹션이 문서 최상위 제목으로 승격되고, 코드펜스가 열리면 그 뒤의
+# 출처 표까지 통째로 코드 블록에 먹힌다 — 렌더 결과가 항상 같은 모양이라는 계약이 깨진다.
+_LEAD_MARKER = re.compile(r"^(\s*)(#{1,6}\s|>\s|\|)")
+_FENCE = re.compile(r"^\s*(?:```|~~~)")
+
+
+def _prose(value: Any) -> str:
+    """여러 줄 서술. 줄 앞 마크다운 구조 기호를 중화한다."""
+    lines = []
+    for line in str(value or "").splitlines():
+        if _FENCE.match(line):
+            # 펜스는 escape 로 무력화되지 않는다(백틱 하나만 먹는다). 줄째로 버린다.
+            continue
+        lines.append(_LEAD_MARKER.sub(r"\1\\\2", line))
+    return "\n".join(lines).strip()
 
 
 # ── 3) 마크다운 렌더링 ────────────────────────────────────────────────────

@@ -1,6 +1,7 @@
 package com.ssafy.modera.api.domain.document.controller;
 
 import com.ssafy.modera.api.domain.document.dto.request.DocumentCreateRequest;
+import com.ssafy.modera.api.domain.document.dto.request.DocumentImagesRequest;
 import com.ssafy.modera.api.domain.document.dto.request.DocumentRegenerateRequest;
 import com.ssafy.modera.api.domain.document.dto.response.DocumentDeleteResponse;
 import com.ssafy.modera.api.domain.document.dto.response.DocumentDetailResponse;
@@ -41,6 +42,8 @@ public class DocumentController {
     private static final String CODE_CREATED = "DOCUMENT_GENERATION_COMPLETED";
     private static final String MESSAGE_CREATED = "문서가 생성되었습니다.";
     private static final String MESSAGE_REGENERATED = "문서를 다시 정리했습니다.";
+    private static final String MESSAGE_IMAGES_ADDED = "이미지를 추가해 문서를 다시 정리했습니다.";
+    private static final String MESSAGE_IMAGES_EXCLUDED = "이미지를 제외해 문서를 다시 정리했습니다.";
 
     private final DocumentCommandService documentCommandService;
     private final DocumentQueryService documentQueryService;
@@ -203,6 +206,73 @@ public class DocumentController {
                 CODE_CREATED,
                 MESSAGE_REGENERATED,
                 documentCommandService.regenerate(userId, documentId, request)
+        ));
+    }
+
+    @Operation(
+            summary = "문서에 이미지 추가",
+            description = """
+                    현재 구성에 이미지를 더한 결과로 문서를 다시 만들고 **갱신된 문서를 돌려준다.**
+                    documentId는 유지된다.
+
+                    "최종 목록"이 아니라 "추가할 이미지"를 보낸다 — 앱이 들고 있는 구성 목록이
+                    낡았을 수 있어서(그 사이 이미지가 삭제됐다든지), 서버가 그 시점의 실제 구성을
+                    기준으로 합친다.
+
+                    이미 포함된 이미지를 다시 추가하면 조용히 무시된다. 재분석과 같은 잠금을
+                    공유하므로 한 문서에 동시에 두 번은 안 된다(409).
+                    """
+    )
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "완료. data는 상세 조회(8-3)와 같은 형식"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "imageIds 중복·개수 초과(INVALID_DOCUMENT_IMAGES)"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "본인 소유가 아닌 이미지 포함(DOCUMENT_IMAGE_NOT_OWNED)"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "본인 소유가 아니거나 존재하지 않는 documentId(DOCUMENT_NOT_FOUND)"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409", description = "분석 미완료 이미지 포함, 같은 요청 처리 중, 또는 이미 재분석 진행 중"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "502", description = "AI 장애·타임아웃 또는 요청 거부")
+    })
+    @PostMapping("/{documentId}/images")
+    public ResponseEntity<ApiResponse<DocumentDetailResponse>> addImages(
+            @AuthenticationPrincipal Integer userId,
+            @PathVariable(name = "documentId") Integer documentId,
+            @RequestBody @Valid DocumentImagesRequest request
+    ) {
+        return ResponseEntity.ok(ApiResponse.success(
+                CODE_CREATED,
+                MESSAGE_IMAGES_ADDED,
+                documentCommandService.addImages(userId, documentId, request)
+        ));
+    }
+
+    @Operation(
+            summary = "문서에서 이미지 제외",
+            description = """
+                    현재 구성에서 이미지를 뺀 결과로 문서를 다시 만들고 **갱신된 문서를 돌려준다.**
+                    documentId는 유지되고, 제외한 이미지 원본은 삭제되지 않는다.
+
+                    문서에 없는 이미지를 빼려 하면 404(DOCUMENT_IMAGE_NOT_FOUND)다 — 앱의 구성
+                    목록이 낡았다는 뜻이라 문서를 다시 조회하면 해소된다.
+
+                    전부 제외할 수는 없다(400). 그건 문서를 지우겠다는 뜻이므로 삭제를 쓴다.
+                    """
+    )
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "완료. data는 상세 조회(8-3)와 같은 형식"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "남는 이미지가 없음(INVALID_DOCUMENT_IMAGES)"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "문서가 없거나(DOCUMENT_NOT_FOUND) 문서에 없는 이미지(DOCUMENT_IMAGE_NOT_FOUND)"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409", description = "같은 요청 처리 중 또는 이미 재분석 진행 중"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "502", description = "AI 장애·타임아웃 또는 요청 거부")
+    })
+    @PostMapping("/{documentId}/images/exclude")
+    public ResponseEntity<ApiResponse<DocumentDetailResponse>> excludeImages(
+            @AuthenticationPrincipal Integer userId,
+            @PathVariable(name = "documentId") Integer documentId,
+            @RequestBody @Valid DocumentImagesRequest request
+    ) {
+        return ResponseEntity.ok(ApiResponse.success(
+                CODE_CREATED,
+                MESSAGE_IMAGES_EXCLUDED,
+                documentCommandService.excludeImages(userId, documentId, request)
         ));
     }
 

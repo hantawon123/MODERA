@@ -2,6 +2,7 @@ package com.ssafy.modera.api.domain.document.service;
 
 import com.ssafy.modera.api.domain.document.client.DocumentAiClient;
 import com.ssafy.modera.api.domain.document.dto.request.DocumentCreateRequest;
+import com.ssafy.modera.api.domain.document.dto.request.DocumentImagesRequest;
 import com.ssafy.modera.api.domain.document.entity.DocumentGenerationRequest;
 import com.ssafy.modera.api.domain.document.exception.DocumentErrorCode;
 import com.ssafy.modera.api.domain.document.repository.DocumentGenerationRequestRepository;
@@ -78,7 +79,11 @@ class DocumentCommandServiceTest {
         given(transactionTemplate.execute(any()))
                 .willAnswer(invocation -> invocation.<TransactionCallback<?>>getArgument(0)
                         .doInTransaction(null));
+        // 생성은 save, 재분석·추가·제외는 saveAndFlush를 쓴다(유니크 인덱스 위반을 그 자리에서
+        // 잡아 409로 번역해야 해서). 둘 다 저장한 엔티티를 그대로 돌려주게 둔다.
         given(documentGenerationRequestRepository.save(any()))
+                .willAnswer(invocation -> invocation.getArgument(0));
+        given(documentGenerationRequestRepository.saveAndFlush(any()))
                 .willAnswer(invocation -> invocation.getArgument(0));
         given(documentPersistService.persist(any(), any())).willReturn(101);
     }
@@ -247,6 +252,68 @@ class DocumentCommandServiceTest {
         documentCommandService.create(USER_ID, createRequest(7));
 
         verify(documentAiClient).generate(any());
+    }
+
+    @Test
+    @DisplayName("이미지 추가는 현재 구성에 요청 이미지를 더한 목록으로 다시 만든다")
+    void addsImagesToCurrentComposition() {
+        givenDocumentImages(7, 8);
+        givenSources(source(7, "제목", "요약"), source(8, "제목", "요약"), source(9, "제목", "요약"));
+        given(ocrRepository.findByImageIdIn(anyList())).willReturn(List.of());
+        given(documentAiClient.generate(any())).willReturn(aiResponse());
+
+        documentCommandService.addImages(USER_ID, 101, new DocumentImagesRequest(
+                UUID.randomUUID(), List.of(8, 9)));   // 8은 이미 포함 — 중복 제거된다
+
+        assertThat(capturedImageIds()).containsExactly(7, 8, 9);
+    }
+
+    @Test
+    @DisplayName("이미지 제외는 현재 구성에서 요청 이미지를 뺀 목록으로 다시 만든다")
+    void excludesImagesFromCurrentComposition() {
+        givenDocumentImages(7, 8, 9);
+        givenSources(source(7, "제목", "요약"), source(9, "제목", "요약"));
+        given(ocrRepository.findByImageIdIn(anyList())).willReturn(List.of());
+        given(documentAiClient.generate(any())).willReturn(aiResponse());
+
+        documentCommandService.excludeImages(USER_ID, 101, new DocumentImagesRequest(
+                UUID.randomUUID(), List.of(8)));
+
+        assertThat(capturedImageIds()).containsExactly(7, 9);
+    }
+
+    @Test
+    @DisplayName("문서에 없는 이미지를 제외하려 하면 404다")
+    void rejectsExcludingImageNotInDocument() {
+        givenDocumentImages(7, 8);
+
+        assertThatThrownBy(() -> documentCommandService.excludeImages(USER_ID, 101,
+                new DocumentImagesRequest(UUID.randomUUID(), List.of(99))))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", DocumentErrorCode.DOCUMENT_IMAGE_NOT_FOUND);
+    }
+
+    @Test
+    @DisplayName("전부 제외하는 요청은 거부한다 — 그건 문서 삭제다")
+    void rejectsExcludingEveryImage() {
+        givenDocumentImages(7, 8);
+
+        assertThatThrownBy(() -> documentCommandService.excludeImages(USER_ID, 101,
+                new DocumentImagesRequest(UUID.randomUUID(), List.of(7, 8))))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", DocumentErrorCode.INVALID_DOCUMENT_IMAGES);
+    }
+
+    private void givenDocumentImages(Integer... imageIds) {
+        given(documentQueryRepository.existsDocument(USER_ID, 101)).willReturn(true);
+        given(documentQueryRepository.findDocumentImageIds(USER_ID, 101)).willReturn(List.of(imageIds));
+    }
+
+    private List<Integer> capturedImageIds() {
+        ArgumentCaptor<DocumentAiClient.DocumentRequest> captor =
+                ArgumentCaptor.forClass(DocumentAiClient.DocumentRequest.class);
+        verify(documentAiClient).generate(captor.capture());
+        return captor.getValue().images().stream().map(DocumentAiClient.SourceImage::imageId).toList();
     }
 
     private void givenExisting(DocumentGenerationRequest existing) {

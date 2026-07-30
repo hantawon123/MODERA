@@ -3,7 +3,6 @@ package com.ssafy.modera.feature.category.search
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ssafy.modera.core.model.analyzedimage.AnalyzedImage
-import com.ssafy.modera.feature.category.CategoryMaterialUiModel
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -37,7 +36,7 @@ class CategorySearchViewModel @Inject constructor() : ViewModel() {
         viewModelScope.launch {
             try {
                 _uiState.value = CategorySearchUiState.Success(
-                    recentMaterials = CategorySearchDummyData.recentMaterials,
+                    recentAnalyzedImages = CategorySearchDummyData.recentMaterials,
                 )
             } catch (exception: Exception) {
                 _uiState.value = CategorySearchUiState.Error(exception)

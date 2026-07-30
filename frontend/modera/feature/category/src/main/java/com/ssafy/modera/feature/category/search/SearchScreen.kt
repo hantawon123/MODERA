@@ -37,7 +37,6 @@ import com.ssafy.modera.core.designsystem.component.Text
 import com.ssafy.modera.core.designsystem.theme.ModeraTheme
 import com.ssafy.modera.core.model.analyzedimage.AnalyzedImage
 import com.ssafy.modera.core.ui.LoadingScreen
-import com.ssafy.modera.feature.category.CategoryMaterialUiModel
 import com.ssafy.modera.feature.category.R
 
 @Composable
@@ -147,16 +146,16 @@ fun CategorySearchScreen(
 
             when (val content = uiState.content) {
                 CategorySearchUiState.Content.RecentEmpty -> {
-                    RecentMaterialsEmptySection(
+                    RecentAnalyzedImagesEmptySection(
                         modifier = Modifier
                             .fillMaxWidth()
                             .weight(1f),
                     )
                 }
 
-                is CategorySearchUiState.Content.RecentMaterials -> {
-                    RecentMaterialsSection(
-                        materials = content.materials,
+                is CategorySearchUiState.Content.RecentAnalyzedImages -> {
+                    RecentAnalyzedImagesSection(
+                        analyzedImages = content.analyzedImages,
                         onItemClick = onItemClick,
                         modifier = Modifier
                             .fillMaxWidth()
@@ -179,11 +178,11 @@ fun CategorySearchScreen(
 }
 
 @Composable
-private fun RecentMaterialsEmptySection(
+private fun RecentAnalyzedImagesEmptySection(
     modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier) {
-        RecentMaterialsHeader()
+        RecentAnalyzedImagesHeader()
 
         Box(
             modifier = Modifier
@@ -202,26 +201,26 @@ private fun RecentMaterialsEmptySection(
 }
 
 @Composable
-private fun RecentMaterialsSection(
-    materials: List<AnalyzedImage>,
+private fun RecentAnalyzedImagesSection(
+    analyzedImages: List<AnalyzedImage>,
     onItemClick: (Long) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     LazyColumn(modifier = modifier) {
         item {
-            RecentMaterialsHeader()
+            RecentAnalyzedImagesHeader()
         }
 
         items(
-            items = materials,
+            items = analyzedImages,
             key = { it.id },
-        ) { material ->
+        ) { analyzedImage ->
             ModeraMaterialItem(
-                title = material.title,
-                description = material.summary,
-                tags = material.hashtags,
-                imageUrl = material.thumbnailUrl,
-                onClick = { onItemClick(material.id) },
+                title = analyzedImage.title,
+                description = analyzedImage.summary,
+                tags = analyzedImage.hashtags,
+                imageUrl = analyzedImage.thumbnailUrl,
+                onClick = { onItemClick(analyzedImage.id) },
                 modifier = Modifier.fillMaxWidth(),
             )
         }
@@ -229,11 +228,11 @@ private fun RecentMaterialsSection(
 }
 
 @Composable
-private fun RecentMaterialsHeader(
+private fun RecentAnalyzedImagesHeader(
     modifier: Modifier = Modifier,
 ) {
     Text(
-        text = stringResource(R.string.category_search_recent_materials),
+        text = stringResource(R.string.category_search_recent_analyzed_images),
         style = ModeraTheme.typography.bodyR14,
         color = ModeraTheme.colors.gray500,
         modifier = modifier.padding(top = 24.dp, bottom = 8.dp),
@@ -282,13 +281,13 @@ private fun CategorySearchResultSection(
         items(
             items = searchResults,
             key = { it.id },
-        ) { material ->
+        ) { analyzedImage ->
             ModeraMaterialItem(
-                title = material.title,
-                description = material.summary,
-                tags = material.hashtags,
-                imageUrl = material.thumbnailUrl,
-                onClick = { onItemClick(material.id) },
+                title = analyzedImage.title,
+                description = analyzedImage.summary,
+                tags = analyzedImage.hashtags,
+                imageUrl = analyzedImage.thumbnailUrl,
+                onClick = { onItemClick(analyzedImage.id) },
                 modifier = Modifier.fillMaxWidth(),
             )
         }
@@ -312,13 +311,13 @@ private fun CategorySearchScreenRecentEmptyPreview() {
     }
 }
 
-@Preview(showBackground = true, widthDp = 360, heightDp = 780, name = "Recent Materials")
+@Preview(showBackground = true, widthDp = 360, heightDp = 780, name = "Recent AnalyzedImages")
 @Composable
 private fun CategorySearchScreenRecentPreview() {
     ModeraTheme {
         CategorySearchScreen(
             uiState = CategorySearchUiState.Success(
-                recentMaterials = CategorySearchDummyData.recentMaterials,
+                recentAnalyzedImages = CategorySearchDummyData.recentMaterials,
             ),
             onSearchQueryChange = {},
             onBackClick = {},
@@ -334,7 +333,7 @@ private fun CategorySearchScreenResultsPreview() {
         CategorySearchScreen(
             uiState = CategorySearchUiState.Success(
                 searchQuery = "케이크",
-                recentMaterials = CategorySearchDummyData.recentMaterials,
+                recentAnalyzedImages = CategorySearchDummyData.recentMaterials,
                 searchResults = CategorySearchDummyData.allMaterials,
             ),
             onSearchQueryChange = {},

@@ -40,14 +40,6 @@ import com.ssafy.modera.core.model.category.CategorySortType
 import com.ssafy.modera.core.util.statusBarTopPadding
 import com.ssafy.modera.feature.category.component.CategoryTopSheet
 
-data class CategoryMaterialUiModel(
-    val id: Int,
-    val title: String,
-    val summary: String,
-    val hashtags: List<String>,
-    val thumbnailUrl: String? = null,
-)
-
 @Composable
 fun CategoryRoute(
     onItemClick: (Long) -> Unit,
@@ -80,7 +72,7 @@ fun CategoryRoute(
             CategorySheetItem(1,"음식", 1),
         )
     }
-    val materials = remember {
+    val analyzedImages = remember {
         List(16) { index ->
             AnalyzedImage(
                 id = (index + 1).toLong(),
@@ -95,7 +87,7 @@ fun CategoryRoute(
     CategoryScreen(
         selectedCategory = selectedCategory,
         categories = categories,
-        materials = materials,
+        analyzedImages = analyzedImages,
         selectedSortType = selectedSortType,
         showCategorySheet = showCategorySheet,
         showSortPopup = showSortPopup,
@@ -118,7 +110,7 @@ fun CategoryRoute(
 fun CategoryScreen(
     selectedCategory: String,
     categories: List<CategorySheetItem>,
-    materials: List<AnalyzedImage>,
+    analyzedImages: List<AnalyzedImage>,
     selectedSortType: CategorySortType,
     showCategorySheet: Boolean,
     showSortPopup: Boolean,
@@ -196,7 +188,7 @@ fun CategoryScreen(
                                 Text(
                                     text = stringResource(
                                         R.string.category_item_count,
-                                        materials.size,
+                                        analyzedImages.size,
                                     ),
                                     modifier = Modifier.align(Alignment.CenterStart),
                                     style = ModeraTheme.typography.bodyR14,
@@ -223,15 +215,15 @@ fun CategoryScreen(
                     }
 
                     items(
-                        items = materials,
+                        items = analyzedImages,
                         key = { it.id },
-                    ) { material ->
+                    ) { analyzedImage ->
                         ModeraMaterialItem(
-                            title = material.title,
-                            description = material.summary,
-                            tags = material.hashtags,
-                            imageUrl = material.thumbnailUrl,
-                            onClick = { onItemClick(material.id) },
+                            title = analyzedImage.title,
+                            description = analyzedImage.summary,
+                            tags = analyzedImage.hashtags,
+                            imageUrl = analyzedImage.thumbnailUrl,
+                            onClick = { onItemClick(analyzedImage.id) },
                             modifier = Modifier.fillMaxWidth(),
                         )
                     }
@@ -264,7 +256,7 @@ private fun CategoryScreenPreview() {
                 CategorySheetItem(1,"음식", 1),
                 CategorySheetItem(1,"여행", 10, isNew = true),
             ),
-            materials = listOf(
+            analyzedImages = listOf(
                 AnalyzedImage(
                     id = 1.toLong(),
                     title = "성심당 케이크 리스트",

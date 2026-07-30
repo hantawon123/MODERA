@@ -57,14 +57,24 @@ def resolve_category(
     target = normalize_name(proposed)
     for candidate in candidates:
         if target and normalize_name(candidate.name) == target:
+            # 벡터 감사: 판정(연결)은 이름이 하되, 대표 벡터가 있으면 실제
+            # 코사인을 재서 similarity 로 보고한다. AGENT 가 확신 있게 틀리는
+            # 이름 일치(동의서→금융 실측)가 유일한 무검증 경로였는데, 실값을
+            # 내보내면 "AGENT 와 벡터가 불일치한 판정"을 밖에서 관측할 수 있고
+            # 오염 가드(stages)의 판단 근거가 된다. 벡터가 없으면(첫 이미지 등
+            # 콜드 스타트) 잴 수 없으므로 기존대로 1.0 이다.
+            audited = (
+                cosine_similarity(summary_embedding, candidate.representative_vector)
+                if candidate.representative_vector else 1.0
+            )
             return CategoryResolution(
                 name=candidate.name,
                 category_id=candidate.category_id,
                 # 아직 DB 에 없는 기본 카테고리라면 Spring 이 새로 만들어야 한다.
                 created=candidate.category_id is None,
-                similarity=1.0,
+                similarity=audited,
                 matched_by="name",
-                ranking=[(1.0, candidate.name)],
+                ranking=[(round(audited, 3), candidate.name)],
             )
 
     if not candidates:

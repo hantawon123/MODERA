@@ -136,8 +136,11 @@ class Settings:
         self.search_bm25_min_score = float(os.environ.get("SEARCH_BM25_MIN_SCORE", "0.0"))
 
         # 모델
-        self.llm_model_name = os.environ.get("LLM_MODEL_NAME", "gemini-3.5-flash")
-        self.vision_model_name = os.environ.get("VISION_MODEL_NAME", "gemini-3.5-flash")
+        # GMS 프록시가 모델을 화이트리스트로 막는다. 허용 확인된 값:
+        # gemini-2.5-flash-lite / gemini-2.5-flash / gemini-2.5-pro / gemini-3.5-flash
+        # (gemini-3.5-flash-lite 는 400 "Model is not available")
+        self.llm_model_name = os.environ.get("LLM_MODEL_NAME", "gemini-2.5-flash-lite")
+        self.vision_model_name = os.environ.get("VISION_MODEL_NAME", "gemini-2.5-flash-lite")
         self.embedding_model_name = os.environ.get("EMBEDDING_MODEL_NAME", "gemini-embedding-2")
         # 임베딩 차원. 팀 합의로 768 고정이며 pgvector 컬럼(vector(768))과 일치해야 한다.
         # gemini-embedding-2 의 기본 출력은 3072 라 호출 시 명시적으로 줄여서 받는다.
@@ -162,6 +165,18 @@ class Settings:
         # 동시 실행 단계 수 제한.
         # 수백 장이 한꺼번에 들어와도 Gemini 호출이 폭주(429)하지 않게 막는다.
         self.max_concurrent_stages = int(os.environ.get("MAX_CONCURRENT_STAGES", "4"))
+
+        # Gemini 호출 엔드포인트. SSAFY GMS 프록시를 경유한다.
+        # SDK 가 이 값 뒤에 `/v1beta/models/...` 를 붙이므로 프록시가 요구하는
+        # 업스트림 호스트까지 포함한 전체 접두사를 넣는다.
+        # 경로 접두사(/gmsapi/...)는 gRPC 로 표현할 수 없어 gemini_client 가
+        # transport="rest" 로 고정한다.
+        # 빈 값(GEMINI_BASE_URL=)도 기본값으로 떨어뜨린다. env_file 은 빈 문자열을
+        # "설정됨" 으로 넘기므로 os.environ.get 의 기본값이 먹지 않는다.
+        self.gemini_base_url = (
+            os.environ.get("GEMINI_BASE_URL")
+            or "https://gms.ssafy.io/gmsapi/generativelanguage.googleapis.com"
+        ).rstrip("/")
 
         # Gemini 429(rate limit) 재시도. 지수 백오프 + 지터로 재시도한다.
         self.gemini_max_attempts = int(os.environ.get("GEMINI_MAX_ATTEMPTS", "5"))

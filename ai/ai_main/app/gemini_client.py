@@ -68,7 +68,13 @@ def _genai():
         import google.generativeai as genai
     except ImportError as e:  # pragma: no cover
         raise GeminiError("google-generativeai 가 설치되지 않았습니다.") from e
-    genai.configure(api_key=get_settings().gemini_api_key)
+    settings = get_settings()
+    # 경로 접두사가 있는 프록시(GMS)는 gRPC 로 못 붙는다. REST 로 고정한다.
+    genai.configure(
+        api_key=settings.gemini_api_key,
+        transport="rest",
+        client_options={"api_endpoint": settings.gemini_base_url},
+    )
     return genai
 
 

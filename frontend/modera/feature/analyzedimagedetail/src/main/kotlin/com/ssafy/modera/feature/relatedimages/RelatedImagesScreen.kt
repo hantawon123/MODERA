@@ -13,11 +13,13 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ssafy.modera.core.component.ModeraTopBar
 import com.ssafy.modera.core.component.item.ModeraMaterialItem
 import com.ssafy.modera.core.designsystem.component.HorizontalDivider
@@ -32,9 +34,28 @@ import com.ssafy.modera.feature.relatedimages.component.RelatedImagesHeader
 @Composable
 fun RelatedImagesScreen(
     sourceTitle: String,
+    onBackClick: () -> Unit,
+    onRelatedImageClick: (Long) -> Unit,
+    viewModel: RelatedImagesViewModel,
+    modifier: Modifier = Modifier,
+) {
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
+    RelatedImagesScreen(
+        sourceTitle = sourceTitle,
+        uiState = uiState,
+        onBackClick = onBackClick,
+        onRelatedImageClick = onRelatedImageClick,
+        modifier = modifier,
+    )
+}
+
+@Composable
+fun RelatedImagesScreen(
+    sourceTitle: String,
     uiState: RelatedImagesUiState,
     onBackClick: () -> Unit,
-    onImageClick: (Long) -> Unit,
+    onRelatedImageClick: (Long) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -68,7 +89,7 @@ fun RelatedImagesScreen(
                 RelatedImagesContent(
                     sourceTitle = sourceTitle,
                     relatedImages = uiState.relatedImages,
-                    onImageClick = onImageClick,
+                    onRelatedImageClick = onRelatedImageClick,
                     modifier = Modifier
                         .fillMaxWidth()
                         .weight(1f)
@@ -97,7 +118,7 @@ fun RelatedImagesScreen(
 private fun RelatedImagesContent(
     sourceTitle: String,
     relatedImages: List<AnalyzedImageSummary>,
-    onImageClick: (Long) -> Unit,
+    onRelatedImageClick: (Long) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     LazyColumn(modifier = modifier) {
@@ -124,7 +145,7 @@ private fun RelatedImagesContent(
                 tags = image.hashtags,
                 imageUrl = image.thumbnailUrl,
                 onClick = {
-                    onImageClick(image.id)
+                    onRelatedImageClick(image.id)
                 },
                 modifier = Modifier.fillMaxWidth(),
             )
@@ -143,7 +164,7 @@ private fun RelatedImagesScreenPreview(
             sourceTitle = previewData.sourceTitle,
             uiState = previewData.uiState,
             onBackClick = {},
-            onImageClick = {},
+            onRelatedImageClick = {},
         )
     }
 }

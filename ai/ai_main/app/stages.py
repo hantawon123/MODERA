@@ -190,8 +190,17 @@ def run_agent_generation(
     prompt = (
         "OCR 텍스트와 이미지 분석 결과를 종합해 개인 지식 DB용 메타데이터를 생성하라.\n\n"
         "[카테고리]\n"
-        f"기존 카테고리 후보: {candidate_names}. 가능한 한 이 중에서 정확히 하나를 고르고, "
-        "정말로 맞는 것이 없을 때만 새 카테고리 이름을 제안하라. "
+        # C+1 확정 문구 (2026-07-30, 실사진 55장 프롬프트 A/B/C+1 실측 — 카테고리_프롬프트_실험_보고서 참조).
+        # 바꾼 것: "가능한 한"(억지 유도) 제거, 신규 자격 규칙(주제 단위·브랜드 금지),
+        # 기존 표기 재사용 강제(A/A' 파편화 0 실측), 다주제 tie-break, few-shot 4종.
+        # ⚠️ '예약' 등 카테고리명 참조는 DEFAULT_CATEGORIES 개편 회의 결과에 맞춰 치환할 것.
+        f"기존 카테고리 후보: {candidate_names}. 내용과 무리 없이 맞는 후보가 있으면 그것을 골라라. "
+        "단, 어느 후보도 맞지 않는데 억지로 끼워 맞추지는 마라 — 그때만 새 카테고리 이름을 제안하라(2~6자). "
+        "새 이름은 여러 이미지가 공유할 수 있는 주제 단위(예: 게임, MBTI, 자격증)여야 한다. "
+        "브랜드명·상호명·장소명·제품명은 카테고리로 만들지 마라 — 그런 구체 정보는 태그와 주요정보에 담는다. "
+        "새 이름을 제안하기 전에 후보에 같은 주제가 이미 있으면 반드시 그 표기를 그대로 재사용하라(축약·변형 금지). "
+        "여러 주제에 걸치는 이미지는 우선순위를 지켜라: 시간이 정해진 약속·모임·예약 정보가 중심이면 '예약'을 우선한다. "
+        "예: 특정 게임 아이템 화면 → '게임', 특정 호텔의 식당 안내 → 기존 후보(음식), 성격유형 콘텐츠 → 'MBTI', 모임 공지(일시·장소·참석자) → 기존 후보(예약). "
         "categories 에는 최종 카테고리명 하나만 넣어라.\n\n"
         + tag_rule
         + "[주요정보] 사용자에게 보여줄 핵심 정보를 '항목: 값' 형태 문자열로 담아라. "
@@ -283,7 +292,12 @@ def _build_candidates(
     for candidate in merged:
         if not candidate.representative_vector:
             entry = stored.get(normalize_name(candidate.name))
-            if entry:
+            # 전역 시드(count=0, 이름 임베딩)는 벡터 판정에서 제외한다 — 실측
+            # (2026-07-30, 46장)에서 이름↔요약 코사인은 분리력이 노이즈 수준
+            # (자기 시드 중앙값 0.52 < 남의 시드 0.54, 최적점에서도 오병합 2/3).
+            # 시드의 "이름"은 위에서 후보 목록에 그대로 남으므로 이름 일치 경로는
+            # 유지된다. 시드 문서 자체의 존치 여부는 팀장과 협의(저장소 설계 소관).
+            if entry and entry.get("count", 0) > 0:
                 candidate.representative_vector = entry["vector"]
     return merged
 
@@ -384,9 +398,22 @@ async def run_agent_core(
     # 판정된 카테고리의 대표 벡터를 이 요약 임베딩으로 갱신한다(없으면 생성).
     # 이 저장이 있어야 카테고리와 그 벡터가 서버 재기동 뒤에도 남고, 이미지가
     # 쌓일수록 centroid 가 정확해진다.
-    await asyncio.to_thread(
-        search.upsert_category_vector, user_id, resolution.name, vectors[0]
-    )
+    #
+    # 오염 가드: 이름 일치인데 그 카테고리 centroid 와 감사 코사인이 명백히
+    # 낮으면 누적하지 않는다. 수동 수정이 없는 제품이라 오분류가 centroid 에
+    # 들어가면 자가 교정 경로가 없다(동의서→금융 오염 실측, 2026-07-30).
+    # 첫 이미지(centroid 부재 → 감사 코사인 1.0)는 이 가드로 못 막는다.
+    guard = settings.category_guard_min_cosine
+    if (guard > 0 and resolution.matched_by == "name"
+            and resolution.similarity < guard):
+        logger.warning(
+            "카테고리 오염 가드: '%s' 이름 일치지만 감사 코사인 %.3f < %.2f — centroid 누적 생략",
+            resolution.name, resolution.similarity, guard,
+        )
+    else:
+        await asyncio.to_thread(
+            search.upsert_category_vector, user_id, resolution.name, vectors[0]
+        )
 
     tags = [str(t) for t in (generated.get("tags") or [])][:max_tags]
     return {

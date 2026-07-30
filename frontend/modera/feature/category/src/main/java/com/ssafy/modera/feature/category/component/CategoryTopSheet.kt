@@ -36,7 +36,7 @@ import androidx.compose.ui.unit.dp
 import com.ssafy.modera.core.designsystem.component.HorizontalDivider
 import com.ssafy.modera.core.designsystem.component.Text
 import com.ssafy.modera.core.designsystem.theme.ModeraTheme
-import com.ssafy.modera.feature.category.CategorySheetItem
+import com.ssafy.modera.core.model.category.CategorySheetItem
 import com.ssafy.modera.feature.category.R
 
 @Composable
@@ -105,7 +105,7 @@ fun CategoryTopSheet(
                         ) { _, category ->
                             CategoryTopSheetItem(
                                 item = category,
-                                selected = category.name == selectedCategory,
+                                selected = category.title == selectedCategory,
                                 onClick = {
                                     onCategoryClick(category)
                                     onDismissRequest()
@@ -153,7 +153,7 @@ private fun CategoryTopSheetItem(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    text = item.name,
+                    text = item.title,
                     modifier = Modifier.weight(1f, fill = false),
                     style = if (selected) {
                         ModeraTheme.typography.bodySB14
@@ -174,7 +174,7 @@ private fun CategoryTopSheetItem(
             Spacer(modifier = Modifier.width(8.dp))
 
             Text(
-                text = item.count.toString(),
+                text = item.itemCount.toString(),
                 style = ModeraTheme.typography.bodyR14,
                 color = countTextColor,
                 maxLines = 1,
@@ -221,23 +221,19 @@ private fun CategoryTopSheetPreview() {
         CategoryTopSheet(
             visible = true,
             categories = listOf(
-                CategorySheetItem("기사", 123),
-                CategorySheetItem("기사asdfasdfasdfasdf", 123, isNew = true),
-                CategorySheetItem("스포츠", 123),
-                CategorySheetItem("스포츠", 123, isNew = true),
-                CategorySheetItem("뉴스", 123),
-                CategorySheetItem("뉴스", 123),
-                CategorySheetItem("예약", 123),
-                CategorySheetItem("예약", 123),
-                CategorySheetItem("음식", 123),
-                CategorySheetItem("음식", 123),
-                CategorySheetItem("일정", 123),
-                CategorySheetItem("예약", 123),
-                CategorySheetItem("쇼핑", 123),
-                CategorySheetItem("음식", 123),
-                CategorySheetItem("음식", 1),
+                CategorySheetItem(1,"기사", 123),
+                CategorySheetItem(1,"기사asdfasdfasdfasdf", 123, isNew = true),
+                CategorySheetItem(1,"스포츠", 123),
+                CategorySheetItem(1,"스포츠", 123, isNew = true),
+                CategorySheetItem(1,"뉴스", 123),
+                CategorySheetItem(1,"뉴스", 123),
+                CategorySheetItem(1,"예약", 123),
+                CategorySheetItem(1,"예약", 123),
+                CategorySheetItem(1,"음식", 123),
+                CategorySheetItem(1,"음식", 123),
+                CategorySheetItem(1,"일정", 123),
             ),
-            selectedCategory = "쇼핑",
+            selectedCategory = "일정",
             onCategoryClick = {},
             onDismissRequest = {},
         )

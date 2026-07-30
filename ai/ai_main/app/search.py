@@ -255,6 +255,28 @@ def set_status(image_id: int, status: str) -> None:
     _merge_doc(image_id, {"status": status})
 
 
+def find_by_status(status: str, limit: int = 500) -> list[dict[str, Any]]:
+    """해당 status 의 문서를 사용자 구분 없이 모은다. 기동 시 끊긴 작업 복구용.
+
+    사용자별 조회가 아니라 전 사용자를 훑는 유일한 경로다. 재기동 시점에는
+    "누가 요청했는가" 가 없고 "무엇이 끊겼는가" 만 있어서 격리 축이 성립하지 않는다.
+    요청 경로에서는 쓰지 말 것 — user_id 필터가 없다.
+
+    s3_key 는 index:false 지만 _source 에는 남아 있어 그대로 읽어올 수 있다.
+    """
+    ensure_index()
+    resp = _client().search(
+        index=get_settings().opensearch_index,
+        body={
+            "size": limit,
+            "query": {"bool": {"filter": [{"term": {"status": status}}]}},
+            "sort": [{"image_id": {"order": "asc"}}],
+            "_source": ["image_id", "user_id", "s3_key", "raw_text"],
+        },
+    )
+    return [h["_source"] for h in resp["hits"]["hits"]]
+
+
 def save_ocr(
     image_id: int, raw_text: str, lang: str | None, confidence: float | None
 ) -> None:

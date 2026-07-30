@@ -69,3 +69,5 @@ databaseChangeLog:
       file: db/changelog/034-replace-document-image-added-at.sql
   - include:
       file: db/changelog/035-treat-soft-deleted-data-as-absent.sql
+  - include:
+      file: db/changelog/036-add-document-summary-and-regenerate.sql

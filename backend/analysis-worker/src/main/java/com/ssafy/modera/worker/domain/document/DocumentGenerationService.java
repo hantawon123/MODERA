@@ -15,6 +15,7 @@ import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClientException;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -116,19 +117,54 @@ public class DocumentGenerationService {
             return;
         }
 
+        List<DocumentCompletedPayload.Section> sections = toSections(response.sections());
+
         DocumentCompletedPayload completed = new DocumentCompletedPayload(
                 payload.documentRequestId(),
                 payload.userId(),
                 response.title(),
+                response.summary(),
                 response.markdown(),
+                sections,
                 // AI가 sourceImageIds를 생략하면 요청 재료 전체를 쓴 것으로 간주한다.
                 response.sourceImageIds() == null ? imageIds : response.sourceImageIds(),
                 response.modelVersion(),
                 response.generatedAt() == null ? Instant.now().toString() : response.generatedAt()
         );
         eventPublisher.publish(Streams.ANALYSIS_RESULT, EventTypes.DOCUMENT_COMPLETED, 1, completed);
-        log.info("DOCUMENT_COMPLETED 발행: documentRequestId={} images={} markdown={}자",
-                payload.documentRequestId(), imageIds.size(), response.markdown().length());
+        log.info("DOCUMENT_COMPLETED 발행: documentRequestId={} images={} markdown={}자 sections={}개",
+                payload.documentRequestId(), imageIds.size(), response.markdown().length(), sections.size());
+    }
+
+    /**
+     * AI의 sections를 payload Section으로 옮긴다. 이름만 바꾸고 내용은 가공하지 않는다 —
+     * bullets를 contentText에 합치는 식의 손질을 하면 클라이언트가 구조를 복원할 수 없다.
+     *
+     * <p>sections가 없어도 실패로 보지 않는다. 문서의 최종 산출물은 markdown이고 sections는
+     * 화면 구성을 돕는 부가 정보라, 기존 정책(markdown만 있으면 COMPLETED)을 그대로 둔다.
+     *
+     * <p>sequence는 AI가 주지 않으므로 여기서 1부터 붙인다. 값이 비어 원소를 건너뛰더라도
+     * 번호가 이어지도록 인덱스가 아니라 담긴 개수를 기준으로 센다.
+     */
+    private List<DocumentCompletedPayload.Section> toSections(List<DocumentAiClient.Section> sections) {
+        if (sections == null || sections.isEmpty()) {
+            return List.of();
+        }
+
+        List<DocumentCompletedPayload.Section> converted = new ArrayList<>(sections.size());
+        for (DocumentAiClient.Section section : sections) {
+            if (section == null) {
+                continue;
+            }
+            converted.add(new DocumentCompletedPayload.Section(
+                    converted.size() + 1,
+                    section.heading(),
+                    section.body(),
+                    section.bullets() == null ? List.of() : section.bullets(),
+                    section.imageIds() == null ? List.of() : section.imageIds()
+            ));
+        }
+        return converted;
     }
 
     private DocumentAiClient.SourceImage toSourceImage(

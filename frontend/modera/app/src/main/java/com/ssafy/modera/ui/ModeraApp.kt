@@ -1,5 +1,6 @@
 package com.ssafy.modera.ui
 
+import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
@@ -52,14 +53,16 @@ import com.ssafy.modera.core.designsystem.component.Text
 import com.ssafy.modera.core.designsystem.theme.ModeraTheme
 import com.ssafy.modera.core.navigation.Navigator
 import com.ssafy.modera.core.navigation.toEntries
+import com.ssafy.modera.feature.analyzedimagedetail.navigation.analyzedImageDetailEntry
+import com.ssafy.modera.feature.analyzedimagedetail.navigation.navigateToImageDetail
 import com.ssafy.modera.feature.categoryimages.navigation.categoryImagesEntry
 import com.ssafy.modera.feature.categoryimages.navigation.navigateToCategoryImages
 import com.ssafy.modera.feature.home.HomeAnalysisState
 import com.ssafy.modera.feature.home.LocalHomeAnalysisState
 import com.ssafy.modera.feature.home.navigation.HomeNavKey
 import com.ssafy.modera.feature.home.navigation.homeEntry
-import com.ssafy.modera.feature.analyzedimagedetail.navigation.analyzedImageDetailEntry
-import com.ssafy.modera.feature.analyzedimagedetail.navigation.navigateToImageDetail
+import com.ssafy.modera.feature.imageviewer.navigation.imageViewerEntry
+import com.ssafy.modera.feature.imageviewer.navigation.navigateToImageViewer
 import com.ssafy.modera.media.rememberGalleryPickerLauncher
 import com.ssafy.modera.navigation.RegisterNavKey
 import com.ssafy.modera.navigation.SearchNavKey
@@ -226,25 +229,35 @@ internal fun ModeraApp(
                     ) {
                         val listDetailStrategy = rememberListDetailSceneStrategy<NavKey>()
 
-                        val entryProvider = entryProvider {
-                            homeEntry(
-                                navigator = navigator,
-                                onCategoryClick = navigator::navigateToCategoryImages,
-                            )
-                            categoryImagesEntry(
-                                navigator = navigator,
-                                onImageClick = navigator::navigateToImageDetail
-                            )
-                            analyzedImageDetailEntry(navigator)
-                            registerEntry(navigator)
-                            searchEntry(navigator)
-                        }
+                        SharedTransitionLayout {
+                            val entryProvider = entryProvider {
+                                homeEntry(
+                                    navigator = navigator,
+                                    onCategoryClick = navigator::navigateToCategoryImages,
+                                )
+                                categoryImagesEntry(
+                                    navigator = navigator,
+                                    onImageClick = navigator::navigateToImageDetail
+                                )
+                                analyzedImageDetailEntry(
+                                    navigator = navigator,
+                                    sharedTransitionScope = this@SharedTransitionLayout,
+                                    onImageClick = navigator::navigateToImageViewer
+                                )
+                                registerEntry(navigator)
+                                searchEntry(navigator)
+                                imageViewerEntry(
+                                    sharedTransitionScope = this@SharedTransitionLayout,
+                                    onBackClick = navigator::goBack
+                                )
+                            }
 
-                        NavDisplay(
-                            entries = appState.navigationState.toEntries(entryProvider),
+                            NavDisplay(
+                                entries = appState.navigationState.toEntries(entryProvider),
 //                        sceneStrategy = listDetailStrategy,
-                            onBack = { navigator.goBack() },
-                        )
+                                onBack = { navigator.goBack() },
+                            )
+                        }
                     }
                 }
             }

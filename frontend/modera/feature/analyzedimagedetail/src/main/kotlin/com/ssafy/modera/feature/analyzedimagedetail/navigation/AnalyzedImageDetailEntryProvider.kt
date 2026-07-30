@@ -1,8 +1,10 @@
 package com.ssafy.modera.feature.analyzedimagedetail.navigation
 
+import androidx.compose.animation.SharedTransitionScope
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation3.runtime.EntryProviderScope
 import androidx.navigation3.runtime.NavKey
+import androidx.navigation3.ui.LocalNavAnimatedContentScope
 import com.ssafy.modera.core.navigation.Navigator
 import com.ssafy.modera.feature.analyzedimagedetail.AnalyzedImageDetailScreen
 import com.ssafy.modera.feature.analyzedimagedetail.AnalyzedImageDetailViewModel
@@ -10,24 +12,43 @@ import com.ssafy.modera.feature.analyzedimagedetail.AnalyzedImageDetailViewModel
 
 fun EntryProviderScope<NavKey>.analyzedImageDetailEntry(
     navigator: Navigator,
+    sharedTransitionScope: SharedTransitionScope,
+    onImageClick:(String) -> Unit,
 ) {
     entry<AnalyzedImageDetailNavKey> { key ->
-        val id = key.imageId
+        val imageId = key.imageId
 
-//        AnalyzedImageDetailScreen(
-//            onBackClick = navigator::goBack,
-//            onCategoryClick = { /* TODO: 카테고리 검색 화면으로 이동 */ },
-//            onReanalyzeClick = { /* TODO: 이미지 재분석 API 연동 */ },
-//            onRelatedMaterialsClick = { /* TODO: 연관 자료 리스트 화면으로 이동 */ },
-//            onCopyOcrTextClick = { /* TODO: 클립보드 복사 */ },
-//            onViewImageInfoClick = { /* TODO: 이미지 정보 다이얼로그 */ },
-//            onDeleteClick = { /* TODO: 이미지 삭제 API 연동 */ },
-//            onFavoriteClick = { /* TODO: 즐겨찾기 토글 */ },
-//            viewModel = hiltViewModel<AnalyzedImageDetailViewModel, Factory>(
-//                key = id.toString(),
-//            ) { factory ->
-//                factory.create(id)
-//            },
-//        )
+        val viewModel =
+            hiltViewModel<AnalyzedImageDetailViewModel, Factory>(
+                key = "analyzed-image-detail-$imageId",
+            ) { factory ->
+                factory.create(imageId)
+            }
+
+        AnalyzedImageDetailScreen(
+            viewModel = viewModel,
+            onBackClick = navigator::goBack,
+            sharedTransitionScope = sharedTransitionScope,
+            animatedVisibilityScope = LocalNavAnimatedContentScope.current,
+            onImageClick = onImageClick,
+            onFavoriteClick = {
+                // TODO ViewModel 즐겨찾기 기능 연결
+            },
+            onDocumentClick = {
+                // TODO 문서화 화면 이동
+            },
+            onScheduleClick = {
+                // TODO 일정 화면 이동
+            },
+            onReanalyzeClick = {
+                // TODO ViewModel 재분석 기능 연결
+            },
+            onDeleteClick = {
+                // TODO ViewModel 삭제 기능 연결
+            },
+            onRelatedImagesClick = {
+                // TODO 연관 이미지 화면 이동
+            },
+        )
     }
 }

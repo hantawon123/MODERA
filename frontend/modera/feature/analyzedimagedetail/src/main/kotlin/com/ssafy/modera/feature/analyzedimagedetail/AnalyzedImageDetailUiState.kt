@@ -6,6 +6,8 @@ sealed interface AnalyzedImageDetailUiState {
 
     data object Loading : AnalyzedImageDetailUiState
 
+    data object Reanalyzing : AnalyzedImageDetailUiState
+
     data class Success(
         val image: AnalyzedImageDetail,
     ) : AnalyzedImageDetailUiState

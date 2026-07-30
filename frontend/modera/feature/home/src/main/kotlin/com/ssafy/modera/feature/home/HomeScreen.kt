@@ -24,12 +24,12 @@ import com.ssafy.modera.core.designsystem.component.Text
 import com.ssafy.modera.core.designsystem.theme.ModeraTheme
 import com.ssafy.modera.core.model.category.Category
 import com.ssafy.modera.core.ui.LoadingScreen
+import com.ssafy.modera.core.util.statusBarTopPadding
 import com.ssafy.modera.feature.home.component.HomeBottomSection
 import com.ssafy.modera.feature.home.component.HomeSearchBarSection
 import com.ssafy.modera.feature.home.component.HomeSearchFocusEffect
 import com.ssafy.modera.feature.home.component.HomeUpperSection
 import com.ssafy.modera.feature.home.component.rememberHomeSearchLayoutState
-import com.ssafy.modera.feature.home.util.rememberRawStatusBarTopPadding
 
 @Composable
 fun HomeRoute(
@@ -92,7 +92,6 @@ private fun HomeSuccessScreen(
     val searchFocusRequester = remember { FocusRequester() }
     val focusManager = LocalFocusManager.current
     val searchLayoutState = rememberHomeSearchLayoutState(uiState.isSearchActive)
-    val statusBarTopPadding = rememberRawStatusBarTopPadding()
 
     HomeSearchFocusEffect(
         isSearchActive = uiState.isSearchActive,
@@ -108,7 +107,7 @@ private fun HomeSuccessScreen(
         modifier = modifier
             .fillMaxSize()
             .background(ModeraTheme.colors.white)
-            .padding(top = statusBarTopPadding)
+            .statusBarTopPadding()
             .padding(horizontal = HomeScreenDefaults.HorizontalPadding)
             .then(searchLayoutState.screenHeightModifier),
     ) {

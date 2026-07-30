@@ -59,6 +59,7 @@ dependencies {
     implementation(projects.core.navigation)
 
     implementation(projects.feature.home)
+    implementation(projects.feature.category)
     implementation(projects.feature.categoryimages)
     implementation(projects.feature.analyzedimagedetail)
     implementation(projects.feature.imageviewer)

@@ -1,19 +1,14 @@
 package com.ssafy.modera.core.component
 
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -35,6 +30,16 @@ import com.ssafy.modera.core.designsystem.theme.ModeraTheme
 fun ModeraTopBar(
     onBackClick: () -> Unit,
     modifier: Modifier = Modifier,
+    leftContent: @Composable () -> Unit = {
+        Icon(
+            imageVector = ImageVector.vectorResource(R.drawable.ic_arrow_left_24),
+            contentDescription = "뒤로가기",
+            modifier = Modifier
+                .size(24.dp)
+                .clickable(onClick = onBackClick),
+            tint = ModeraTheme.colors.gray700,
+        )
+    },
     centerContent: @Composable () -> Unit = {},
     rightContent: @Composable () -> Unit = {},
 ) {
@@ -44,15 +49,13 @@ fun ModeraTopBar(
             .padding(10.dp),
         contentAlignment = Alignment.Center,
     ) {
-        Icon(
-            imageVector = ImageVector.vectorResource(R.drawable.ic_arrow_left_24),
-            contentDescription = "뒤로가기",
+        Box(
             modifier = Modifier
-                .align(Alignment.CenterStart)
-                .size(24.dp)
-                .clickable(onClick = onBackClick),
-            tint = ModeraTheme.colors.gray700,
-        )
+                .align(Alignment.CenterStart),
+            contentAlignment = Alignment.Center,
+        ) {
+            leftContent()
+        }
 
         Box(
             modifier = Modifier

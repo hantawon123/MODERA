@@ -1,6 +1,8 @@
 <resources>
     <string name="app_name">modera</string>
     <string name="nav_bar_home">홈</string>
+    <string name="nav_bar_category">카테고리</string>
     <string name="nav_bar_register">등록</string>
-    <string name="nav_bar_search">검색</string>
+    <string name="nav_bar_favorites">즐겨찾기</string>
+    <string name="nav_bar_documents">문서</string>
 </resources>

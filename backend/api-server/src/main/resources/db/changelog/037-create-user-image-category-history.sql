@@ -1,12 +1,12 @@
 --liquibase formatted sql
 
---changeset modera-api:037-user-image-category-history
+--changeset modera-api:037-user-image-category-history runOnChange:true
 --comment Store the current per-user category, one pending request, and the latest five category results.
 ALTER TABLE library_schema.user_image
-    ADD COLUMN current_category_id INTEGER,
-    ADD COLUMN pending_category_request_id UUID;
+    ADD COLUMN IF NOT EXISTS current_category_id INTEGER,
+    ADD COLUMN IF NOT EXISTS pending_category_request_id UUID;
 
-CREATE TABLE library_schema.user_image_category_history (
+CREATE TABLE IF NOT EXISTS library_schema.user_image_category_history (
     user_image_category_history_id SERIAL PRIMARY KEY,
     user_image_id                  INTEGER NOT NULL
         REFERENCES library_schema.user_image(user_image_id),
@@ -17,7 +17,7 @@ CREATE TABLE library_schema.user_image_category_history (
         CHECK (source IN ('INITIAL', 'REANALYSIS'))
 );
 
-CREATE INDEX ix_user_image_category_history_latest
+CREATE INDEX IF NOT EXISTS ix_user_image_category_history_latest
     ON library_schema.user_image_category_history (
         user_image_id,
         created_at DESC,
@@ -36,10 +36,15 @@ INSERT INTO library_schema.user_image_category_history (
     category_id,
     source
 )
-SELECT user_image_id, current_category_id, 'INITIAL'
-FROM library_schema.user_image
-WHERE current_category_id IS NOT NULL
-  AND del_yn = 'N';
+SELECT user_image.user_image_id, user_image.current_category_id, 'INITIAL'
+FROM library_schema.user_image user_image
+WHERE user_image.current_category_id IS NOT NULL
+  AND user_image.del_yn = 'N'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM library_schema.user_image_category_history history
+      WHERE history.user_image_id = user_image.user_image_id
+  );
 
---rollback DROP TABLE library_schema.user_image_category_history;
---rollback ALTER TABLE library_schema.user_image DROP COLUMN pending_category_request_id, DROP COLUMN current_category_id;
+--rollback DROP TABLE IF EXISTS library_schema.user_image_category_history;
+--rollback ALTER TABLE library_schema.user_image DROP COLUMN IF EXISTS pending_category_request_id, DROP COLUMN IF EXISTS current_category_id;

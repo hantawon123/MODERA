@@ -14,7 +14,8 @@ fun EntryProviderScope<NavKey>.homeEntry(
         HomeRoute(
             onCategoryClick = onCategoryClick,
             onCalendarClick = { /* TODO: 추후 네비게이션 연결 */ },
-            onSettingsClick = { /* TODO: 추후 네비게이션 연결 */ }
+            onSettingsClick = { /* TODO: 추후 네비게이션 연결 */ },
+            onSearchResultClick = { /* TODO: 추후 네비게이션 연결 */ },
         )
     }
 }

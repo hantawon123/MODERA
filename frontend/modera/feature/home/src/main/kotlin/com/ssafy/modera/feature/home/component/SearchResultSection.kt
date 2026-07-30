@@ -26,7 +26,7 @@ import com.ssafy.modera.feature.home.SearchMaterialResult
 internal fun SearchResultSection(
     searchResults: List<SearchMaterialResult>,
     isLoading: Boolean,
-    onSearchResultClick: (SearchMaterialResult) -> Unit,
+    onSearchResultClick: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     when {
@@ -78,7 +78,7 @@ internal fun SearchResultSection(
                             description = result.description,
                             tags = result.tags,
                             imageUrl = result.imageUrl,
-                            onClick = { onSearchResultClick(result) },
+                            onClick = { onSearchResultClick(result.id) },
                             modifier = Modifier.fillMaxWidth(),
                         )
                     }

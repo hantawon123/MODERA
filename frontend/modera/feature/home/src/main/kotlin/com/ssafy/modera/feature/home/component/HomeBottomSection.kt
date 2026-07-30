@@ -14,7 +14,6 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.unit.dp
 import com.ssafy.modera.core.model.category.Category
 import com.ssafy.modera.feature.home.HomeUiState
-import com.ssafy.modera.feature.home.SearchMaterialResult
 
 @Composable
 internal fun HomeBottomSection(
@@ -24,7 +23,7 @@ internal fun HomeBottomSection(
     onRecentSearchClick: (String) -> Unit,
     onRecentSearchDelete: (String) -> Unit,
     onSearchDeactivate: () -> Unit,
-    onSearchResultClick: (SearchMaterialResult) -> Unit,
+    onSearchResultClick: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val focusManager = LocalFocusManager.current
@@ -71,7 +70,7 @@ private fun HomeSearchContent(
     uiState: HomeUiState.Success,
     onRecentSearchClick: (String) -> Unit,
     onRecentSearchDelete: (String) -> Unit,
-    onSearchResultClick: (SearchMaterialResult) -> Unit,
+    onSearchResultClick: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     when {

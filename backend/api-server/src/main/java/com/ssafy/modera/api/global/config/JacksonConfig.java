@@ -1,5 +1,6 @@
 package com.ssafy.modera.api.global.config;
 
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -14,8 +15,20 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class JacksonConfig {
 
+    /**
+     * 모르는 필드는 무시한다.
+     *
+     * <p>기본값(FAIL_ON_UNKNOWN_PROPERTIES=true)이면 상대 서버가 payload에 필드를 하나
+     * 추가하는 것만으로 이쪽 역직렬화가 터진다. 그 예외는 컨슈머의 "영구 오류" 분류에
+     * 걸려 XACK 후 스킵되므로 이벤트가 재시도 없이 조용히 사라진다 — 두 서버를 동시에
+     * 배포하지 못하는 순간(롤링 배포, 한쪽만 먼저 머지된 브랜치)마다 데이터가 유실된다.
+     *
+     * <p>필드를 지우거나 이름을 바꾸는 변경은 여전히 양쪽을 함께 배포해야 한다. 이 설정이
+     * 지켜 주는 건 "추가"뿐이고, 그것만으로도 배포 순서 제약이 크게 줄어든다.
+     */
     @Bean
     public ObjectMapper objectMapper() {
-        return new ObjectMapper();
+        return new ObjectMapper()
+                .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
     }
 }

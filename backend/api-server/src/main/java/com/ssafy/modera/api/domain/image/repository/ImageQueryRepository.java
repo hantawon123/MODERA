@@ -171,7 +171,7 @@ public class ImageQueryRepository {
                 SELECT ?, image_id, file_name, s3_key, thumbnail_key,
                        title, summary, category_id, category_name, tags,
                        key_information, structured_data, upload_status, analysis_status,
-                       false, uploaded_at, 'N', false, false
+                       false, uploaded_at, 'N', 'N', 'N'
                 FROM query_schema.user_image_view
                 WHERE image_id = ?
                   AND del_yn = 'N'
@@ -409,6 +409,58 @@ public class ImageQueryRepository {
                         rs.getString("thumbnail_key"),
                         parseTagNames(rs.getString("tags")),
                         rs.getString("category_name")
+                ),
+                parameters.toArray()
+        );
+    }
+
+    public List<ImageListRow> findVisibleImagesByIds(
+            Integer userId,
+            List<Integer> imageIds
+    ) {
+        if (imageIds == null || imageIds.isEmpty()) {
+            return List.of();
+        }
+
+        String placeholders = String.join(
+                ",",
+                Collections.nCopies(imageIds.size(), "?")
+        );
+        String sql = """
+                SELECT image_view.image_id,
+                       image_view.title,
+                       image_view.summary,
+                       image_view.favorite,
+                       image_view.thumbnail_key,
+                       image_view.tags,
+                       image_view.category_name,
+                       image_view.uploaded_at
+                FROM query_schema.user_image_view image_view
+                JOIN library_schema.user_image user_image
+                  ON user_image.user_id = image_view.user_id
+                 AND user_image.image_id = image_view.image_id
+                 AND user_image.del_yn = 'N'
+                WHERE image_view.user_id = ?
+                  AND image_view.del_yn = 'N'
+                  AND image_view.analysis_status IN ('COMPLETED', 'EMPTY')
+                  AND image_view.image_id IN (%s)
+                """.formatted(placeholders);
+
+        List<Object> parameters = new ArrayList<>();
+        parameters.add(userId);
+        parameters.addAll(imageIds);
+
+        return jdbcTemplate.query(
+                sql,
+                (rs, rowNum) -> new ImageListRow(
+                        rs.getInt("image_id"),
+                        rs.getString("title"),
+                        rs.getString("summary"),
+                        rs.getObject("favorite", Boolean.class),
+                        rs.getString("thumbnail_key"),
+                        parseTagNames(rs.getString("tags")),
+                        rs.getString("category_name"),
+                        rs.getObject("uploaded_at", java.time.OffsetDateTime.class)
                 ),
                 parameters.toArray()
         );

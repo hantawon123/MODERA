@@ -27,7 +27,9 @@ import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignReques
 
 import java.time.Duration;
 import java.util.List;
+import java.util.LinkedHashMap;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 
 @Service
@@ -108,6 +110,41 @@ public class ImageQueryService {
                 page,
                 size,
                 result.totalElements(),
+                totalPages,
+                page + 1 < totalPages,
+                page > 0
+        );
+    }
+
+    public PageResponse<ImageSummaryResponse> getImagesInOrder(
+            Integer userId,
+            List<Integer> orderedImageIds,
+            int page,
+            int size,
+            long totalElements
+    ) {
+        List<ImageListRow> rows =
+                imageQueryRepository.findVisibleImagesByIds(userId, orderedImageIds);
+        Map<Integer, ImageListRow> rowsByImageId = new LinkedHashMap<>();
+        for (ImageListRow row : rows) {
+            rowsByImageId.put(row.imageId(), row);
+        }
+
+        List<ImageSummaryResponse> list = orderedImageIds.stream()
+                .distinct()
+                .map(rowsByImageId::get)
+                .filter(java.util.Objects::nonNull)
+                .map(this::toSummary)
+                .toList();
+        int totalPages = totalElements == 0
+                ? 0
+                : (int) ((totalElements + size - 1) / size);
+
+        return new PageResponse<>(
+                list,
+                page,
+                size,
+                totalElements,
                 totalPages,
                 page + 1 < totalPages,
                 page > 0

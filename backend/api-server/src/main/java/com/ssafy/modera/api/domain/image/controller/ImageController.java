@@ -3,6 +3,7 @@ package com.ssafy.modera.api.domain.image.controller;
 import com.ssafy.modera.api.domain.image.dto.request.ImageDeleteRequest;
 import com.ssafy.modera.api.domain.image.dto.request.ImageFavoriteRequest;
 import com.ssafy.modera.api.domain.image.dto.request.ImageRegisterRequest;
+import com.ssafy.modera.api.domain.image.dto.request.ImageSemanticSearchRequest;
 import com.ssafy.modera.api.domain.image.dto.response.ImageDeleteResponse;
 import com.ssafy.modera.api.domain.image.dto.response.ImageDetailResponse;
 import com.ssafy.modera.api.domain.image.dto.response.ImageFavoriteResponse;
@@ -13,6 +14,7 @@ import com.ssafy.modera.api.domain.image.service.ImageQueryService;
 import com.ssafy.modera.api.domain.image.service.ImageCommandService;
 import com.ssafy.modera.api.domain.image.dto.response.SimilarImagesResponse;
 import com.ssafy.modera.api.domain.image.service.ImageSimilarService;
+import com.ssafy.modera.api.domain.image.service.ImageSemanticSearchService;
 import com.ssafy.modera.api.global.response.ApiResponse;
 import com.ssafy.modera.api.global.response.ApiV1Controller;
 import com.ssafy.modera.api.global.response.PageResponse;
@@ -47,6 +49,7 @@ public class ImageController {
     private final ImageCommandService imageCommandService;
     private final ImageQueryService imageQueryService;
     private final ImageSimilarService imageSimilarService;
+    private final ImageSemanticSearchService imageSemanticSearchService;
 
     @Operation(
             summary = "이미지 등록",
@@ -168,6 +171,28 @@ public class ImageController {
         return ResponseEntity.ok(ApiResponse.success(
                 "I208",
                 imageCommandService.updateFavorite(userId, imageId, request)
+        ));
+    }
+
+    @Operation(
+            summary = "자연어 기반 AI 이미지 검색",
+            description = "검색어를 Analysis Worker에 이벤트로 전달하고 유사도순 이미지 목록을 반환한다."
+    )
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "검색 성공"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "검색어 또는 페이지 파라미터 오류(INVALID_PARAMETER)"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "accessToken 없음/무효(UNAUTHORIZED)"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "AI 검색 실패(AI_SEARCH_FAILED)"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "504", description = "AI 검색 시간 초과(AI_SEARCH_TIMEOUT)")
+    })
+    @PostMapping("/search/semantic")
+    public ResponseEntity<ApiResponse<PageResponse<ImageSummaryResponse>>> searchSemantic(
+            @AuthenticationPrincipal Integer userId,
+            @RequestBody @Valid ImageSemanticSearchRequest request
+    ) {
+        return ResponseEntity.ok(ApiResponse.success(
+                "I209",
+                imageSemanticSearchService.search(userId, request)
         ));
     }
 

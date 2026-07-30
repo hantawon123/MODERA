@@ -50,6 +50,7 @@ import com.ssafy.modera.core.navigation.toEntries
 import com.ssafy.modera.feature.analyzedimagedetail.navigation.analyzedImageDetailEntry
 import com.ssafy.modera.feature.analyzedimagedetail.navigation.navigateToImageDetail
 import com.ssafy.modera.feature.category.navigation.categoryEntry
+import com.ssafy.modera.feature.category.navigation.navigateToCategorySearch
 import com.ssafy.modera.feature.categoryimages.navigation.categoryImagesEntry
 import com.ssafy.modera.feature.categoryimages.navigation.navigateToCategoryImages
 import com.ssafy.modera.feature.home.HomeAnalysisState
@@ -220,7 +221,8 @@ internal fun ModeraApp(
                                     onCategoryClick = navigator::navigateToCategoryImages,
                                 )
                                 categoryEntry(
-                                    onSearchIconClick = { /* TODO: 검색 화면 연결 */ },
+                                    onBackClick = navigator::goBack,
+                                    onSearchIconClick = navigator::navigateToCategorySearch,
                                     onItemClick = { /* TODO: 자료 상세 연결 */ },
                                 )
                                 favoritesEntry()

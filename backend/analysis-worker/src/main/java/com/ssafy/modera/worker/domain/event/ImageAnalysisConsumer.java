@@ -199,6 +199,9 @@ public class ImageAnalysisConsumer {
                 .attempt(1)
                 .triggerType("INITIAL")
                 .queuedAt(OffsetDateTime.now())
+                // 재시도(AnalysisRetryScanner)가 AI에 다시 요청할 때 쓸 재료.
+                // worker는 modera_api를 못 보므로 이 시점에 실어두는 게 유일한 기회다.
+                .s3Key(payload.s3Key())
                 .clientOcrRawText(clientOcr == null ? null : clientOcr.rawText())
                 .clientOcrLang(clientOcr == null ? null : clientOcr.lang())
                 .clientOcrConfidence(toFloat(clientOcr == null ? null : clientOcr.confidence()))

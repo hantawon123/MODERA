@@ -28,7 +28,7 @@ import androidx.compose.ui.unit.dp
 import com.ssafy.modera.core.component.ModeraSortSection
 import com.ssafy.modera.core.component.ModeraTopBar
 import com.ssafy.modera.core.component.ModeraTopBarDefaults
-import com.ssafy.modera.core.component.item.ModeraMaterialItem
+import com.ssafy.modera.core.component.item.ModeraAnalyzedImageItem
 import com.ssafy.modera.core.designsystem.component.HorizontalDivider
 import com.ssafy.modera.core.designsystem.component.Icon
 import com.ssafy.modera.core.designsystem.component.Text
@@ -218,11 +218,14 @@ fun CategoryScreen(
                         items = analyzedImages,
                         key = { it.id },
                     ) { analyzedImage ->
-                        ModeraMaterialItem(
+                        ModeraAnalyzedImageItem(
                             title = analyzedImage.title,
                             description = analyzedImage.summary,
                             tags = analyzedImage.hashtags,
                             imageUrl = analyzedImage.thumbnailUrl,
+                            favorite = analyzedImage.favorite,
+                            isDocumented = analyzedImage.isDocumented,
+                            hasSchedule = analyzedImage.hasSchedule,
                             onClick = { onItemClick(analyzedImage.id) },
                             modifier = Modifier.fillMaxWidth(),
                         )

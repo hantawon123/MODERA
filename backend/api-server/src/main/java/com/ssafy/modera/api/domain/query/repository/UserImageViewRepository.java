@@ -4,9 +4,11 @@ import org.postgresql.util.PGobject;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
+import java.sql.Array;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.Types;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
@@ -108,6 +110,61 @@ public class UserImageViewRepository {
                 .findFirst();
     }
 
+    /**
+     * imageId 여러 건을 한 번에 조회한다. 반환 순서는 보장하지 않는다 —
+     * 호출자가 원하는 순서(예: worker가 준 유사도 순)로 재정렬해서 쓴다.
+     * <p>
+     * 삭제된 이미지는 제외한다(5-1 목록의 조회 규칙과 동일하게 view의 del_yn만 본다.
+     * library_schema.user_image.del_yn은 호출자가 소유권 검증할 때 함께 확인한다).
+     */
+    public List<UserImageViewSummary> findAllByUserIdAndImageIdIn(Integer userId, List<Integer> imageIds) {
+        if (imageIds == null || imageIds.isEmpty()) {
+            return List.of();
+        }
+
+        String placeholders = String.join(",", Collections.nCopies(imageIds.size(), "?"));
+        String sql = """
+                SELECT image_id,
+                       title,
+                       summary,
+                       favorite,
+                       thumbnail_key,
+                       category_name,
+                       COALESCE(
+                           (
+                               SELECT array_agg(tag ->> 'name' ORDER BY tag_order)
+                               FROM jsonb_array_elements(image_view.tags)
+                                   WITH ORDINALITY AS source_tag(tag, tag_order)
+                           ),
+                           '{}'::TEXT[]
+                       ) AS tag_names
+                FROM query_schema.user_image_view AS image_view
+                WHERE user_id = ?
+                  AND del_yn = 'N'
+                  AND image_id IN (%s)
+                """.formatted(placeholders);
+
+        Object[] parameters = new Object[imageIds.size() + 1];
+        parameters[0] = userId;
+        for (int i = 0; i < imageIds.size(); i++) {
+            parameters[i + 1] = imageIds.get(i);
+        }
+
+        return jdbcTemplate.query(
+                sql,
+                (rs, rowNum) -> new UserImageViewSummary(
+                        rs.getInt("image_id"),
+                        rs.getString("title"),
+                        rs.getString("summary"),
+                        rs.getObject("favorite", Boolean.class),
+                        rs.getString("thumbnail_key"),
+                        toStringList(rs.getArray("tag_names")),
+                        rs.getString("category_name")
+                ),
+                parameters
+        );
+    }
+
     public void updateAnalysisStatus(
             Integer userId,
             Integer imageId,
@@ -127,6 +184,13 @@ public class UserImageViewRepository {
 
     private String[] toArray(List<String> values) {
         return values == null ? new String[0] : values.toArray(new String[0]);
+    }
+
+    private List<String> toStringList(Array sqlArray) throws SQLException {
+        if (sqlArray == null) {
+            return List.of();
+        }
+        return List.of((String[]) sqlArray.getArray());
     }
 
     private PGobject toJsonb(String json) throws SQLException {

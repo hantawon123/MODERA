@@ -4,7 +4,7 @@ import com.ssafy.modera.core.model.category.Category
 
 /* TODO : 추후 도메인으로 분리*/
 data class SearchMaterialResult(
-    val id: Long,
+    val id: Int,
     val title: String,
     val description: String,
     val tags: List<String>,

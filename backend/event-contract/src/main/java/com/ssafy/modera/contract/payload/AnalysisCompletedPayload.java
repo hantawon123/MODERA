@@ -15,6 +15,7 @@ public record AnalysisCompletedPayload(
         String categoryName,
         List<String> tagNames,
         List<String> keyInformation,
+        String structuredType,
         String structuredFields,
         String analysisStatus,
         String modelVersion

@@ -7,6 +7,8 @@ import com.ssafy.modera.api.domain.image.dto.response.ImageSummaryResponse;
 import com.ssafy.modera.api.domain.image.dto.response.ImageUploadUrlResponse;
 import com.ssafy.modera.api.domain.image.service.ImageQueryService;
 import com.ssafy.modera.api.domain.image.service.ImageCommandService;
+import com.ssafy.modera.api.domain.image.dto.response.SimilarImagesResponse;
+import com.ssafy.modera.api.domain.image.service.ImageSimilarService;
 import com.ssafy.modera.api.global.response.ApiResponse;
 import com.ssafy.modera.api.global.response.ApiV1Controller;
 import com.ssafy.modera.api.global.response.PageResponse;
@@ -38,6 +40,7 @@ public class ImageController {
 
     private final ImageCommandService imageCommandService;
     private final ImageQueryService imageQueryService;
+    private final ImageSimilarService imageSimilarService;
 
     @Operation(
             summary = "이미지 등록",
@@ -117,5 +120,36 @@ public class ImageController {
     ) {
         ImageDetailResponse response = imageQueryService.getImage(userId, imageId);
         return ResponseEntity.ok(ApiResponse.success("I206", response));
+    }
+
+    @Operation(
+            summary = "연관 이미지 조회",
+            description = """
+                    기준 이미지와 내용이 비슷한 본인 이미지를 유사도 내림차순으로 반환한다.
+                    유사도는 analysis-worker가 임베딩으로 계산하고, 화면에 뿌릴 메타데이터는
+                    api-server가 붙인다.
+
+                    연관 자료는 부가 정보라 worker 호출이 실패해도 500이 아니라
+                    빈 list(count=0)로 응답한다 — 상세 화면 전체가 실패하지 않게 하는 쪽을 택했다.
+                    분석이 안 된 이미지, 임베딩이 없는 이미지도 같은 이유로 빈 list다.
+
+                    limit은 1~50 범위로 조정되며(범위를 벗어나면 400이 아니라 경계값으로 당긴다),
+                    삭제되었거나 read model이 아직 없는 이미지는 결과에서 빠지므로
+                    count가 limit보다 작을 수 있다.
+                    """
+    )
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "조회 성공(연관 이미지가 없으면 빈 list)"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "accessToken 없음/무효(UNAUTHORIZED)"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "본인 소유가 아니거나 존재하지 않는 imageId(IMAGE_NOT_FOUND)")
+    })
+    @GetMapping("/{imageId}/similar")
+    public ResponseEntity<ApiResponse<SimilarImagesResponse>> getSimilarImages(
+            @AuthenticationPrincipal Integer userId,
+            @Parameter(description = "기준 이미지 ID") @PathVariable Integer imageId,
+            @Parameter(description = "최대 개수(1~50)") @RequestParam(defaultValue = "10") int limit
+    ) {
+        SimilarImagesResponse response = imageSimilarService.getSimilarImages(userId, imageId, limit);
+        return ResponseEntity.ok(ApiResponse.success("I207", response));
     }
 }

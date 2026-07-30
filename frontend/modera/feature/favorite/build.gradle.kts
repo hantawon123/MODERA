@@ -1,32 +1,13 @@
 plugins {
-    alias(libs.plugins.android.library)
+    id("modera.android.feature")
+    alias(libs.plugins.kotlinx.serialization)
 }
 
 android {
-    namespace = "com.ssafy.modera.favorite"
-    compileSdk {
-        version = release(36) {
-            minorApiLevel = 1
-        }
-    }
-
-    defaultConfig {
-        minSdk = 29
-
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-    }
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
-    }
-
+    namespace = "com.ssafy.modera.feature.favorite"
 }
 
 dependencies {
-    implementation(libs.androidx.appcompat)
-    implementation(libs.androidx.core.ktx)
-    implementation(libs.material)
-    testImplementation(libs.junit)
-    androidTestImplementation(libs.androidx.espresso.core)
-    androidTestImplementation(libs.androidx.test.ext.junit)
+    implementation(libs.androidx.foundation.layout)
+    implementation(projects.core.model)
 }

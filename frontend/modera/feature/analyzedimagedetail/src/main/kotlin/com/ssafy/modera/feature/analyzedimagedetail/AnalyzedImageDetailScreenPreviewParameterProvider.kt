@@ -82,5 +82,5 @@ private val previewAnalyzedImageDetail = AnalyzedImageDetail(
     ),
     imageUrl = "https://picsum.photos/seed/samsung-stock/600/800",
     createdAt = "2026.07.29",
-    updatedAt = "2026.07.29",
+    updatedAt = 1785376620000L,
 )

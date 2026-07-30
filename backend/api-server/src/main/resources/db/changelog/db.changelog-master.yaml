@@ -70,4 +70,6 @@ databaseChangeLog:
   - include:
       file: db/changelog/035-treat-soft-deleted-data-as-absent.sql
   - include:
-      file: db/changelog/036-create-user-image-category-history.sql
+      file: db/changelog/036-add-document-summary-and-regenerate.sql
+  - include:
+      file: db/changelog/037-create-user-image-category-history.sql

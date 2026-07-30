@@ -1,10 +1,12 @@
 package com.ssafy.modera.api.domain.document.service;
 
 import com.ssafy.modera.api.domain.document.dto.request.DocumentCreateRequest;
+import com.ssafy.modera.api.domain.document.dto.request.DocumentRegenerateRequest;
 import com.ssafy.modera.api.domain.document.dto.response.DocumentGenerationAcceptedResponse;
 import com.ssafy.modera.api.domain.document.entity.DocumentGenerationRequest;
 import com.ssafy.modera.api.domain.document.exception.DocumentErrorCode;
 import com.ssafy.modera.api.domain.document.repository.DocumentGenerationRequestRepository;
+import com.ssafy.modera.api.domain.document.repository.DocumentQueryRepository;
 import com.ssafy.modera.api.domain.event.EventPublisher;
 import com.ssafy.modera.api.domain.image.exception.ImageErrorCode;
 import com.ssafy.modera.api.domain.image.repository.DocumentSourceImage;
@@ -15,6 +17,7 @@ import com.ssafy.modera.contract.Streams;
 import com.ssafy.modera.contract.payload.DocumentRequestedPayload;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 
@@ -46,6 +49,7 @@ public class DocumentCommandService {
     private static final String ANALYSIS_STATUS_COMPLETED = "COMPLETED";
 
     private final ImageQueryRepository imageQueryRepository;
+    private final DocumentQueryRepository documentQueryRepository;
     private final DocumentGenerationRequestRepository documentGenerationRequestRepository;
     private final EventPublisher eventPublisher;
     private final TransactionTemplate transactionTemplate;
@@ -58,6 +62,39 @@ public class DocumentCommandService {
 
         // 커밋이 끝난 뒤에 발행한다. 트랜잭션 안에서 발행하면 커밋이 실패했을 때 이미 나간
         // 이벤트를 되돌릴 수 없어, worker가 존재하지 않는 요청의 문서를 만들게 된다.
+        publish(saved, sources);
+
+        return new DocumentGenerationAcceptedResponse(
+                saved.getClientRequestId(), saved.getStatus());
+    }
+
+    /**
+     * 재분석. 생성(8-2)과 같은 이벤트를 발행하고, 다른 점은 요청에 대상 문서를 실어
+     * 완료 시 새 문서를 만드는 대신 그 문서를 갱신하게 한다는 것뿐이다.
+     *
+     * <p>imageIds를 생략하면 현재 구성 이미지를 그대로 쓴다(내용만 다시 정리). 값을 주면
+     * 그것이 최종 구성이 되므로 이미지 추가·제외도 같은 경로로 처리된다.
+     */
+    public DocumentGenerationAcceptedResponse regenerate(
+            Integer userId, Integer documentId, DocumentRegenerateRequest request) {
+        if (!documentQueryRepository.existsDocument(userId, documentId)) {
+            throw new BusinessException(DocumentErrorCode.DOCUMENT_NOT_FOUND);
+        }
+
+        List<Integer> requestedImageIds =
+                request.imageIds() == null || request.imageIds().isEmpty()
+                        ? documentQueryRepository.findDocumentImageIds(userId, documentId)
+                        : request.imageIds();
+        // 재료가 하나도 없는 문서는 만들 수 없다 — 구성 이미지가 전부 삭제된 문서를 그대로
+        // 재분석하려 할 때 여기 걸린다(AI에 보내봐야 400으로 돌아온다).
+        if (requestedImageIds.isEmpty()) {
+            throw new BusinessException(DocumentErrorCode.INVALID_DOCUMENT_IMAGES);
+        }
+
+        List<Integer> imageIds = validateImageIds(requestedImageIds);
+        List<DocumentSourceImage> sources = loadSources(userId, imageIds);
+
+        DocumentGenerationRequest saved = enqueueRegeneration(userId, documentId, request);
         publish(saved, sources);
 
         return new DocumentGenerationAcceptedResponse(
@@ -131,6 +168,38 @@ public class DocumentCommandService {
 
             return documentGenerationRequestRepository.save(
                     DocumentGenerationRequest.create(userId, request.clientRequestId(), OffsetDateTime.now()));
+        });
+    }
+
+    /**
+     * 재분석 요청 이력. 중복 clientRequestId 차단은 8-2와 같고, 여기에 "이 문서에 이미
+     * 진행 중인 재분석이 있는가"가 더 붙는다.
+     *
+     * <p>조회로 먼저 끊고도 제약 위반을 따로 잡는 이유는 동시 요청 때문이다 — 두 요청이
+     * 나란히 조회를 통과할 수 있고, 그때 최종적으로 막아 주는 건 036의 부분 유니크
+     * 인덱스다. 그 예외를 그대로 두면 500이 나가므로 같은 409로 번역한다.
+     */
+    private DocumentGenerationRequest enqueueRegeneration(
+            Integer userId, Integer documentId, DocumentRegenerateRequest request) {
+        if (documentGenerationRequestRepository.existsByUserIdAndSourceDocumentIdAndStatusAndDelYn(
+                userId, documentId, DocumentGenerationRequest.STATUS_QUEUED, "N")) {
+            throw new BusinessException(DocumentErrorCode.DOCUMENT_REGENERATION_IN_PROGRESS);
+        }
+
+        return transactionTemplate.execute(status -> {
+            documentGenerationRequestRepository
+                    .findByUserIdAndClientRequestIdAndDelYn(userId, request.clientRequestId(), "N")
+                    .ifPresent(existing -> {
+                        throw new BusinessException(DocumentErrorCode.DUPLICATE_CLIENT_REQUEST);
+                    });
+
+            try {
+                return documentGenerationRequestRepository.saveAndFlush(
+                        DocumentGenerationRequest.regenerate(
+                                userId, request.clientRequestId(), documentId, OffsetDateTime.now()));
+            } catch (DataIntegrityViolationException exception) {
+                throw new BusinessException(DocumentErrorCode.DOCUMENT_REGENERATION_IN_PROGRESS);
+            }
         });
     }
 

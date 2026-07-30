@@ -25,13 +25,70 @@ public class DocumentViewRepository {
     }
 
     /** created_at은 032에서 삭제되어 시간 기준은 updated_at 하나뿐이다. */
-    public void insertUserDocumentView(Integer userId, Integer documentId, String name,
+    public void insertUserDocumentView(Integer userId, Integer documentId, String name, String summary,
                                        String content, int imageCount, OffsetDateTime now) {
         jdbcTemplate.update("""
                 INSERT INTO query_schema.user_document_view
-                    (user_id, document_id, name, content, image_count, del_image_count, updated_at, del_yn)
-                VALUES (?, ?, ?, ?, ?, 0, ?, 'N')
-                """, userId, documentId, name, content, imageCount, now);
+                    (user_id, document_id, name, summary, content, image_count, del_image_count, updated_at, del_yn)
+                VALUES (?, ?, ?, ?, ?, ?, 0, ?, 'N')
+                """, userId, documentId, name, summary, content, imageCount, now);
+    }
+
+    /**
+     * 재분석 결과로 조회 모델을 갈아끼운다.
+     *
+     * <p>del_image_count를 0으로 되돌리는 게 핵심이다 — 이 값은 "문서를 만든 뒤 원본
+     * 이미지가 삭제됐으니 갱신이 필요하다"는 표시인데, 방금 지금 있는 이미지들로 다시
+     * 만들었으므로 갱신 필요 상태가 해소된 것이다.
+     */
+    public void updateUserDocumentView(Integer userId, Integer documentId, String name, String summary,
+                                       String content, int imageCount, OffsetDateTime now) {
+        jdbcTemplate.update("""
+                UPDATE query_schema.user_document_view
+                   SET name = ?,
+                       summary = ?,
+                       content = ?,
+                       image_count = ?,
+                       del_image_count = 0,
+                       updated_at = ?
+                 WHERE user_id = ?
+                   AND document_id = ?
+                   AND del_yn = 'N'
+                """, name, summary, content, imageCount, now, userId, documentId);
+    }
+
+    /**
+     * 문서에서 빠진 이미지의 문서화 표시를 끈다. 다른 활성 문서에 아직 포함되어 있으면
+     * 그대로 둔다 — 이 값은 "어떤 문서에든 쓰였는가"를 뜻하기 때문이다.
+     */
+    public void unmarkDocumentedIfOrphan(Integer userId, List<Integer> imageIds) {
+        if (imageIds == null || imageIds.isEmpty()) {
+            return;
+        }
+        String placeholders = String.join(",", Collections.nCopies(imageIds.size(), "?"));
+        String sql = """
+                UPDATE query_schema.user_image_view image_view
+                   SET is_documented_yn = 'N'
+                 WHERE image_view.user_id = ?
+                   AND image_view.image_id IN (%s)
+                   AND NOT EXISTS (
+                       SELECT 1
+                         FROM library_schema.image_document image_document
+                         JOIN library_schema.user_document user_document
+                           ON user_document.document_id = image_document.document_id
+                          AND user_document.user_id = image_view.user_id
+                          AND user_document.del_yn = 'N'
+                        WHERE image_document.image_id = image_view.image_id
+                          AND image_document.del_yn = 'N'
+                   )
+                """.formatted(placeholders);
+
+        Object[] parameters = new Object[imageIds.size() + 1];
+        parameters[0] = userId;
+        for (int i = 0; i < imageIds.size(); i++) {
+            parameters[i + 1] = imageIds.get(i);
+        }
+        jdbcTemplate.update(sql, parameters);
     }
 
     /**

@@ -34,6 +34,9 @@ public class DocumentGenerationRequest {
 
     public static final String OPERATION_CREATE = "CREATE";
 
+    /** 재분석. 새 문서를 만들지 않고 source_document_id가 가리키는 문서를 갱신한다. */
+    public static final String OPERATION_REGENERATE = "REGENERATE";
+
     public static final String STATUS_QUEUED = "QUEUED";
     public static final String STATUS_COMPLETED = "COMPLETED";
     public static final String STATUS_FAILED = "FAILED";
@@ -80,7 +83,7 @@ public class DocumentGenerationRequest {
     @Column(name = "del_yn", nullable = false, length = 1)
     private String delYn = "N";
 
-    /** 8-2 문서 생성. ADD_IMAGES·EXCLUDE_IMAGES는 source_document_id가 필요해 별도 생성자로 둔다. */
+    /** 8-2 문서 생성. 재분석은 source_document_id가 필요해 별도 팩토리로 둔다. */
     public static DocumentGenerationRequest create(Integer userId, UUID clientRequestId, OffsetDateTime now) {
         DocumentGenerationRequest request = new DocumentGenerationRequest();
         request.userId = userId;
@@ -90,6 +93,29 @@ public class DocumentGenerationRequest {
         request.createdAt = now;
         request.updatedAt = now;
         return request;
+    }
+
+    /**
+     * 재분석 요청. 이미지 목록을 그대로 두고 다시 만들든, 추가·제외해서 다시 만들든
+     * 전부 이 하나로 처리한다 — 서버 입장에서는 "이 문서를 이 최종 이미지 목록으로 다시
+     * 만들어라"가 전부라, 무엇이 추가·제외됐는지 구분할 이유가 없다.
+     */
+    public static DocumentGenerationRequest regenerate(
+            Integer userId, UUID clientRequestId, Integer sourceDocumentId, OffsetDateTime now) {
+        DocumentGenerationRequest request = new DocumentGenerationRequest();
+        request.userId = userId;
+        request.clientRequestId = clientRequestId;
+        request.operationType = OPERATION_REGENERATE;
+        request.sourceDocumentId = sourceDocumentId;
+        request.status = STATUS_QUEUED;
+        request.createdAt = now;
+        request.updatedAt = now;
+        return request;
+    }
+
+    /** 재분석이면 새 문서를 만들지 않고 sourceDocumentId를 갱신해야 한다. */
+    public boolean isRegeneration() {
+        return sourceDocumentId != null;
     }
 
     public void complete(Integer documentId, OffsetDateTime now) {

@@ -2,6 +2,7 @@ package com.ssafy.modera.api.domain.document.event;
 
 import com.ssafy.modera.api.domain.document.entity.Document;
 import com.ssafy.modera.api.domain.document.entity.DocumentGenerationRequest;
+import com.ssafy.modera.api.domain.document.repository.DocumentCommandRepository;
 import com.ssafy.modera.api.domain.document.repository.DocumentGenerationRequestRepository;
 import com.ssafy.modera.api.domain.document.repository.DocumentRepository;
 import com.ssafy.modera.api.domain.document.repository.DocumentViewRepository;
@@ -35,6 +36,7 @@ public class DocumentResultEventHandler {
     private final UserDocumentRepository userDocumentRepository;
     private final ImageDocumentRepository imageDocumentRepository;
     private final DocumentViewRepository documentViewRepository;
+    private final DocumentCommandRepository documentCommandRepository;
 
     @Transactional
     public void handleCompleted(DocumentCompletedPayload payload) {
@@ -44,17 +46,26 @@ public class DocumentResultEventHandler {
         }
 
         OffsetDateTime now = OffsetDateTime.now();
+        // AI가 내용 없는 이미지를 건너뛰면 요청보다 적을 수 있다. 요청 목록이 아니라
+        // 실제로 문서에 쓰인 목록으로 관계를 만든다.
+        List<Integer> imageIds = payload.sourceImageIds() == null ? List.of() : payload.sourceImageIds();
 
+        if (request.isRegeneration()) {
+            applyRegeneration(request, payload, imageIds, now);
+            return;
+        }
+        createDocument(request, payload, imageIds, now);
+    }
+
+    private void createDocument(DocumentGenerationRequest request, DocumentCompletedPayload payload,
+                                List<Integer> imageIds, OffsetDateTime now) {
         Document document = documentRepository.save(
-                new Document(payload.title(), payload.markdown(), now));
+                new Document(payload.title(), payload.summary(), payload.markdown(), now));
         userDocumentRepository.save(UserDocument.builder()
                 .userId(request.getUserId())
                 .documentId(document.getDocumentId())
                 .build());
 
-        // AI가 내용 없는 이미지를 건너뛰면 요청보다 적을 수 있다. 요청 목록이 아니라
-        // 실제로 문서에 쓰인 목록으로 관계를 만든다.
-        List<Integer> imageIds = payload.sourceImageIds() == null ? List.of() : payload.sourceImageIds();
         for (Integer imageId : imageIds) {
             ImageDocument relation = imageDocumentRepository.save(ImageDocument.builder()
                     .imageId(imageId)
@@ -75,13 +86,63 @@ public class DocumentResultEventHandler {
 
         documentViewRepository.insertUserDocumentView(
                 request.getUserId(), document.getDocumentId(),
-                document.getName(), document.getContent(), imageIds.size(), now);
+                document.getName(), document.getSummary(), document.getContent(), imageIds.size(), now);
         documentViewRepository.markDocumented(request.getUserId(), imageIds);
 
         request.complete(document.getDocumentId(), now);
 
         log.info("문서 저장 완료: documentRequestId={} documentId={} images={}",
                 request.getId(), document.getDocumentId(), imageIds.size());
+    }
+
+    /**
+     * 재분석 결과 반영. 새 문서를 만들지 않고 기존 document_id의 내용과 관계를 갈아끼운다.
+     *
+     * <p>관계는 통째로 지우고 다시 넣는 대신 diff로 처리한다 — 유지되는 이미지의
+     * image_document 행이 그대로 남아야 조회 모델의 PK(image_document_id)도 유지되고,
+     * "언제 이 문서에 들어왔는지"가 재분석마다 초기화되지 않는다.
+     */
+    private void applyRegeneration(DocumentGenerationRequest request, DocumentCompletedPayload payload,
+                                   List<Integer> imageIds, OffsetDateTime now) {
+        Integer userId = request.getUserId();
+        Integer documentId = request.getSourceDocumentId();
+
+        Document document = documentRepository.findById(documentId).orElse(null);
+        if (document == null || "Y".equals(document.getDelYn())) {
+            // 재분석 중에 사용자가 문서를 지운 경우. 되살리면 "지웠는데 다시 나타나는" 문서가
+            // 되므로 요청만 실패로 닫는다.
+            log.warn("재분석 대상 문서가 없어 결과를 버린다: documentRequestId={} documentId={}",
+                    request.getId(), documentId);
+            request.fail("DOCUMENT_DELETED", now);
+            return;
+        }
+
+        document.update(payload.title(), payload.summary(), payload.markdown(), now);
+
+        List<Integer> removed = documentCommandRepository.findActiveImageIds(documentId).stream()
+                .filter(imageId -> !imageIds.contains(imageId))
+                .toList();
+        documentCommandRepository.softDeleteRelations(userId, documentId, removed, now);
+
+        for (Integer imageId : imageIds) {
+            Integer imageDocumentId = documentCommandRepository.upsertRelation(documentId, imageId, now);
+            boolean copied = documentCommandRepository.upsertDocumentImageView(
+                    imageDocumentId, userId, documentId, imageId, now);
+            if (!copied) {
+                log.warn("조회 모델에 복사할 이미지를 찾지 못했다: documentId={} imageId={}", documentId, imageId);
+            }
+        }
+
+        documentViewRepository.updateUserDocumentView(
+                userId, documentId,
+                document.getName(), document.getSummary(), document.getContent(), imageIds.size(), now);
+        documentViewRepository.markDocumented(userId, imageIds);
+        documentViewRepository.unmarkDocumentedIfOrphan(userId, removed);
+
+        request.complete(documentId, now);
+
+        log.info("문서 재분석 반영 완료: documentRequestId={} documentId={} images={} removed={}",
+                request.getId(), documentId, imageIds.size(), removed.size());
     }
 
     @Transactional

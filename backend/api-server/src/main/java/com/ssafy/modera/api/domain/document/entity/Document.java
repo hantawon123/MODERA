@@ -42,6 +42,14 @@ public class Document {
     @Column(name = "name", nullable = false, length = MAX_NAME_LENGTH)
     private String name;
 
+    /**
+     * AI가 만든 문서 요약. 목록 카드 설명과 상세의 "문서 요약"이 같은 값을 쓴다.
+     *
+     * <p>NULL이 될 수 있다 — 036 changeset 이전에 만들어진 문서에는 요약이 없다.
+     */
+    @Column(name = "summary")
+    private String summary;
+
     @Column(name = "content", nullable = false)
     private String content;
 
@@ -52,8 +60,23 @@ public class Document {
     @Column(name = "del_yn", nullable = false, length = 1)
     private String delYn = "N";
 
-    public Document(String name, String content, OffsetDateTime now) {
+    public Document(String name, String summary, String content, OffsetDateTime now) {
         this.name = truncateName(name);
+        this.summary = summary;
+        this.content = content == null ? "" : content;
+        this.updatedAt = now;
+    }
+
+    /**
+     * 재분석(REGENERATE) 결과로 내용을 갈아끼운다.
+     *
+     * <p>새 문서를 만들고 기존 문서를 지우는 대신 같은 document_id를 유지한다 — 앱이
+     * 보고 있는 화면과 공유된 링크가 그대로 살아 있고, 재분석이 실패하면 이전 문서가
+     * 그대로 남는다(새 문서 방식이면 실패 시 아무것도 남지 않는다).
+     */
+    public void update(String name, String summary, String content, OffsetDateTime now) {
+        this.name = truncateName(name);
+        this.summary = summary;
         this.content = content == null ? "" : content;
         this.updatedAt = now;
     }

@@ -33,10 +33,15 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.ssafy.modera.core.designsystem.theme.ModeraTheme
+import com.ssafy.modera.core.designsystem.theme.pretendardFontFamily
 
 /**
  * Modera 커스텀 바텀 네비게이션.
@@ -107,7 +112,7 @@ fun RowScope.ModeraBottomNavigationItem(
             tint = contentColor,
             modifier = Modifier.size(20.dp),
         )
-        Spacer(modifier = Modifier.height(4.dp))
+        Spacer(modifier = Modifier.height(8.dp))
         HighlighterLabel(
             text = label,
             selected = selected,
@@ -167,11 +172,20 @@ private fun HighlighterLabel(
         animationSpec = tween(durationMillis = 280, easing = FastOutSlowInEasing),
         label = "highlighterExpand",
     )
+    val density = LocalDensity.current
+    val fixedFontSize = with(density) { 10.dp.toSp() }
+    val fixedLineHeight = with(density) { 16.dp.toSp() }
 
     Text(
         text = text,
         color = color,
-        style = ModeraTheme.typography.captionM12,
+        style = TextStyle(
+            fontSize = fixedFontSize,
+            lineHeight = fixedLineHeight,
+            fontFamily = pretendardFontFamily,
+            fontWeight = FontWeight.Medium,
+            textAlign = TextAlign.Center,
+        ),
         modifier = if (highlightProgress > 0f) {
             Modifier.drawBehind {
                 val fullWidth = size.width + 8.dp.toPx()

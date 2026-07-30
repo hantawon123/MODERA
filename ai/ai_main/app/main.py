@@ -16,7 +16,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse, Response
 from fastapi.security import APIKeyHeader
 
-from . import document, gemini_client, responses, search, storage
+from . import document, gemini_client, related, responses, search, storage
 from .config import get_settings
 from .jobs import job_registry, job_store
 from .schemas import (
@@ -200,6 +200,10 @@ async def require_internal_token(
         return
     if token != get_settings().internal_token:
         raise PermissionError("내부 토큰 불일치")
+
+
+# 연관 이미지(연쇄 선택). 기능 전체가 related.py 안에 있어 여기는 이 한 줄만 닿는다.
+app.include_router(related.router, dependencies=[Depends(require_internal_token)])
 
 
 @app.exception_handler(search.InvalidSortError)

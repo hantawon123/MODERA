@@ -147,8 +147,17 @@ class Settings:
         # pgvector 는 2000 초과 차원에 인덱스를 만들 수 없어 3072 는 쓰지 않는다.
         self.embedding_dim = int(os.environ.get("EMBEDDING_DIM", "768"))
 
-        # 카테고리 신규 생성 임계값
-        self.similarity_threshold = float(os.environ.get("SIMILARITY_THRESHOLD", "0.80"))
+        # 카테고리 신규 생성 임계값 — AGENT 가 후보에 없는 새 이름을 제안했을 때,
+        # 기존 centroid 와의 코사인이 이 값 이상이면 신규를 만들지 않고 흡수한다.
+        # 기본 0.62: 실사진 46장 실측(2026-07-30) argmax 판정 모델 최적점.
+        # 기존 0.80 은 같은 카테고리 코사인의 ~95%(최대 0.83)가 미달해 사진마다
+        # 중복 카테고리를 만들었다 — 실측 근거는 카테고리임계값_실측리포트 참조.
+        self.similarity_threshold = float(os.environ.get("SIMILARITY_THRESHOLD", "0.62"))
+        # 카테고리 오염 가드 — 이름 일치 판정이라도 그 카테고리 centroid 와의
+        # 감사 코사인이 이 값 미만이면 centroid 에 누적하지 않는다. 카테고리
+        # 수동 수정이 없는 제품이라 오분류가 쌓이면 자가 교정 경로가 없다
+        # (동의서→금융 오염 실측). 0 이면 가드 끔.
+        self.category_guard_min_cosine = float(os.environ.get("CATEGORY_GUARD_MIN_COSINE", "0.45"))
 
         # AGENT 태그 최대 개수 (10-1 options.maxTags 로 요청별 덮어쓰기 가능)
         self.default_max_tags = int(os.environ.get("DEFAULT_MAX_TAGS", "5"))

@@ -8,14 +8,14 @@ sealed interface CategorySearchUiState {
 
     data class Success(
         val searchQuery: String = "",
-        val recentMaterials: List<AnalyzedImage> = emptyList(),
+        val recentAnalyzedImages: List<AnalyzedImage> = emptyList(),
         val searchResults: List<AnalyzedImage> = emptyList(),
     ) : CategorySearchUiState {
         val content: Content
             get() = when {
                 searchQuery.isNotBlank() -> Content.SearchResults(searchResults)
-                recentMaterials.isEmpty() -> Content.RecentEmpty
-                else -> Content.RecentMaterials(recentMaterials)
+                recentAnalyzedImages.isEmpty() -> Content.RecentEmpty
+                else -> Content.RecentAnalyzedImages(recentAnalyzedImages)
             }
     }
 
@@ -26,8 +26,8 @@ sealed interface CategorySearchUiState {
     sealed interface Content {
         data object RecentEmpty : Content
 
-        data class RecentMaterials(
-            val materials: List<AnalyzedImage>,
+        data class RecentAnalyzedImages(
+            val analyzedImages: List<AnalyzedImage>,
         ) : Content
 
         data class SearchResults(

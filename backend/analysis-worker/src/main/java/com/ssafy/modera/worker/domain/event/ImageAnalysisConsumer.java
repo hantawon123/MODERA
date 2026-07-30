@@ -5,10 +5,12 @@ import com.ssafy.modera.contract.EventEnvelope;
 import com.ssafy.modera.contract.EventTypes;
 import com.ssafy.modera.contract.Streams;
 import com.ssafy.modera.contract.payload.AnalysisFailedPayload;
+import com.ssafy.modera.contract.payload.DocumentRequestedPayload;
 import com.ssafy.modera.contract.payload.ImageUploadedPayload;
 import com.ssafy.modera.worker.domain.analysis.client.AnalysisClient;
 import com.ssafy.modera.worker.domain.analysis.entity.AnalysisJob;
 import com.ssafy.modera.worker.domain.analysis.repository.AnalysisJobRepository;
+import com.ssafy.modera.worker.domain.document.DocumentGenerationService;
 import io.lettuce.core.RedisCommandTimeoutException;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
@@ -53,6 +55,7 @@ public class ImageAnalysisConsumer {
     private final AnalysisJobRepository analysisJobRepository;
     private final AnalysisClient analysisClient;
     private final EventPublisher eventPublisher;
+    private final DocumentGenerationService documentGenerationService;
 
     private volatile boolean running = true;
     private Thread consumerThread;
@@ -147,6 +150,15 @@ public class ImageAnalysisConsumer {
             if (EventTypes.IMAGE_UPLOADED.equals(envelope.eventType())) {
                 ImageUploadedPayload payload = readPayload(envelope, ImageUploadedPayload.class);
                 handleImageUploaded(envelope, payload);
+            } else if (EventTypes.DOCUMENT_REQUESTED.equals(envelope.eventType())) {
+                // 문서 생성도 이 스트림에 실려 온다 — 전용 스트림을 파지 않은 이유는
+                // 이 컨슈머 루프와 PEL 회수(PelReclaimScanner)가 그대로 적용되기
+                // 때문이다(EventTypes 주석 참고). 대신 AI 동기 호출(수 초~수십 초)이
+                // 이 단일 컨슈머 스레드를 점유해 그동안 이미지 분석 소비가 지연된다.
+                // 문서 요청은 드물어 MVP에서 허용 — 볼륨 증가 시 전용 executor 또는
+                // 스트림 분리 TODO(DocumentGenerationService 주석 참고).
+                DocumentRequestedPayload payload = readPayload(envelope, DocumentRequestedPayload.class);
+                documentGenerationService.handle(payload);
             } else {
                 log.warn("알 수 없는 eventType이라 무시한다: eventId={}, eventType={}", envelope.eventId(), envelope.eventType());
             }

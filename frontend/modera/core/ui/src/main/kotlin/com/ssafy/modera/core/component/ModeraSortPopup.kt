@@ -1,4 +1,4 @@
-package com.ssafy.modera.feature.home.component
+package com.ssafy.modera.core.component
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -12,50 +12,70 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntRect
+import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Popup
+import androidx.compose.ui.window.PopupPositionProvider
 import androidx.compose.ui.window.PopupProperties
 import com.ssafy.modera.core.designsystem.component.ClickableSurface
 import com.ssafy.modera.core.designsystem.component.HorizontalDivider
 import com.ssafy.modera.core.designsystem.component.Icon
 import com.ssafy.modera.core.designsystem.component.Text
+import com.ssafy.modera.core.designsystem.icon.ModeraIcons
 import com.ssafy.modera.core.designsystem.theme.ModeraTheme
 import com.ssafy.modera.core.model.category.CategorySortType
-import com.ssafy.modera.feature.home.R
-import com.ssafy.modera.feature.home.label
-import kotlin.math.roundToInt
 
+/**
+ * 정렬 옵션 팝업. 부모 [Box] 기준으로 앵커되며, [T]에 정렬 enum 등 임의의 옵션 타입을 넘긴다.
+ *
+ * @param expanded true일 때만 표시
+ * @param options 표시할 옵션 목록
+ * @param selectedOption 현재 선택된 옵션
+ * @param labelOf 옵션 → 표시 라벨
+ */
 @Composable
-internal fun CategorySortPopup(
-    anchorBounds: Rect,
-    selectedSortType: CategorySortType,
+fun <T> ModeraSortPopup(
+    expanded: Boolean,
+    options: List<T>,
+    selectedOption: T,
+    labelOf: (T) -> String,
     onDismissRequest: () -> Unit,
-    onSortTypeClick: (CategorySortType) -> Unit,
+    onOptionClick: (T) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val density = LocalDensity.current
-    val popupGap = 8.dp
+    if (!expanded || options.isEmpty()) return
 
-    val popupOffset = with(density) {
-        IntOffset(
-            x = 0,
-            y = (anchorBounds.bottom + popupGap.toPx()).roundToInt(),
-        )
+    val density = LocalDensity.current
+    val gapPx = with(density) { 8.dp.roundToPx() }
+    val positionProvider = remember(gapPx) {
+        object : PopupPositionProvider {
+            override fun calculatePosition(
+                anchorBounds: IntRect,
+                windowSize: IntSize,
+                layoutDirection: LayoutDirection,
+                popupContentSize: IntSize,
+            ): IntOffset {
+                val x = anchorBounds.right - popupContentSize.width
+                val y = anchorBounds.bottom + gapPx
+                return IntOffset(x, y)
+            }
+        }
     }
 
     Popup(
-        alignment = Alignment.TopEnd,
-        offset = popupOffset,
+        popupPositionProvider = positionProvider,
         onDismissRequest = onDismissRequest,
         properties = PopupProperties(
             focusable = true,
@@ -63,18 +83,25 @@ internal fun CategorySortPopup(
             dismissOnClickOutside = true,
         ),
     ) {
-        CategorySortPopupContent(
-            selectedSortType = selectedSortType,
-            onSortTypeClick = onSortTypeClick,
+        SortPopupContent(
+            options = options,
+            selectedOption = selectedOption,
+            labelOf = labelOf,
+            onOptionClick = { option ->
+                onOptionClick(option)
+                onDismissRequest()
+            },
             modifier = modifier,
         )
     }
 }
 
 @Composable
-private fun CategorySortPopupContent(
-    selectedSortType: CategorySortType,
-    onSortTypeClick: (CategorySortType) -> Unit,
+internal fun <T> SortPopupContent(
+    options: List<T>,
+    selectedOption: T,
+    labelOf: (T) -> String,
+    onOptionClick: (T) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -86,23 +113,19 @@ private fun CategorySortPopupContent(
                 clip = false,
             )
             .clip(RoundedCornerShape(12.dp))
-            .background(Color.White)
+            .background(ModeraTheme.colors.white)
             .padding(vertical = 6.dp),
     ) {
-        CategorySortType.entries.forEachIndexed { index, sortType ->
+        options.forEachIndexed { index, option ->
             SortMenuItem(
-                sortType = sortType,
-                selected = sortType == selectedSortType,
-                onClick = {
-                    onSortTypeClick(sortType)
-                },
-                modifier = Modifier.padding(vertical = 12.dp),
+                label = labelOf(option),
+                selected = option == selectedOption,
+                onClick = { onOptionClick(option) },
+                modifier = Modifier.padding(vertical = 10.dp),
             )
 
-            if (index != CategorySortType.entries.lastIndex) {
-                HorizontalDivider(
-                    color = ModeraTheme.colors.gray50,
-                )
+            if (index != options.lastIndex) {
+                HorizontalDivider(color = ModeraTheme.colors.gray50)
             }
         }
     }
@@ -110,18 +133,13 @@ private fun CategorySortPopupContent(
 
 @Composable
 private fun SortMenuItem(
-    sortType: CategorySortType,
+    label: String,
     selected: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val fixedFontSize = with(LocalDensity.current) {
-        14.dp.toSp()
-    }
-
-    val fixedLineHeight = with(LocalDensity.current) {
-        20.dp.toSp()
-    }
+    val fixedFontSize = with(LocalDensity.current) { 14.dp.toSp() }
+    val fixedLineHeight = with(LocalDensity.current) { 20.dp.toSp() }
 
     val textStyle = if (selected) {
         ModeraTheme.typography.bodySB14
@@ -138,7 +156,7 @@ private fun SortMenuItem(
     ClickableSurface(
         onClick = onClick,
         modifier = modifier,
-        color = Color.White,
+        color = ModeraTheme.colors.white,
     ) {
         Row(
             modifier = Modifier
@@ -148,7 +166,7 @@ private fun SortMenuItem(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                text = sortType.label,
+                text = label,
                 style = textStyle.copy(
                     fontSize = fixedFontSize,
                     lineHeight = fixedLineHeight,
@@ -157,7 +175,7 @@ private fun SortMenuItem(
             )
 
             Icon(
-                painter = painterResource(R.drawable.ic_check),
+                painter = painterResource(ModeraIcons.Check),
                 contentDescription = null,
                 tint = if (selected) {
                     ModeraTheme.colors.yellow500
@@ -171,82 +189,20 @@ private fun SortMenuItem(
 }
 
 @Preview(
-    name = "Category Sort Popup Content - Name",
+    name = "Category Sort Popup Content",
     showBackground = true,
     backgroundColor = 0xFFF5F5F5,
 )
 @Composable
-private fun CategorySortPopupNamePreview() {
+private fun SortPopupContentPreview() {
     ModeraTheme {
-        Box(
-            modifier = Modifier.padding(24.dp),
-        ) {
-            CategorySortPopupContent(
-                selectedSortType = CategorySortType.NAME_ASC,
-                onSortTypeClick = {},
+        Box(modifier = Modifier.padding(24.dp)) {
+            SortPopupContent(
+                options = CategorySortType.entries,
+                selectedOption = CategorySortType.NAME_ASC,
+                labelOf = { it.label },
+                onOptionClick = {},
             )
         }
-    }
-}
-
-@Preview(
-    name = "Category Sort Popup Content - Latest",
-    showBackground = true,
-    backgroundColor = 0xFFF5F5F5,
-)
-@Composable
-private fun CategorySortPopupLatestPreview() {
-    ModeraTheme {
-        Box(
-            modifier = Modifier.padding(24.dp),
-        ) {
-            CategorySortPopupContent(
-                selectedSortType = CategorySortType.UPDATED_AT_DESC,
-                onSortTypeClick = {},
-            )
-        }
-    }
-}
-
-@Preview(
-    name = "Category Sort Popup Content - Image Count",
-    showBackground = true,
-    backgroundColor = 0xFFF5F5F5,
-)
-@Composable
-private fun CategorySortPopupImageCountPreview() {
-    ModeraTheme {
-        Box(
-            modifier = Modifier.padding(24.dp),
-        ) {
-            CategorySortPopupContent(
-                selectedSortType = CategorySortType.IMAGE_COUNT_DESC,
-                onSortTypeClick = {},
-            )
-        }
-    }
-}
-
-@Preview(
-    name = "Category Sort Popup - Actual Popup",
-    showBackground = true,
-    widthDp = 412,
-    heightDp = 915,
-    backgroundColor = 0xFFF5F5F5,
-)
-@Composable
-private fun CategorySortPopupPreview() {
-    ModeraTheme {
-        CategorySortPopup(
-            anchorBounds = Rect(
-                left = 280f,
-                top = 100f,
-                right = 400f,
-                bottom = 140f,
-            ),
-            selectedSortType = CategorySortType.NAME_ASC,
-            onDismissRequest = {},
-            onSortTypeClick = {},
-        )
     }
 }

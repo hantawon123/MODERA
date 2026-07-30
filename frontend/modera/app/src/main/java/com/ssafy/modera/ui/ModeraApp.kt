@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.material3.Icon
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
@@ -32,14 +31,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.composed
-import androidx.compose.ui.draw.drawWithContent
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.res.vectorResource
-import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation3.runtime.EntryProviderScope
@@ -47,14 +40,17 @@ import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.ui.NavDisplay
 import com.ssafy.modera.MainViewModel
+import com.ssafy.modera.core.designsystem.component.ModeraBottomNavigation
+import com.ssafy.modera.core.designsystem.component.ModeraBottomNavigationAction
+import com.ssafy.modera.core.designsystem.component.ModeraBottomNavigationItem
 import com.ssafy.modera.core.designsystem.component.ModeraNavigationSuiteScaffold
 import com.ssafy.modera.core.designsystem.component.Scaffold
-import com.ssafy.modera.core.designsystem.component.Text
-import com.ssafy.modera.core.designsystem.theme.ModeraTheme
 import com.ssafy.modera.core.navigation.Navigator
 import com.ssafy.modera.core.navigation.toEntries
 import com.ssafy.modera.feature.analyzedimagedetail.navigation.analyzedImageDetailEntry
 import com.ssafy.modera.feature.analyzedimagedetail.navigation.navigateToImageDetail
+import com.ssafy.modera.feature.category.navigation.categoryEntry
+import com.ssafy.modera.feature.category.navigation.navigateToCategorySearch
 import com.ssafy.modera.feature.categoryimages.navigation.categoryImagesEntry
 import com.ssafy.modera.feature.categoryimages.navigation.navigateToCategoryImages
 import com.ssafy.modera.feature.home.HomeAnalysisState
@@ -65,8 +61,9 @@ import com.ssafy.modera.feature.imageviewer.navigation.imageViewerEntry
 import com.ssafy.modera.feature.imageviewer.navigation.navigateToImageViewer
 import com.ssafy.modera.feature.relatedimages.navigation.relatedImagesEntry
 import com.ssafy.modera.media.rememberGalleryPickerLauncher
-import com.ssafy.modera.navigation.RegisterNavKey
-import com.ssafy.modera.navigation.SearchNavKey
+import com.ssafy.modera.navigation.BOTTOM_NAV_ITEMS
+import com.ssafy.modera.navigation.DocumentsNavKey
+import com.ssafy.modera.navigation.FavoritesNavKey
 import com.ssafy.modera.navigation.TOP_LEVEL_NAV_ITEMS
 
 @Composable
@@ -141,44 +138,8 @@ internal fun ModeraApp(
         LocalHomeAnalysisState provides homeAnalysisState,
     ) {
         ModeraNavigationSuiteScaffold(
-            layoutType = if (isTopLevelDestination) {
-                null
-            } else {
-                NavigationSuiteType.None
-            },
-            navigationSuiteItems = {
-                if (isTopLevelDestination) {
-                    TOP_LEVEL_NAV_ITEMS.forEach { (navKey, navItem) ->
-                        val selected = navKey != RegisterNavKey &&
-                                navKey == appState.navigationState.currentTopLevelKey
-
-                        item(
-                            selected = selected,
-                            onClick = {
-                                if (navKey == RegisterNavKey) {
-                                    launchGalleryPicker()
-                                } else {
-                                    navigator.navigate(navKey)
-                                }
-                            },
-                            icon = {
-                                Icon(
-                                    imageVector = ImageVector.vectorResource(navItem.unselectedIcon),
-                                    contentDescription = null,
-                                )
-                            },
-                            selectedIcon = {
-                                Icon(
-                                    imageVector = ImageVector.vectorResource(navItem.selectedIcon),
-                                    contentDescription = null,
-                                )
-                            },
-                            label = { Text(stringResource(navItem.iconTextId)) },
-                            modifier = Modifier,
-                        )
-                    }
-                }
-            },
+            layoutType = NavigationSuiteType.None,
+            navigationSuiteItems = {},
             windowAdaptiveInfo = windowAdaptiveInfo,
         ) {
             Scaffold(
@@ -186,6 +147,30 @@ internal fun ModeraApp(
                 containerColor = Color.Transparent,
                 contentColor = Color.Gray, // TODO : 추후 컬러 변경
                 contentWindowInsets = WindowInsets(0, 0, 0, 0),
+                bottomBar = {
+                    if (isTopLevelDestination) {
+                        ModeraBottomNavigation {
+                            BOTTOM_NAV_ITEMS.forEach { (navKey, navItem) ->
+                                if (navItem.isCenterAction) {
+                                    ModeraBottomNavigationAction(
+                                        onClick = launchGalleryPicker,
+                                        iconRes = navItem.icon,
+                                        contentDescription = stringResource(navItem.titleTextId),
+                                    )
+                                } else {
+                                    val labelRes = navItem.iconTextId
+                                        ?: error("Bottom nav item requires iconTextId: $navKey")
+                                    ModeraBottomNavigationItem(
+                                        selected = navKey == appState.navigationState.currentTopLevelKey,
+                                        onClick = { navigator.navigate(navKey) },
+                                        iconRes = navItem.icon,
+                                        label = stringResource(labelRes),
+                                    )
+                                }
+                            }
+                        }
+                    }
+                },
                 snackbarHost = {
                     SnackbarHost(
                         snackbarHostState,
@@ -236,6 +221,13 @@ internal fun ModeraApp(
                                     navigator = navigator,
                                     onCategoryClick = navigator::navigateToCategoryImages,
                                 )
+                                categoryEntry(
+                                    onBackClick = navigator::goBack,
+                                    onSearchIconClick = navigator::navigateToCategorySearch,
+                                    onItemClick = { /* TODO: 자료 상세 연결 */ },
+                                )
+                                favoritesEntry()
+                                documentsEntry()
                                 categoryImagesEntry(
                                     navigator = navigator,
                                     onImageClick = navigator::navigateToImageDetail
@@ -245,8 +237,6 @@ internal fun ModeraApp(
                                     sharedTransitionScope = this@SharedTransitionLayout,
                                     onImageClick = navigator::navigateToImageViewer
                                 )
-                                registerEntry(navigator)
-                                searchEntry(navigator)
                                 imageViewerEntry(
                                     sharedTransitionScope = this@SharedTransitionLayout,
                                     onBackClick = navigator::goBack
@@ -267,27 +257,11 @@ internal fun ModeraApp(
     }
 }
 
-private fun Modifier.notificationDot(): Modifier =
-    composed {
-        val tertiaryColor = ModeraTheme.colors.yellow500
-        drawWithContent {
-            drawContent()
-            drawCircle(
-                tertiaryColor,
-                radius = 5.dp.toPx(),
-                center = center + Offset(
-                    64.dp.toPx() * .45f,
-                    32.dp.toPx() * -.45f - 6.dp.toPx(),
-                ),
-            )
-        }
-    }
-
 // TODO : 추후 각 NavigationProvider에 추가
-fun EntryProviderScope<NavKey>.registerEntry(navigator: Navigator) {
-    entry<RegisterNavKey> {}
+fun EntryProviderScope<NavKey>.favoritesEntry() {
+    entry<FavoritesNavKey> {}
 }
 
-fun EntryProviderScope<NavKey>.searchEntry(navigator: Navigator) {
-    entry<SearchNavKey> {}
+fun EntryProviderScope<NavKey>.documentsEntry() {
+    entry<DocumentsNavKey> {}
 }

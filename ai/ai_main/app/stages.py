@@ -302,7 +302,7 @@ def _build_schedule_data(raw: Any) -> dict[str, Any]:
     return {"type": "schedule", "fields": fields}
 
 
-def _build_candidates(
+def build_candidates(
     user_id: int, candidates: list[CategoryCandidate]
 ) -> list[CategoryCandidate]:
     """판정에 쓸 카테고리 후보를 모은다. 세 소스를 합친다.
@@ -401,7 +401,7 @@ async def run_agent_core(
     knowledge = await spring_client.fetch_knowledge_candidates(user_id)
     # 저장된 카테고리 벡터를 읽어 합친다(OpenSearch 조회라 스레드로 돌린다).
     candidates = await asyncio.to_thread(
-        _build_candidates, user_id, knowledge.categories
+        build_candidates, user_id, knowledge.categories
     )
     # 태그 난립 방지용 기준점(기존 태그). OpenSearch 집계라 스레드로 돌린다.
     existing_tags = await asyncio.to_thread(_existing_tag_names, user_id, knowledge)

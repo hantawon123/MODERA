@@ -148,6 +148,7 @@ OCR 이 비었거나 정보성이 없다고 판정되면 분석을 건너뛰고 
 | — | POST | `/internal/v1/search/related` | 동기. 연관 이미지(1장 기준 인근 검색). 아래 참고 |
 | — | POST | `/internal/v1/documents/candidates` | 동기. 문서화 이미지 선택(N장 누적 → 다음 후보). 아래 참고 |
 | — | POST | `/internal/v1/documents` | 동기. Spring 이 보낸 분석 결과 여러 건 → 마크다운 문서 |
+| — | POST | `/internal/v1/categories/reanalyze` | 동기. 카테고리 재분석(거부한 카테고리 배제, 최대 5회). [docs/CATEGORY_REANALYZE.md](docs/CATEGORY_REANALYZE.md) |
 | — | GET | `/health` | 헬스체크 (토큰 불필요) |
 
 FastAPI 가 호출하는 쪽: 10-4 콜백, 10-5 지식 후보 조회.

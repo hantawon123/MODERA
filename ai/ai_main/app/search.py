@@ -207,6 +207,13 @@ def _merge_doc(image_id: int, doc: dict[str, Any]) -> None:
     )
 
 
+def set_category(image_id: int, category_name: str,
+                 category_confidence: float | None = None) -> None:
+    """카테고리만 갈아 끼운다(재분석). 제목·요약·태그·OCR 은 건드리지 않는다."""
+    _merge_doc(image_id, {"category_name": category_name,
+                          "category_confidence": category_confidence})
+
+
 def create_pending_document(
     image_id: int,
     user_id: int,

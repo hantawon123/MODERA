@@ -1,4 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="sort_menu_content_description">정렬 메뉴 열기</string>
+    <string name="analyzed_image_item_favorite">즐겨찾기</string>
+    <string name="analyzed_image_item_document">문서</string>
+    <string name="analyzed_image_item_schedule">일정</string>
+    <string name="analyzed_image_item_meta_divider">|</string>
+    <string name="analyzed_image_item_meta_separator">·</string>
 </resources>

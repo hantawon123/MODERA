@@ -30,7 +30,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ssafy.modera.core.component.ModeraTopBar
-import com.ssafy.modera.core.component.item.ModeraMaterialItem
+import com.ssafy.modera.core.component.item.ModeraAnalyzedImageItem
 import com.ssafy.modera.core.component.ModeraSearchBar
 import com.ssafy.modera.core.component.SearchBarMode
 import com.ssafy.modera.core.designsystem.component.Text
@@ -215,11 +215,14 @@ private fun RecentAnalyzedImagesSection(
             items = analyzedImages,
             key = { it.id },
         ) { analyzedImage ->
-            ModeraMaterialItem(
+            ModeraAnalyzedImageItem(
                 title = analyzedImage.title,
                 description = analyzedImage.summary,
                 tags = analyzedImage.hashtags,
                 imageUrl = analyzedImage.thumbnailUrl,
+                favorite = analyzedImage.favorite,
+                isDocumented = analyzedImage.isDocumented,
+                hasSchedule = analyzedImage.hasSchedule,
                 onClick = { onItemClick(analyzedImage.id) },
                 modifier = Modifier.fillMaxWidth(),
             )
@@ -282,11 +285,14 @@ private fun CategorySearchResultSection(
             items = searchResults,
             key = { it.id },
         ) { analyzedImage ->
-            ModeraMaterialItem(
+            ModeraAnalyzedImageItem(
                 title = analyzedImage.title,
                 description = analyzedImage.summary,
                 tags = analyzedImage.hashtags,
                 imageUrl = analyzedImage.thumbnailUrl,
+                favorite = analyzedImage.favorite,
+                isDocumented = analyzedImage.isDocumented,
+                hasSchedule = analyzedImage.hasSchedule,
                 onClick = { onItemClick(analyzedImage.id) },
                 modifier = Modifier.fillMaxWidth(),
             )

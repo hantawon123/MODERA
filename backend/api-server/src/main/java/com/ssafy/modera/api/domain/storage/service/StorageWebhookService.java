@@ -3,6 +3,9 @@ package com.ssafy.modera.api.domain.storage.service;
 import com.ssafy.modera.api.domain.event.EventPublisher;
 import com.ssafy.modera.api.domain.image.entity.ImageAsset;
 import com.ssafy.modera.api.domain.image.repository.ImageAssetRepository;
+import com.ssafy.modera.api.domain.image.repository.ImageQueryRepository;
+import com.ssafy.modera.api.domain.image.repository.ImageRegistrationRequestRepository;
+import com.ssafy.modera.api.domain.image.repository.OcrRepository;
 import com.ssafy.modera.api.domain.library.entity.UserImage;
 import com.ssafy.modera.api.domain.library.repository.UserImageRepository;
 import com.ssafy.modera.api.domain.storage.dto.MinioWebhookEvent;
@@ -24,6 +27,9 @@ import java.time.OffsetDateTime;
 public class StorageWebhookService {
 
     private final ImageAssetRepository imageAssetRepository;
+    private final OcrRepository ocrRepository;
+    private final ImageQueryRepository imageQueryRepository;
+    private final ImageRegistrationRequestRepository registrationRequestRepository;
     private final UserImageRepository userImageRepository;
     private final EventPublisher eventPublisher;
 
@@ -46,7 +52,7 @@ public class StorageWebhookService {
 
         String s3Key = URLDecoder.decode(record.s3().object().key(), StandardCharsets.UTF_8);
 
-        ImageAsset imageAsset = imageAssetRepository.findByS3Key(s3Key).orElse(null);
+        ImageAsset imageAsset = imageAssetRepository.findByS3KeyAndDelYn(s3Key, "N").orElse(null);
         if (imageAsset == null) {
             log.warn("s3Key={} 에 해당하는 image_asset을 찾지 못해 webhook을 무시한다", s3Key);
             return;
@@ -58,9 +64,19 @@ public class StorageWebhookService {
             return;
         }
 
-        UserImage userImage = userImageRepository
-                .findFirstByImageIdOrderByUserImageIdAsc(imageAsset.getImageId())
+        Integer uploadUserId = registrationRequestRepository
+                .findFirstByImageIdAndStatusAndDelYnOrderByUpdatedAtDesc(
+                        imageAsset.getImageId(), "REGISTERED", "N")
+                .map(request -> request.getUserId())
                 .orElse(null);
+
+        UserImage userImage = uploadUserId == null
+                ? userImageRepository
+                        .findFirstByImageIdAndDelYnOrderByUserImageIdAsc(imageAsset.getImageId(), "N")
+                        .orElse(null)
+                : userImageRepository
+                        .findByUserIdAndImageIdAndDelYn(uploadUserId, imageAsset.getImageId(), "N")
+                        .orElse(null);
         if (userImage == null) {
             log.warn("imageId={} 에 해당하는 user_image를 찾지 못해 webhook을 무시한다", imageAsset.getImageId());
             return;
@@ -68,13 +84,16 @@ public class StorageWebhookService {
 
         imageAsset.markUploaded(OffsetDateTime.now());
         imageAssetRepository.save(imageAsset);
+        imageQueryRepository.markUploadProcessing(userImage.getUserId(), imageAsset.getImageId());
 
-        // TODO: 클라이언트가 등록 시점에 보낸 OCR 결과를 저장할 곳이 아직 없어 null로 발행한다.
+        ImageUploadedPayload.ClientOcr clientOcr = ocrRepository.findByImageId(imageAsset.getImageId())
+                .map(ocr -> new ImageUploadedPayload.ClientOcr(ocr.getContent(), null, null))
+                .orElse(null);
         ImageUploadedPayload payload = new ImageUploadedPayload(
                 imageAsset.getImageId(),
                 userImage.getUserId(),
                 imageAsset.getS3Key(),
-                null
+                clientOcr
         );
         eventPublisher.publish(Streams.IMAGE_ANALYSIS, EventTypes.IMAGE_UPLOADED, 1, payload);
 

@@ -1,12 +1,12 @@
-package com.ssafy.modera.api.domain.event;
+package com.ssafy.modera.api.domain.image.event;
 
 import com.ssafy.modera.api.domain.image.entity.ImageAsset;
 import com.ssafy.modera.api.domain.image.repository.ImageAssetRepository;
 import com.ssafy.modera.api.domain.image.repository.ThumbnailRepository;
 import com.ssafy.modera.api.domain.library.entity.UserImage;
 import com.ssafy.modera.api.domain.library.repository.UserImageRepository;
-import com.ssafy.modera.api.domain.query.repository.UserImageViewRepository;
-import com.ssafy.modera.api.domain.query.repository.UserImageViewRow;
+import com.ssafy.modera.api.domain.image.repository.ImageQueryRepository;
+import com.ssafy.modera.api.domain.image.repository.UserImageViewRow;
 import com.ssafy.modera.contract.payload.AnalysisCompletedPayload;
 import com.ssafy.modera.contract.payload.AnalysisFailedPayload;
 import lombok.RequiredArgsConstructor;
@@ -26,24 +26,26 @@ public class AnalysisResultEventHandler {
     private final UserImageRepository userImageRepository;
     private final ImageAssetRepository imageAssetRepository;
     private final ThumbnailRepository thumbnailRepository;
-    private final UserImageViewRepository userImageViewRepository;
+    private final ImageQueryRepository imageQueryRepository;
 
     @Transactional
     public void handleCompleted(AnalysisCompletedPayload payload) {
         Integer imageId = payload.imageId();
 
-        UserImage userImage = userImageRepository.findByUserIdAndImageId(payload.userId(), imageId).orElse(null);
+        UserImage userImage = userImageRepository
+                .findByUserIdAndImageIdAndDelYn(payload.userId(), imageId, "N")
+                .orElse(null);
         if (userImage == null) {
             log.warn("ANALYSIS_COMPLETED 수신했지만 user_image가 없다: imageId={}", imageId);
             return;
         }
-        ImageAsset imageAsset = imageAssetRepository.findById(imageId).orElse(null);
+        ImageAsset imageAsset = imageAssetRepository.findByImageIdAndDelYn(imageId, "N").orElse(null);
         if (imageAsset == null) {
             log.warn("ANALYSIS_COMPLETED 수신했지만 image_asset이 없다: imageId={}", imageId);
             return;
         }
 
-        userImageViewRepository.upsert(new UserImageViewRow(
+        imageQueryRepository.upsert(new UserImageViewRow(
                 payload.userId(),
                 imageId,
                 imageAsset.getFileName(),
@@ -66,12 +68,14 @@ public class AnalysisResultEventHandler {
     @Transactional
     public void handleFailed(AnalysisFailedPayload payload) {
         Integer imageId = payload.imageId();
-        UserImage userImage = userImageRepository.findByUserIdAndImageId(payload.userId(), imageId).orElse(null);
+        UserImage userImage = userImageRepository
+                .findByUserIdAndImageIdAndDelYn(payload.userId(), imageId, "N")
+                .orElse(null);
         if (userImage == null) {
             log.warn("ANALYSIS_FAILED 수신했지만 user_image가 없다: imageId={}", imageId);
             return;
         }
-        userImageViewRepository.updateAnalysisStatus(
+        imageQueryRepository.updateAnalysisStatus(
                 payload.userId(),
                 imageId,
                 "FAILED"

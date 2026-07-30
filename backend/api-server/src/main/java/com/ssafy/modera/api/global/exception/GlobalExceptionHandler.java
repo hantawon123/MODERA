@@ -4,7 +4,9 @@ import com.ssafy.modera.api.global.response.ApiResponse;
 import com.ssafy.modera.api.global.response.ApiV1Controller;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
@@ -34,6 +36,28 @@ public class GlobalExceptionHandler {
         log.warn("요청 검증 실패: {}", fieldErrors);
         return ResponseEntity.status(GlobalErrorCode.INVALID_PARAMETER.getStatus())
                 .body(ApiResponse.fail(GlobalErrorCode.INVALID_PARAMETER, GlobalErrorCode.INVALID_PARAMETER.getMessage(), fieldErrors));
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ApiResponse<Object>> handleUnreadableRequest(HttpMessageNotReadableException e) {
+        log.warn("요청 본문 역직렬화 실패: {}", e.getMessage());
+        return ResponseEntity.status(GlobalErrorCode.INVALID_PARAMETER.getStatus())
+                .body(ApiResponse.fail(
+                        GlobalErrorCode.INVALID_PARAMETER,
+                        GlobalErrorCode.INVALID_PARAMETER.getMessage(),
+                        null
+                ));
+    }
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ApiResponse<Object>> handleTypeMismatch(MethodArgumentTypeMismatchException e) {
+        log.warn("요청 파라미터 타입 변환 실패: parameter={}, value={}", e.getName(), e.getValue());
+        return ResponseEntity.status(GlobalErrorCode.INVALID_PARAMETER.getStatus())
+                .body(ApiResponse.fail(
+                        GlobalErrorCode.INVALID_PARAMETER,
+                        GlobalErrorCode.INVALID_PARAMETER.getMessage(),
+                        null
+                ));
     }
 
     @ExceptionHandler(Exception.class)

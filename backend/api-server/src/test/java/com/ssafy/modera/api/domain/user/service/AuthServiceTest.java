@@ -76,7 +76,6 @@ class AuthServiceTest {
         User user = User.builder()
                 .provider("KAKAO")
                 .providerId("123")
-                .createdAt(OffsetDateTime.now())
                 .updatedAt(OffsetDateTime.now())
                 .build();
         KakaoClient.KakaoUser kakaoUser = kakaoUser(123L, "user@example.com");

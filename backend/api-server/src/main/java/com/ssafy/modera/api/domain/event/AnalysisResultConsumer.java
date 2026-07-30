@@ -1,5 +1,6 @@
 package com.ssafy.modera.api.domain.event;
 
+import com.ssafy.modera.api.domain.image.event.AnalysisResultEventHandler;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ssafy.modera.contract.EventEnvelope;
 import com.ssafy.modera.contract.EventTypes;

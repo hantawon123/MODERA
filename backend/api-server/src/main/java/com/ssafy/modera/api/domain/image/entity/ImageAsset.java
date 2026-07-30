@@ -42,6 +42,10 @@ public class ImageAsset {
     @Column(name = "uploaded_at")
     private OffsetDateTime uploadedAt;
 
+    @JdbcTypeCode(SqlTypes.CHAR)
+    @Column(name = "del_yn", nullable = false, length = 1)
+    private String delYn = "N";
+
     @Builder
     public ImageAsset(Integer imageId, String fileName, String contentHash, Integer fileSize,
                        String s3Key, String uploadStatus) {

@@ -53,9 +53,15 @@ storage:
     secret-key: ${S3_SECRET_KEY:minioadmin}
     path-style-access: true
 
+# token은 worker의 internal.callback.token과 같은 값이어야 한다.
 internal:
   storage:
     webhook-token: ${MINIO_WEBHOOK_TOKEN:local-dev-webhook-token}
+  token: ${INTERNAL_TOKEN:local-dev-internal-token}
+
+# [Worker] 컨테이너 네트워크의 worker. worker는 호스트에 포트를 노출하지 않는다.
+worker:
+  base-url: ${WORKER_BASE_URL:http://analysis-worker:8081}
 
 logging:
   level:

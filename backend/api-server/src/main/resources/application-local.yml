@@ -59,9 +59,16 @@ storage:
     path-style-access: true
 
 # [Internal] MinIO ObjectCreated webhook 인증 토큰
+# token: worker 내부 API(연관 이미지 조회) 호출용 공유 토큰. worker의
+# internal.callback.token과 반드시 같은 값이어야 한다(다르면 worker가 401 → 빈 목록).
 internal:
   storage:
     webhook-token: ${MINIO_WEBHOOK_TOKEN:local-dev-webhook-token}
+  token: ${INTERNAL_TOKEN:local-dev-internal-token}
+
+# [Worker] 연관 이미지 검색 내부 API. 로컬은 worker를 호스트에서 직접 띄운다.
+worker:
+  base-url: ${WORKER_BASE_URL:http://localhost:8081}
 
 logging:
   level:

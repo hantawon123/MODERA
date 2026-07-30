@@ -145,7 +145,8 @@ OCR 이 비었거나 정보성이 없다고 판정되면 분석을 건너뛰고 
 | 10-2 | POST | `/internal/v1/embed` | 동기 |
 | 10-3 | POST | `/internal/v1/query/parse` | 동기. 실패 시 `parsedConditions: null` 로 degrade |
 | — | POST | `/internal/v1/search` | 동기. OpenSearch 키워드(BM25) 검색. `userId` 로 격리 |
-| — | POST | `/internal/v1/search/related` | 동기. 연관 이미지(연쇄 선택). 아래 참고 |
+| — | POST | `/internal/v1/search/related` | 동기. 연관 이미지(1장 기준 인근 검색). 아래 참고 |
+| — | POST | `/internal/v1/documents/candidates` | 동기. 문서화 이미지 선택(N장 누적 → 다음 후보). 아래 참고 |
 | — | POST | `/internal/v1/documents` | 동기. Spring 이 보낸 분석 결과 여러 건 → 마크다운 문서 |
 | — | GET | `/health` | 헬스체크 (토큰 불필요) |
 
@@ -394,7 +395,7 @@ POST /internal/v1/search/related   X-Internal-Token: <공유 토큰>
 ```json
 { "eventType": "IMAGE_SEARCH_COMPLETED", "version": 1,
   "payload": { "correlationId": "2207708f-...", "total": 2, "page": 0, "size": 10,
-    "hits": [ { "imageId": 101, "score": 3.9987202 }, { "imageId": 102, "score": 1.8765116 } ] } }
+    "hits": [ { "imageId": 204, "score": 0.812345 }, { "imageId": 77, "score": 0.60113 } ] } }
 ```
 
 - `correlationId` 는 생략하면 서버가 UUID 를 만든다(응답에는 항상 있다).
@@ -405,11 +406,68 @@ POST /internal/v1/search/related   X-Internal-Token: <공유 토큰>
   알려 주면 남의 imageId 열거에 쓰인다).
 - `total` 은 고정 후보풀 위의 생존자 수라 페이지를 넘겨도 흔들리지 않는다.
 
-**사용자 격리.** 벡터는 사용자별 인덱스가 아니라 **하나의 인덱스·하나의 `embedding`
+### 문서화 이미지 선택 — `POST /internal/v1/documents/candidates`
+
+문서화 재료를 한 장씩 늘려 가며 고르는 화면. 지금까지 고른 이미지들의 **중심 벡터**로
+다음 후보를 추천하고, 고른 것들은 결과에서 뺀다.
+
+```
+① 첫 장 선택            → {"imageIds": [101]}          → 추천
+② 하나 고름             → {"imageIds": [101, 204]}     → 두 장의 중심 벡터로 추천
+③ 또 고름               → {"imageIds": [101, 204, 77]} → 세 장의 중심 벡터로 추천
+④ 최대 10장까지. 선택 완료 → POST /internal/v1/documents (문서 생성)
+```
+
+```json
+POST /internal/v1/documents/candidates   X-Internal-Token: <공유 토큰>
+{ "userId": 1, "imageIds": [101, 204], "correlationId": "2207708f-...",
+  "page": 0, "size": 10 }
+```
+
+```json
+{ "eventType": "IMAGE_SEARCH_COMPLETED", "version": 1,
+  "payload": { "correlationId": "2207708f-...", "total": 2, "page": 0, "size": 10,
+    "hits": [ { "imageId": 77, "score": 0.812345 }, { "imageId": 310, "score": 0.60113 } ],
+    "selectedImageIds": [101, 204] } }
+```
+
+- **선택 목록은 서버가 들고 있지 않다.** 매 호출에 전체 `imageIds` 를 보낸다.
+  서버 세션으로 만들면 프로세스 메모리(단일 인스턴스 전제)가 되어 재기동·스케일아웃에서
+  선택이 날아간다. 정수 10개를 다시 보내는 비용으로 무상태를 산다 — 뒤로 가기·앱 재시작·
+  중간 실패가 전부 "그 시점 목록으로 다시 호출" 하나로 복구된다.
+  `selectedImageIds` 로 되돌려 주니 앱이 자기 누적 목록과 대조할 수 있다.
+- **순서는 결과에 영향이 없다.** 중심 벡터는 집합 연산이라 첫 장과 열 번째 장의 무게가
+  같다. 중복 id 는 서버가 제거한다(남기면 그 이미지가 중심에 두 번 반영돼 추천이 쏠린다).
+- 최대 10장(`related.MAX_SELECTION`). 넘기면 400. 문서 생성기 상한
+  (`document.MAX_IMAGES`=30)과는 별개 노브다.
+- `score` 는 **정규화한 중심 벡터**와의 코사인. 순위 근거다.
+- **컷은 중심 벡터가 아니라 "선택 중 아무 한 장과의 최대 코사인"** 이 `SEARCH_KNN_MIN_COSINE`
+  (기본 0.45) 이상인지로 한다. 중심 벡터는 선택이 늘수록 어느 개별 문서와도 멀어져서
+  (다양한 10장이면 관련 문서도 0.37 수준) 고정 임계값에 전부 걸린다 — 추천이 에러 없이
+  마르는 조용한 고장이다. 최대 유사도는 선택 수와 무관하므로 캘리브레이션된 값을 그대로 쓴다.
+  선택이 1장이면 두 기준이 같아져 연관 이미지와 결과가 동일하다.
+- 없는 `imageId`·남의 `imageId` 는 **하나라도 섞이면** `404 IMAGE_NOT_FOUND`.
+  하나만 허용해도 남의 벡터가 중심에 반영돼, 내 이미지 순위로 남의 내용을 추론할 수 있다.
+- **추천 0건은 정상 상태다.** 더 붙일 이미지가 없다는 뜻이고, 사용자는 그 상태로 문서
+  생성으로 넘어갈 수 있어야 한다. 요약 벡터가 있는 선택이 하나도 없을 때도 빈 결과다.
+- 이 엔드포인트는 **문서를 만들지 않는다.** 선택이 끝나면 Spring 이 그 id 들로
+  `POST /internal/v1/documents` 를 부른다.
+
+**모듈 경계.** 화면 계약(`imageIds`·상한·`selectedImageIds`)은
+[app/doc_selection.py](app/doc_selection.py) 가 들고, 검색·중심 벡터·사용자 격리는
+[app/related.py](app/related.py) 의 `similar_images` **하나만** 쓴다. kNN 질의와
+격리 필터를 복사하면 한쪽에서만 `user_id` 필터가 빠지는 사고가 난다.
+점검: `python test/test_doc_selection.py`,
+결과 기록 [test/results/test_doc_selection.md](test/results/test_doc_selection.md).
+
+### 사용자 격리 (위 두 API 공통)
+
+벡터는 사용자별 인덱스가 아니라 **하나의 인덱스·하나의 `embedding`
 필드**에 전부 들어 있다 — 벡터 공간은 물리적으로 공유된다. 격리는 공간 분리가 아니라
 모든 질의에 걸리는 `user_id` term 필터로 한다(목록·검색·집계 전부 같은 방식).
-연관 이미지는 여기서 한 겹 더 건다:
+인근 검색(`related.similar_images`)은 여기서 두 겹 더 건다:
 
+0. 선택 이미지 **전부** 소유 검증(mget 1왕복) — 하나라도 남의 것이면 404.
 1. kNN 질의의 pre-filter — `{"term": {"user_id": ...}}` 를 `knn` 필드객체 안에 둔다
    (OpenSearch 2.4+ lucene efficient pre-filtering).
 2. 돌아온 hit 마다 `user_id` 를 **다시 대조**해 안 맞으면 버리고 `ERROR` 로 남긴다.
@@ -423,11 +481,16 @@ POST /internal/v1/search/related   X-Internal-Token: <공유 토큰>
 소유자(`search.SEED_USER_ID`)로 쓰는 값이다. `FIXED_USER_ID=0` 은 "고정 해제"
 (요청 값 사용)를 의미하고, 그때부터 이 필터가 유일한 격리 장치다.
 
-기능 전체가 **[app/related.py](app/related.py)** 한 파일에 있다(스키마·검색·라우터).
-`main.py` 는 `include_router` 한 줄만 닿고 `search.py`·`schemas.py` 는 안 닿는다 —
-머지 충돌을 피하려는 의도이고, 되돌릴 때도 그 파일과 한 줄만 지우면 된다.
-점검: `python test/test_related.py` (OpenSearch 없이 돈다).
-결과 기록은 [test/results/test_related.md](test/results/test_related.md).
+두 기능 다 **파일 하나 + `main.py` 의 `include_router` 한 줄**이 전부다.
+`search.py`·`schemas.py` 는 안 닿는다 — 머지 충돌을 피하려는 의도이고, 되돌릴 때도
+그 파일과 한 줄만 지우면 된다.
+
+| 기능 | 모듈 | 점검 | 결과 기록 |
+| --- | --- | --- | --- |
+| 연관 이미지 + 인근 검색 코어 | [app/related.py](app/related.py) | `python test/test_related.py` | [test/results/test_related.md](test/results/test_related.md) |
+| 문서화 이미지 선택 | [app/doc_selection.py](app/doc_selection.py) | `python test/test_doc_selection.py` | [test/results/test_doc_selection.md](test/results/test_doc_selection.md) |
+
+둘 다 OpenSearch 없이 돈다(가짜 클라이언트는 `test/fakes.py` 하나를 공유한다).
 
 ## 팀 확인이 필요한 사항
 

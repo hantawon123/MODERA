@@ -1,13 +1,22 @@
 package com.ssafy.modera.api.domain.image.dto.response;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import io.swagger.v3.oas.annotations.media.Schema;
+
+import java.util.List;
 
 public record ImageDetailResponse(
         @Schema(description = "이미지 ID") Integer imageId,
-        @Schema(description = "MinIO 안에서의 객체 키") String s3Key,
-        @Schema(description = "업로드 상태", example = "UPLOADED", allowableValues = {"PENDING", "UPLOADED"}) String uploadStatus,
-        @Schema(description = "분석 상태. worker가 이벤트로 갱신한다", example = "COMPLETED", allowableValues = {"NONE", "PROCESSING", "COMPLETED", "FAILED"}) String analysisStatus,
+        @Schema(description = "원본 이미지 Presigned GET URL") String imageUrl,
+        @Schema(description = "썸네일 Presigned GET URL") String thumbnailUrl,
         @Schema(description = "제목") String title,
-        @Schema(description = "즐겨찾기 여부") Boolean favorite
+        @Schema(description = "즐겨찾기 여부") Boolean favorite,
+        @Schema(description = "분석 요약") String summary,
+        @Schema(description = "카테고리 이름") String category,
+        @Schema(description = "태그 이름 목록") List<String> tags,
+        @Schema(description = "핵심 정보 목록") List<String> keyInformation,
+        @Schema(description = "구조화 데이터") JsonNode structuredData,
+        @Schema(description = "문서화 여부") Boolean isDocumented,
+        @Schema(description = "일정 등록 여부") Boolean isCalendared
 ) {
 }

@@ -55,6 +55,27 @@ public enum DocumentErrorCode implements ErrorCode {
             HttpStatus.CONFLICT,
             "DOCUMENT_REGENERATION_IN_PROGRESS",
             "이미 재분석이 진행 중인 문서입니다."
+    ),
+
+    /**
+     * AI가 우리 요청 자체를 거부했다(4xx). 같은 입력으로 다시 눌러도 결과가 같으므로
+     * 클라이언트는 재시도 버튼을 권하지 않는 게 맞다. 정상 경로에서는 나오면 안 되는
+     * 오류라 — 재료 검증은 이미 끝난 뒤다 — 발생하면 계약 불일치를 의심해야 한다.
+     */
+    DOCUMENT_AI_REJECTED(
+            HttpStatus.BAD_GATEWAY,
+            "DOCUMENT_AI_REJECTED",
+            "문서를 만들 수 없는 요청입니다."
+    ),
+
+    /**
+     * AI 장애·타임아웃이거나 응답에 본문이 없었다. 시간이 지나면 성공할 수 있어
+     * 재시도할 가치가 있다.
+     */
+    DOCUMENT_GENERATION_FAILED(
+            HttpStatus.BAD_GATEWAY,
+            "DOCUMENT_GENERATION_FAILED",
+            "문서 생성에 실패했습니다. 잠시 후 다시 시도해 주세요."
     );
 
     private final HttpStatus status;

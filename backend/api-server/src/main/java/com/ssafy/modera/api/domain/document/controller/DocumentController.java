@@ -4,7 +4,6 @@ import com.ssafy.modera.api.domain.document.dto.request.DocumentCreateRequest;
 import com.ssafy.modera.api.domain.document.dto.request.DocumentRegenerateRequest;
 import com.ssafy.modera.api.domain.document.dto.response.DocumentDeleteResponse;
 import com.ssafy.modera.api.domain.document.dto.response.DocumentDetailResponse;
-import com.ssafy.modera.api.domain.document.dto.response.DocumentGenerationAcceptedResponse;
 import com.ssafy.modera.api.domain.document.dto.response.DocumentImageResponse;
 import com.ssafy.modera.api.domain.document.dto.response.DocumentSummaryResponse;
 import com.ssafy.modera.api.domain.document.service.DocumentCommandService;
@@ -20,7 +19,6 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -40,9 +38,9 @@ import org.springframework.web.bind.annotation.RestController;
 @SecurityRequirement(name = "Bearer Authentication")
 public class DocumentController {
 
-    private static final String CODE_ACCEPTED = "DOCUMENT_GENERATION_ACCEPTED";
-    private static final String MESSAGE_ACCEPTED = "문서 생성 요청이 접수되었습니다.";
-    private static final String MESSAGE_REGENERATION_ACCEPTED = "문서 재분석 요청이 접수되었습니다.";
+    private static final String CODE_CREATED = "DOCUMENT_GENERATION_COMPLETED";
+    private static final String MESSAGE_CREATED = "문서가 생성되었습니다.";
+    private static final String MESSAGE_REGENERATED = "문서를 다시 정리했습니다.";
 
     private final DocumentCommandService documentCommandService;
     private final DocumentQueryService documentQueryService;
@@ -51,32 +49,37 @@ public class DocumentController {
     @Operation(
             summary = "문서 생성",
             description = """
-                    선택한 이미지의 분석 정보를 기반으로 AI 문서 생성을 요청한다. 실제 생성과
-                    저장은 비동기라 이 응답은 접수만 알린다 — 완료되면 별도 알림으로 documentId를
-                    받아 상세 조회를 호출한다.
+                    선택한 이미지의 분석 정보로 AI 문서를 만들어 **완성된 문서를 그대로 돌려준다.**
+                    생성이 끝날 때까지 응답이 나가지 않으므로 폴링이나 완료 알림이 필요 없다.
+
+                    LLM 생성이 수 초~수십 초 걸린다. 클라이언트 read 타임아웃을 넉넉히(90초 이상)
+                    잡아야 하고, 그동안 로딩 화면을 유지하면 된다.
 
                     imageIds 순서는 그대로 유지되며 첫 번째가 중심 자료로 쓰인다. 분석이 끝나지
                     않은 이미지는 문서에 넣을 내용이 없어 요청 단계에서 거부한다.
 
-                    clientRequestId 기준으로 중복을 막는다 — 같은 값으로 다시 호출하면 새 요청을
-                    만들지 않고 409로 끊는다.
+                    clientRequestId 기준으로 중복을 막는다 — 같은 값으로 다시 호출하면 새로 만들지
+                    않고 409로 끊는다. 재시도가 아니라 새 문서를 만들려면 새 UUID를 쓴다.
                     """
     )
     @ApiResponses({
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "202", description = "접수 성공, data에 clientRequestId/status"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "생성 완료. data는 상세 조회(8-3)와 같은 형식"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "imageIds가 비었거나 중복·개수 초과(INVALID_DOCUMENT_IMAGES)"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "accessToken 없음/무효(UNAUTHORIZED)"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "본인 소유가 아닌 이미지 포함(DOCUMENT_IMAGE_NOT_OWNED)"),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409", description = "분석 미완료 이미지 포함 또는 중복 요청")
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409", description = "분석 미완료 이미지 포함 또는 중복 요청"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "502", description = "AI 장애·타임아웃(DOCUMENT_GENERATION_FAILED) 또는 요청 거부(DOCUMENT_AI_REJECTED)")
     })
     @PostMapping
-    public ResponseEntity<ApiResponse<DocumentGenerationAcceptedResponse>> create(
+    public ResponseEntity<ApiResponse<DocumentDetailResponse>> create(
             @AuthenticationPrincipal Integer userId,
             @RequestBody @Valid DocumentCreateRequest request
     ) {
-        DocumentGenerationAcceptedResponse response = documentCommandService.create(userId, request);
-        return ResponseEntity.status(HttpStatus.ACCEPTED)
-                .body(ApiResponse.success(CODE_ACCEPTED, MESSAGE_ACCEPTED, response));
+        return ResponseEntity.ok(ApiResponse.success(
+                CODE_CREATED,
+                MESSAGE_CREATED,
+                documentCommandService.create(userId, request)
+        ));
     }
 
     @Operation(
@@ -164,33 +167,37 @@ public class DocumentController {
     @Operation(
             summary = "문서 재분석",
             description = """
-                    같은 문서를 다시 만든다. 새 문서가 생기지 않고 documentId가 그대로 유지되므로
-                    앱이 보고 있는 화면과 링크가 살아 있고, 실패해도 이전 문서가 남는다.
+                    같은 문서를 다시 만들고 **갱신된 문서를 그대로 돌려준다.** 생성과 마찬가지로
+                    완료될 때까지 응답이 나가지 않는다.
+
+                    새 문서가 생기지 않고 documentId가 그대로 유지되므로 앱이 보고 있는 화면과
+                    링크가 살아 있고, 실패해도(502) 이전 문서 내용이 그대로 남는다.
 
                     imageIds를 생략하면 현재 구성 이미지로 내용만 다시 정리한다. 값을 주면 그것이
                     최종 구성이 되므로 이미지 추가·제외도 이 API 하나로 처리한다.
 
-                    진행 상황은 상세 조회의 regenerating으로 확인한다. 한 문서에 동시에 두 번
-                    재분석할 수는 없다(409).
+                    한 문서에 동시에 두 번 재분석할 수는 없다(409).
                     """
     )
     @ApiResponses({
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "202", description = "접수 성공, data에 clientRequestId/status"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "재분석 완료. data는 상세 조회(8-3)와 같은 형식"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "imageIds가 중복·개수 초과이거나 남는 이미지가 없음(INVALID_DOCUMENT_IMAGES)"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "본인 소유가 아닌 이미지 포함(DOCUMENT_IMAGE_NOT_OWNED)"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "본인 소유가 아니거나 존재하지 않는 documentId(DOCUMENT_NOT_FOUND)"),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409", description = "분석 미완료 이미지 포함, 중복 요청, 또는 이미 재분석 진행 중")
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409", description = "분석 미완료 이미지 포함, 중복 요청, 또는 이미 재분석 진행 중"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "502", description = "AI 장애·타임아웃(DOCUMENT_GENERATION_FAILED) 또는 요청 거부(DOCUMENT_AI_REJECTED)")
     })
     @PostMapping("/{documentId}/regenerate")
-    public ResponseEntity<ApiResponse<DocumentGenerationAcceptedResponse>> regenerate(
+    public ResponseEntity<ApiResponse<DocumentDetailResponse>> regenerate(
             @AuthenticationPrincipal Integer userId,
             @PathVariable(name = "documentId") Integer documentId,
             @RequestBody @Valid DocumentRegenerateRequest request
     ) {
-        DocumentGenerationAcceptedResponse response =
-                documentCommandService.regenerate(userId, documentId, request);
-        return ResponseEntity.status(HttpStatus.ACCEPTED)
-                .body(ApiResponse.success(CODE_ACCEPTED, MESSAGE_REGENERATION_ACCEPTED, response));
+        return ResponseEntity.ok(ApiResponse.success(
+                CODE_CREATED,
+                MESSAGE_REGENERATED,
+                documentCommandService.regenerate(userId, documentId, request)
+        ));
     }
 
     @Operation(

@@ -1,25 +1,26 @@
 package com.ssafy.modera.api.domain.document.service;
 
+import com.ssafy.modera.api.domain.document.client.DocumentAiClient;
 import com.ssafy.modera.api.domain.document.dto.request.DocumentCreateRequest;
 import com.ssafy.modera.api.domain.document.dto.request.DocumentRegenerateRequest;
-import com.ssafy.modera.api.domain.document.dto.response.DocumentGenerationAcceptedResponse;
+import com.ssafy.modera.api.domain.document.dto.response.DocumentDetailResponse;
 import com.ssafy.modera.api.domain.document.entity.DocumentGenerationRequest;
 import com.ssafy.modera.api.domain.document.exception.DocumentErrorCode;
 import com.ssafy.modera.api.domain.document.repository.DocumentGenerationRequestRepository;
 import com.ssafy.modera.api.domain.document.repository.DocumentQueryRepository;
-import com.ssafy.modera.api.domain.event.EventPublisher;
+import com.ssafy.modera.api.domain.image.entity.Ocr;
 import com.ssafy.modera.api.domain.image.exception.ImageErrorCode;
 import com.ssafy.modera.api.domain.image.repository.DocumentSourceImage;
 import com.ssafy.modera.api.domain.image.repository.ImageQueryRepository;
+import com.ssafy.modera.api.domain.image.repository.OcrRepository;
 import com.ssafy.modera.api.global.exception.BusinessException;
-import com.ssafy.modera.contract.EventTypes;
-import com.ssafy.modera.contract.Streams;
-import com.ssafy.modera.contract.payload.DocumentRequestedPayload;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
+import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.RestClientException;
 
 import java.time.OffsetDateTime;
 import java.util.HashSet;
@@ -27,12 +28,24 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
- * 문서 생성 요청 접수(8-2).
+ * 문서 생성·재분석. <b>동기 처리</b>다 — 요청이 끝나야 응답이 나가고, 응답 본문에 완성된
+ * 문서가 실린다.
  *
- * <p>실제 생성은 analysis-worker가 AI를 호출해 수행하고, 이 서비스는 검증·요청 이력 기록·
- * 이벤트 발행까지만 한다. 결과 저장은 {@code DocumentResultEventHandler} 몫이다.
+ * <p>원래는 이벤트로 worker에 넘겨 202로 접수만 알리는 비동기였다. 동기로 바꾼 이유는
+ * 결과를 사용자에게 전달할 길이 없었기 때문이다 — 완료 알림(FCM)도, 진행 상태를 물어볼
+ * 창구도 없어서 앱은 "언젠가 목록에 나타나는" 문서를 기다려야 했다. 동기 응답이면
+ * 폴링도 알림도 필요 없고, 실패를 그 자리에서 에러로 돌려줄 수 있다.
+ *
+ * <p>worker를 경유하지 않는 이유: 경유의 근거가 "OCR이 worker DB에만 있다"였는데, 앱이
+ * 보낸 OCR 원문은 api의 image_schema.ocr에도 그대로 있다. 재료가 전부 여기 있으니 한
+ * 홉을 줄인다.
+ *
+ * <p><b>트레이드오프</b>: 요청 스레드가 LLM 생성이 끝날 때까지(수 초~수십 초) 묶인다.
+ * 문서 생성은 드문 요청이라 MVP에서는 허용한다. read 타임아웃 90초는 AiClientConfig에
+ * 있고, 그보다 오래 걸리면 실패로 끊는다.
  */
 @Slf4j
 @Service
@@ -41,41 +54,44 @@ public class DocumentCommandService {
 
     /**
      * 한 문서에 넣을 수 있는 이미지 수. AI 서버의 MAX_IMAGES와 같은 값이다 — 넘겨 보내면
-     * AI가 400으로 거절하고 worker가 DOCUMENT_AI_REJECTED로 실패시키므로, 사용자에게
-     * 바로 400을 주는 편이 낫다. AI 쪽 상한이 바뀌면 이 값도 같이 맞춘다.
+     * AI가 400으로 거절하므로, 사용자에게 바로 400을 주는 편이 낫다. AI 쪽 상한이 바뀌면
+     * 이 값도 같이 맞춘다.
      */
     private static final int MAX_IMAGES = 30;
 
     private static final String ANALYSIS_STATUS_COMPLETED = "COMPLETED";
 
+    /**
+     * 지시문 기본값. AI가 빈 instruction에 422를 돌려주므로 채워 보낸다(사용자가 지시문
+     * 없이 버튼만 누르는 게 정상 UX다).
+     */
+    private static final String DEFAULT_INSTRUCTION = "선택한 자료들을 정리해 하나의 문서로 만들어 줘";
+
     private final ImageQueryRepository imageQueryRepository;
     private final DocumentQueryRepository documentQueryRepository;
     private final DocumentGenerationRequestRepository documentGenerationRequestRepository;
-    private final EventPublisher eventPublisher;
+    private final OcrRepository ocrRepository;
+    private final DocumentAiClient documentAiClient;
+    private final DocumentPersistService documentPersistService;
+    private final DocumentQueryService documentQueryService;
     private final TransactionTemplate transactionTemplate;
 
-    public DocumentGenerationAcceptedResponse create(Integer userId, DocumentCreateRequest request) {
+    public DocumentDetailResponse create(Integer userId, DocumentCreateRequest request) {
         List<Integer> imageIds = validateImageIds(request.imageIds());
         List<DocumentSourceImage> sources = loadSources(userId, imageIds);
 
         DocumentGenerationRequest saved = enqueue(userId, request);
 
-        // 커밋이 끝난 뒤에 발행한다. 트랜잭션 안에서 발행하면 커밋이 실패했을 때 이미 나간
-        // 이벤트를 되돌릴 수 없어, worker가 존재하지 않는 요청의 문서를 만들게 된다.
-        publish(saved, sources);
-
-        return new DocumentGenerationAcceptedResponse(
-                saved.getClientRequestId(), saved.getStatus());
+        return generate(saved, userId, sources);
     }
 
     /**
-     * 재분석. 생성(8-2)과 같은 이벤트를 발행하고, 다른 점은 요청에 대상 문서를 실어
-     * 완료 시 새 문서를 만드는 대신 그 문서를 갱신하게 한다는 것뿐이다.
+     * 재분석. 완료되면 새 문서를 만들지 않고 대상 문서를 갱신한다.
      *
      * <p>imageIds를 생략하면 현재 구성 이미지를 그대로 쓴다(내용만 다시 정리). 값을 주면
      * 그것이 최종 구성이 되므로 이미지 추가·제외도 같은 경로로 처리된다.
      */
-    public DocumentGenerationAcceptedResponse regenerate(
+    public DocumentDetailResponse regenerate(
             Integer userId, Integer documentId, DocumentRegenerateRequest request) {
         if (!documentQueryRepository.existsDocument(userId, documentId)) {
             throw new BusinessException(DocumentErrorCode.DOCUMENT_NOT_FOUND);
@@ -95,10 +111,55 @@ public class DocumentCommandService {
         List<DocumentSourceImage> sources = loadSources(userId, imageIds);
 
         DocumentGenerationRequest saved = enqueueRegeneration(userId, documentId, request);
-        publish(saved, sources);
 
-        return new DocumentGenerationAcceptedResponse(
-                saved.getClientRequestId(), saved.getStatus());
+        return generate(saved, userId, sources);
+    }
+
+    /**
+     * AI 호출 → 저장 → 완성된 문서 반환.
+     *
+     * <p>트랜잭션 밖에서 AI를 부른다. 호출이 수십 초 걸리므로 트랜잭션 안에 두면 그동안
+     * DB 커넥션을 붙잡고 있게 된다. 요청 이력 저장(앞)과 결과 저장(뒤)이 각각 자기
+     * 트랜잭션을 갖는다.
+     */
+    private DocumentDetailResponse generate(
+            DocumentGenerationRequest saved, Integer userId, List<DocumentSourceImage> sources) {
+        DocumentAiClient.DocumentResponse response;
+        try {
+            response = documentAiClient.generate(toAiRequest(userId, sources));
+        } catch (HttpClientErrorException exception) {
+            // 4xx는 요청 자체가 거부된 것이라 같은 입력으로 다시 눌러도 결과가 같다.
+            log.warn("문서 생성 요청이 거부됨(4xx): documentRequestId={} status={}",
+                    saved.getId(), exception.getStatusCode());
+            documentPersistService.markFailed(saved.getId(), "DOCUMENT_AI_REJECTED");
+            throw new BusinessException(DocumentErrorCode.DOCUMENT_AI_REJECTED);
+        } catch (RestClientException exception) {
+            // 5xx·타임아웃·연결 실패. 시간이 지나면 나을 수 있어 재시도할 가치가 있다.
+            log.warn("문서 생성 호출 실패(장애·타임아웃): documentRequestId={} cause={}",
+                    saved.getId(), exception.getMessage());
+            documentPersistService.markFailed(saved.getId(), "DOCUMENT_AI_ERROR");
+            throw new BusinessException(DocumentErrorCode.DOCUMENT_GENERATION_FAILED);
+        }
+
+        if (response == null || response.markdown() == null || response.markdown().isBlank()) {
+            // 2xx인데 본문이 비었다. "완료인데 내용 없음"을 빈 문서로 저장하지 않는다.
+            log.warn("문서 생성 응답에 markdown이 없다: documentRequestId={}", saved.getId());
+            documentPersistService.markFailed(saved.getId(), "DOCUMENT_EMPTY_RESULT");
+            throw new BusinessException(DocumentErrorCode.DOCUMENT_GENERATION_FAILED);
+        }
+
+        List<Integer> usedImageIds = response.sourceImageIds() == null
+                ? sources.stream().map(DocumentSourceImage::imageId).toList()
+                : response.sourceImageIds();
+
+        Integer documentId = documentPersistService.persist(saved.getId(), new DocumentGenerationResult(
+                response.title(), response.summary(), response.markdown(), usedImageIds));
+        if (documentId == null) {
+            // 재분석 중에 문서가 삭제된 경우. 저장할 곳이 사라졌다.
+            throw new BusinessException(DocumentErrorCode.DOCUMENT_NOT_FOUND);
+        }
+
+        return documentQueryService.getDocument(userId, documentId);
     }
 
     /** 중복·개수만 본다. 소유권·분석 완료는 조회 결과로 판단한다. */
@@ -143,7 +204,7 @@ public class DocumentCommandService {
 
     /**
      * 클라이언트가 준 순서로 되돌린다. IN 절 조회는 순서를 보장하지 않는데,
-     * 이벤트 payload의 이미지 순서는 "첫 번째가 중심 자료"라는 의미를 갖는다.
+     * 이미지 순서는 "첫 번째가 중심 자료"라는 의미를 갖고 AI에 그대로 전달된다.
      */
     private List<DocumentSourceImage> sortByRequestOrder(
             List<Integer> imageIds, List<DocumentSourceImage> found) {
@@ -155,8 +216,56 @@ public class DocumentCommandService {
     }
 
     /**
+     * 조회 모델의 재료 + 앱이 보낸 OCR 원문을 AI 요청으로 옮긴다.
+     *
+     * <p>null을 그대로 넘기지 않고 전부 기본값으로 채우는 게 요점이다 — AI의 DocumentImage는
+     * 이 필드들을 "기본값 있는 필수 필드"로 선언해서, 명시적 null이 오면 요청 전체를
+     * 400으로 거절한다(DocumentAiClient.SourceImage javadoc 참고).
+     */
+    private DocumentAiClient.DocumentRequest toAiRequest(
+            Integer userId, List<DocumentSourceImage> sources) {
+        List<Integer> imageIds = sources.stream().map(DocumentSourceImage::imageId).toList();
+        Map<Integer, String> ocrByImageId = ocrRepository.findByImageIdIn(imageIds).stream()
+                .collect(Collectors.toMap(Ocr::getImageId, ocr -> ocr.getContent() == null ? "" : ocr.getContent(),
+                        (first, second) -> first));
+
+        List<DocumentAiClient.SourceImage> images = sources.stream()
+                .map(source -> new DocumentAiClient.SourceImage(
+                        source.imageId(),
+                        nullToEmpty(source.title()),
+                        nullToEmpty(source.summary()),
+                        nullToEmpty(source.tagNames()),
+                        source.categoryName(),
+                        nullToEmpty(source.keyInformation()),
+                        new DocumentAiClient.Ocr(ocrByImageId.getOrDefault(source.imageId(), "")),
+                        source.uploadedAt() == null ? null : source.uploadedAt().toString()
+                ))
+                .toList();
+
+        return new DocumentAiClient.DocumentRequest(
+                userId,
+                images,
+                null,                  // title: 모델이 정한다
+                DEFAULT_INSTRUCTION,   // 8-2에 사용자 지시문이 없다
+                null                   // language: 기본(한국어 프롬프트)
+        );
+    }
+
+    private String nullToEmpty(String value) {
+        return value == null ? "" : value;
+    }
+
+    private List<String> nullToEmpty(List<String> value) {
+        return value == null ? List.of() : value;
+    }
+
+    /**
      * 요청 이력을 남긴다. UNIQUE(user_id, client_request_id)가 최종 방어선이지만, 먼저
      * 조회해 409를 돌려줘야 "왜 거부됐는지"가 응답에 드러난다.
+     *
+     * <p>AI 호출 전에 커밋해 두는 이유는 이력이 곧 중복 방지 장치라서다 — 같은
+     * clientRequestId로 두 번째 요청이 들어오면 첫 요청이 아직 AI를 기다리는 중이어도
+     * 막혀야 한다.
      */
     private DocumentGenerationRequest enqueue(Integer userId, DocumentCreateRequest request) {
         return transactionTemplate.execute(status -> {
@@ -201,44 +310,5 @@ public class DocumentCommandService {
                 throw new BusinessException(DocumentErrorCode.DOCUMENT_REGENERATION_IN_PROGRESS);
             }
         });
-    }
-
-    /**
-     * 발행이 실패하면 요청을 즉시 FAILED로 확정한다. 그대로 두면 QUEUED인 채로 영원히
-     * 남아 사용자가 아무 결과도 받지 못한다(아직 QUEUED 정체를 훑는 배치가 없다).
-     */
-    private void publish(DocumentGenerationRequest saved, List<DocumentSourceImage> sources) {
-        DocumentRequestedPayload payload = new DocumentRequestedPayload(
-                String.valueOf(saved.getId()),
-                saved.getUserId(),
-                null,   // instruction: 8-2에 사용자 지시문이 없다. worker가 기본 문구로 채운다.
-                sources.stream().map(this::toPayloadImage).toList()
-        );
-
-        try {
-            eventPublisher.publish(Streams.IMAGE_ANALYSIS, EventTypes.DOCUMENT_REQUESTED, 1, payload);
-        } catch (Exception exception) {
-            log.error("DOCUMENT_REQUESTED 발행 실패 — 요청을 FAILED로 확정한다: documentRequestId={}",
-                    saved.getId(), exception);
-            transactionTemplate.executeWithoutResult(status ->
-                    documentGenerationRequestRepository.findById(saved.getId())
-                            .ifPresent(request -> request.fail("EVENT_PUBLISH_FAILED", OffsetDateTime.now())));
-            throw exception;
-        }
-
-        log.info("DOCUMENT_REQUESTED 발행: documentRequestId={} userId={} images={}",
-                saved.getId(), saved.getUserId(), payload.images().size());
-    }
-
-    private DocumentRequestedPayload.SourceImage toPayloadImage(DocumentSourceImage source) {
-        return new DocumentRequestedPayload.SourceImage(
-                source.imageId(),
-                source.title(),
-                source.categoryName(),
-                source.tagNames(),
-                source.keyInformation(),
-                source.summary(),
-                source.uploadedAt() == null ? null : source.uploadedAt().toString()
-        );
     }
 }

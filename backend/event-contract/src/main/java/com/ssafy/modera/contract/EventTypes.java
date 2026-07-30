@@ -18,6 +18,11 @@ public final class EventTypes {
     public static final String DOCUMENT_COMPLETED = "DOCUMENT_COMPLETED";
     public static final String DOCUMENT_FAILED = "DOCUMENT_FAILED";
 
+    public static final String IMAGE_SEMANTIC_SEARCH_REQUESTED =
+            "IMAGE_SEMANTIC_SEARCH_REQUESTED";
+    public static final String IMAGE_SEARCH_COMPLETED = "IMAGE_SEARCH_COMPLETED";
+    public static final String IMAGE_SEARCH_FAILED = "IMAGE_SEARCH_FAILED";
+
     private EventTypes() {
     }
 }

@@ -199,13 +199,17 @@ def fetch_image(image_ref: str) -> bytes:
     return fetch_image_bytes(image_ref)
 
 
-def make_thumbnail(image_bytes: bytes) -> bytes:
+def make_thumbnail(image_bytes: bytes, focus_y: float | None = None) -> bytes:
     """목록·카테고리 카드에 쓸 썸네일을 만든다. 사진 1장당 1개다.
 
-    THUMBNAIL_SQUARE=true(기본)면 정사각으로 잘라내되, 엔트로피(정보량)가 가장
-    높은 위치를 골라 자른다. 스크린샷은 텍스트·UI 가 밀집한 영역이 높게 나와
-    "중요한 내용" 근처가 남는다. 카드와 격자 목록이 모두 정사각이라 여기서
-    모양을 맞춰 두면 앱이 자를 필요가 없다. false 면 원본 비율을 그대로 둔다.
+    THUMBNAIL_SQUARE=true(기본)면 정사각으로 잘라내되, **색채감(colorfulness)이
+    가장 높은 위치**를 골라 자른다(+엔트로피는 동점 보조). 처음엔 엔트로피만
+    썼는데, 엔트로피는 빽빽한 텍스트 벽이 최고점이라 상품·음식 사진 대신 설명
+    문단이 썸네일이 되는 문제가 실측됐다(2026-07-31 실사진 111장 검수). 흑백
+    텍스트는 색채감이 0 에 가깝고 사진·그림 영역이 높으므로 "이미지의 시각적
+    핵심"이 남는다. 전부 텍스트인 문서는 어느 창이든 비슷해 엔트로피 보조가
+    결정한다. 카드와 격자 목록이 모두 정사각이라 여기서 모양을 맞춰 두면 앱이
+    자를 필요가 없다. false 면 원본 비율을 그대로 둔다.
 
     THUMBNAIL_MAX_SIZE 는 축소 상한이다. 0(기본)이면 축소하지 않고 해상도를 원본
     그대로 둔다 — 모양만 정사각으로 맞추는 용도. 값을 주면 그 변까지 줄인다.
@@ -228,17 +232,39 @@ def make_thumbnail(image_bytes: bytes) -> bytes:
             side = min(width, height)
             span = max(width, height) - side
             if span:
-                # 정사각 윈도우를 긴 축을 따라 슬라이드하며 엔트로피가 최대인 곳을 자른다.
-                # ponytail: 9지점 샘플링 휴리스틱 — 부족하면 saliency 모델로 교체
+                # 정사각 윈도우를 긴 축을 따라 슬라이드하며 점수 최대인 곳을 자른다.
+                # 9지점 샘플링 휴리스틱 — 부족하면 saliency 모델로 교체
                 def _box(offset: int) -> tuple[int, int, int, int]:
                     if width > height:
                         return (offset, 0, offset + side, side)
                     return (0, offset, side, offset + side)
 
-                best = max(
-                    range(0, span + 1, max(1, span // 8)),
-                    key=lambda o: image.crop(_box(o)).entropy(),
-                )
+                def _score(offset: int) -> float:
+                    # 색채감(Hasler-Süsstrunk 근사) 주점수 + 엔트로피 보조.
+                    # 64px 로 줄여 순수 파이썬으로 계산해도 창당 수 ms 다.
+                    crop = image.crop(_box(offset))
+                    small = crop.resize((64, 64))
+                    px = list(small.getdata())
+                    n = len(px)
+                    rg = [r - g for r, g, b in px]
+                    yb = [(r + g) / 2 - b for r, g, b in px]
+                    mrg = sum(rg) / n
+                    myb = sum(yb) / n
+                    var = (sum((v - mrg) ** 2 for v in rg) / n
+                           + sum((v - myb) ** 2 for v in yb) / n)
+                    colorfulness = var ** 0.5 + 0.3 * (mrg * mrg + myb * myb) ** 0.5
+                    return colorfulness + 2.0 * crop.entropy()
+
+                if focus_y is not None:
+                    # 융합 AGENT 가 이미지를 직접 보고 짚어준 시각적 핵심 위치(0~1).
+                    # 휴리스틱보다 우선한다 — 쇼핑 화면처럼 상품 사진(흰 배경)보다
+                    # 가격·버튼 UI 가 더 화려한 경우 색채감 점수가 역선택하는 것을
+                    # 모델의 장면 이해로 대체한다(2026-07-31 실측).
+                    long_side = max(width, height)
+                    clamped = min(1.0, max(0.0, focus_y))
+                    best = min(span, max(0, round(clamped * long_side - side / 2)))
+                else:
+                    best = max(range(0, span + 1, max(1, span // 8)), key=_score)
                 image = image.crop(_box(best))
             if 0 < limit < side:
                 image = image.resize((limit, limit), Image.LANCZOS)
@@ -283,14 +309,15 @@ def fetch_thumbnail(key: str) -> bytes:
         raise ImageFetchError(_why("썸네일 객체를 읽지 못했습니다", key, e)) from e
 
 
-def store_thumbnail(image_ref: str, image_bytes: bytes | None = None) -> bytes:
+def store_thumbnail(image_ref: str, image_bytes: bytes | None = None,
+                    focus_y: float | None = None) -> bytes:
     """원본을 읽어 썸네일을 만들고 썸네일 버킷에 올린다. 만든 바이트를 돌려준다.
 
     image_bytes 를 넘기면 원본을 다시 내려받지 않는다(분석 때 이미 읽어둔 것 재사용).
     image_ref 가 http(s) URL 이면 저장할 key 를 정할 수 없으므로 생성만 하고 넘어간다.
     """
     raw = image_bytes if image_bytes is not None else fetch_image(image_ref)
-    thumb = make_thumbnail(raw)
+    thumb = make_thumbnail(raw, focus_y)
     settings = get_settings()
     if settings.s3_thumbnail_bucket and not image_ref.startswith(("http://", "https://")):
         # 저장 실패는 치명적이지 않다. 썸네일 자체는 이미 만들었으므로 그대로 돌려주고

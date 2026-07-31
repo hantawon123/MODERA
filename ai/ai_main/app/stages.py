@@ -147,13 +147,19 @@ def run_llm(ocr_text: str) -> tuple[str, dict[str, Any]]:
         "'정보성' 콘텐츠인지 판단하라.\n"
         "정보성 예: 상품/가격, 일정/예약, 쿠폰/할인, 장소/맛집, 채용, 개발 지식/오류, 기사 요지 등 "
         "나중에 다시 찾아볼 실질 정보.\n"
-        "비정보성 예: 순수 UI 요소(홈/검색/설정 같은 내비게이션 텍스트만 있는 화면), 빈 화면, "
-        "의미 없는 밈/장식.\n"
+        # 도구 화면 예시는 경량 모델용 보강(2026-07-31): 계산기 화면의 숫자를
+        # '정보'로 오판해 통과시키면, AGENT 의 '기타 금지' 규칙과 결합해
+        # '계산' 같은 쓰레기 카테고리가 생긴다(실측). 예시로 명시해 막는다.
+        "비정보성 예: 순수 UI 요소(홈/검색/설정 같은 내비게이션 텍스트만 있는 화면), "
+        "계산기·시계·배터리처럼 도구 화면에 떠 있는 일시적 숫자, 네트워크 오류·로딩 화면, "
+        "빈 화면, 의미 없는 밈/장식.\n"
         "반드시 아래 JSON만 출력. 마크다운·설명 금지.\n"
         '{"informative": true, "confidence": 0.0, "reason": "간단한 근거"}\n\n'
         f"OCR 텍스트:\n{ocr_text}"
     )
-    parsed = gemini_client.generate_json(settings.llm_model_name, [prompt])
+    # 이진 판단이라 경량 모델 전용 스위치를 쓴다 — AGENT 모델을 올릴 때
+    # 이 호출까지 따라 올라가지 않게 분리(비용 절반, config 참조).
+    parsed = gemini_client.generate_json(settings.informative_model_name, [prompt])
     return "COMPLETED", {
         "informative": bool(parsed.get("informative", False)),
         "confidence": float(parsed.get("confidence", 0.0)),

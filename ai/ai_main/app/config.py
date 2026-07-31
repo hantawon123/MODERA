@@ -141,6 +141,16 @@ class Settings:
         # (gemini-3.5-flash-lite 는 400 "Model is not available")
         self.llm_model_name = os.environ.get("LLM_MODEL_NAME", "gemini-2.5-flash-lite")
         self.vision_model_name = os.environ.get("VISION_MODEL_NAME", "gemini-2.5-flash-lite")
+        # 정보성 판별(EMPTY 거르기) 전용 모델 스위치. AGENT(LLM_MODEL_NAME)를 상위
+        # 모델로 올릴 때 이 호출까지 따라 올라가 비용이 2배가 되는 것을 막는 용도
+        # (GMS 실측 2026-07-31: 장당 67크레딧 중 절반이 이 호출).
+        # ⚠️ 기본값은 안전하게 AGENT 모델을 따라간다 — GMS 의 2.5-flash-lite 는
+        # 비정보성 화면(계산기·배터리 통계)을 통과시켰고, 그 누수가 AGENT 의
+        # "기타 금지" 규칙과 결합하면 '계산'·'스마트폰' 같은 쓰레기 카테고리가
+        # 생긴다(실측). 프롬프트 보강 후에도 4장 중 1장(배터리) 누수. lite 절감은
+        # 실데이터 누수율 측정 후 INFORMATIVE_MODEL_NAME 로 명시 옵트인할 것.
+        self.informative_model_name = (
+            os.environ.get("INFORMATIVE_MODEL_NAME") or self.llm_model_name)
         self.embedding_model_name = os.environ.get("EMBEDDING_MODEL_NAME", "gemini-embedding-2")
         # 임베딩 차원. 팀 합의로 768 고정이며 pgvector 컬럼(vector(768))과 일치해야 한다.
         # gemini-embedding-2 의 기본 출력은 3072 라 호출 시 명시적으로 줄여서 받는다.

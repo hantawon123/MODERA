@@ -18,10 +18,11 @@ import java.util.Map;
 @Transactional(readOnly = true)
 public class CategoryQueryService {
 
+    // 다른 목록 API(5-1 TITLE_ASC, 8-1 UPDATED_DESC, 9-1 START_ASC)와 같은 enum 방식.
     private static final Map<String, String> SORT_SQL = Map.of(
-            "name,asc", "category_name ASC, category_id ASC",
-            "updatedat,desc", "latest_uploaded_at DESC NULLS LAST, category_id ASC",
-            "imagecount,desc", "image_count DESC, category_id ASC"
+            "NAME_ASC", "category_name ASC, category_id ASC",
+            "UPDATED_DESC", "latest_uploaded_at DESC NULLS LAST, category_id ASC",
+            "IMAGE_COUNT_DESC", "image_count DESC, category_id ASC"
     );
 
     private final CategoryQueryRepository categoryQueryRepository;
@@ -29,8 +30,8 @@ public class CategoryQueryService {
 
     public CategoryListResponse getCategories(Integer userId, String sort) {
         String normalizedSort = sort == null || sort.isBlank()
-                ? "name,asc"
-                : sort.trim().toLowerCase(Locale.ROOT);
+                ? "NAME_ASC"
+                : sort.trim().toUpperCase(Locale.ROOT);
         String orderBy = SORT_SQL.get(normalizedSort);
         if (orderBy == null) {
             throw new BusinessException(GlobalErrorCode.INVALID_PARAMETER);

@@ -10,6 +10,7 @@ import com.ssafy.modera.api.domain.library.entity.UserImage;
 import com.ssafy.modera.api.domain.library.repository.UserImageRepository;
 import com.ssafy.modera.api.domain.image.repository.ImageQueryRepository;
 import com.ssafy.modera.api.domain.image.repository.UserImageViewRow;
+import com.ssafy.modera.api.domain.schedule.service.ScheduleCreationService;
 import com.ssafy.modera.contract.payload.AnalysisCompletedPayload;
 import com.ssafy.modera.contract.payload.AnalysisFailedPayload;
 import lombok.RequiredArgsConstructor;
@@ -30,6 +31,7 @@ public class AnalysisResultEventHandler {
     private final ImageAssetRepository imageAssetRepository;
     private final ThumbnailRepository thumbnailRepository;
     private final ImageQueryRepository imageQueryRepository;
+    private final ScheduleCreationService scheduleCreationService;
     private final ObjectMapper objectMapper;
 
     @Transactional
@@ -49,15 +51,16 @@ public class AnalysisResultEventHandler {
             return;
         }
 
+        String resolvedTitle = payload.title() == null || payload.title().isBlank()
+                ? imageAsset.getFileName()
+                : payload.title();
         imageQueryRepository.upsert(new UserImageViewRow(
                 payload.userId(),
                 imageId,
                 imageAsset.getFileName(),
                 imageAsset.getS3Key(),
                 resolveThumbnailKey(payload, imageId),
-                payload.title() == null || payload.title().isBlank()
-                        ? imageAsset.getFileName()
-                        : payload.title(),
+                resolvedTitle,
                 payload.summary(),
                 payload.categoryName(),
                 payload.tagNames(),
@@ -68,6 +71,14 @@ public class AnalysisResultEventHandler {
                 false,
                 imageAsset.getUploadedAt()
         ));
+
+        scheduleCreationService.createFromAnalysis(
+                payload.userId(),
+                imageId,
+                resolvedTitle,
+                payload.structuredType(),
+                payload.structuredFields()
+        );
     }
 
     private String resolveThumbnailKey(AnalysisCompletedPayload payload, Integer imageId) {

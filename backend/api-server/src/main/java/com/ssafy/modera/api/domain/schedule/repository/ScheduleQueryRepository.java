@@ -159,4 +159,52 @@ public class ScheduleQueryRepository {
         );
         return Boolean.TRUE.equals(exists);
     }
+
+    /** 같은 이미지에 연결된 활성 일정(관계·사용자 관계 모두 del_yn='N')이 있는지 확인한다. */
+    public boolean existsActiveScheduleForImage(Integer userId, Integer imageId) {
+        Boolean exists = jdbcTemplate.queryForObject(
+                """
+                SELECT EXISTS (
+                    SELECT 1
+                    FROM library_schema.image_schedule image_schedule
+                    JOIN library_schema.user_schedule user_schedule
+                      ON user_schedule.schedule_id = image_schedule.schedule_id
+                     AND user_schedule.user_id = ?
+                     AND user_schedule.del_yn = 'N'
+                    WHERE image_schedule.image_id = ?
+                      AND image_schedule.del_yn = 'N'
+                )
+                """,
+                Boolean.class,
+                userId,
+                imageId
+        );
+        return Boolean.TRUE.equals(exists);
+    }
+
+    public void insertView(
+            Integer userId,
+            Integer scheduleId,
+            Integer imageId,
+            String title,
+            OffsetDateTime startAt,
+            OffsetDateTime endAt,
+            OffsetDateTime now
+    ) {
+        jdbcTemplate.update(
+                """
+                INSERT INTO query_schema.user_schedule_view (
+                    user_id, schedule_id, image_id, title, start_at, end_at,
+                    is_calendared_yn, updated_at, del_yn
+                ) VALUES (?, ?, ?, ?, ?, ?, 'N', ?, 'N')
+                """,
+                userId,
+                scheduleId,
+                imageId,
+                title,
+                startAt,
+                endAt,
+                now
+        );
+    }
 }

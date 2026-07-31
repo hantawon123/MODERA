@@ -45,6 +45,7 @@ public class CategoryCommandRepository {
                            user_image_category_history_id AS history_id
                     FROM library_schema.user_image_category_history
                     WHERE user_image_id = ?
+                      AND del_yn = 'N'
                     UNION ALL
                     SELECT COALESCE(
                                ui.current_category_id,
@@ -131,8 +132,8 @@ public class CategoryCommandRepository {
         jdbcTemplate.update(
                 """
                 INSERT INTO library_schema.user_image_category_history (
-                    user_image_id, category_id, source
-                ) VALUES (?, ?, 'REANALYSIS')
+                    user_image_id, category_id, source, del_yn
+                ) VALUES (?, ?, 'REANALYSIS', 'N')
                 """,
                 userImageId, categoryId
         );
@@ -144,6 +145,7 @@ public class CategoryCommandRepository {
                       SELECT user_image_category_history_id
                       FROM library_schema.user_image_category_history
                       WHERE user_image_id = ?
+                        AND del_yn = 'N'
                       ORDER BY created_at DESC,
                                user_image_category_history_id DESC
                       LIMIT 5
@@ -211,6 +213,7 @@ public class CategoryCommandRepository {
                       SELECT 1
                       FROM library_schema.user_image_category_history history
                       WHERE history.user_image_id = ui.user_image_id
+                        AND history.del_yn = 'N'
                   )
                 """,
                 userId, imageId

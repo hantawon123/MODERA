@@ -407,6 +407,31 @@ POST /internal/v1/search/related   X-Internal-Token: <공유 토큰>
   알려 주면 남의 imageId 열거에 쓰인다).
 - `total` 은 고정 후보풀 위의 생존자 수라 페이지를 넘겨도 흔들리지 않는다.
 
+### 자연어 검색 (명세 5-5) — `POST /internal/v1/search/semantic`
+
+앱의 `POST /api/v1/images/search/semantic` 뒤에 있는 AI 구간. API 서버가
+`IMAGE_SEMANTIC_SEARCH_REQUESTED` 를 Redis Streams 로 발행하면 analysis-worker 가
+이 엔드포인트를 부르고, 응답 봉투를 결과 스트림에 그대로 싣는다.
+
+```json
+POST /internal/v1/search/semantic   X-Internal-Token: <공유 토큰>
+{ "userId": 1, "query": "C++ 프로그래밍 책 가격을 보여줘",
+  "correlationId": "0d2647bb-...", "page": 0, "size": 20 }
+```
+
+```json
+{ "eventType": "IMAGE_SEARCH_COMPLETED", "version": 1,
+  "payload": { "correlationId": "0d2647bb-...", "total": 2, "page": 0, "size": 20,
+    "hits": [ { "imageId": 101, "score": 3.9987202 }, { "imageId": 102, "score": 1.8765116 } ] } }
+```
+
+- 검색은 `/internal/v1/search` 기본 모드와 같은 **cascade(F4)**: BM25 먼저, 빈
+  결과면 시맨틱(하이브리드) 승격. 문장·단어 모두 이 경로 하나로 처리한다.
+- `query` 는 앞뒤 공백 제거 후 빈 문자열이면 `400 INVALID_REQUEST`.
+- `size` 기본 20, 최대 100. `correlationId` 생략 시 서버가 UUID 를 만든다.
+- `score` 는 정렬 근거일 뿐 스케일 의미가 없다(BM25/하이브리드에 따라 다름).
+  API 서버는 순서만 유지하고 score 는 클라이언트에 내리지 않는다.
+
 ### 문서화 이미지 선택 — `POST /internal/v1/documents/candidates`
 
 문서화 재료를 한 장씩 늘려 가며 고르는 화면. 지금까지 고른 이미지들의 **중심 벡터**로

@@ -1133,14 +1133,13 @@ Worker는 5-5와 동일한 `IMAGE_SEARCH_COMPLETED` 이벤트를 반환한다.
 | --- | --- |
 | API | `GET /api/v1/categories` |
 | 기능 | HOM-002, 카테고리 메인 |
-| 설명 | 카테고리 이름·이미지 수·최신 업로드 날짜, 이미지를 포함한 카테고리 카드를 페이지 단위로 조회한다. |
+| 설명 | 카테고리 이름·이미지 수·최신 업로드 날짜, 이미지를 포함한 카테고리 카드를 전체 목록으로 조회한다(페이지네이션 없음). |
 
 ### Query Parameters
 
 | 파라미터 | 설명 |
 | --- | --- |
-| sort | `name,asc`(기본) / `updatedAt,desc`(최신 업로드순) / `imageCount,desc`(사진 많은 순) |
-| page / size | 공통 페이지 규약. size 기본 20, 최대 100 |
+| sort | `NAME_ASC`(이름순, 기본) / `UPDATED_DESC`(최신 업로드순) / `IMAGE_COUNT_DESC`(사진 많은 순). 대소문자 무관, 그 외 값은 `INVALID_PARAMETER`(400) |
 
 ### Response `data`
 
@@ -1165,13 +1164,7 @@ Worker는 5-5와 동일한 `IMAGE_SEARCH_COMPLETED` 이벤트를 반환한다.
         "imageCount": 52,
         "latestUpdatedAt": "2026-07-18T06:00:00.000Z"
       }
-    ],
-    "page": 0,
-    "size": 20,
-    "totalElements": 8,
-    "totalPages": 1,
-    "hasNext": false,
-    "hasPrevious": false
+    ]
   },
   "timestamp": "2026-07-16T06:00:00.000Z"
 }

@@ -34,11 +34,11 @@ class CategoryControllerTest {
 
     @Test
     void bindsHttpQueryParametersAndReturnsT202() throws Exception {
-        when(categoryQueryService.getCategories(null, "imageCount,desc"))
+        when(categoryQueryService.getCategories(null, "IMAGE_COUNT_DESC"))
                 .thenReturn(new CategoryListResponse(List.of()));
 
         mockMvc.perform(get("/api/v1/categories")
-                        .queryParam("sort", "imageCount,desc"))
+                        .queryParam("sort", "IMAGE_COUNT_DESC"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.result").value("SUCCESS"))
                 .andExpect(jsonPath("$.code").value("T202"))
@@ -46,19 +46,19 @@ class CategoryControllerTest {
                 .andExpect(jsonPath("$.data.page").doesNotExist());
 
         verify(categoryQueryService)
-                .getCategories(null, "imageCount,desc");
+                .getCategories(null, "IMAGE_COUNT_DESC");
     }
 
     @Test
     void appliesSpecificationDefaultsThroughHttpBinding() throws Exception {
-        when(categoryQueryService.getCategories(null, "name,asc"))
+        when(categoryQueryService.getCategories(null, "NAME_ASC"))
                 .thenReturn(new CategoryListResponse(List.of()));
 
         mockMvc.perform(get("/api/v1/categories"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("T202"));
 
-        verify(categoryQueryService).getCategories(null, "name,asc");
+        verify(categoryQueryService).getCategories(null, "NAME_ASC");
     }
 
     @Test

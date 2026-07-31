@@ -33,7 +33,7 @@ class CategoryQueryServiceTest {
         when(categoryImageUrlFactory.createViewUrl("categories/study.jpg"))
                 .thenReturn("http://localhost/category-image");
 
-        var result = categoryQueryService.getCategories(1, "name,asc");
+        var result = categoryQueryService.getCategories(1, " name_asc ");
 
         assertThat(result.list().getFirst().categoryId()).isEqualTo(3);
         assertThat(result.list().getFirst().name()).isEqualTo("공부");
@@ -44,9 +44,12 @@ class CategoryQueryServiceTest {
     }
 
     @Test
-    void rejectsUnsupportedSortAndInvalidPage() {
+    void rejectsUnsupportedSortIncludingOldCommaStyle() {
         assertThatThrownBy(() ->
-                categoryQueryService.getCategories(1, "name,desc"))
+                categoryQueryService.getCategories(1, "NAME_DESC"))
+                .isInstanceOf(BusinessException.class);
+        assertThatThrownBy(() ->
+                categoryQueryService.getCategories(1, "name,asc"))
                 .isInstanceOf(BusinessException.class);
     }
 }

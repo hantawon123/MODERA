@@ -45,7 +45,31 @@ class CategoryCommandRepositoryTest {
                 excludedSql.capture(), eq(Integer.class), eq(31), eq(31));
         assertThat(excludedSql.getValue())
                 .contains("current_category_id")
+                .contains("view.category_id")
+                .contains("category.category_id")
                 .contains("DISTINCT ON (category_id)")
                 .contains("LIMIT 5");
+    }
+
+    @Test
+    void refusesToPublishReanalysisWithoutAnyResolvableCategoryId() {
+        JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
+        CategoryCommandRepository repository =
+                new CategoryCommandRepository(jdbcTemplate);
+        UUID requestId = UUID.randomUUID();
+
+        when(jdbcTemplate.query(
+                any(String.class),
+                any(org.springframework.jdbc.core.RowMapper.class),
+                eq(7),
+                eq(18)
+        )).thenReturn(List.of(31));
+        when(jdbcTemplate.queryForList(
+                any(String.class), eq(Integer.class), eq(31), eq(31)
+        )).thenReturn(List.of());
+
+        assertThat(repository.prepareRequest(7, 18, requestId)).isEmpty();
+        verify(jdbcTemplate, org.mockito.Mockito.never()).update(
+                any(String.class), any(), any());
     }
 }

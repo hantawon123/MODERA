@@ -23,6 +23,9 @@ object ModeraIcons {
     val ArrowRightCircle = R.drawable.ic_arrow_right_circle_20
 
     @DrawableRes
+    val ArrowUp = R.drawable.ic_arrow_up_24
+
+    @DrawableRes
     val Bell = R.drawable.ic_bell_24
 
     @DrawableRes

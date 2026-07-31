@@ -1,4 +1,4 @@
-package com.ssafy.modera.core.component.item
+package com.ssafy.modera.core.component
 
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode

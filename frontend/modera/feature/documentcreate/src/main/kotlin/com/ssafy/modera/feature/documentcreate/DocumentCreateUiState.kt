@@ -14,7 +14,7 @@ sealed interface DocumentCreateUiState {
     ) : DocumentCreateUiState {
 
         val canCreateDocument: Boolean
-            get() = selectedImages.isNotEmpty() && !isCreating
+            get() = selectedImages.size > 1 && !isCreating
     }
 
     data class Error(

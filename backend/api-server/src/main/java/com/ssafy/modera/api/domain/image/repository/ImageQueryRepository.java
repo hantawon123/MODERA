@@ -172,15 +172,6 @@ public class ImageQueryRepository {
     }
 
     public boolean copyExistingView(Integer userId, Integer imageId) {
-        jdbcTemplate.update(
-                """
-                DELETE FROM query_schema.user_image_view
-                WHERE user_id = ? AND image_id = ? AND del_yn = 'Y'
-                """,
-                userId,
-                imageId
-        );
-
         boolean copied = jdbcTemplate.update(
                 """
                 INSERT INTO query_schema.user_image_view (
@@ -204,9 +195,9 @@ public class ImageQueryRepository {
                   ON category.category_id = default_category.category_id
                  AND category.del_yn = 'N'
                 WHERE source.image_id = ?
-                  AND source.del_yn = 'N'
                   AND source.analysis_status IN ('COMPLETED', 'EMPTY')
                 ORDER BY CASE WHEN source.user_id = ? THEN 0 ELSE 1 END,
+                         CASE WHEN source.del_yn = 'N' THEN 0 ELSE 1 END,
                          source.uploaded_at DESC NULLS LAST
                 LIMIT 1
                 ON CONFLICT (user_id, image_id) DO UPDATE SET
@@ -222,8 +213,11 @@ public class ImageQueryRepository {
                     structured_data = EXCLUDED.structured_data,
                     upload_status = EXCLUDED.upload_status,
                     analysis_status = EXCLUDED.analysis_status,
-                    uploaded_at = EXCLUDED.uploaded_at
-                WHERE query_schema.user_image_view.del_yn = 'N'
+                    favorite = false,
+                    uploaded_at = EXCLUDED.uploaded_at,
+                    del_yn = 'N',
+                    is_documented_yn = 'N',
+                    is_calendared_yn = 'N'
                 """,
                 userId,
                 imageId,

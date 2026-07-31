@@ -53,8 +53,7 @@ fun FavoritesScreen(
         ) {
             LazyColumn(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = FavoritesScreenDefaults.HorizontalPadding),
+                    .fillMaxSize(),
             ) {
                 item(key = "favorites_header") {
                     FavoritesHeader(

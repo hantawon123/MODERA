@@ -8,17 +8,21 @@
 """
 
 import logging
+import uuid
 
 from fastapi import APIRouter, BackgroundTasks, Depends
 from fastapi.responses import JSONResponse
+from pydantic import Field
 
 from . import document, gemini_client, search
 from .config import get_settings
 from .deps import _error, require_internal_token
 from .jobs import job_registry
+from .related import ImageSearchCompletedEvent, ImageSearchPayload
 from .schemas import (
     AnalyzeAccepted,
     AnalyzeRequest,
+    CamelModel,
     DocumentRequest,
     DocumentResponse,
     EmbedRequest,
@@ -173,6 +177,53 @@ async def keyword_search(request: SearchRequest):
     response = SearchResponse(total=total, page=request.page, size=request.size,
                               hits=[SearchHit(**h) for h in hits])
     return JSONResponse(status_code=200, content=response.model_dump(by_alias=True))
+
+
+# ── 5-5 자연어 기반 AI 이미지 검색 ────────────────────────────────────────
+class SemanticSearchRequest(CamelModel):
+    # 0 이하 차단 이유는 related.RelatedSearchRequest 와 같다(0 = 전역 시드 소유자).
+    user_id: int = Field(gt=0)
+    query: str
+    # analysis-worker 가 Redis 이벤트에서 그대로 실어 보낸다. 없으면 서버가 만든다.
+    correlation_id: str | None = None
+    page: int = Field(default=0, ge=0)
+    size: int = Field(default=20, ge=1, le=100)
+
+
+@router.post("/internal/v1/search/semantic",
+             dependencies=[Depends(require_internal_token)],
+             response_model=ImageSearchCompletedEvent,
+             responses={400: {"description": "INVALID_REQUEST"},
+                        502: {"description": "SEARCH_FAILED"}})
+async def semantic_search(request: SemanticSearchRequest):
+    """명세 5-5 의 AI 구간. analysis-worker 가 IMAGE_SEMANTIC_SEARCH_REQUESTED
+    이벤트를 받아 이걸 부르고, 응답(IMAGE_SEARCH_COMPLETED 봉투)을 결과
+    스트림에 그대로 싣는다 — 연관 이미지·문서화 후보와 같은 봉투다.
+
+    검색은 /internal/v1/search 의 기본 모드와 같은 cascade(F4): BM25 먼저,
+    빈 결과면 시맨틱(하이브리드) 승격. "문장 또는 단어" 모두 이 경로 하나로
+    처리한다 — 질의를 '자연어인지' 분류하지 않는다(keyword_search docstring).
+    """
+    correlation_id = request.correlation_id or str(uuid.uuid4())
+    query = request.query.strip()
+    if not query:
+        return _error("INVALID_REQUEST", "query 가 비어 있습니다.", http_status=400)
+    try:
+        import asyncio
+        hits, total = await asyncio.to_thread(
+            search.keyword_search, request.user_id, query,
+            None, request.size, request.page,
+        )
+    except Exception as e:
+        logger.exception("자연어 검색 실패 userId=%s", request.user_id)
+        return _error("SEARCH_FAILED", str(e)[:500], http_status=502)
+
+    event = ImageSearchCompletedEvent(payload=ImageSearchPayload(
+        correlation_id=correlation_id, total=total,
+        page=request.page, size=request.size,
+        hits=[SearchHit(**h) for h in hits],
+    ))
+    return JSONResponse(status_code=200, content=event.model_dump(by_alias=True))
 
 
 # ── 문서화 (분석 완료 이미지 → 마크다운) ─────────────────────────────────

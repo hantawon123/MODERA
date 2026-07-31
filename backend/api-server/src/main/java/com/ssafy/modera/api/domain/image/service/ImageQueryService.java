@@ -1,7 +1,7 @@
 package com.ssafy.modera.api.domain.image.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ssafy.modera.api.domain.image.dto.response.ImageDetailResponse;
 import com.ssafy.modera.api.domain.image.dto.response.ImageSummaryResponse;
@@ -193,12 +193,16 @@ public class ImageQueryService {
                 .toString();
     }
 
-    private JsonNode parseStructuredData(String structuredDataJson) {
+    private Map<String, Object> parseStructuredData(String structuredDataJson) {
         if (structuredDataJson == null || structuredDataJson.isBlank()) {
             return null;
         }
         try {
-            return objectMapper.readTree(structuredDataJson);
+            // 응답 직렬화는 Jackson 3(tools.jackson) 컨버터가 담당해서 Jackson 2의
+            // JsonNode를 트리로 인식하지 못한다(게터들이 POJO 프로퍼티로 직렬화돼
+            // 내용이 사라짐). 표준 Map/List로 풀어 넘겨야 내용이 그대로 나간다.
+            return objectMapper.readValue(
+                    structuredDataJson, new TypeReference<Map<String, Object>>() {});
         } catch (JsonProcessingException exception) {
             throw new IllegalStateException("이미지 구조화 데이터를 읽을 수 없습니다.", exception);
         }

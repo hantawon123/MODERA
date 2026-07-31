@@ -129,6 +129,10 @@ class CalendarViewModel @Inject constructor(
         visibleMonth.value = YearMonth.from(date)
     }
 
+    fun onTodayClick() {
+        onDateClick(today)
+    }
+
     fun onYearClick() {
         showYearPicker.value = true
     }

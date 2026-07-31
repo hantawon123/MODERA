@@ -9,8 +9,8 @@ import androidx.compose.ui.layout.layoutId
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Constraints
 import com.ssafy.modera.core.component.PulsingGradientCircle
-import com.ssafy.modera.core.component.item.ModeraSearchBar
-import com.ssafy.modera.core.component.item.SearchBarMode
+import com.ssafy.modera.core.component.ModeraSearchBar
+import com.ssafy.modera.core.component.SearchBarMode
 import com.ssafy.modera.feature.home.R
 import kotlin.math.roundToInt
 

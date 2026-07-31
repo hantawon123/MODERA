@@ -21,7 +21,7 @@ import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ssafy.modera.core.component.ModeraTopBar
-import com.ssafy.modera.core.component.item.ModeraMaterialItem
+import com.ssafy.modera.core.component.item.ModeraAnalyzedImageItem
 import com.ssafy.modera.core.designsystem.component.HorizontalDivider
 import com.ssafy.modera.core.designsystem.component.Text
 import com.ssafy.modera.core.designsystem.theme.ModeraTheme
@@ -139,11 +139,14 @@ private fun RelatedImagesContent(
             items = relatedImages,
             key = AnalyzedImage::id,
         ) { image ->
-            ModeraMaterialItem(
+            ModeraAnalyzedImageItem(
                 title = image.title,
                 description = image.summary,
                 tags = image.hashtags,
                 imageUrl = image.thumbnailUrl,
+                favorite = image.favorite,
+                isDocumented = image.isDocumented,
+                hasSchedule = image.hasSchedule,
                 onClick = {
                     onRelatedImageClick(image.id)
                 },

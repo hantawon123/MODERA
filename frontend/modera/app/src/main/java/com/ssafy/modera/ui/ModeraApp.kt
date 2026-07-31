@@ -63,7 +63,7 @@ import com.ssafy.modera.feature.relatedimages.navigation.relatedImagesEntry
 import com.ssafy.modera.media.rememberGalleryPickerLauncher
 import com.ssafy.modera.navigation.BOTTOM_NAV_ITEMS
 import com.ssafy.modera.navigation.DocumentsNavKey
-import com.ssafy.modera.navigation.FavoritesNavKey
+import com.ssafy.modera.feature.favorite.navigation.favoritesEntry
 import com.ssafy.modera.navigation.TOP_LEVEL_NAV_ITEMS
 
 @Composable
@@ -226,7 +226,9 @@ internal fun ModeraApp(
                                     onSearchIconClick = navigator::navigateToCategorySearch,
                                     onItemClick = { /* TODO: 자료 상세 연결 */ },
                                 )
-                                favoritesEntry()
+                                favoritesEntry(
+                                    onItemClick = { /* TODO: 자료 상세 연결 */ },
+                                )
                                 documentsEntry()
                                 categoryImagesEntry(
                                     navigator = navigator,
@@ -255,11 +257,6 @@ internal fun ModeraApp(
             }
         }
     }
-}
-
-// TODO : 추후 각 NavigationProvider에 추가
-fun EntryProviderScope<NavKey>.favoritesEntry() {
-    entry<FavoritesNavKey> {}
 }
 
 fun EntryProviderScope<NavKey>.documentsEntry() {

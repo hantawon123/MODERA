@@ -11,10 +11,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -25,10 +27,12 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.ssafy.modera.core.component.ModeraScrollToTopButton
 import com.ssafy.modera.core.component.ModeraSortSection
 import com.ssafy.modera.core.component.ModeraTopBar
 import com.ssafy.modera.core.component.ModeraTopBarDefaults
-import com.ssafy.modera.core.component.item.ModeraMaterialItem
+import com.ssafy.modera.core.component.item.ModeraAnalyzedImageItem
+import com.ssafy.modera.core.component.rememberShowScrollToTop
 import com.ssafy.modera.core.designsystem.component.HorizontalDivider
 import com.ssafy.modera.core.designsystem.component.Icon
 import com.ssafy.modera.core.designsystem.component.Text
@@ -39,6 +43,7 @@ import com.ssafy.modera.core.model.category.CategorySheetItem
 import com.ssafy.modera.core.model.category.CategorySortType
 import com.ssafy.modera.core.util.statusBarTopPadding
 import com.ssafy.modera.feature.category.component.CategoryTopSheet
+import kotlinx.coroutines.launch
 
 @Composable
 fun CategoryRoute(
@@ -124,6 +129,10 @@ fun CategoryScreen(
     onItemClick: (Long) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val listState = rememberLazyListState()
+    val showScrollToTop = rememberShowScrollToTop(listState)
+    val coroutineScope = rememberCoroutineScope()
+
     Box(
         modifier = modifier
             .fillMaxSize()
@@ -172,8 +181,9 @@ fun CategoryScreen(
                 },
             )
 
-            Box() {
+            Box {
                 LazyColumn(
+                    state = listState,
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(horizontal = CategoryScreenDefaults.HorizontalPadding),
@@ -218,11 +228,14 @@ fun CategoryScreen(
                         items = analyzedImages,
                         key = { it.id },
                     ) { analyzedImage ->
-                        ModeraMaterialItem(
+                        ModeraAnalyzedImageItem(
                             title = analyzedImage.title,
                             description = analyzedImage.summary,
                             tags = analyzedImage.hashtags,
                             imageUrl = analyzedImage.thumbnailUrl,
+                            favorite = analyzedImage.favorite,
+                            isDocumented = analyzedImage.isDocumented,
+                            hasSchedule = analyzedImage.hasSchedule,
                             onClick = { onItemClick(analyzedImage.id) },
                             modifier = Modifier.fillMaxWidth(),
                         )
@@ -235,6 +248,16 @@ fun CategoryScreen(
                     selectedCategory = selectedCategory,
                     onCategoryClick = { onCategorySelect(it.title) },
                     onDismissRequest = onCategorySheetDismiss,
+                )
+
+                ModeraScrollToTopButton(
+                    visible = showScrollToTop,
+                    onClick = {
+                        coroutineScope.launch {
+                            listState.animateScrollToItem(0)
+                        }
+                    },
+                    modifier = Modifier.align(Alignment.BottomEnd),
                 )
             }
         }

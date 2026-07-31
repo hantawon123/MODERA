@@ -6,7 +6,6 @@ import com.ssafy.modera.core.data.repository.DefaultCategoryRepository
 import com.ssafy.modera.core.model.category.CategorySortType
 import com.ssafy.modera.core.network.model.category.CategoriesResponse
 import com.ssafy.modera.core.network.model.category.CategoryResponse
-import com.ssafy.modera.core.network.model.category.CategoryTagResponse
 import com.ssafy.modera.core.network.service.CategoryClient
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.runTest
@@ -41,16 +40,9 @@ class DefaultCategoryRepositoryTest {
                 CategoryResponse(
                     categoryId = 3L,
                     name = "공부",
-                    thumbnailUrl = "https://cdn.example.com/study.jpg",
+                    categoryImageUrl = "/thumbnails/1024.jpg",
                     imageCount = 42,
-                    tags = listOf(
-                        CategoryTagResponse(
-                            tagId = 11L,
-                            name = "C++",
-                            imageCount = 14,
-                        ),
-                    ),
-                    updatedAt = "2026-07-17T06:00:00.000Z",
+                    latestUpdatedAt = "2026-07-17T06:00:00.000Z",
                 ),
             ),
         )
@@ -69,11 +61,11 @@ class DefaultCategoryRepositoryTest {
                 assertEquals(3L, category.id)
                 assertEquals("공부", category.title)
                 assertEquals(
-                    "https://cdn.example.com/study.jpg",
+                    "https://i15d207.p.ssafy.io/thumbnails/1024.jpg",
                     category.thumbnailUrl,
                 )
                 assertEquals(42, category.itemCount)
-                assertEquals(listOf("C++"), category.tags)
+                assertEquals(emptyList<String>(), category.tags)
 
                 awaitComplete()
             }

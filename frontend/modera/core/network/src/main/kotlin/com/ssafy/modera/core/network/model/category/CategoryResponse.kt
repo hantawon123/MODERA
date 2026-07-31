@@ -7,19 +7,25 @@ import kotlinx.serialization.Serializable
 data class CategoryResponse(
     val categoryId: Long,
     val name: String,
-    val thumbnailUrl: String?,
+    val categoryImageUrl: String? = null,
     val imageCount: Int,
-    val tags: List<CategoryTagResponse>,
-    val updatedAt: String,
+    val latestUpdatedAt: String? = null,
 )
 
 fun CategoryResponse.asExternalModel(): Category =
     Category(
         id = categoryId,
         title = name,
-        thumbnailUrl = "https://i15d207.p.ssafy.io$thumbnailUrl",
+        thumbnailUrl = categoryImageUrl.toAbsoluteUrl(),
         itemCount = imageCount,
-        tags = tags.map { tag ->
-            tag.name
-        },
+        tags = emptyList(),
     )
+
+private fun String?.toAbsoluteUrl(): String? {
+    if (this.isNullOrBlank()) return null
+    return if (startsWith("http://") || startsWith("https://")) {
+        this
+    } else {
+        "https://i15d207.p.ssafy.io:8443/$this"
+    }
+}

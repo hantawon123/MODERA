@@ -28,12 +28,17 @@ class CategoryServiceTest : ApiAbstract<CategoryService>() {
         val baseResponse = response.getOrThrow()
         val data = baseResponse.data
 
-        assertThat(baseResponse.code, `is`("SUCCESS"))
+        assertThat(baseResponse.code, `is`("T202"))
         assertThat(baseResponse.message, `is`("요청이 성공했습니다."))
 
-        assertThat(data.list.size, `is`(2))
-        assertThat(data.list.first().categoryId, `is`(3L))
-        assertThat(data.list.first().name, `is`("공부"))
-        assertThat(data.list.first().tags.first().name, `is`("C++"))
+        assertThat(data.list.size, `is`(5))
+        assertThat(data.list.first().categoryId, `is`(1502052825L))
+        assertThat(data.list.first().name, `is`("개발"))
+        assertThat(data.list.first().categoryImageUrl, `is`(null as String?))
+        assertThat(data.list.first().imageCount, `is`(1))
+        assertThat(
+            data.list[1].categoryImageUrl,
+            `is`("/images/weather.jpg"),
+        )
     }
 }

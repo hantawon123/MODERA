@@ -63,6 +63,10 @@ internal:
 worker:
   base-url: ${WORKER_BASE_URL:http://analysis-worker:8081}
 
+# [AI] 문서 생성 동기 호출. 컨테이너 네트워크의 ai-server.
+ai:
+  base-url: ${AI_SERVER_URL:http://ai-server:8000}
+
 logging:
   level:
     root: INFO

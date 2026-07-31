@@ -13,6 +13,7 @@ import com.ssafy.modera.api.domain.user.entity.User;
 import com.ssafy.modera.api.domain.user.exception.UserErrorCode;
 import com.ssafy.modera.api.domain.user.repository.RefreshTokenRepository;
 import com.ssafy.modera.api.domain.user.repository.UserRepository;
+import com.ssafy.modera.api.domain.user.repository.UserSettingCommandRepository;
 import com.ssafy.modera.api.global.exception.BusinessException;
 import com.ssafy.modera.api.global.security.jwt.JwtProperties;
 import com.ssafy.modera.api.global.security.jwt.JwtTokenProvider;
@@ -48,6 +49,7 @@ public class AuthService {
     private final JwtTokenProvider jwtTokenProvider;
     private final JwtProperties jwtProperties;
     private final KakaoClient kakaoClient;
+    private final UserSettingCommandRepository userSettingCommandRepository;
 
     @Transactional
     public RegisterResponse register(RegisterRequest request) {
@@ -67,6 +69,7 @@ public class AuthService {
                 .updatedAt(now)
                 .build();
         userRepository.save(user);
+        userSettingCommandRepository.createDefaults(user.getUserId());
 
         log.info("회원가입 완료: userId={}", user.getUserId());
         return new RegisterResponse(user.getUserId());
@@ -168,12 +171,14 @@ public class AuthService {
             email = null;
         }
 
-        return userRepository.save(User.builder()
+        User user = userRepository.save(User.builder()
                 .provider(PROVIDER_KAKAO)
                 .providerId(providerId)
                 .email(email)
                 .updatedAt(now)
                 .build());
+        userSettingCommandRepository.createDefaults(user.getUserId());
+        return user;
     }
 
     private void synchronizeKakaoEmail(User user, String kakaoEmail) {

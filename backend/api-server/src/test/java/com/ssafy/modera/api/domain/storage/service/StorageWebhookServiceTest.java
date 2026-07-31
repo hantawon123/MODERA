@@ -57,8 +57,37 @@ class StorageWebhookServiceTest {
     }
 
     @Test
+    void publishesReuploadWhenDeletedImageHasNoReusableView() {
+        stubUploadedAssetAndOwner(false);
+        when(userImageRepository.existsByUserIdAndImageIdAndDelYn(6, 7, "Y"))
+                .thenReturn(true);
+        when(ocrRepository.findByImageId(7)).thenReturn(Optional.empty());
+
+        storageWebhookService.handle(webhook());
+
+        verify(imageQueryRepository).markUploadProcessing(6, 7);
+        verify(eventPublisher).publish(
+                eq(Streams.IMAGE_ANALYSIS),
+                eq(EventTypes.IMAGE_REUPLOAD),
+                eq(1),
+                any(ImageUploadedPayload.class));
+    }
+
+    @Test
     void ignoresWebhookWhenAnalysisIsAlreadyActiveOrCompleted() {
         stubUploadedAssetAndOwner(true);
+
+        storageWebhookService.handle(webhook());
+
+        verify(imageQueryRepository, never()).markUploadProcessing(any(), any());
+        verify(eventPublisher, never()).publish(any(), any(), any(Integer.class), any());
+    }
+
+    @Test
+    void restoredCompletedReuploadDoesNotPublishAnyAnalysisEvent() {
+        stubUploadedAssetAndOwner(true);
+        when(userImageRepository.existsByUserIdAndImageIdAndDelYn(6, 7, "Y"))
+                .thenReturn(true);
 
         storageWebhookService.handle(webhook());
 

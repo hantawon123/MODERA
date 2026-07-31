@@ -31,9 +31,9 @@ import com.ssafy.modera.core.designsystem.component.Icon
 import com.ssafy.modera.core.designsystem.component.Text
 import com.ssafy.modera.core.designsystem.icon.ModeraIcons
 import com.ssafy.modera.core.designsystem.theme.ModeraTheme
+import com.ssafy.modera.core.model.calendar.CalendarSchedule
+import com.ssafy.modera.core.model.calendar.CalendarScheduleSource
 import com.ssafy.modera.feature.calendar.R
-import com.ssafy.modera.feature.calendar.model.CalendarSchedule
-import com.ssafy.modera.feature.calendar.model.CalendarScheduleSource
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 

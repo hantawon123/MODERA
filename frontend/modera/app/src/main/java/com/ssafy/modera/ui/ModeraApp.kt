@@ -49,10 +49,13 @@ import com.ssafy.modera.core.navigation.Navigator
 import com.ssafy.modera.core.navigation.toEntries
 import com.ssafy.modera.feature.analyzedimagedetail.navigation.analyzedImageDetailEntry
 import com.ssafy.modera.feature.analyzedimagedetail.navigation.navigateToImageDetail
+import com.ssafy.modera.feature.calendar.navigation.calendarEntry
+import com.ssafy.modera.feature.calendar.navigation.navigateToCalendar
 import com.ssafy.modera.feature.category.navigation.categoryEntry
 import com.ssafy.modera.feature.category.navigation.navigateToCategorySearch
 import com.ssafy.modera.feature.categoryimages.navigation.categoryImagesEntry
 import com.ssafy.modera.feature.categoryimages.navigation.navigateToCategoryImages
+import com.ssafy.modera.feature.favorite.navigation.favoritesEntry
 import com.ssafy.modera.feature.home.HomeAnalysisState
 import com.ssafy.modera.feature.home.LocalHomeAnalysisState
 import com.ssafy.modera.feature.home.navigation.HomeNavKey
@@ -63,7 +66,6 @@ import com.ssafy.modera.feature.relatedimages.navigation.relatedImagesEntry
 import com.ssafy.modera.media.rememberGalleryPickerLauncher
 import com.ssafy.modera.navigation.BOTTOM_NAV_ITEMS
 import com.ssafy.modera.navigation.DocumentsNavKey
-import com.ssafy.modera.feature.favorite.navigation.favoritesEntry
 import com.ssafy.modera.navigation.TOP_LEVEL_NAV_ITEMS
 
 @Composable
@@ -218,8 +220,8 @@ internal fun ModeraApp(
                         SharedTransitionLayout {
                             val entryProvider = entryProvider {
                                 homeEntry(
-                                    navigator = navigator,
                                     onCategoryClick = navigator::navigateToCategoryImages,
+                                    onCalendarClick = navigator::navigateToCalendar,
                                 )
                                 categoryEntry(
                                     onBackClick = navigator::goBack,
@@ -228,6 +230,9 @@ internal fun ModeraApp(
                                 )
                                 favoritesEntry(
                                     onItemClick = { /* TODO: 자료 상세 연결 */ },
+                                )
+                                calendarEntry(
+                                    onBackClick = navigator::goBack,
                                 )
                                 documentsEntry()
                                 categoryImagesEntry(

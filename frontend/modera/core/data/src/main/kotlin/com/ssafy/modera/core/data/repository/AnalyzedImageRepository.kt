@@ -1,8 +1,8 @@
 package com.ssafy.modera.core.data.repository
 
+import com.ssafy.modera.core.model.analyzedimage.AnalyzedImage
 import com.ssafy.modera.core.model.analyzedimage.AnalyzedImageDetail
 import com.ssafy.modera.core.model.analyzedimage.AnalyzedImageQuery
-import com.ssafy.modera.core.model.analyzedimage.AnalyzedImage
 import kotlinx.coroutines.flow.Flow
 
 interface AnalyzedImageRepository {
@@ -19,4 +19,8 @@ interface AnalyzedImageRepository {
     fun getRelatedImages(
         imageId: Long,
     ): Flow<List<AnalyzedImage>>
+
+    fun reanalyzeAnalyzedImage(imageId: Long): Flow<Unit>
+
+    fun deleteAnalyzedImage(imageId: Long): Flow<Unit>
 }

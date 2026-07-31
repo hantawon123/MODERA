@@ -26,12 +26,14 @@ public class FastApiCategoryReanalysisClient implements CategoryReanalysisClient
 
     @Override
     public CategoryResult reanalyze(
-            Integer imageId, List<Integer> excludedCategoryIds) {
+            Integer userId,
+            Integer imageId,
+            List<Integer> excludedCategoryIds) {
         CategoryResponse response = restClient.post()
                 .uri("/internal/v1/categories/reanalyze")
                 .header(HEADER_INTERNAL_TOKEN, internalToken)
                 .contentType(MediaType.APPLICATION_JSON)
-                .body(new CategoryRequest(imageId, excludedCategoryIds))
+                .body(new CategoryRequest(userId, imageId, excludedCategoryIds))
                 .retrieve()
                 .body(CategoryResponse.class);
         if (response == null || response.categoryId() == null
@@ -45,6 +47,7 @@ public class FastApiCategoryReanalysisClient implements CategoryReanalysisClient
     }
 
     private record CategoryRequest(
+            Integer userId,
             Integer imageId,
             List<Integer> excludedCategoryIds
     ) {

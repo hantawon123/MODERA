@@ -28,7 +28,10 @@ public class CategoryReanalysisService {
         jobRepository.updateStatus(payload.categoryRequestId(), "PROCESSING");
         try {
             CategoryReanalysisClient.CategoryResult result =
-                    client.reanalyze(payload.imageId(), payload.excludedCategoryIds());
+                    client.reanalyze(
+                            payload.userId(),
+                            payload.imageId(),
+                            payload.excludedCategoryIds());
             if (payload.excludedCategoryIds().contains(result.categoryId())) {
                 throw new IllegalStateException("AI returned an excluded category");
             }

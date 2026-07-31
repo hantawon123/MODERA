@@ -479,6 +479,8 @@ async def run_agent_core(
         # 카테고리는 항상 하나다(프롬프트가 하나만 고르게 하고 resolve_category 도
         # 하나를 돌려준다). 배열로 감싸면 Spring 이 없는 다중 카테고리를 처리해야 한다.
         "category": resolution.name,
+        # 기존 카테고리에 붙었으면 Spring 의 categoryId, 신규면 null.
+        "categoryId": resolution.category_id,
         "keyInformation": generated.get("key_information") or [],
         "analysisConfidence": float(generated.get("analysis_confidence", 0.0)),
         # 캘린더용 일정. {type:"schedule", fields:{start*/end* 연·월·일·시각(HH:MM)}} 또는
@@ -580,6 +582,8 @@ def _empty_callback_result(thumbnail_key: str | None = None) -> dict[str, Any]:
         "summary": "",
         "tags": [],
         "category": OTHER_CATEGORY,
+        # '기타' 는 Spring 후보를 거치지 않고 붙인 이름이라 id 를 모른다.
+        "categoryId": None,
         "keyInformation": [],
         "analysisConfidence": 0.0,
         "scheduleData": {"type": None, "fields": {}},

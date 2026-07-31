@@ -86,7 +86,8 @@ class CalendarViewModel @Inject constructor(
             visibleMonth = navigation.visibleMonth,
             selectedDate = navigation.selectedDate,
             today = today,
-            scheduleCountByDate = mergeCounts(deviceCounts, appCounts),
+            appScheduleCountByDate = appCounts,
+            deviceScheduleCountByDate = deviceCounts,
             schedules = deviceSchedules + appSchedules,
             showYearPicker = navigation.showYearPicker,
         )
@@ -97,7 +98,8 @@ class CalendarViewModel @Inject constructor(
             visibleMonth = YearMonth.from(today),
             selectedDate = today,
             today = today,
-            scheduleCountByDate = emptyMap(),
+            appScheduleCountByDate = emptyMap(),
+            deviceScheduleCountByDate = emptyMap(),
             schedules = emptyList(),
             showYearPicker = false,
         ),
@@ -151,17 +153,6 @@ class CalendarViewModel @Inject constructor(
                 }
             }
         }
-    }
-
-    private fun mergeCounts(
-        deviceCounts: Map<LocalDate, Int>,
-        appCounts: Map<LocalDate, Int>,
-    ): Map<LocalDate, Int> {
-        val merged = deviceCounts.toMutableMap()
-        appCounts.forEach { (date, count) ->
-            merged[date] = (merged[date] ?: 0) + count
-        }
-        return merged
     }
 
     private data class NavigationState(

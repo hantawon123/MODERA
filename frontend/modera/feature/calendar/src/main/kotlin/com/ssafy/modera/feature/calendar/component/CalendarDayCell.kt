@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -36,7 +37,8 @@ fun CalendarDayCell(
     isSelected: Boolean,
     isToday: Boolean,
     isCurrentMonth: Boolean,
-    scheduleCount: Int,
+    appScheduleCount: Int,
+    deviceScheduleCount: Int,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -79,22 +81,35 @@ fun CalendarDayCell(
         }
         Spacer(modifier = Modifier.height(2.dp))
 
-        ScheduleDots(scheduleCount = scheduleCount)
+        ScheduleDots(
+            appScheduleCount = appScheduleCount,
+            deviceScheduleCount = deviceScheduleCount,
+        )
     }
 }
 
 @Composable
 private fun ScheduleDots(
-    scheduleCount: Int,
+    appScheduleCount: Int,
+    deviceScheduleCount: Int,
     modifier: Modifier = Modifier,
 ) {
-    if (scheduleCount <= 0) {
+    val appDotColor = ModeraTheme.colors.yellow700
+    val deviceDotColor = ModeraTheme.colors.brown
+    val dotColors = remember(appScheduleCount, deviceScheduleCount, appDotColor, deviceDotColor) {
+        buildList {
+            repeat(deviceScheduleCount) { add(deviceDotColor) }
+            repeat(appScheduleCount) { add(appDotColor) }
+        }
+    }
+
+    if (dotColors.isEmpty()) {
         Spacer(modifier = modifier.fillMaxWidth())
         return
     }
 
-    val visibleDots = minOf(scheduleCount, MaxVisibleDots)
-    val overflow = scheduleCount - MaxVisibleDots
+    val visibleDots = dotColors.take(MaxVisibleDots)
+    val overflow = dotColors.size - MaxVisibleDots
 
     Column(
         modifier = modifier,
@@ -102,16 +117,15 @@ private fun ScheduleDots(
         verticalArrangement = Arrangement.Center,
     ) {
         Row(
-            modifier = modifier,
             horizontalArrangement = Arrangement.spacedBy(2.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            repeat(visibleDots) {
+            visibleDots.forEach { color ->
                 Box(
                     modifier = Modifier
                         .size(4.dp)
                         .clip(CircleShape)
-                        .background(ModeraTheme.colors.yellow700),
+                        .background(color),
                 )
             }
         }
@@ -152,7 +166,8 @@ private fun CalendarDayCellSelectedPreview() {
             isSelected = true,
             isToday = false,
             isCurrentMonth = true,
-            scheduleCount = 0,
+            appScheduleCount = 0,
+            deviceScheduleCount = 0,
             onClick = {},
         )
     }
@@ -167,7 +182,8 @@ private fun CalendarDayCellTodayPreview() {
             isSelected = false,
             isToday = true,
             isCurrentMonth = true,
-            scheduleCount = 0,
+            appScheduleCount = 0,
+            deviceScheduleCount = 0,
             onClick = {},
         )
     }
@@ -182,7 +198,8 @@ private fun CalendarDayCellOverflowPreview() {
             isSelected = false,
             isToday = false,
             isCurrentMonth = true,
-            scheduleCount = 5,
+            appScheduleCount = 3,
+            deviceScheduleCount = 2,
             onClick = {},
         )
     }

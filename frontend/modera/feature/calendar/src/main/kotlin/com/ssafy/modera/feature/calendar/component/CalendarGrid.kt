@@ -25,7 +25,8 @@ fun CalendarGrid(
     visibleMonth: YearMonth,
     selectedDate: LocalDate,
     today: LocalDate,
-    scheduleCountByDate: Map<LocalDate, Int>,
+    appScheduleCountByDate: Map<LocalDate, Int>,
+    deviceScheduleCountByDate: Map<LocalDate, Int>,
     onDateClick: (LocalDate) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -53,7 +54,8 @@ fun CalendarGrid(
                         isSelected = date == selectedDate,
                         isToday = date == today,
                         isCurrentMonth = YearMonth.from(date) == visibleMonth,
-                        scheduleCount = scheduleCountByDate[date] ?: 0,
+                        appScheduleCount = appScheduleCountByDate[date] ?: 0,
+                        deviceScheduleCount = deviceScheduleCountByDate[date] ?: 0,
                         onClick = { onDateClick(date) },
                         modifier = Modifier.weight(1f),
                     )
@@ -123,10 +125,13 @@ private fun CalendarGridPreview() {
             visibleMonth = YearMonth.of(2026, 8),
             selectedDate = LocalDate.of(2026, 8, 9),
             today = LocalDate.of(2026, 8, 10),
-            scheduleCountByDate = mapOf(
-                LocalDate.of(2026, 8, 11) to 5,
-                LocalDate.of(2026, 8, 12) to 3,
+            appScheduleCountByDate = mapOf(
+                LocalDate.of(2026, 8, 11) to 3,
                 LocalDate.of(2026, 8, 4) to 1,
+            ),
+            deviceScheduleCountByDate = mapOf(
+                LocalDate.of(2026, 8, 11) to 2,
+                LocalDate.of(2026, 8, 12) to 3,
             ),
             onDateClick = {},
         )

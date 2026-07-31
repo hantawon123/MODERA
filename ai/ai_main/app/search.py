@@ -150,6 +150,21 @@ def ensure_index(force: bool = False) -> None:
     if not client.indices.exists(index=index):
         client.indices.create(index=index, body=_index_body())
         logger.warning("OpenSearch 인덱스 생성: %s (nori 매핑 적용)", index)
+    else:
+        # 존재만 보면 못 잡는 사고가 있다: 인덱스를 밖에서 지운 직후 TTL 안에
+        # 색인 요청이 들어오면 OpenSearch 가 **자동 생성**해 버린다. 그러면 이
+        # 함수는 "있음"으로 통과하고, embedding 은 knn_vector 가 아닌 float 로,
+        # nori 도 없이 굳는다 — 시맨틱 검색이 조용히 죽는다(2026-07-29·07-31 2회 발생).
+        # 매핑은 못 고치므로(재색인 필요) 비명이라도 지른다.
+        props = (client.indices.get_mapping(index=index)[index]["mappings"]
+                 .get("properties", {}))
+        if props.get("embedding", {}).get("type") != "knn_vector":
+            logger.error(
+                "OpenSearch 인덱스 '%s' 매핑 손상: embedding=%s (knn_vector 여야 함). "
+                "자동 생성된 인덱스다 — 시맨틱 검색이 동작하지 않는다. "
+                "인덱스를 삭제하고 재색인해야 한다.",
+                index, props.get("embedding", {}).get("type"),
+            )
     _index_checked_at = now
 
 

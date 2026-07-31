@@ -10,4 +10,6 @@ public interface UserImageRepository extends JpaRepository<UserImage, Integer> {
     Optional<UserImage> findByUserIdAndImageIdAndDelYn(Integer userId, Integer imageId, String delYn);
 
     Optional<UserImage> findFirstByImageIdAndDelYnOrderByUserImageIdAsc(Integer imageId, String delYn);
+
+    boolean existsByUserIdAndImageIdAndDelYn(Integer userId, Integer imageId, String delYn);
 }

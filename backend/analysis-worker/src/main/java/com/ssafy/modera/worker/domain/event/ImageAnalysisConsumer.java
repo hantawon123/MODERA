@@ -51,6 +51,7 @@ public class ImageAnalysisConsumer {
      * 이 상태의 job이 이미 있으면 다시 요청하지 않는다. FAILED는 재시도 여지를 남긴다.
      */
     private static final Set<String> ACTIVE_JOB_STATUSES = Set.of("PENDING", "PROCESSING", "COMPLETED");
+    private static final Set<String> IN_FLIGHT_JOB_STATUSES = Set.of("PENDING", "PROCESSING");
 
     private final StringRedisTemplate redisTemplate;
     private final ObjectMapper objectMapper;
@@ -152,7 +153,10 @@ public class ImageAnalysisConsumer {
         try {
             if (EventTypes.IMAGE_UPLOADED.equals(envelope.eventType())) {
                 ImageUploadedPayload payload = readPayload(envelope, ImageUploadedPayload.class);
-                handleImageUploaded(envelope, payload);
+                handleImageUploaded(payload, false);
+            } else if (EventTypes.IMAGE_REUPLOAD.equals(envelope.eventType())) {
+                ImageUploadedPayload payload = readPayload(envelope, ImageUploadedPayload.class);
+                handleImageUploaded(payload, true);
             } else if (EventTypes.CATEGORY_REANALYSIS_REQUESTED.equals(envelope.eventType())) {
                 categoryReanalysisService.handle(
                         readPayload(envelope, CategoryReanalysisRequestedPayload.class));
@@ -193,14 +197,17 @@ public class ImageAnalysisConsumer {
         redisTemplate.opsForStream().acknowledge(Streams.IMAGE_ANALYSIS, Streams.GROUP_ANALYSIS_WORKERS, record.getId().getValue());
     }
 
-    private void handleImageUploaded(EventEnvelope envelope, ImageUploadedPayload payload) {
+    void handleImageUploaded(ImageUploadedPayload payload, boolean reupload) {
         Integer imageId = payload.imageId();
 
         // 같은 이미지에 이미 진행 중이거나 완료된 job이 있으면 다시 요청하지 않는다.
         // webhook 재전송이나 PEL 재처리로 같은 IMAGE_UPLOADED가 두 번 도착할 수 있는데,
         // 그때마다 job이 새로 생기면 AI 호출도 중복된다(analysis_result는 UNIQUE로 막히지만
         // AI 요청 비용은 그대로 나간다).
-        if (analysisJobRepository.existsByImageIdAndStatusIn(imageId, ACTIVE_JOB_STATUSES)) {
+        Set<String> blockingStatuses = reupload
+                ? IN_FLIGHT_JOB_STATUSES
+                : ACTIVE_JOB_STATUSES;
+        if (analysisJobRepository.existsByImageIdAndStatusIn(imageId, blockingStatuses)) {
             log.info("이미 진행 중이거나 완료된 분석이 있어 요청을 건너뛴다: imageId={}", imageId);
             return;
         }
@@ -215,7 +222,7 @@ public class ImageAnalysisConsumer {
                 .stage("FULL")
                 .status("PENDING")
                 .attempt(1)
-                .triggerType("INITIAL")
+                .triggerType(reupload ? "REUPLOAD" : "INITIAL")
                 .queuedAt(OffsetDateTime.now())
                 // 재시도(AnalysisRetryScanner)가 AI에 다시 요청할 때 쓸 재료.
                 // worker는 modera_api를 못 보므로 이 시점에 실어두는 게 유일한 기회다.
@@ -269,7 +276,8 @@ public class ImageAnalysisConsumer {
      * 그 사이 분석을 끝냈을 수 있기 때문이다.
      */
     private boolean isDuplicateActiveJob(Integer imageId) {
-        return analysisJobRepository.existsByImageIdAndStatusIn(imageId, ACTIVE_JOB_STATUSES);
+        return analysisJobRepository.existsByImageIdAndStatusIn(
+                imageId, IN_FLIGHT_JOB_STATUSES);
     }
 
     /** ClientOcr.confidence는 Double, analysis_job.client_ocr_confidence는 REAL이다. */

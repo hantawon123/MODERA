@@ -6,6 +6,7 @@ package com.ssafy.modera.contract;
 public final class EventTypes {
 
     public static final String IMAGE_UPLOADED = "IMAGE_UPLOADED";
+    public static final String IMAGE_REUPLOAD = "IMAGE_REUPLOAD";
     public static final String ANALYSIS_COMPLETED = "ANALYSIS_COMPLETED";
     public static final String ANALYSIS_FAILED = "ANALYSIS_FAILED";
     public static final String INITIAL_CATEGORY_RESOLVED = "INITIAL_CATEGORY_RESOLVED";

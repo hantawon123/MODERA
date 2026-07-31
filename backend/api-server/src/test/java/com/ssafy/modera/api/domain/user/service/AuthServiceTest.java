@@ -9,6 +9,7 @@ import com.ssafy.modera.api.domain.user.entity.RefreshToken;
 import com.ssafy.modera.api.domain.user.entity.User;
 import com.ssafy.modera.api.domain.user.repository.RefreshTokenRepository;
 import com.ssafy.modera.api.domain.user.repository.UserRepository;
+import com.ssafy.modera.api.domain.user.repository.UserSettingCommandRepository;
 import com.ssafy.modera.api.global.security.jwt.JwtProperties;
 import com.ssafy.modera.api.global.security.jwt.JwtTokenProvider;
 import org.junit.jupiter.api.BeforeEach;
@@ -46,6 +47,8 @@ class AuthServiceTest {
     private JwtProperties jwtProperties;
     @Mock
     private KakaoClient kakaoClient;
+    @Mock
+    private UserSettingCommandRepository userSettingCommandRepository;
 
     private AuthService authService;
 
@@ -57,7 +60,8 @@ class AuthServiceTest {
                 passwordEncoder,
                 jwtTokenProvider,
                 jwtProperties,
-                kakaoClient
+                kakaoClient,
+                userSettingCommandRepository
         );
     }
 
@@ -77,6 +81,7 @@ class AuthServiceTest {
         var registered = authService.register(registerRequest);
 
         assertThat(registered.userId()).isEqualTo(1);
+        verify(userSettingCommandRepository).createDefaults(1);
 
         User user = User.builder()
                 .provider("LOCAL")
@@ -138,7 +143,11 @@ class AuthServiceTest {
         when(kakaoClient.getUser("code")).thenReturn(kakaoUser);
         when(userRepository.findByProviderAndProviderId("KAKAO", "123")).thenReturn(Optional.empty());
         when(userRepository.existsByEmail("user@example.com")).thenReturn(false);
-        when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(userRepository.save(any(User.class))).thenAnswer(invocation -> {
+            User saved = invocation.getArgument(0);
+            ReflectionTestUtils.setField(saved, "userId", 2);
+            return saved;
+        });
         when(jwtTokenProvider.createAccessToken(any())).thenReturn("access");
         when(jwtTokenProvider.createRefreshToken(any(), any())).thenReturn("refresh");
         when(refreshTokenRepository.findByUserIdAndDeviceId(any(), any())).thenReturn(Optional.empty());
@@ -149,6 +158,7 @@ class AuthServiceTest {
         ArgumentCaptor<User> userCaptor = ArgumentCaptor.forClass(User.class);
         verify(userRepository).save(userCaptor.capture());
         assertThat(userCaptor.getValue().getEmail()).isEqualTo("user@example.com");
+        verify(userSettingCommandRepository).createDefaults(2);
     }
 
     @Test

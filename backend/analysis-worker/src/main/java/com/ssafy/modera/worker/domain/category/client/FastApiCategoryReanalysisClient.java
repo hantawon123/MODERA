@@ -3,9 +3,11 @@ package com.ssafy.modera.worker.domain.category.client;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.MediaType;
+import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
+import java.net.http.HttpClient;
 import java.util.List;
 
 @Component
@@ -20,7 +22,13 @@ public class FastApiCategoryReanalysisClient implements CategoryReanalysisClient
             @Value("${analysis-worker.ai-server-url}") String aiServerUrl,
             @Value("${internal.callback.token}") String internalToken
     ) {
-        this.restClient = RestClient.builder().baseUrl(aiServerUrl).build();
+        HttpClient httpClient = HttpClient.newBuilder()
+                .version(HttpClient.Version.HTTP_1_1)
+                .build();
+        this.restClient = RestClient.builder()
+                .baseUrl(aiServerUrl)
+                .requestFactory(new JdkClientHttpRequestFactory(httpClient))
+                .build();
         this.internalToken = internalToken;
     }
 

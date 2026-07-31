@@ -231,16 +231,10 @@ public class ImageCommandService {
                     .findByUserIdAndImageIdAndDelYn(
                             userId, imageAsset.getImageId(), "N")
                     .isPresent();
-            boolean analysisActiveOrCompleted = alreadyOwned
-                    && imageQueryRepository.isAnalysisActiveOrCompleted(
-                            userId, imageAsset.getImageId());
             ensureUserImage(userId, imageAsset);
-            // "duplicated" means this user already owns the image. If only the
-            // shared asset exists, connect it to this user and keep the ordinary
-            // registered response/PUT flow with the same object key.
-            duplicated = alreadyOwned
-                    && analysisActiveOrCompleted
-                    && objectExists(imageAsset);
+            // Duplicated means the user currently owns the image. A soft-deleted
+            // relationship is restored through the ordinary registered/PUT flow.
+            duplicated = alreadyOwned;
         }
 
         history.complete(imageAsset.getImageId(), duplicated, OffsetDateTime.now());

@@ -182,11 +182,7 @@ class ImageCommandServiceTest {
         when(imageAssetRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
         when(userImageRepository.findByUserIdAndImageIdAndDelYn(1, 20, "N"))
                 .thenReturn(Optional.of(UserImage.builder().userId(1).imageId(20).build()));
-        when(imageQueryRepository.isAnalysisActiveOrCompleted(1, 20))
-                .thenReturn(true);
         when(imageQueryRepository.copyExistingView(1, 20)).thenReturn(true);
-        when(s3Client.headObject(any(HeadObjectRequest.class)))
-                .thenReturn(HeadObjectResponse.builder().build());
 
         PresignedPutObjectRequest presignedRequest = org.mockito.Mockito.mock(PresignedPutObjectRequest.class);
         when(presignedRequest.url()).thenReturn(URI.create("https://storage.example/new-image").toURL());
@@ -293,7 +289,7 @@ class ImageCommandServiceTest {
     }
 
     @Test
-    void reissuesRegisteredUploadForAnExistingNoneAnalysisView()
+    void reissuesRegisteredUploadForADeletedImageWithoutReusableView()
             throws Exception {
         String contentHash = "e".repeat(64);
         UUID requestId = UUID.randomUUID();
@@ -317,10 +313,7 @@ class ImageCommandServiceTest {
         when(imageAssetRepository.findByContentHashAndDelYn(contentHash, "N"))
                 .thenReturn(Optional.of(asset));
         when(userImageRepository.findByUserIdAndImageIdAndDelYn(6, 7, "N"))
-                .thenReturn(Optional.of(
-                        UserImage.builder().userId(6).imageId(7).build()));
-        when(imageQueryRepository.isAnalysisActiveOrCompleted(6, 7))
-                .thenReturn(false);
+                .thenReturn(Optional.empty());
         when(imageQueryRepository.copyExistingView(6, 7)).thenReturn(false);
 
         PresignedPutObjectRequest presignedRequest =

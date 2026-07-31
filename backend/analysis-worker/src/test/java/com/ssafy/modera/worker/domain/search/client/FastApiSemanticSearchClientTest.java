@@ -19,13 +19,17 @@ class FastApiSemanticSearchClientTest {
     void sendsWorkerAiContractWithoutCorrelationId() throws Exception {
         AtomicReference<String> requestBody = new AtomicReference<>();
         AtomicReference<String> token = new AtomicReference<>();
+        AtomicReference<String> protocol = new AtomicReference<>();
         HttpServer server = HttpServer.create(new InetSocketAddress(0), 0);
         server.createContext("/internal/v1/images/search/semantic", exchange -> {
             requestBody.set(new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8));
             token.set(exchange.getRequestHeaders().getFirst("X-Internal-Token"));
+            protocol.set(exchange.getProtocol());
             byte[] response = """
-                    {"total":1,"page":0,"size":20,
-                     "hits":[{"imageId":18,"score":3.9}]}
+                    {"eventType":"IMAGE_SEARCH_COMPLETED","version":1,
+                     "payload":{"correlationId":"ai-generated-id",
+                                "total":1,"page":0,"size":20,
+                                "hits":[{"imageId":18,"score":3.9}]}}
                     """.getBytes(StandardCharsets.UTF_8);
             exchange.getResponseHeaders().add("Content-Type", "application/json");
             exchange.sendResponseHeaders(200, response.length);
@@ -44,6 +48,7 @@ class FastApiSemanticSearchClientTest {
                     client.search(7, "프로그래밍 책", 0, 20);
 
             JsonNode json = objectMapper.readTree(requestBody.get());
+            assertThat(protocol.get()).isEqualTo("HTTP/1.1");
             assertThat(json.path("userId").asInt()).isEqualTo(7);
             assertThat(json.path("query").asText()).isEqualTo("프로그래밍 책");
             assertThat(json.path("page").asInt()).isZero();

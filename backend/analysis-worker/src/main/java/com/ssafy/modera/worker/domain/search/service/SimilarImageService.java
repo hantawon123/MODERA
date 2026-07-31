@@ -32,6 +32,21 @@ public class SimilarImageService {
         return result;
     }
 
+    /** 다중 기준(centroid) 검색. 기준이 비면 조회 없이 빈 결과다. */
+    public List<SimilarImageRow> findSimilarToAll(List<Integer> imageIds, int userId, int limit) {
+        if (imageIds == null || imageIds.isEmpty()) {
+            return List.of();
+        }
+        int safeLimit = clamp(limit);
+        List<SimilarImageRow> result =
+                similarImageRepository.findSimilarToAll(imageIds, userId, safeLimit);
+
+        log.debug("다중 연관 이미지 조회: base={}장 userId={} limit={} -> {}건",
+                imageIds.size(), userId, safeLimit, result.size());
+
+        return result;
+    }
+
     private int clamp(int limit) {
         if (limit < 1) {
             return DEFAULT_LIMIT;

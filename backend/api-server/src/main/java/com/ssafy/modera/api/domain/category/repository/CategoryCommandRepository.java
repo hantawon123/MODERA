@@ -40,20 +40,37 @@ public class CategoryCommandRepository {
 
         List<Integer> excluded = jdbcTemplate.queryForList(
                 """
-                SELECT category_id
-                FROM (
+                WITH candidates AS (
                     SELECT category_id, created_at,
-                           user_image_category_history_id
+                           user_image_category_history_id AS history_id
                     FROM library_schema.user_image_category_history
                     WHERE user_image_id = ?
-                    ORDER BY created_at DESC,
-                             user_image_category_history_id DESC
+                    UNION ALL
+                    SELECT current_category_id,
+                           'infinity'::timestamptz,
+                           2147483647
+                    FROM library_schema.user_image
+                    WHERE user_image_id = ?
+                      AND current_category_id IS NOT NULL
+                ),
+                deduplicated AS (
+                    SELECT DISTINCT ON (category_id)
+                           category_id, created_at, history_id
+                    FROM candidates
+                    ORDER BY category_id, created_at DESC, history_id DESC
+                ),
+                recent AS (
+                    SELECT category_id, created_at, history_id
+                    FROM deduplicated
+                    ORDER BY created_at DESC, history_id DESC
                     LIMIT 5
-                ) recent
-                ORDER BY created_at ASC,
-                         user_image_category_history_id ASC
+                )
+                SELECT category_id
+                FROM recent
+                ORDER BY created_at ASC, history_id ASC
                 """,
                 Integer.class,
+                userImageId,
                 userImageId
         );
         int updated = jdbcTemplate.update(

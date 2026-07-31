@@ -1,6 +1,6 @@
 package com.ssafy.modera.api.domain.image.client;
 
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Qualifier;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.HttpClientErrorException;
@@ -22,10 +22,13 @@ import java.util.List;
  */
 @Slf4j
 @Component
-@RequiredArgsConstructor
 public class WorkerSearchClient {
 
     private final RestClient workerRestClient;
+
+    public WorkerSearchClient(@Qualifier("workerRestClient") RestClient workerRestClient) {
+        this.workerRestClient = workerRestClient;
+    }
 
     public List<WorkerSimilarImage> findSimilar(Integer imageId, Integer userId, int limit) {
         try {

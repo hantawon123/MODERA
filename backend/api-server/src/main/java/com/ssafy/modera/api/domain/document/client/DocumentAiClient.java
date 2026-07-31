@@ -1,7 +1,7 @@
 package com.ssafy.modera.api.domain.document.client;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
@@ -20,10 +20,13 @@ import java.util.List;
  * "성공했는데 문서가 없는" 상태를 보게 된다. 분류는 호출자가 한다.
  */
 @Component
-@RequiredArgsConstructor
 public class DocumentAiClient {
 
     private final RestClient aiRestClient;
+
+    public DocumentAiClient(@Qualifier("aiRestClient") RestClient aiRestClient) {
+        this.aiRestClient = aiRestClient;
+    }
 
     public DocumentResponse generate(DocumentRequest request) {
         return aiRestClient.post()

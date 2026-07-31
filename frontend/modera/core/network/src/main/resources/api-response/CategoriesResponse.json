@@ -1,36 +1,45 @@
 {
-  "code": "SUCCESS",
+  "result": "SUCCESS",
+  "code": "T202",
   "message": "요청이 성공했습니다.",
   "data": {
     "list": [
       {
-        "categoryId": 3,
-        "name": "공부",
-        "thumbnailUrl": "https://cdn.example.com/thumbnails/1024.jpg",
-        "imageCount": 42,
-        "tags": [
-          {
-            "tagId": 11,
-            "name": "C++",
-            "imageCount": 14
-          },
-          {
-            "tagId": 21,
-            "name": "프로그래밍",
-            "imageCount": 9
-          }
-        ],
-        "updatedAt": "2026-07-17T06:00:00.000Z"
+        "categoryId": 1502052825,
+        "name": "개발",
+        "categoryImageUrl": null,
+        "imageCount": 1,
+        "latestUpdatedAt": "2026-07-31T14:56:20.11422+09:00"
       },
       {
-        "categoryId": 4,
-        "name": "여행",
-        "thumbnailUrl": null,
-        "imageCount": 0,
-        "tags": [],
-        "updatedAt": "2026-07-18T06:00:00.000Z"
+        "categoryId": 651492629,
+        "name": "날씨",
+        "categoryImageUrl": "/images/weather.jpg",
+        "imageCount": 1,
+        "latestUpdatedAt": "2026-07-31T14:56:19.69139+09:00"
+      },
+      {
+        "categoryId": 774011268,
+        "name": "쇼핑",
+        "categoryImageUrl": null,
+        "imageCount": 1,
+        "latestUpdatedAt": "2026-07-31T14:56:21.569911+09:00"
+      },
+      {
+        "categoryId": 433544969,
+        "name": "여가",
+        "categoryImageUrl": null,
+        "imageCount": 5,
+        "latestUpdatedAt": "2026-07-31T14:56:22.522368+09:00"
+      },
+      {
+        "categoryId": 552376895,
+        "name": "일정",
+        "categoryImageUrl": null,
+        "imageCount": 2,
+        "latestUpdatedAt": "2026-07-31T14:56:22.237336+09:00"
       }
     ]
   },
-  "timestamp": "2026-07-23T23:43:42.000Z"
+  "timestamp": "2026-07-31T06:42:00.957Z"
 }

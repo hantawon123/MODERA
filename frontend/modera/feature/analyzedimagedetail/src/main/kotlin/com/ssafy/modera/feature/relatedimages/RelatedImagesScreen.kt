@@ -61,12 +61,7 @@ fun RelatedImagesScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(ModeraTheme.colors.white)
-            .windowInsetsPadding(
-                WindowInsets.safeDrawing.only(
-                    WindowInsetsSides.Vertical,
-                ),
-            ),
+            .background(ModeraTheme.colors.white),
     ) {
         ModeraTopBar(
             onBackClick = onBackClick,

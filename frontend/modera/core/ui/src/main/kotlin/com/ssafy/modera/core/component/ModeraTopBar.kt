@@ -17,6 +17,7 @@ import com.ssafy.modera.core.designsystem.component.Icon
 import com.ssafy.modera.core.designsystem.component.Text
 import com.ssafy.modera.core.designsystem.icon.ModeraIcons
 import com.ssafy.modera.core.designsystem.theme.ModeraTheme
+import com.ssafy.modera.core.util.statusBarTopPadding
 
 /**
  * 뒤로가기 버튼이 있는 TopBar (제목과 우측 요소 추가 가능)
@@ -46,7 +47,8 @@ fun ModeraTopBar(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .padding(10.dp),
+            .statusBarTopPadding()
+            .padding(vertical = 14.dp, horizontal = 10.dp),
         contentAlignment = Alignment.Center,
     ) {
         Box(

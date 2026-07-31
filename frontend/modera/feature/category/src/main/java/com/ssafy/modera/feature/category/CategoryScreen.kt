@@ -41,7 +41,6 @@ import com.ssafy.modera.core.designsystem.theme.ModeraTheme
 import com.ssafy.modera.core.model.analyzedimage.AnalyzedImage
 import com.ssafy.modera.core.model.category.CategorySheetItem
 import com.ssafy.modera.core.model.category.CategorySortType
-import com.ssafy.modera.core.util.statusBarTopPadding
 import com.ssafy.modera.feature.category.component.CategoryTopSheet
 import kotlinx.coroutines.launch
 
@@ -60,21 +59,21 @@ fun CategoryRoute(
 
     val categories = remember { /* TODO: viewModel로 이동 */
         listOf(
-            CategorySheetItem(1,"기사", 123),
-            CategorySheetItem(1,"기사", 123, isNew = true),
-            CategorySheetItem(1,"스포츠", 123),
-            CategorySheetItem(1,"스포츠", 123, isNew = true),
-            CategorySheetItem(1,"뉴스", 123),
-            CategorySheetItem(1,"뉴스", 123),
-            CategorySheetItem(1,"예약", 123),
-            CategorySheetItem(1,"예약", 123),
-            CategorySheetItem(1,"음식", 123),
-            CategorySheetItem(1,"음식", 123),
-            CategorySheetItem(1,"일정", 123),
-            CategorySheetItem(1,"예약", 123),
-            CategorySheetItem(1,"쇼핑", 1232),
-            CategorySheetItem(1,"음식", 123),
-            CategorySheetItem(1,"음식", 1),
+            CategorySheetItem(1, "기사", 123),
+            CategorySheetItem(1, "기사", 123, isNew = true),
+            CategorySheetItem(1, "스포츠", 123),
+            CategorySheetItem(1, "스포츠", 123, isNew = true),
+            CategorySheetItem(1, "뉴스", 123),
+            CategorySheetItem(1, "뉴스", 123),
+            CategorySheetItem(1, "예약", 123),
+            CategorySheetItem(1, "예약", 123),
+            CategorySheetItem(1, "음식", 123),
+            CategorySheetItem(1, "음식", 123),
+            CategorySheetItem(1, "일정", 123),
+            CategorySheetItem(1, "예약", 123),
+            CategorySheetItem(1, "쇼핑", 1232),
+            CategorySheetItem(1, "음식", 123),
+            CategorySheetItem(1, "음식", 1),
         )
     }
     val analyzedImages = remember {
@@ -141,14 +140,13 @@ fun CategoryScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .statusBarTopPadding(),
         ) {
             ModeraTopBar(
                 onBackClick = {},
                 leftContent = {
                     Row(
                         modifier = Modifier
-                            .padding(4.dp)
+                            .padding(start = 4.dp)
                             .clickable(onClick = onCategoryTitleClick),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
@@ -275,9 +273,9 @@ private fun CategoryScreenPreview() {
         CategoryScreen(
             selectedCategory = "쇼핑",
             categories = listOf(
-                CategorySheetItem(1,"쇼핑", 123),
-                CategorySheetItem(1,"음식", 1),
-                CategorySheetItem(1,"여행", 10, isNew = true),
+                CategorySheetItem(1, "쇼핑", 123),
+                CategorySheetItem(1, "음식", 1),
+                CategorySheetItem(1, "여행", 10, isNew = true),
             ),
             analyzedImages = listOf(
                 AnalyzedImage(

@@ -10,8 +10,33 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 class ImageQueryRepositoryTest {
+
+    @Test
+    void reconnectsDeletedReadModelFromExistingCompletedAnalysis() {
+        JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
+        ImageQueryRepository repository =
+                new ImageQueryRepository(jdbcTemplate, new ObjectMapper());
+        ArgumentCaptor<String> sqlCaptor = ArgumentCaptor.forClass(String.class);
+
+        when(jdbcTemplate.update(
+                org.mockito.ArgumentMatchers.anyString(),
+                eq(7),
+                eq(20),
+                eq(7)
+        )).thenReturn(1);
+
+        boolean copied = repository.copyExistingView(7, 20);
+
+        assertThat(copied).isTrue();
+        verify(jdbcTemplate).update(sqlCaptor.capture(), eq(7), eq(20), eq(7));
+        assertThat(sqlCaptor.getValue())
+                .contains("source.analysis_status IN ('COMPLETED', 'EMPTY')")
+                .doesNotContain("AND source.del_yn = 'N'")
+                .contains("del_yn = 'N'");
+    }
 
     @Test
     void synchronizesNewAndExistingUserCategoryRows() {

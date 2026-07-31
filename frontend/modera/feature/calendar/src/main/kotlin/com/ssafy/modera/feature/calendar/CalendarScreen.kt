@@ -1,9 +1,12 @@
 package com.ssafy.modera.feature.calendar
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
@@ -13,13 +16,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
 import com.ssafy.modera.core.component.ModeraTopBar
 import com.ssafy.modera.core.designsystem.component.Text
 import com.ssafy.modera.core.designsystem.theme.ModeraTheme
-import com.ssafy.modera.core.util.statusBarTopPadding
 import com.ssafy.modera.feature.calendar.component.CalendarGrid
 import com.ssafy.modera.feature.calendar.component.CalendarMonthHeader
 import com.ssafy.modera.feature.calendar.component.CalendarScheduleSection
+import com.ssafy.modera.feature.calendar.component.CalendarYearPickerDialog
 import java.time.LocalDate
 import java.time.YearMonth
 
@@ -32,6 +36,7 @@ fun CalendarRoute(
     val today = remember { LocalDate.now() }
     var visibleMonth by remember { mutableStateOf(YearMonth.from(today)) }
     var selectedDate by remember { mutableStateOf(today) }
+    var showYearPicker by remember { mutableStateOf(false) }
     val scheduleCountByDate = remember { CalendarDummyData.scheduleCountByDate }
 
     CalendarScreen(
@@ -39,7 +44,15 @@ fun CalendarRoute(
         selectedDate = selectedDate,
         today = today,
         scheduleCountByDate = scheduleCountByDate,
+        showYearPicker = showYearPicker,
         onBackClick = onBackClick,
+        onYearClick = { showYearPicker = true },
+        onYearPickerDismiss = { showYearPicker = false },
+        onYearSelect = { year ->
+            visibleMonth = visibleMonth.withYear(year)
+            selectedDate = selectedDate.withYear(year)
+            showYearPicker = false
+        },
         onPreviousMonth = { visibleMonth = visibleMonth.minusMonths(1) },
         onNextMonth = { visibleMonth = visibleMonth.plusMonths(1) },
         onDateClick = { date ->
@@ -57,7 +70,11 @@ fun CalendarScreen(
     selectedDate: LocalDate,
     today: LocalDate,
     scheduleCountByDate: Map<LocalDate, Int>,
+    showYearPicker: Boolean,
     onBackClick: () -> Unit,
+    onYearClick: () -> Unit,
+    onYearPickerDismiss: () -> Unit,
+    onYearSelect: (Int) -> Unit,
     onPreviousMonth: () -> Unit,
     onNextMonth: () -> Unit,
     onDateClick: (LocalDate) -> Unit,
@@ -67,8 +84,7 @@ fun CalendarScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(color = ModeraTheme.colors.white)
-            .statusBarTopPadding(),
+            .background(color = ModeraTheme.colors.white),
     ) {
         ModeraTopBar(
             onBackClick = onBackClick,
@@ -77,6 +93,7 @@ fun CalendarScreen(
                     text = visibleMonth.year.toString(),
                     style = ModeraTheme.typography.bodySB16,
                     color = ModeraTheme.colors.gray900,
+                    modifier = Modifier.clickable(onClick = onYearClick),
                 )
             },
         )
@@ -101,12 +118,22 @@ fun CalendarScreen(
                 onDateClick = onDateClick,
             )
 
+            Spacer(Modifier.height(10.dp))
+
             CalendarScheduleSection(
                 selectedDate = selectedDate,
                 onEditClick = onEditClick,
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.weight(1f)
             )
         }
+    }
+
+    if (showYearPicker) {
+        CalendarYearPickerDialog(
+            selectedYear = visibleMonth.year,
+            onYearSelect = onYearSelect,
+            onDismissRequest = onYearPickerDismiss,
+        )
     }
 }
 
@@ -140,7 +167,33 @@ private fun CalendarScreenPreview() {
             selectedDate = LocalDate.of(2026, 8, 9),
             today = LocalDate.of(2026, 8, 10),
             scheduleCountByDate = CalendarDummyData.scheduleCountByDate,
+            showYearPicker = false,
             onBackClick = {},
+            onYearClick = {},
+            onYearPickerDismiss = {},
+            onYearSelect = {},
+            onPreviousMonth = {},
+            onNextMonth = {},
+            onDateClick = {},
+            onEditClick = {},
+        )
+    }
+}
+
+@Preview(showBackground = true, widthDp = 360, heightDp = 780)
+@Composable
+private fun CalendarScreenYearPickerPreview() {
+    ModeraTheme {
+        CalendarScreen(
+            visibleMonth = YearMonth.of(2026, 8),
+            selectedDate = LocalDate.of(2026, 8, 9),
+            today = LocalDate.of(2026, 8, 10),
+            scheduleCountByDate = CalendarDummyData.scheduleCountByDate,
+            showYearPicker = true,
+            onBackClick = {},
+            onYearClick = {},
+            onYearPickerDismiss = {},
+            onYearSelect = {},
             onPreviousMonth = {},
             onNextMonth = {},
             onDateClick = {},

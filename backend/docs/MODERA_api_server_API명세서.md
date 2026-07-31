@@ -93,7 +93,7 @@ Base URL: `https://{host}/api/v1`
 | 시간 | ISO-8601 UTC (`2026-07-16T06:00:00.000Z`) |
 | 페이지네이션 파라미터 | `page`(0-base), `size`(기본 20, 최대 100), `sort`(예: `updatedAt,desc`) |
 | ID | 서버 발급 숫자 ID |
-| 코드 | `result`는 성공 시 `SUCCESS` 고정. 성공 `code`는 도메인별 디버깅 코드(A/I/AN/T/S/U + 3자리), 실패 `code`는 1.3 및 각 API의 에러 코드. |
+| 코드 | `result`는 성공 시 `SUCCESS` 고정. 성공 `code`는 도메인별 디버깅 코드(A/I/AN/T/S/U/D + 3자리), 실패 `code`는 1.3 및 각 API의 에러 코드. |
 | Request | 요청 envelope는 사용하지 않는다. JSON body에는 DTO 필드만 전달하며 Path Parameter와 Query Parameter는 body와 분리한다. 요청 본문이 없으면 `Request Body: 없음`으로 표기한다. |
 | Response | 외부 API 성공·실패 응답은 항상 1.1 envelope를 사용한다. 각 API의 `Response data` 예시도 확인 편의를 위해 전체 envelope로 표기한다. 단, `/internal/**`, actuator, Swagger 및 S3 직접 업로드 응답은 제외한다. |
 
@@ -1446,7 +1446,7 @@ REST API는 아니지만 API 서버가 클라이언트에 전달하는 푸시 �
         "name": "성심당 케이크 리스트",
         "imageCount": 4,
         "delImageCount": 0,
-            "updatedAt": "2026-07-29T02:00:00.000Z"
+        "updatedAt": "2026-07-29T02:00:00.000Z"
       }
     ],
     "page": 0,
@@ -1881,6 +1881,8 @@ DB 저장 중 하나라도 실패하면 전체 트랜잭션을 롤백하고 성�
 
 일정은 이미지 분석 결과로 생성되며 별도 생성 API를 제공하지 않는다. `schedule_schema.schedule`이 일정 원본을 소유하고, 사용자 캘린더 등록 상태는 `library_schema.user_schedule.is_calendared_yn`으로 관리한다. 조회 응답은 `query_schema.user_schedule_view`를 사용한다.
 
+캘린더는 별도 저장소 없이 `is_calendared_yn` 상태로만 표현한다. 분석에서 생성된 일정은 미등록 후보(`'N'`)로 시작하며, 9-3 호출이 캘린더 등록/해제의 전부다. 캘린더 화면은 9-1의 `calendared=true` 조회를 사용한다. 기기 캘린더(구글 캘린더 등) 연동은 앱 책임 영역이며 서버는 이 플래그만 관리한다.
+
 ## 9-1 내 일정 후보·캘린더 일정 목록 조회
 
 | 항목 | 내용 |
@@ -1916,7 +1918,7 @@ DB 저장 중 하나라도 실패하면 전체 트랜잭션을 롤백하고 성�
         "startAt": "2026-08-03T05:30:00.000Z",
         "endAt": "2026-08-03T07:00:00.000Z",
         "calendared": false,
-            "updatedAt": "2026-07-29T01:00:00.000Z"
+        "updatedAt": "2026-07-29T01:00:00.000Z"
       }
     ],
     "page": 0,
@@ -1931,6 +1933,15 @@ DB 저장 중 하나라도 실패하면 전체 트랜잭션을 롤백하고 성�
 ```
 
 - `startAt` 또는 `endAt`을 분석에서 추출하지 못한 경우 해당 값은 `null`이다.
+- 출처 이미지가 삭제된 뒤에도 일정은 유지되므로(5-3 참고) `imageId`가 삭제된 이미지를 가리킬 수 있다. 이 `imageId`로 5-2를 조회하면 `IMAGE_NOT_FOUND`(404)가 될 수 있다.
+
+### 조회·정렬 규칙
+
+- `query_schema.user_schedule_view.del_yn='N'`인 행만 조회한다.
+- `from`/`to`는 일정 기간 `[startAt, endAt]`과의 **겹침(경계 포함)** 기준이다(`COALESCE(endAt, startAt) >= from AND COALESCE(startAt, endAt) <= to`). 한쪽 시각만 있는 일정은 있는 시각을 기간으로 본다.
+- `startAt`과 `endAt`이 모두 `null`인 일정(날짜 추출 실패 후보)은 `from` 또는 `to`를 지정하면 결과에서 제외된다. 날짜 없는 후보는 기간 없이 조회해야 한다.
+- 정렬 시 시각이 `null`인 일정은 항상 마지막에 오고(NULLS LAST), 같은 정렬값은 `scheduleId ASC`를 보조 정렬로 사용해 페이지 간 순서를 고정한다.
+- 지원하지 않는 `sort` 값, 범위를 벗어난 `page`/`size`, 형식이 잘못된 `from`/`to`, `from`이 `to`보다 늦은 요청은 `INVALID_PARAMETER`(400)로 응답한다.
 
 ---
 
@@ -1961,9 +1972,11 @@ DB 저장 중 하나라도 실패하면 전체 트랜잭션을 롤백하고 성�
 
 - `schedule_schema.schedule`, `library_schema.user_schedule`, `library_schema.image_schedule`, `query_schema.user_schedule_view`를 하나의 트랜잭션에서 soft delete한다.
 - 출처 이미지와 `library_schema.user_image` 관계는 변경하지 않는다.
-- 해당 이미지에 캘린더 등록 상태인 다른 활성 일정이 없으면 `query_schema.user_image_view.is_calendared_yn='N'`으로 갱신한다.
+- 해당 이미지에 캘린더 등록 상태인 다른 활성 일정이 없으면 `query_schema.user_image_view.is_calendared_yn='N'`으로 갱신한다. 활성 일정은 `image_schedule.del_yn='N'`이고 `user_schedule.del_yn='N'`인 일정이다. 출처 이미지 관계가 이미 삭제된 일정(5-3 이미지 삭제 이후)은 이 갱신을 생략한다.
 
 ### 에러: `SCHEDULE_NOT_FOUND` (404)
+
+- 일정이 없거나, 요청 사용자 소유가 아니거나, 이미 삭제된 경우 모두 `SCHEDULE_NOT_FOUND`다.
 
 ---
 
@@ -2002,9 +2015,12 @@ DB 저장 중 하나라도 실패하면 전체 트랜잭션을 롤백하고 성�
 ### 처리 규칙
 
 - `library_schema.user_schedule.is_calendared_yn`과 `query_schema.user_schedule_view.is_calendared_yn`을 같은 트랜잭션에서 변경한다.
-- 출처 이미지에 연결된 활성 일정 중 하나라도 캘린더 등록 상태이면 `query_schema.user_image_view.is_calendared_yn='Y'`, 하나도 없으면 `N`으로 갱신한다.
+- 출처 이미지에 연결된 활성 일정 중 하나라도 캘린더 등록 상태이면 `query_schema.user_image_view.is_calendared_yn='Y'`, 하나도 없으면 `N`으로 갱신한다. 활성 일정은 `image_schedule.del_yn='N'`이고 `user_schedule.del_yn='N'`인 일정이다. 출처 이미지 관계가 이미 삭제된 일정은 이 갱신을 생략한다.
+- 같은 값으로 다시 호출해도 성공이며(멱등) `updatedAt`만 갱신된다.
 
 ### 에러: `SCHEDULE_NOT_FOUND` (404)
+
+- 일정이 없거나, 요청 사용자 소유가 아니거나, 이미 삭제된 경우 모두 `SCHEDULE_NOT_FOUND`다.
 
 ---
 

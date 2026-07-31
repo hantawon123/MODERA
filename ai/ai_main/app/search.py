@@ -125,6 +125,27 @@ def _index_body() -> dict[str, Any]:
     }
 
 
+def _create_index_with_template(index: str, body: dict[str, Any]) -> None:
+    """인덱스 템플릿을 먼저 걸고 인덱스를 만든다.
+
+    auto_create_index 경쟁 대비: 우리가 create 하기 직전에 다른 요청의 문서
+    쓰기가 인덱스를 먼저 만들어 버려도, 정확히 이 이름만 잡는 템플릿 덕에
+    dynamic mapping 대신 올바른 매핑이 적용된다(category_name 이 text 로 잡혀
+    집계가 400 나는 사고의 재발 방지). 경쟁에서 지면 create 는
+    already_exists 로 터지는데, 이미 원하는 매핑이므로 무시한다.
+    """
+    client = _client()
+    client.indices.put_index_template(
+        name=f"{index}-mapping",
+        body={"index_patterns": [index], "template": body, "priority": 100},
+    )
+    try:
+        client.indices.create(index=index, body=body)
+    except Exception as e:
+        if "resource_already_exists" not in str(e):
+            raise
+
+
 def ensure_index(force: bool = False) -> None:
     """인덱스가 없으면 **올바른 매핑으로** 만든다(멱등).
 
@@ -139,7 +160,8 @@ def ensure_index(force: bool = False) -> None:
     다음 색인이 잘못된 매핑을 만든다.
 
     그래서 캐시에 유효기간을 둔다. exists 는 로컬 HEAD 요청이라 싸고,
-    최악의 경우에도 TTL 안에 스스로 복구된다.
+    최악의 경우에도 TTL 안에 스스로 복구된다. 생성 시에는 같은 이름의 인덱스
+    템플릿도 함께 등록해 auto-create 경쟁까지 막는다(_create_index_with_template).
     """
     global _index_checked_at
     now = time.monotonic()
@@ -148,7 +170,7 @@ def ensure_index(force: bool = False) -> None:
     client = _client()
     index = get_settings().opensearch_index
     if not client.indices.exists(index=index):
-        client.indices.create(index=index, body=_index_body())
+        _create_index_with_template(index, _index_body())
         logger.warning("OpenSearch 인덱스 생성: %s (nori 매핑 적용)", index)
     else:
         # 존재만 보면 못 잡는 사고가 있다: 인덱스를 밖에서 지운 직후 TTL 안에
@@ -166,6 +188,60 @@ def ensure_index(force: bool = False) -> None:
                 index, props.get("embedding", {}).get("type"),
             )
     _index_checked_at = now
+
+
+def migrate_image_index_mapping() -> None:
+    """auto-create 로 잘못 만들어진 이미지 인덱스를 재색인으로 교정한다(멱등).
+
+    category_name 이 dynamic mapping 으로 text 가 되면 terms 집계가
+    400(fielddata) 을 던지고(카테고리 목록 API), nori 가 없어 한글 검색·term
+    필터도 조용히 나빠진다. _source 는 남아 있으므로 old→tmp→재생성→되채움
+    재색인만으로 복구된다(LLM 재분석 불필요).
+
+    기동 시(lifespan, 요청 받기 전) 부른다 — 단일 워커라 재색인 중 새 쓰기와
+    경쟁하지 않는다. 실패해도 기동은 막지 않는다: 원본이 남는 방향으로만
+    중단하고, 다음 재기동(=재배포)에서 다시 시도한다.
+    """
+    try:
+        client = _client()
+        index = get_settings().opensearch_index
+        if not client.indices.exists(index=index):
+            return  # ensure_index 가 올바른 매핑으로 새로 만든다
+        props = client.indices.get_mapping(index=index)[index]["mappings"].get(
+            "properties", {})
+        if (props.get("category_name") or {}).get("type") == "keyword":
+            return
+        tmp = f"{index}_migrate_tmp"
+        client.indices.refresh(index=index)
+        total = client.count(index=index)["count"]
+        logger.warning("이미지 인덱스 매핑 교정 시작: category_name=text, %s건", total)
+
+        if client.indices.exists(index=tmp):
+            client.indices.delete(index=tmp)
+        client.indices.create(index=tmp, body=_index_body())
+        # ponytail: 동기 재색인 — 수만 건까지 기동 지연 수초. 그 이상 커지면
+        # wait_for_completion=False + tasks API 폴링으로 바꾼다.
+        client.reindex(body={"source": {"index": index}, "dest": {"index": tmp}},
+                       wait_for_completion=True, request_timeout=600)
+        client.indices.refresh(index=tmp)
+        moved = client.count(index=tmp)["count"]
+        if moved != total:
+            logger.error("교정 중단: tmp 재색인 %s/%s건 — 원본 유지", moved, total)
+            return
+
+        client.indices.delete(index=index)
+        ensure_index(force=True)  # 템플릿 등록 + 올바른 매핑으로 재생성
+        client.reindex(body={"source": {"index": tmp}, "dest": {"index": index}},
+                       wait_for_completion=True, request_timeout=600)
+        client.indices.refresh(index=index)
+        back = client.count(index=index)["count"]
+        if back != total:
+            logger.error("되채움 %s/%s건 — tmp(%s) 보존", back, total, tmp)
+            return
+        client.indices.delete(index=tmp)
+        logger.warning("이미지 인덱스 매핑 교정 완료: %s건, keyword·nori 적용", total)
+    except Exception:
+        logger.exception("이미지 인덱스 매핑 교정 실패 — 다음 기동에서 재시도")
 
 
 def index_document(
@@ -987,7 +1063,7 @@ def ensure_category_index(force: bool = False) -> None:
     client = _client()
     index = _category_index()
     if not client.indices.exists(index=index):
-        client.indices.create(index=index, body={
+        _create_index_with_template(index, {
             "settings": {"index": {"number_of_shards": 1, "number_of_replicas": 0}},
             "mappings": {"properties": {
                 "user_id": {"type": "long"},

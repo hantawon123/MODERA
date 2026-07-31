@@ -39,7 +39,7 @@ class CategoryReanalysisServiceTest {
         when(jobRepository.create(
                 request.categoryRequestId(), request.userId(),
                 request.imageId(), request.excludedCategoryIds())).thenReturn(true);
-        when(client.reanalyze(18, request.excludedCategoryIds()))
+        when(client.reanalyze(7, 18, request.excludedCategoryIds()))
                 .thenReturn(new CategoryReanalysisClient.CategoryResult(13, "새 카테고리"));
 
         categoryReanalysisService.handle(request);
@@ -61,7 +61,7 @@ class CategoryReanalysisServiceTest {
     void rejectsAnExcludedAiCategoryAndPublishesFailure() {
         var request = request();
         when(jobRepository.create(any(), any(), any(), any())).thenReturn(true);
-        when(client.reanalyze(18, request.excludedCategoryIds()))
+        when(client.reanalyze(7, 18, request.excludedCategoryIds()))
                 .thenReturn(new CategoryReanalysisClient.CategoryResult(8, "중복"));
 
         categoryReanalysisService.handle(request);
@@ -81,7 +81,7 @@ class CategoryReanalysisServiceTest {
 
         categoryReanalysisService.handle(request);
 
-        verify(client, never()).reanalyze(any(), any());
+        verify(client, never()).reanalyze(any(), any(), any());
         verify(eventPublisher, never()).publish(any(), any(), any(Integer.class), any());
     }
 

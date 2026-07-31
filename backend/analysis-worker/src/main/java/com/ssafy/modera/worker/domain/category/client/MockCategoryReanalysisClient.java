@@ -13,7 +13,9 @@ public class MockCategoryReanalysisClient implements CategoryReanalysisClient {
 
     @Override
     public CategoryResult reanalyze(
-            Integer imageId, List<Integer> excludedCategoryIds) {
+            Integer userId,
+            Integer imageId,
+            List<Integer> excludedCategoryIds) {
         int categoryId = java.util.stream.IntStream.rangeClosed(1, 100)
                 .filter(id -> !excludedCategoryIds.contains(id))
                 .findFirst()

@@ -29,10 +29,10 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.ssafy.modera.core.component.ModeraTopBar
-import com.ssafy.modera.core.component.item.ModeraAnalyzedImageItem
 import com.ssafy.modera.core.component.ModeraSearchBar
+import com.ssafy.modera.core.component.ModeraTopBar
 import com.ssafy.modera.core.component.SearchBarMode
+import com.ssafy.modera.core.component.item.ModeraAnalyzedImageItem
 import com.ssafy.modera.core.designsystem.component.Text
 import com.ssafy.modera.core.designsystem.theme.ModeraTheme
 import com.ssafy.modera.core.model.analyzedimage.AnalyzedImage
@@ -122,11 +122,7 @@ fun CategorySearchScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(ModeraTheme.colors.white).windowInsetsPadding(
-                WindowInsets.safeDrawing.only(
-                    WindowInsetsSides.Vertical,
-                ),
-            ),
+            .background(ModeraTheme.colors.white),
     ) {
         ModeraTopBar(onBackClick = onBackClick)
 

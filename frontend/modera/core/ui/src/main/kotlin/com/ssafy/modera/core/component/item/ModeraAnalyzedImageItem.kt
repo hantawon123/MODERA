@@ -82,7 +82,7 @@ fun ModeraAnalyzedImageItem(
                 )
 
                 if (favorite || isDocumented || hasSchedule) {
-                    Spacer(modifier = Modifier.height(AnalyzedImageItemDefaults.FooterSpacing))
+                    Spacer(modifier = Modifier.height(AnalyzedImageItemDefaults.MetaItemSpacing))
                     AnalyzedImageMetaRow(
                         favorite = favorite,
                         isDocumented = isDocumented,
@@ -179,7 +179,7 @@ object AnalyzedImageItemDefaults {
     val ContentPadding = PaddingValues(vertical = 16.dp)
     val TextImageSpacing = 12.dp
     val TitleDescriptionSpacing = 6.dp
-    val FooterSpacing = 14.dp
+    val FooterSpacing = 12.dp
     val MetaItemSpacing = 4.dp
     val MetaIconSize = 14.dp
     val ThumbnailSize = 88.dp

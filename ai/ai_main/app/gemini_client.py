@@ -170,13 +170,50 @@ def generate_json(model_name: str, parts: list[Any]) -> dict[str, Any]:
     return parse_json_response(response.text)
 
 
+# GMS 프록시는 요청 본문이 약 90KB 를 넘으면 본문이 유실된 채 업스트림에 전달돼
+# 400("contents is not specified")이 난다 — 2026-07-31 실측: 67KB 통과, 90KB+ 실패.
+# 실서버 스크린샷은 원본이 수 MB 라 비전 호출이 전부 이 400 으로 죽고, 파이프라인은
+# "OCR 만으로 진행" 폴백 덕에 조용히 눈 없이 돌아가고 있었다(실사진 111장 중 98장 실측).
+# base64 팽창(4/3)과 텍스트 몫을 감안해 이미지 자체를 ~40KB 이하로 맞춘다.
+# 융합 호출은 본문을 이미지와 OCR 텍스트가 나눠 쓰는데, 한글은 JSON 이스케이프로
+# 글자당 6바이트라 텍스트 밀집 스크린샷은 OCR 만 수십 KB 다(60KB 예산에서 4장
+# 400 실측 → 40KB 로 하향, 텍스트 쪽은 stages 가 3,000자로 제한). 분류용 시각
+# 신호(레이아웃·색·로고·서식)는 이 해상도로 충분하고, 글자 정보는 기기 OCR 이
+# 원본 해상도에서 따로 들어온다.
+_IMAGE_BYTE_BUDGET = 40_000
+
+
 def image_part(image_bytes: bytes):
-    """S3 에서 받은 바이트를 비전 입력으로 변환한다."""
+    """S3 에서 받은 바이트를 비전 입력으로 변환한다. GMS 본문 한도 안으로 축소한다."""
     try:
-        from PIL import Image
+        from PIL import Image, ImageOps
     except ImportError as e:  # pragma: no cover
         raise GeminiError("pillow 가 설치되지 않았습니다.") from e
-    return Image.open(io.BytesIO(image_bytes))
+    im = Image.open(io.BytesIO(image_bytes))
+    if len(image_bytes) <= _IMAGE_BYTE_BUDGET:
+        # 이미 한도 안 — 원본 바이트를 그대로 보낸다(재인코딩 팽창 방지).
+        mime = Image.MIME.get(im.format or "", "image/png")
+        return {"mime_type": mime, "data": image_bytes}
+    im = ImageOps.exif_transpose(im).convert("RGB")
+    # 너비 기준 축소는 세로로 긴 캡처(대화 전체 저장·전체 페이지)에서 실패한다 —
+    # 360px 폭이어도 높이가 수천 px 면 수백 KB 다(실측: 카톡 장문 캡처 181KB 통과
+    # → GMS 400). 품질을 먼저 낮추고, 그래도 크면 면적을 절반씩 줄여 **예산 이하를
+    # 보장**한다. 극단적으로 긴 이미지는 흐릿해지지만, 그런 화면은 어차피 한 뷰로
+    # 읽을 수 없고 텍스트는 기기 OCR 이 원문으로 따로 들어온다.
+    quality = 80
+    while True:
+        buf = io.BytesIO()
+        im.save(buf, "JPEG", quality=quality)
+        if buf.tell() <= _IMAGE_BYTE_BUDGET:
+            break
+        if quality > 50:
+            quality -= 15
+        elif im.width * im.height > 40_000:
+            im = im.resize((max(1, int(im.width * 0.7)),
+                            max(1, int(im.height * 0.7))))
+        else:
+            break  # 4만 픽셀 미만 q50 이 예산을 넘는 경우는 없지만, 무한루프 안전핀
+    return {"mime_type": "image/jpeg", "data": buf.getvalue()}
 
 
 def embed(texts: list[str], purpose: str = "DOCUMENT") -> tuple[str, list[list[float]]]:

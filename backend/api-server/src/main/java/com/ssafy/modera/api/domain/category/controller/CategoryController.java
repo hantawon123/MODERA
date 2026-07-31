@@ -3,6 +3,7 @@ package com.ssafy.modera.api.domain.category.controller;
 import com.ssafy.modera.api.domain.category.dto.response.CategoryListResponse;
 import com.ssafy.modera.api.domain.category.service.CategoryQueryService;
 import com.ssafy.modera.api.global.response.ApiResponse;
+import com.ssafy.modera.api.global.response.ApiV1Controller;
 import io.swagger.v3.oas.annotations.Operation;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -12,6 +13,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+@ApiV1Controller
 @RestController
 @RequestMapping("/api/v1/categories")
 @RequiredArgsConstructor

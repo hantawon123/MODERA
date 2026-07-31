@@ -327,7 +327,14 @@ def build_candidates(
     for key, entry in stored.items():
         if key not in seen:
             seen.add(key)
-            merged.append(CategoryCandidate(category_id=None, name=entry["name"]))
+            # 사용자에게 이미 쌓인 카테고리(count>0)만 id 를 달아 준다. id 가 붙으면
+            # resolve_category 가 created=False 로 판정하고(category.py), Spring 은
+            # "이미 있는 카테고리" 로 받는다. 전역 시드는 이 사용자가 한 번도 쓴 적
+            # 없는 기본 이름이라 신규로 남겨야 한다 — 벡터를 안 붙이는 기준과 같다.
+            merged.append(CategoryCandidate(
+                category_id=entry["category_id"] if entry.get("count", 0) > 0 else None,
+                name=entry["name"],
+            ))
     if not merged:
         merged = [CategoryCandidate(category_id=None, name=name)
                   for name in DEFAULT_CATEGORIES]
@@ -479,8 +486,11 @@ async def run_agent_core(
         # 카테고리는 항상 하나다(프롬프트가 하나만 고르게 하고 resolve_category 도
         # 하나를 돌려준다). 배열로 감싸면 Spring 이 없는 다중 카테고리를 처리해야 한다.
         "category": resolution.name,
-        # 기존 카테고리에 붙었으면 Spring 의 categoryId, 신규면 null.
-        "categoryId": resolution.category_id,
+        # Spring 이 준 categoryId 가 있으면 그것, 없으면 이름 해시로 채운다.
+        # null 을 내보내면 Spring 이 이름으로 재조회해야 하는데, Spring 미연동
+        # 기간에는 후보에 categoryId 가 아예 없어(build_candidates) 늘 null 이 된다.
+        # reanalyze 는 이미 같은 폴백을 쓴다 — 두 경로가 같은 이름에 같은 id 를 준다.
+        "categoryId": resolution.category_id or search.stable_id(resolution.name),
         "keyInformation": generated.get("key_information") or [],
         "analysisConfidence": float(generated.get("analysis_confidence", 0.0)),
         # 캘린더용 일정. {type:"schedule", fields:{start*/end* 연·월·일·시각(HH:MM)}} 또는
@@ -582,8 +592,9 @@ def _empty_callback_result(thumbnail_key: str | None = None) -> dict[str, Any]:
         "summary": "",
         "tags": [],
         "category": OTHER_CATEGORY,
-        # '기타' 는 Spring 후보를 거치지 않고 붙인 이름이라 id 를 모른다.
-        "categoryId": None,
+        # COMPLETED 경로가 '기타' 로 판정했을 때와 같은 id 여야 한다. null 로 두면
+        # 같은 카테고리명이 status 에 따라 id 가 있기도 없기도 하다.
+        "categoryId": search.stable_id(OTHER_CATEGORY),
         "keyInformation": [],
         "analysisConfidence": 0.0,
         "scheduleData": {"type": None, "fields": {}},

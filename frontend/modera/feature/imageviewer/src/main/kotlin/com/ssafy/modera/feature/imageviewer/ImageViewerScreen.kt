@@ -136,12 +136,7 @@ fun ImageViewerScreen(
                     onBackClick = onBackClick,
                     modifier = Modifier
                         .align(Alignment.TopCenter)
-                        .background(ModeraTheme.colors.white)
-                        .windowInsetsPadding(
-                            WindowInsets.safeDrawing.only(
-                                WindowInsetsSides.Top,
-                            ),
-                        ),
+                        .background(ModeraTheme.colors.white),
                 )
             }
         }

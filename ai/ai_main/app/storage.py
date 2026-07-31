@@ -202,9 +202,10 @@ def fetch_image(image_ref: str) -> bytes:
 def make_thumbnail(image_bytes: bytes) -> bytes:
     """목록·카테고리 카드에 쓸 썸네일을 만든다. 사진 1장당 1개다.
 
-    THUMBNAIL_SQUARE=true(기본)면 가운데를 정사각으로 잘라낸다. 카드와 격자 목록이
-    모두 정사각이라 여기서 모양을 맞춰 두면 앱이 자를 필요가 없다.
-    false 면 원본 비율을 그대로 둔다.
+    THUMBNAIL_SQUARE=true(기본)면 정사각으로 잘라내되, 엔트로피(정보량)가 가장
+    높은 위치를 골라 자른다. 스크린샷은 텍스트·UI 가 밀집한 영역이 높게 나와
+    "중요한 내용" 근처가 남는다. 카드와 격자 목록이 모두 정사각이라 여기서
+    모양을 맞춰 두면 앱이 자를 필요가 없다. false 면 원본 비율을 그대로 둔다.
 
     THUMBNAIL_MAX_SIZE 는 축소 상한이다. 0(기본)이면 축소하지 않고 해상도를 원본
     그대로 둔다 — 모양만 정사각으로 맞추는 용도. 값을 주면 그 변까지 줄인다.
@@ -225,8 +226,20 @@ def make_thumbnail(image_bytes: bytes) -> bytes:
         if settings.thumbnail_square:
             width, height = image.size
             side = min(width, height)
-            left, top = (width - side) // 2, (height - side) // 2
-            image = image.crop((left, top, left + side, top + side))
+            span = max(width, height) - side
+            if span:
+                # 정사각 윈도우를 긴 축을 따라 슬라이드하며 엔트로피가 최대인 곳을 자른다.
+                # ponytail: 9지점 샘플링 휴리스틱 — 부족하면 saliency 모델로 교체
+                def _box(offset: int) -> tuple[int, int, int, int]:
+                    if width > height:
+                        return (offset, 0, offset + side, side)
+                    return (0, offset, side, offset + side)
+
+                best = max(
+                    range(0, span + 1, max(1, span // 8)),
+                    key=lambda o: image.crop(_box(o)).entropy(),
+                )
+                image = image.crop(_box(best))
             if 0 < limit < side:
                 image = image.resize((limit, limit), Image.LANCZOS)
         elif limit > 0:

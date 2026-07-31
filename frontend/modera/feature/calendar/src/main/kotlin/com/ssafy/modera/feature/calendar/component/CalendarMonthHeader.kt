@@ -33,7 +33,7 @@ fun CalendarMonthHeader(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 20.dp, vertical = 8.dp),
+            .padding(horizontal = 20.dp, vertical = 6.dp),
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -41,7 +41,7 @@ fun CalendarMonthHeader(
             imageVector = ImageVector.vectorResource(ic_arrow_left_circle_20),
             contentDescription = stringResource(R.string.calendar_previous_month_content_description),
             modifier = Modifier
-                .size(24.dp)
+                .size(20.dp)
                 .clickable(onClick = onPreviousMonth),
             tint = Color.Unspecified,
         )
@@ -57,7 +57,7 @@ fun CalendarMonthHeader(
             imageVector = ImageVector.vectorResource(ic_arrow_right_circle_20),
             contentDescription = stringResource(R.string.calendar_next_month_content_description),
             modifier = Modifier
-                .size(24.dp)
+                .size(20.dp)
                 .clickable(onClick = onNextMonth),
             tint = Color.Unspecified,
         )

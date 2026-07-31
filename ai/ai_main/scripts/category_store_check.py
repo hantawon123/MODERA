@@ -41,6 +41,9 @@ class FakeIndices:
         self.created.append(index)
         self.bodies[index] = body
 
+    def put_index_template(self, name, body):
+        pass
+
     def refresh(self, index):
         pass
 
@@ -160,7 +163,8 @@ assert {"term": {"dim": DIM}} in filters, filters
 assert {"terms": {"user_id": [0, 7]}} in filters, filters
 # 시드가 먼저 오도록 정렬해야 사용자 centroid 가 시드를 덮는다.
 assert client.queries[0]["sort"] == [{"user_id": {"order": "asc"}}]
-assert loaded == {"쇼핑": {"name": "쇼핑", "vector": [0.5] * DIM, "count": 3}}
+assert loaded == {"쇼핑": {"name": "쇼핑", "category_id": search.stable_id("쇼핑"),
+                           "vector": [0.5] * DIM, "count": 3}}
 
 # 10-b) 같은 이름이면 사용자 centroid 가 시드를 덮는다(정렬 순서대로 나중 것이 이김).
 client = FakeClient()
@@ -185,17 +189,22 @@ assert search.load_category_vectors(7) == {}
 # 12) 저장된 카테고리는 후보로 되살아나고, 대표 벡터가 채워진다.
 #     (= 재기동 뒤에도 AGENT 가 만든 카테고리가 프롬프트 후보에 남는다)
 stages.search.load_category_vectors = lambda user_id: {
-    "부동산": {"name": "부동산", "vector": [0.3] * DIM, "count": 2},
+    "부동산": {"name": "부동산", "category_id": search.stable_id("부동산"),
+               "vector": [0.3] * DIM, "count": 2},
 }
 candidates = stages.build_candidates(1, [])
 names = [c.name for c in candidates]
 assert names == ["부동산"], names
 assert candidates[0].representative_vector == [0.3] * DIM
+# 사용자에게 쌓인(count>0) 저장 카테고리는 id 를 가져야 기존 카테고리로 판정된다.
+assert candidates[0].category_id == search.stable_id("부동산")
 
 # 13) Spring 후보와 합쳐지고, representativeVector 가 있으면 그쪽이 우선이다.
 stages.search.load_category_vectors = lambda user_id: {
-    "쇼핑": {"name": "쇼핑", "vector": [0.1] * DIM, "count": 9},
-    "부동산": {"name": "부동산", "vector": [0.3] * DIM, "count": 2},
+    "쇼핑": {"name": "쇼핑", "category_id": search.stable_id("쇼핑"),
+             "vector": [0.1] * DIM, "count": 9},
+    "부동산": {"name": "부동산", "category_id": search.stable_id("부동산"),
+               "vector": [0.3] * DIM, "count": 2},
 }
 spring = [
     CategoryCandidate(category_id=11, name="쇼핑"),
@@ -208,7 +217,7 @@ assert set(by_name) == {"쇼핑", "음식", "부동산"}, set(by_name)
 assert by_name["쇼핑"].category_id == 11, "Spring 의 categoryId 가 사라졌다"
 assert by_name["쇼핑"].representative_vector == [0.1] * DIM, "저장된 centroid 미적용"
 assert by_name["음식"].representative_vector == [0.9] * DIM, "Spring 벡터가 덮였다"
-assert by_name["부동산"].category_id is None
+assert by_name["부동산"].category_id == search.stable_id("부동산")
 
 # 14) 저장소도 Spring 도 비면 기본 후보로 콜드 스타트한다.
 stages.search.load_category_vectors = lambda user_id: {}

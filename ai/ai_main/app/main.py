@@ -108,6 +108,8 @@ async def _lifespan(app: FastAPI):
     이어서 재기동으로 끊긴 분석을 되살린다. 조회·재큐잉이 오래 걸릴 수 있어
     태스크로 흘려보내고 기동은 막지 않는다(헬스체크가 먼저 통과해야 한다).
     """
+    # 잘못된 매핑(auto-create 사고)을 요청 받기 전에 교정한다. 멱등·best-effort.
+    await asyncio.to_thread(search.migrate_image_index_mapping)
     await asyncio.to_thread(seed_default_category_vectors)
     _startup = asyncio.create_task(requeue_interrupted())
     yield

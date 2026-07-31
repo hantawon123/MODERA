@@ -671,7 +671,7 @@ GET /api/v1/images?keyword=C%2B%2B&page=0&size=20
     "category" : "집",
     "tags" : [ "C++", "쇼핑"],
     "keyInformation" : ["가격: 32,000원", "판매처: 교보문고"],
-      "structuredData": {"type": "schedule", "fields": {
+      "scheduledData": {"type": "schedule", "fields": {
          "startYear": "2026",
          "startMonth": "8",
          "startDay": "3",

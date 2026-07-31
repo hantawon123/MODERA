@@ -15,7 +15,7 @@ public record ImageDetailResponse(
         @Schema(description = "카테고리 이름") String category,
         @Schema(description = "태그 이름 목록") List<String> tags,
         @Schema(description = "핵심 정보 목록") List<String> keyInformation,
-        @Schema(description = "구조화 데이터") Map<String, Object> structuredData,
+        @Schema(description = "구조화 데이터(일정·상품 등 type별 fields)") Map<String, Object> scheduledData,
         @Schema(description = "문서화 여부") Boolean isDocumented,
         @Schema(description = "일정 등록 여부") Boolean isCalendared
 ) {

@@ -407,14 +407,14 @@ POST /internal/v1/search/related   X-Internal-Token: <공유 토큰>
   알려 주면 남의 imageId 열거에 쓰인다).
 - `total` 은 고정 후보풀 위의 생존자 수라 페이지를 넘겨도 흔들리지 않는다.
 
-### 자연어 검색 (명세 5-5) — `POST /internal/v1/search/semantic`
+### 자연어 검색 (명세 5-5) — `POST /internal/v1/images/search/semantic`
 
 앱의 `POST /api/v1/images/search/semantic` 뒤에 있는 AI 구간. API 서버가
 `IMAGE_SEMANTIC_SEARCH_REQUESTED` 를 Redis Streams 로 발행하면 analysis-worker 가
 이 엔드포인트를 부르고, 응답 봉투를 결과 스트림에 그대로 싣는다.
 
 ```json
-POST /internal/v1/search/semantic   X-Internal-Token: <공유 토큰>
+POST /internal/v1/images/search/semantic   X-Internal-Token: <공유 토큰>
 { "userId": 1, "query": "C++ 프로그래밍 책 가격을 보여줘",
   "correlationId": "0d2647bb-...", "page": 0, "size": 20 }
 ```

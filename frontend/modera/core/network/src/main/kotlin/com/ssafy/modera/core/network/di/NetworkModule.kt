@@ -1,6 +1,7 @@
 ﻿package com.ssafy.modera.core.network.di
 
 import com.skydoves.sandwich.retrofit.adapters.ApiResponseCallAdapterFactory
+import com.ssafy.modera.core.network.AccessTokenInterceptor
 import com.ssafy.modera.core.network.BuildConfig
 import com.ssafy.modera.core.network.service.AnalyzedImageClient
 import com.ssafy.modera.core.network.service.AnalyzedImageService
@@ -35,6 +36,7 @@ internal object NetworkModule {
     @Singleton
     fun provideOkHttpClient(): OkHttpClient =
         OkHttpClient.Builder()
+            .addInterceptor(AccessTokenInterceptor())
             .apply {
                 if (BuildConfig.DEBUG) {
                     addNetworkInterceptor(
@@ -53,7 +55,7 @@ internal object NetworkModule {
         okHttpClient: OkHttpClient,
     ): Retrofit =
         Retrofit.Builder()
-            .baseUrl("https://i15d207.p.ssafy.io/")
+            .baseUrl("https://i15d207.p.ssafy.io:8443/")
             .client(okHttpClient)
             .addConverterFactory(
                 json.asConverterFactory(

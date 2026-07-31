@@ -44,6 +44,8 @@ fun CalendarScheduleItem(
     schedule: CalendarSchedule,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    isEditMode: Boolean = false,
+    onDeleteClick: (() -> Unit)? = null,
 ) {
     val barColor = schedule.source.barColor()
     val formattedStart = remember(schedule.startTime) {
@@ -87,36 +89,53 @@ fun CalendarScheduleItem(
                 .align(Alignment.CenterVertically),
         )
 
-        if (schedule.source == CalendarScheduleSource.APP) {
-            Spacer(modifier = Modifier.width(8.dp))
-            if (schedule.isAdded) {
+        when {
+            isEditMode && onDeleteClick != null -> {
+                Spacer(modifier = Modifier.width(8.dp))
                 Icon(
-                    imageVector = ImageVector.vectorResource(ModeraIcons.ArrowRightCircle),
+                    imageVector = ImageVector.vectorResource(ModeraIcons.Trash),
                     contentDescription = stringResource(
-                        R.string.calendar_schedule_detail_content_description,
+                        R.string.calendar_schedule_delete_content_description,
                     ),
                     modifier = Modifier
                         .size(20.dp)
-                        .align(Alignment.CenterVertically),
-                    tint = ModeraTheme.colors.gray500,
-                )
-            } else {
-                Box(
-                    modifier = Modifier
-                        .size(20.dp)
                         .align(Alignment.CenterVertically)
-                        .clip(CircleShape)
-                        .background(ModeraTheme.colors.yellow700),
-                    contentAlignment = Alignment.Center,
-                ) {
+                        .clickable(onClick = onDeleteClick),
+                    tint = ModeraTheme.colors.red,
+                )
+            }
+
+            schedule.source == CalendarScheduleSource.APP -> {
+                Spacer(modifier = Modifier.width(8.dp))
+                if (schedule.isAdded) {
                     Icon(
-                        imageVector = ImageVector.vectorResource(ModeraIcons.Add),
+                        imageVector = ImageVector.vectorResource(ModeraIcons.ArrowRightCircle),
                         contentDescription = stringResource(
-                            R.string.calendar_schedule_add_content_description,
+                            R.string.calendar_schedule_detail_content_description,
                         ),
-                        modifier = Modifier.size(14.dp),
-                        tint = ModeraTheme.colors.white,
+                        modifier = Modifier
+                            .size(20.dp)
+                            .align(Alignment.CenterVertically),
+                        tint = ModeraTheme.colors.gray500,
                     )
+                } else {
+                    Box(
+                        modifier = Modifier
+                            .size(20.dp)
+                            .align(Alignment.CenterVertically)
+                            .clip(CircleShape)
+                            .background(ModeraTheme.colors.yellow700),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            imageVector = ImageVector.vectorResource(ModeraIcons.Add),
+                            contentDescription = stringResource(
+                                R.string.calendar_schedule_add_content_description,
+                            ),
+                            modifier = Modifier.size(14.dp),
+                            tint = ModeraTheme.colors.white,
+                        )
+                    }
                 }
             }
         }
@@ -177,51 +196,20 @@ private fun CalendarScheduleItemAppTimedPreview() {
 
 @Preview(showBackground = true, widthDp = 360)
 @Composable
-private fun CalendarScheduleItemDeviceTimedPreview() {
+private fun CalendarScheduleItemEditModePreview() {
     ModeraTheme {
         CalendarScheduleItem(
             schedule = CalendarSchedule(
-                id = 2,
-                title = "저녁 약속",
-                source = CalendarScheduleSource.DEVICE,
-                startTime = LocalTime.of(23, 59),
-                endTime = LocalTime.of(0, 0),
-            ),
-            onClick = {},
-        )
-    }
-}
-
-@Preview(showBackground = true, widthDp = 360)
-@Composable
-private fun CalendarScheduleItemLongTitlePreview() {
-    ModeraTheme {
-        CalendarScheduleItem(
-            schedule = CalendarSchedule(
-                id = 3,
-                title = "성심당 케이크 예약 성심당 케이크 예약 성심당 케이크 예약 성심당 케이크 예약",
+                id = 1,
+                title = "SSAFY 중간 발표",
                 source = CalendarScheduleSource.APP,
                 startTime = LocalTime.of(9, 0),
                 endTime = LocalTime.of(13, 0),
                 isAdded = true,
             ),
             onClick = {},
-        )
-    }
-}
-
-@Preview(showBackground = true, widthDp = 360)
-@Composable
-private fun CalendarScheduleItemUntimedAddPreview() {
-    ModeraTheme {
-        CalendarScheduleItem(
-            schedule = CalendarSchedule(
-                id = 4,
-                title = "KTX 예매 일정",
-                source = CalendarScheduleSource.APP,
-                isAdded = false,
-            ),
-            onClick = {},
+            isEditMode = true,
+            onDeleteClick = {},
         )
     }
 }

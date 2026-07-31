@@ -7,6 +7,7 @@
     <string name="calendar_month_label">%1$d월</string>
     <string name="calendar_selected_date_label">%1$d %2$s</string>
     <string name="calendar_edit">편집</string>
+    <string name="calendar_edit_done">완료</string>
     <string name="calendar_empty_schedule">일정이 없습니다.</string>
     <string name="calendar_recognized_schedules">인식된 일정</string>
     <string name="calendar_weekday_sunday">일</string>
@@ -26,4 +27,9 @@
     <string name="calendar_more_schedules">+%1$d</string>
     <string name="calendar_schedule_detail_content_description">일정 상세</string>
     <string name="calendar_schedule_add_content_description">일정 추가</string>
+    <string name="calendar_schedule_delete_content_description">일정 삭제</string>
+    <string name="calendar_schedule_delete_dialog_title">해당 일정을 삭제하시겠어요?</string>
+    <string name="calendar_schedule_delete_dialog_description">삭제된 일정은 복구할 수 없습니다.</string>
+    <string name="calendar_schedule_delete_dialog_confirm">삭제</string>
+    <string name="calendar_schedule_delete_dialog_cancel">취소</string>
 </resources>

@@ -21,6 +21,7 @@ import com.ssafy.modera.core.designsystem.theme.ModeraTheme
 import com.ssafy.modera.core.model.calendar.CalendarSchedule
 import com.ssafy.modera.core.model.calendar.CalendarScheduleSource
 import com.ssafy.modera.core.model.calendar.addedSchedules
+import com.ssafy.modera.core.model.calendar.editableSchedules
 import com.ssafy.modera.core.model.calendar.pendingSchedules
 import com.ssafy.modera.feature.calendar.R
 import java.time.DayOfWeek
@@ -31,13 +32,17 @@ import java.time.LocalTime
 fun CalendarScheduleSection(
     selectedDate: LocalDate,
     schedules: List<CalendarSchedule>,
-    onEditClick: () -> Unit,
+    isEditMode: Boolean,
+    onEditModeToggle: () -> Unit,
     onScheduleClick: (CalendarSchedule) -> Unit,
     onAddScheduleClick: (CalendarSchedule) -> Unit,
+    onDeleteScheduleClick: (CalendarSchedule) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val addedSchedules = remember(schedules) { schedules.addedSchedules() }
     val pendingSchedules = remember(schedules) { schedules.pendingSchedules() }
+    val editableSchedules = remember(schedules) { schedules.editableSchedules() }
+    val visibleSchedules = if (isEditMode) editableSchedules else addedSchedules
 
     Column(
         modifier = modifier
@@ -62,14 +67,20 @@ fun CalendarScheduleSection(
             )
 
             Text(
-                text = stringResource(R.string.calendar_edit),
+                text = stringResource(
+                    if (isEditMode) {
+                        R.string.calendar_edit_done
+                    } else {
+                        R.string.calendar_edit
+                    },
+                ),
                 style = ModeraTheme.typography.bodySB14,
                 color = ModeraTheme.colors.blue,
-                modifier = Modifier.clickable(onClick = onEditClick),
+                modifier = Modifier.clickable(onClick = onEditModeToggle),
             )
         }
 
-        if (addedSchedules.isEmpty()) {
+        if (visibleSchedules.isEmpty()) {
             Text(
                 text = stringResource(R.string.calendar_empty_schedule),
                 style = ModeraTheme.typography.bodyR14,
@@ -79,17 +90,29 @@ fun CalendarScheduleSection(
 
             Spacer(modifier = Modifier.height(14.dp))
         } else {
-            addedSchedules.forEach { schedule ->
+            visibleSchedules.forEach { schedule ->
                 CalendarScheduleItem(
                     schedule = schedule,
-                    onClick = { onScheduleClick(schedule) },
+                    isEditMode = isEditMode,
+                    onClick = {
+                        if (isEditMode) {
+                            onDeleteScheduleClick(schedule)
+                        } else {
+                            onScheduleClick(schedule)
+                        }
+                    },
+                    onDeleteClick = if (isEditMode) {
+                        { onDeleteScheduleClick(schedule) }
+                    } else {
+                        null
+                    },
                 )
             }
 
             Spacer(modifier = Modifier.height(14.dp))
         }
 
-        if (pendingSchedules.isNotEmpty()) {
+        if (!isEditMode && pendingSchedules.isNotEmpty()) {
             HorizontalDivider(
                 thickness = 1.dp,
                 color = ModeraTheme.colors.gray100,
@@ -129,35 +152,19 @@ private fun DayOfWeek.toDisplayName(): String = stringResource(
 
 @Preview(showBackground = true, widthDp = 360)
 @Composable
-private fun CalendarScheduleSectionEmptyPreview() {
-    ModeraTheme {
-        CalendarScheduleSection(
-            selectedDate = LocalDate.of(2026, 8, 9),
-            schedules = emptyList(),
-            onEditClick = {},
-            onScheduleClick = {},
-            onAddScheduleClick = {},
-        )
-    }
-}
-
-@Preview(showBackground = true, widthDp = 360)
-@Composable
-private fun CalendarScheduleSectionFilledPreview() {
+private fun CalendarScheduleSectionEditModePreview() {
     ModeraTheme {
         CalendarScheduleSection(
             selectedDate = LocalDate.of(2026, 8, 9),
             schedules = listOf(
                 CalendarSchedule(
                     id = 1,
-                    title = "저녁 약속",
+                    title = "공주님 생일!",
                     source = CalendarScheduleSource.DEVICE,
-                    startTime = LocalTime.of(23, 59),
-                    endTime = LocalTime.of(0, 0),
                 ),
                 CalendarSchedule(
                     id = 2,
-                    title = "성심당 케이크 예약",
+                    title = "SSAFY 중간 발표",
                     source = CalendarScheduleSource.APP,
                     startTime = LocalTime.of(9, 0),
                     endTime = LocalTime.of(13, 0),
@@ -165,31 +172,22 @@ private fun CalendarScheduleSectionFilledPreview() {
                 ),
                 CalendarSchedule(
                     id = 3,
-                    title = "시간 없는 앱 일정",
+                    title = "SSAFY 기획서 제출",
                     source = CalendarScheduleSource.APP,
                     isAdded = true,
                 ),
                 CalendarSchedule(
                     id = 4,
-                    title = "시간 없는 삼성 일정",
-                    source = CalendarScheduleSource.DEVICE,
-                ),
-                CalendarSchedule(
-                    id = 5,
                     title = "KTX 예매",
                     source = CalendarScheduleSource.APP,
                     isAdded = false,
                 ),
-                CalendarSchedule(
-                    id = 6,
-                    title = "카페 예약 확인",
-                    source = CalendarScheduleSource.APP,
-                    isAdded = false,
-                ),
             ),
-            onEditClick = {},
+            isEditMode = true,
+            onEditModeToggle = {},
             onScheduleClick = {},
             onAddScheduleClick = {},
+            onDeleteScheduleClick = {},
         )
     }
 }

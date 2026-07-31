@@ -21,6 +21,11 @@ fun List<CalendarSchedule>.pendingSchedules(): List<CalendarSchedule> =
         schedule.source == CalendarScheduleSource.APP && !schedule.isAdded
     }.sortedForDay()
 
+fun List<CalendarSchedule>.editableSchedules(): List<CalendarSchedule> =
+    filter { schedule ->
+        schedule.source == CalendarScheduleSource.APP && schedule.isAdded
+    }.sortedForDay()
+
 fun List<CalendarSchedule>.sortedForDay(): List<CalendarSchedule> =
     sortedWith { left, right ->
         val leftTimed = left.startTime != null

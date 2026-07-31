@@ -17,7 +17,7 @@ object ModeraIcons {
     val ArrowLeft = R.drawable.ic_arrow_left_24
 
     @DrawableRes
-    val ArrowRight = R.drawable.ic_arrow_right_20
+    val ArrowRight = R.drawable.ic_arrow_right_24
 
     @DrawableRes
     val ArrowRightCircle = R.drawable.ic_arrow_right_circle_20

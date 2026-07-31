@@ -46,12 +46,27 @@ public class CategoryCommandRepository {
                     FROM library_schema.user_image_category_history
                     WHERE user_image_id = ?
                     UNION ALL
-                    SELECT current_category_id,
+                    SELECT COALESCE(
+                               ui.current_category_id,
+                               view.category_id,
+                               category.category_id
+                           ),
                            'infinity'::timestamptz,
                            2147483647
-                    FROM library_schema.user_image
-                    WHERE user_image_id = ?
-                      AND current_category_id IS NOT NULL
+                    FROM library_schema.user_image ui
+                    JOIN query_schema.user_image_view view
+                      ON view.user_id = ui.user_id
+                     AND view.image_id = ui.image_id
+                     AND view.del_yn = 'N'
+                    LEFT JOIN taxonomy_schema.category category
+                      ON category.name = view.category_name
+                     AND category.del_yn = 'N'
+                    WHERE ui.user_image_id = ?
+                      AND COALESCE(
+                              ui.current_category_id,
+                              view.category_id,
+                              category.category_id
+                          ) IS NOT NULL
                 ),
                 deduplicated AS (
                     SELECT DISTINCT ON (category_id)
@@ -73,6 +88,9 @@ public class CategoryCommandRepository {
                 userImageId,
                 userImageId
         );
+        if (excluded.isEmpty()) {
+            return Optional.empty();
+        }
         int updated = jdbcTemplate.update(
                 """
                 UPDATE library_schema.user_image

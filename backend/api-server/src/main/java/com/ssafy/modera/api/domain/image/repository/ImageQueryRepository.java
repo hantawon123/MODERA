@@ -330,6 +330,19 @@ public class ImageQueryRepository {
         );
     }
 
+    public void updateCalendared(Integer userId, Integer imageId, boolean calendared) {
+        jdbcTemplate.update(
+                """
+                UPDATE query_schema.user_image_view
+                SET is_calendared_yn = ?
+                WHERE user_id = ? AND image_id = ? AND del_yn = 'N'
+                """,
+                calendared ? "Y" : "N",
+                userId,
+                imageId
+        );
+    }
+
     public void markUploadProcessing(Integer userId, Integer imageId) {
         jdbcTemplate.update(
                 """

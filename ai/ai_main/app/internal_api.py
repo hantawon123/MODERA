@@ -190,7 +190,7 @@ class SemanticSearchRequest(CamelModel):
     size: int = Field(default=20, ge=1, le=100)
 
 
-@router.post("/internal/v1/search/semantic",
+@router.post("/internal/v1/images/search/semantic",
              dependencies=[Depends(require_internal_token)],
              response_model=ImageSearchCompletedEvent,
              responses={400: {"description": "INVALID_REQUEST"},

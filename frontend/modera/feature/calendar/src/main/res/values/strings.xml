@@ -8,6 +8,7 @@
     <string name="calendar_selected_date_label">%1$d %2$s</string>
     <string name="calendar_edit">편집</string>
     <string name="calendar_edit_done">완료</string>
+    <string name="calendar_today">Today</string>
     <string name="calendar_empty_schedule">일정이 없습니다.</string>
     <string name="calendar_recognized_schedules">인식된 일정</string>
     <string name="calendar_weekday_sunday">일</string>

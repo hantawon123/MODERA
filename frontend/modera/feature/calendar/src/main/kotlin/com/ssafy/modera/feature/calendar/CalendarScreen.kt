@@ -81,6 +81,7 @@ fun CalendarRoute(
         scheduleToDelete = uiState.scheduleToDelete,
         onBackClick = onBackClick,
         onYearClick = viewModel::onYearClick,
+        onTodayClick = viewModel::onTodayClick,
         onYearPickerDismiss = viewModel::onYearPickerDismiss,
         onYearSelect = viewModel::onYearSelect,
         onPreviousMonth = viewModel::onPreviousMonth,
@@ -109,6 +110,7 @@ fun CalendarScreen(
     scheduleToDelete: CalendarSchedule?,
     onBackClick: () -> Unit,
     onYearClick: () -> Unit,
+    onTodayClick: () -> Unit,
     onYearPickerDismiss: () -> Unit,
     onYearSelect: (Int) -> Unit,
     onPreviousMonth: () -> Unit,
@@ -135,6 +137,14 @@ fun CalendarScreen(
                     style = ModeraTheme.typography.bodySB16,
                     color = ModeraTheme.colors.gray900,
                     modifier = Modifier.clickable(onClick = onYearClick),
+                )
+            },
+            rightContent = {
+                Text(
+                    text = stringResource(R.string.calendar_today),
+                    style = ModeraTheme.typography.bodyR14,
+                    color = ModeraTheme.colors.yellow800,
+                    modifier = Modifier.clickable(onClick = onTodayClick),
                 )
             },
         )
@@ -235,6 +245,7 @@ private fun CalendarScreenPreview() {
             scheduleToDelete = null,
             onBackClick = {},
             onYearClick = {},
+            onTodayClick = {},
             onYearPickerDismiss = {},
             onYearSelect = {},
             onPreviousMonth = {},

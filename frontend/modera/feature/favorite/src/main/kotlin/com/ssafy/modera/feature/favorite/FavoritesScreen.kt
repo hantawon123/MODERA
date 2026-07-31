@@ -1,7 +1,6 @@
 package com.ssafy.modera.feature.favorite
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -14,6 +13,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.ssafy.modera.core.component.ModeraTopBar
 import com.ssafy.modera.core.component.item.ModeraAnalyzedImageItem
 import com.ssafy.modera.core.designsystem.component.HorizontalDivider
 import com.ssafy.modera.core.designsystem.component.Text
@@ -41,78 +41,61 @@ fun FavoritesScreen(
     onItemClick: (Long) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Box(
-        modifier = modifier
+    Column(
+        modifier = Modifier
             .fillMaxSize()
-            .background(ModeraTheme.colors.white),
+            .background(color = ModeraTheme.colors.white)
+            .statusBarTopPadding()
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .statusBarTopPadding(),
-        ) {
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize(),
-            ) {
-                item(key = "favorites_header") {
-                    FavoritesHeader(
-                        itemCount = favorites.size,
-                    )
-                }
+        ModeraTopBar(
+            leftContent = {
+                Text(
+                    text = stringResource(R.string.favorites_title),
+                    style = ModeraTheme.typography.titleSB20,
+                    color = ModeraTheme.colors.gray900,
+                    modifier = Modifier.padding(4.dp),
+                )
+            },
+            onBackClick = {},
+        )
 
-                items(
-                    items = favorites,
-                    key = AnalyzedImage::id,
-                ) { favorite ->
-                    ModeraAnalyzedImageItem(
-                        title = favorite.title,
-                        description = favorite.summary,
-                        tags = favorite.hashtags,
-                        imageUrl = favorite.thumbnailUrl,
-                        favorite = favorite.favorite,
-                        isDocumented = favorite.isDocumented,
-                        hasSchedule = favorite.hasSchedule,
-                        onClick = { onItemClick(favorite.id) },
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                }
+        LazyColumn(
+            modifier = modifier
+                .fillMaxSize()
+                .padding(horizontal = 20.dp),
+        ) {
+            item {
+                Text(
+                    text = stringResource(R.string.favorites_item_count, favorites.size),
+                    style = ModeraTheme.typography.bodyR14,
+                    color = ModeraTheme.colors.gray500,
+                    modifier = Modifier.padding(top = 12.dp, bottom = 12.dp),
+                )
+
+                HorizontalDivider(
+                    thickness = 1.dp,
+                    color = ModeraTheme.colors.gray200,
+                )
+            }
+
+            items(
+                items = favorites,
+                key = AnalyzedImage::id,
+            ) { favorite ->
+                ModeraAnalyzedImageItem(
+                    title = favorite.title,
+                    description = favorite.summary,
+                    tags = favorite.hashtags,
+                    imageUrl = favorite.thumbnailUrl,
+                    favorite = favorite.favorite,
+                    isDocumented = favorite.isDocumented,
+                    hasSchedule = favorite.hasSchedule,
+                    onClick = { onItemClick(favorite.id) },
+                    modifier = Modifier.fillMaxWidth(),
+                )
             }
         }
     }
-}
-
-@Composable
-private fun FavoritesHeader(
-    itemCount: Int,
-    modifier: Modifier = Modifier,
-) {
-    Column(
-        modifier = modifier.fillMaxWidth(),
-    ) {
-        Text(
-            text = stringResource(R.string.favorites_title),
-            style = ModeraTheme.typography.titleSB20,
-            color = ModeraTheme.colors.gray900,
-            modifier = Modifier.padding(top = 10.dp),
-        )
-
-        Text(
-            text = stringResource(R.string.favorites_item_count, itemCount),
-            style = ModeraTheme.typography.bodyR14,
-            color = ModeraTheme.colors.gray500,
-            modifier = Modifier.padding(top = 8.dp, bottom = 8.dp),
-        )
-
-        HorizontalDivider(
-            thickness = 1.dp,
-            color = ModeraTheme.colors.gray200,
-        )
-    }
-}
-
-internal object FavoritesScreenDefaults {
-    val HorizontalPadding = 20.dp
 }
 
 private object FavoritesDummyData {

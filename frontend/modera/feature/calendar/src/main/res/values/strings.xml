@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="calendar_previous_month_content_description">이전 달</string>
+    <string name="calendar_next_month_content_description">다음 달</string>
+    <string name="calendar_previous_year_page_content_description">이전 연도 목록</string>
+    <string name="calendar_next_year_page_content_description">다음 연도 목록</string>
+    <string name="calendar_month_label">%1$d월</string>
+    <string name="calendar_selected_date_label">%1$d %2$s</string>
+    <string name="calendar_edit">편집</string>
+    <string name="calendar_edit_done">완료</string>
+    <string name="calendar_today">Today</string>
+    <string name="calendar_empty_schedule">일정이 없습니다.</string>
+    <string name="calendar_recognized_schedules">인식된 일정</string>
+    <string name="calendar_weekday_sunday">일</string>
+    <string name="calendar_weekday_monday">월</string>
+    <string name="calendar_weekday_tuesday">화</string>
+    <string name="calendar_weekday_wednesday">수</string>
+    <string name="calendar_weekday_thursday">목</string>
+    <string name="calendar_weekday_friday">금</string>
+    <string name="calendar_weekday_saturday">토</string>
+    <string name="calendar_day_sunday">일요일</string>
+    <string name="calendar_day_monday">월요일</string>
+    <string name="calendar_day_tuesday">화요일</string>
+    <string name="calendar_day_wednesday">수요일</string>
+    <string name="calendar_day_thursday">목요일</string>
+    <string name="calendar_day_friday">금요일</string>
+    <string name="calendar_day_saturday">토요일</string>
+    <string name="calendar_more_schedules">+%1$d</string>
+    <string name="calendar_schedule_detail_content_description">일정 상세</string>
+    <string name="calendar_schedule_add_content_description">일정 추가</string>
+    <string name="calendar_schedule_delete_content_description">일정 삭제</string>
+    <string name="calendar_schedule_delete_dialog_title">해당 일정을 삭제하시겠어요?</string>
+    <string name="calendar_schedule_delete_dialog_description">삭제된 일정은 복구할 수 없습니다.</string>
+    <string name="calendar_schedule_delete_dialog_confirm">삭제</string>
+    <string name="calendar_schedule_delete_dialog_cancel">취소</string>
+</resources>

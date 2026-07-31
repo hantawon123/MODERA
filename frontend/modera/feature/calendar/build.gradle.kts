@@ -6,3 +6,7 @@ plugins {
 android {
     namespace = "com.ssafy.modera.feature.calendar"
 }
+
+dependencies {
+    implementation(projects.core.designsystem)
+}

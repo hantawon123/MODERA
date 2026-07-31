@@ -19,8 +19,8 @@ import com.ssafy.modera.core.designsystem.component.Icon
 import com.ssafy.modera.core.designsystem.component.Text
 import com.ssafy.modera.core.designsystem.theme.ModeraTheme
 import com.ssafy.modera.feature.calendar.R
-import com.ssafy.modera.feature.calendar.R.drawable.ic_arrow_left_circle_20
-import com.ssafy.modera.feature.calendar.R.drawable.ic_arrow_right_circle_20
+import com.ssafy.modera.feature.calendar.R.drawable.ic_arrow_left_circle_bg_20
+import com.ssafy.modera.feature.calendar.R.drawable.ic_arrow_right_circle_bg_20
 import java.time.YearMonth
 
 @Composable
@@ -38,7 +38,7 @@ fun CalendarMonthHeader(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(
-            imageVector = ImageVector.vectorResource(ic_arrow_left_circle_20),
+            imageVector = ImageVector.vectorResource(ic_arrow_left_circle_bg_20),
             contentDescription = stringResource(R.string.calendar_previous_month_content_description),
             modifier = Modifier
                 .size(20.dp)
@@ -54,7 +54,7 @@ fun CalendarMonthHeader(
         )
 
         Icon(
-            imageVector = ImageVector.vectorResource(ic_arrow_right_circle_20),
+            imageVector = ImageVector.vectorResource(ic_arrow_right_circle_bg_20),
             contentDescription = stringResource(R.string.calendar_next_month_content_description),
             modifier = Modifier
                 .size(20.dp)

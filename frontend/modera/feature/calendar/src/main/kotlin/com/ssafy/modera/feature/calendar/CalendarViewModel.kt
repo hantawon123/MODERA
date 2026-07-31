@@ -21,7 +21,6 @@ import java.time.LocalTime
 import java.time.YearMonth
 import javax.inject.Inject
 
-
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class CalendarViewModel @Inject constructor(
@@ -32,6 +31,8 @@ class CalendarViewModel @Inject constructor(
     private val visibleMonth = MutableStateFlow(YearMonth.from(today))
     private val selectedDate = MutableStateFlow(today)
     private val showYearPicker = MutableStateFlow(false)
+    private val isEditMode = MutableStateFlow(false)
+    private val scheduleToDelete = MutableStateFlow<CalendarSchedule?>(null)
     private val hasCalendarPermission = MutableStateFlow(false)
     private val appSchedulesByDate = MutableStateFlow(CalendarDummyData.appSchedulesByDate)
 
@@ -39,11 +40,15 @@ class CalendarViewModel @Inject constructor(
         visibleMonth,
         selectedDate,
         showYearPicker,
-    ) { month, date, yearPickerVisible ->
+        isEditMode,
+        scheduleToDelete,
+    ) { month, date, yearPickerVisible, editMode, pendingDelete ->
         NavigationState(
             visibleMonth = month,
             selectedDate = date,
             showYearPicker = yearPickerVisible,
+            isEditMode = editMode,
+            scheduleToDelete = pendingDelete,
         )
     }
 
@@ -90,6 +95,8 @@ class CalendarViewModel @Inject constructor(
             deviceScheduleCountByDate = deviceCounts,
             schedules = deviceSchedules + appSchedules,
             showYearPicker = navigation.showYearPicker,
+            isEditMode = navigation.isEditMode,
+            scheduleToDelete = navigation.scheduleToDelete,
         )
     }.stateIn(
         scope = viewModelScope,
@@ -136,6 +143,38 @@ class CalendarViewModel @Inject constructor(
         showYearPicker.value = false
     }
 
+    fun onEditModeToggle() {
+        isEditMode.update { editing ->
+            if (editing) {
+                scheduleToDelete.value = null
+            }
+            !editing
+        }
+    }
+
+    fun onDeleteScheduleClick(schedule: CalendarSchedule) {
+        scheduleToDelete.value = schedule
+    }
+
+    fun onDeleteDialogDismiss() {
+        scheduleToDelete.value = null
+    }
+
+    fun onDeleteDialogConfirm() {
+        val target = scheduleToDelete.value ?: return
+        val date = selectedDate.value
+        appSchedulesByDate.update { current ->
+            current.mapValues { (scheduleDate, schedules) ->
+                if (scheduleDate != date) {
+                    schedules
+                } else {
+                    schedules.filterNot { it.id == target.id }
+                }
+            }
+        }
+        scheduleToDelete.value = null
+    }
+
     fun onAddScheduleClick(schedule: CalendarSchedule) {
         val date = selectedDate.value
         appSchedulesByDate.update { current ->
@@ -159,6 +198,8 @@ class CalendarViewModel @Inject constructor(
         val visibleMonth: YearMonth,
         val selectedDate: LocalDate,
         val showYearPicker: Boolean,
+        val isEditMode: Boolean,
+        val scheduleToDelete: CalendarSchedule?,
     )
 }
 

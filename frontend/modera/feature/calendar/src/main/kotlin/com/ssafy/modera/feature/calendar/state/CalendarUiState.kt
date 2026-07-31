@@ -12,4 +12,6 @@ data class CalendarUiState(
     val deviceScheduleCountByDate: Map<LocalDate, Int>,
     val schedules: List<CalendarSchedule>,
     val showYearPicker: Boolean,
+    val isEditMode: Boolean = false,
+    val scheduleToDelete: CalendarSchedule? = null,
 )

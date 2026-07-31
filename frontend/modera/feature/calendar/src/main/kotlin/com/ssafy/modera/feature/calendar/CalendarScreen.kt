@@ -18,13 +18,17 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.ssafy.modera.core.component.ModeraConfirmDialog
 import com.ssafy.modera.core.component.ModeraTopBar
 import com.ssafy.modera.core.designsystem.component.Text
+import com.ssafy.modera.core.designsystem.icon.ModeraIcons
 import com.ssafy.modera.core.designsystem.theme.ModeraTheme
 import com.ssafy.modera.core.model.calendar.CalendarSchedule
 import com.ssafy.modera.core.model.calendar.CalendarScheduleSource
@@ -39,7 +43,6 @@ import java.time.YearMonth
 @Composable
 fun CalendarRoute(
     onBackClick: () -> Unit,
-    onEditClick: () -> Unit = {},
     onScheduleClick: (CalendarSchedule) -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: CalendarViewModel = hiltViewModel(),
@@ -74,6 +77,8 @@ fun CalendarRoute(
         deviceScheduleCountByDate = uiState.deviceScheduleCountByDate,
         schedules = uiState.schedules,
         showYearPicker = uiState.showYearPicker,
+        isEditMode = uiState.isEditMode,
+        scheduleToDelete = uiState.scheduleToDelete,
         onBackClick = onBackClick,
         onYearClick = viewModel::onYearClick,
         onYearPickerDismiss = viewModel::onYearPickerDismiss,
@@ -81,9 +86,12 @@ fun CalendarRoute(
         onPreviousMonth = viewModel::onPreviousMonth,
         onNextMonth = viewModel::onNextMonth,
         onDateClick = viewModel::onDateClick,
-        onEditClick = onEditClick,
+        onEditModeToggle = viewModel::onEditModeToggle,
         onScheduleClick = onScheduleClick,
         onAddScheduleClick = viewModel::onAddScheduleClick,
+        onDeleteScheduleClick = viewModel::onDeleteScheduleClick,
+        onDeleteDialogConfirm = viewModel::onDeleteDialogConfirm,
+        onDeleteDialogDismiss = viewModel::onDeleteDialogDismiss,
         modifier = modifier,
     )
 }
@@ -97,6 +105,8 @@ fun CalendarScreen(
     deviceScheduleCountByDate: Map<LocalDate, Int>,
     schedules: List<CalendarSchedule>,
     showYearPicker: Boolean,
+    isEditMode: Boolean,
+    scheduleToDelete: CalendarSchedule?,
     onBackClick: () -> Unit,
     onYearClick: () -> Unit,
     onYearPickerDismiss: () -> Unit,
@@ -104,9 +114,12 @@ fun CalendarScreen(
     onPreviousMonth: () -> Unit,
     onNextMonth: () -> Unit,
     onDateClick: (LocalDate) -> Unit,
-    onEditClick: () -> Unit,
+    onEditModeToggle: () -> Unit,
     onScheduleClick: (CalendarSchedule) -> Unit,
     onAddScheduleClick: (CalendarSchedule) -> Unit,
+    onDeleteScheduleClick: (CalendarSchedule) -> Unit,
+    onDeleteDialogConfirm: () -> Unit,
+    onDeleteDialogDismiss: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -152,10 +165,11 @@ fun CalendarScreen(
             CalendarScheduleSection(
                 selectedDate = selectedDate,
                 schedules = schedules,
-                onEditClick = onEditClick,
+                isEditMode = isEditMode,
+                onEditModeToggle = onEditModeToggle,
                 onScheduleClick = onScheduleClick,
                 onAddScheduleClick = onAddScheduleClick,
-                modifier = Modifier.weight(1f),
+                onDeleteScheduleClick = onDeleteScheduleClick,
             )
         }
     }
@@ -165,6 +179,20 @@ fun CalendarScreen(
             selectedYear = visibleMonth.year,
             onYearSelect = onYearSelect,
             onDismissRequest = onYearPickerDismiss,
+        )
+    }
+
+    scheduleToDelete?.let { schedule ->
+        ModeraConfirmDialog(
+            icon = painterResource(ModeraIcons.Trash),
+            targetTitle = schedule.title,
+            title = stringResource(R.string.calendar_schedule_delete_dialog_title),
+            description = stringResource(R.string.calendar_schedule_delete_dialog_description),
+            confirmText = stringResource(R.string.calendar_schedule_delete_dialog_confirm),
+            dismissText = stringResource(R.string.calendar_schedule_delete_dialog_cancel),
+            confirmButtonColor = ModeraTheme.colors.red,
+            onConfirm = onDeleteDialogConfirm,
+            onDismiss = onDeleteDialogDismiss,
         )
     }
 }
@@ -203,6 +231,8 @@ private fun CalendarScreenPreview() {
                 ),
             ),
             showYearPicker = false,
+            isEditMode = false,
+            scheduleToDelete = null,
             onBackClick = {},
             onYearClick = {},
             onYearPickerDismiss = {},
@@ -210,9 +240,12 @@ private fun CalendarScreenPreview() {
             onPreviousMonth = {},
             onNextMonth = {},
             onDateClick = {},
-            onEditClick = {},
+            onEditModeToggle = {},
             onScheduleClick = {},
             onAddScheduleClick = {},
+            onDeleteScheduleClick = {},
+            onDeleteDialogConfirm = {},
+            onDeleteDialogDismiss = {},
         )
     }
 }

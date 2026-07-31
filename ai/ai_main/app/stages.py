@@ -26,45 +26,102 @@ from .schemas import (
 
 logger = logging.getLogger(__name__)
 
-# 아직 쌓인 카테고리가 하나도 없을 때 쓰는 초기 후보(콜드 스타트).
-# 이후 카테고리는 AGENT 가 분석하면서 기존 후보에 못 붙일 때 새로 만든다.
-# 사람이 직접 만드는 경로는 없다.
-# 원칙적으로는 Spring DB 에 시드로 넣고 10-5 로 내려받는 편이 낫다.
-DEFAULT_CATEGORIES = [
-    "쇼핑", "음식", "여행", "예약", "할인", "금융",
-    "미용", "학습", "취업", "IT", "뉴스", "부동산",
-    "건강", "엔터", "자동차", "반려동물", "기타",
-]
-
-# 프롬프트가 참조하는 카테고리명. 목록을 개편할 때 프롬프트 본문을 뒤지지 않도록
-# 여기 한 곳에 모은다 — 예전엔 '예약' 같은 이름이 프롬프트 문장에 박혀 있어서
-# 목록만 바꾸면 프롬프트가 없는 카테고리를 가리키는 사고가 났다.
+# ── 카테고리 정책 — 단일 출처 ──────────────────────────────────────────────
+# 목록·정의·tie-break·예시문을 전부 이 구조 하나에 모은다. 프롬프트 문장은
+# _category_prompt_section() 이 여기서 렌더링하므로, 개편 회의 결과 반영 =
+# 이 dict 수정이 전부다. 예전에는 이름 상수와 예시 "문장"이 프롬프트에 흩어져
+# 있어서(예: 게임 예문이 NEW_NAME_EXAMPLES[0]의 의미에 몰래 결합) 목록을 바꾸면
+# 문장이 어긋나는 사고가 났다. few_shot 을 (장면, 답) 구조로 두면 문장과 이름이
+# 항상 함께 움직이고, _check_category_config() 가 이름 멤버십을 기동 시 검증한다.
 #
-# TIE_BREAK_CATEGORY: 여러 주제에 걸치는 이미지의 우선 카테고리. 반드시 목록에 있어야 한다.
-# EMPTY_CATEGORY    : 비정보성(EMPTY) 전용 기본값. 정보성 이미지는 여기로 보내지 않는다
-#                     (프롬프트가 "고르지 마라" 로 막고, 안 맞으면 신규 생성을 시킨다).
-# NEW_NAME_EXAMPLES : 신규 이름의 '입도' 예시(few-shot). 기본 목록에 없는 것만 써야
-#                     "이미 있는 걸 신규 예시로 드는" 모순이 안 생긴다.
-TIE_BREAK_CATEGORY = "예약"
-EMPTY_CATEGORY = "기타"
-NEW_NAME_EXAMPLES = ["게임", "MBTI", "자격증"]
+# categories : {이름: 포함 조건 or None}. 조건이 있으면 프롬프트에 "이름(조건)"으로
+#              보여 러프한 이름의 과다 흡수를 줄인다(팀 합의 방식). None 이면 이름만.
+# tie_break  : 다주제 이미지의 우선 규칙. exceptions 는 "단, ..." 문장 목록.
+# empty      : 비정보성(EMPTY) 전용 — 정보성 이미지는 여기로 보내지 않는다.
+# new_name_examples : 신규 이름의 입도 예시. 목록에 없는 이름만.
+# few_shot   : (장면, {"existing": 이름} | {"new": 이름}) 쌍. existing 은 목록에
+#              있어야 하고 new 는 없어야 한다 — 렌더링과 검증이 함께 강제한다.
+CATEGORY_POLICY: dict[str, Any] = {
+    "categories": {
+        "쇼핑": None, "음식": None, "여행": None, "예약": None, "할인": None,
+        "금융": None, "미용": None, "학습": None, "취업": None, "IT": None,
+        "뉴스": None, "부동산": None, "건강": None, "엔터": None, "자동차": None,
+        "반려동물": None, "기타": None,
+    },
+    "tie_break": {
+        "name": "예약",
+        "rule": "시간이 정해진 약속·모임·예약 정보가 중심이면",
+        "exceptions": [],
+    },
+    "empty": "기타",
+    "new_name_examples": ["게임", "SNS", "자격증"],
+    "few_shot": [
+        ("특정 게임 아이템 화면", {"new": "게임"}),
+        ("특정 호텔의 식당 안내", {"existing": "음식"}),
+        ("모임 공지(일시·장소·참석자)", {"existing": "예약"}),
+    ],
+}
+
+# 파생 별칭 — 시드 생성·재분석 API 등 외부 참조용. 정책이 유일한 출처다.
+DEFAULT_CATEGORIES = list(CATEGORY_POLICY["categories"])
+TIE_BREAK_CATEGORY = CATEGORY_POLICY["tie_break"]["name"]
+EMPTY_CATEGORY = CATEGORY_POLICY["empty"]
+NEW_NAME_EXAMPLES = list(CATEGORY_POLICY["new_name_examples"])
 
 
 def _check_category_config() -> list[str]:
-    """카테고리 상수와 기본 목록의 정합성을 확인한다. 문제 목록을 돌려준다(기동 시 경고).
+    """카테고리 정책의 내적 정합성을 확인한다. 문제 목록을 돌려준다(기동 시 경고).
 
-    개편 회의 결과를 반영할 때 목록만 고치고 상수를 잊는 것이 가장 흔한 사고다.
+    개편을 반영할 때 목록만 고치고 규칙·예시를 잊는 것이 가장 흔한 사고다.
     죽이지 않고 경고만 한다 — 분류 품질은 떨어지지만 서비스는 계속 돌아야 한다.
     """
+    cats = CATEGORY_POLICY["categories"]
     problems = []
-    if TIE_BREAK_CATEGORY not in DEFAULT_CATEGORIES:
-        problems.append(f"TIE_BREAK_CATEGORY '{TIE_BREAK_CATEGORY}' 가 DEFAULT_CATEGORIES 에 없다")
-    if EMPTY_CATEGORY not in DEFAULT_CATEGORIES:
-        problems.append(f"EMPTY_CATEGORY '{EMPTY_CATEGORY}' 가 DEFAULT_CATEGORIES 에 없다")
-    overlap = [n for n in NEW_NAME_EXAMPLES if n in DEFAULT_CATEGORIES]
+    if TIE_BREAK_CATEGORY not in cats:
+        problems.append(f"tie_break '{TIE_BREAK_CATEGORY}' 가 categories 에 없다")
+    if EMPTY_CATEGORY not in cats:
+        problems.append(f"empty '{EMPTY_CATEGORY}' 가 categories 에 없다")
+    overlap = [n for n in NEW_NAME_EXAMPLES if n in cats]
     if overlap:
-        problems.append(f"NEW_NAME_EXAMPLES 가 기본 목록과 겹친다(신규 예시로 부적절): {overlap}")
+        problems.append(f"new_name_examples 가 목록과 겹친다(신규 예시로 부적절): {overlap}")
+    for scene, answer in CATEGORY_POLICY["few_shot"]:
+        if "existing" in answer and answer["existing"] not in cats:
+            problems.append(f"few_shot '{scene}' 의 기존 후보 '{answer['existing']}' 가 목록에 없다")
+        if "new" in answer and answer["new"] in cats:
+            problems.append(f"few_shot '{scene}' 의 신규 예시 '{answer['new']}' 가 이미 목록에 있다")
     return problems
+
+
+def _category_prompt_section(candidate_names: list[str] | str) -> str:
+    """카테고리 정책을 프롬프트 문단으로 렌더링한다.
+
+    후보 이름이 정책에 정의(포함 조건)를 가지면 "이름(조건)" 으로 보여준다 —
+    사용자별 신규 카테고리(정의 없음)는 이름 그대로다.
+    """
+    pol = CATEGORY_POLICY
+    defs = pol["categories"]
+    names = (candidate_names if isinstance(candidate_names, list)
+             else [str(candidate_names)])
+    shown = ", ".join(f"{n}({defs[n]})" if defs.get(n) else str(n) for n in names)
+    tb = pol["tie_break"]
+    exceptions = "".join(f"단, {e}. " for e in tb["exceptions"])
+    examples = " ".join(
+        (f"{scene} → '{a['new']}',"
+         if "new" in a else f"{scene} → 기존 후보({a['existing']}),")
+        for scene, a in pol["few_shot"]
+    ).rstrip(",")
+    return (
+        f"기존 카테고리 후보: {shown}. 내용과 무리 없이 맞는 후보가 있으면 그것을 골라라. "
+        "단, 어느 후보도 맞지 않는데 억지로 끼워 맞추지는 마라 — 그때만 새 카테고리 이름을 제안하라(2~6자). "
+        f"새 이름은 여러 이미지가 공유할 수 있는 주제 단위(예: {', '.join(pol['new_name_examples'])})여야 한다. "
+        "브랜드명·상호명·장소명·제품명은 카테고리로 만들지 마라 — 그런 구체 정보는 태그와 주요정보에 담는다. "
+        "새 이름을 제안하기 전에 후보에 같은 주제가 이미 있으면 반드시 그 표기를 그대로 재사용하라(축약·변형 금지). "
+        f"여러 주제에 걸치는 이미지는 우선순위를 지켜라: {tb['rule']} '{tb['name']}'을 우선한다. "
+        f"{exceptions}"
+        f"'{pol['empty']}'는 고르지 마라 — 어느 후보도 맞지 않으면 반드시 새 이름을 제안하라. "
+        f"예: {examples}. "
+        "categories 에는 최종 카테고리명 하나만 넣어라.\n\n"
+    )
 
 
 def seed_default_category_vectors() -> int:
@@ -201,7 +258,13 @@ def run_agent_generation(
     max_tags: int | None,
     language: str | None,
     existing_tags: list[str] | None = None,
+    image_bytes: bytes | None = None,
 ) -> dict[str, Any]:
+    """image_bytes 를 주면 융합 모드 — 모델이 화면 이미지를 직접 보고 정보성 판정까지
+    한 호출로 수행한다(informative 키 추가). 실측(2026-07-31, 실사진 40장 파일럿):
+    별도 비전 요약을 거치는 기존 경로 45% vs 이미지 직접 투입 70% — 기프티콘 바코드·
+    문서 서식 같은 시각 신호가 요약 한 줄로 압축되며 증발하던 것이 원인이었다.
+    """
     settings = get_settings()
     tag_rule = (
         f"[태그] 핵심 키워드 위주로 최대 {max_tags}개, 중복·과도한 일반 태그 제외.\n"
@@ -225,38 +288,53 @@ def run_agent_generation(
         f"- ISO-8601(KST). 시각을 알면 '2026-08-03T14:30:00+09:00', 날짜만 알면 '2026-08-03'. 상대 날짜(내일·이번 주 금요일 등)는 기준 시각 {ref_now} 로 계산.\n"
         "- 연도가 없으면 기준 시각 기준 가장 가까운 미래로. 확인 안 된 값은 null(추측 금지). 일정이 전혀 없으면 둘 다 null.\n\n"
     )
+    if image_bytes is not None and len(ocr_text or "") > 3000:
+        # GMS 본문 한도(~90KB) 안에서 이미지와 텍스트가 몸을 나눠 쓴다. 한글은
+        # JSON 이스케이프로 글자당 6바이트라, 텍스트 밀집 스크린샷은 OCR 만으로
+        # 수십 KB 가 되어 이미지와 합치면 한도를 넘긴다(실측 4장 400). 초과분은
+        # 잘라도 이미지가 원문을 보완하므로 품질 손실이 작다.
+        ocr_text = ocr_text[:3000] + " …(길이 제한으로 이하 생략)"
+    if image_bytes is not None:
+        header = (
+            "첨부한 화면 이미지와 OCR 텍스트를 함께 보고 개인 지식 DB용 메타데이터를 생성하라.\n\n"
+            "[정보성] 먼저 저장·검색할 가치가 있는 화면인지 판정하라. "
+            "순수 UI 요소(홈/검색/설정 같은 내비게이션만 있는 화면), 계산기·시계·배터리처럼 "
+            "도구 화면에 떠 있는 일시적 숫자, 네트워크 오류·로딩 화면, 빈 화면, 의미 없는 "
+            "밈/장식이면 informative 를 false 로 하고 나머지 필드는 비워 둬라. "
+            "정보성일 때만 아래를 채운다.\n\n"
+            "[썸네일] thumbnail_focus 에 화면의 시각적 핵심(상품·음식 사진, 그림, 지도, "
+            "포스터 등)이 있는 세로 위치를 0.0(맨 위)~1.0(맨 아래) 숫자로 담아라. "
+            "가격표·버튼·설명 텍스트가 아니라 눈에 보여줄 이미지가 있는 곳이다. "
+            "그런 시각 요소가 없으면 본문 내용이 시작되는 위치를 담아라.\n\n"
+        )
+    else:
+        header = "OCR 텍스트와 이미지 분석 결과를 종합해 개인 지식 DB용 메타데이터를 생성하라.\n\n"
     prompt = (
-        "OCR 텍스트와 이미지 분석 결과를 종합해 개인 지식 DB용 메타데이터를 생성하라.\n\n"
-        "[카테고리]\n"
+        header
+        + "[카테고리]\n"
         # C+1 확정 문구 (2026-07-30, 실사진 55장 프롬프트 A/B/C+1 실측 — 카테고리_프롬프트_실험_보고서 참조).
         # 바꾼 것: "가능한 한"(억지 유도) 제거, 신규 자격 규칙(주제 단위·브랜드 금지),
         # 기존 표기 재사용 강제(A/A' 파편화 0 실측), 다주제 tie-break, few-shot.
-        # 카테고리명은 모듈 상수(TIE_BREAK_CATEGORY·EMPTY_CATEGORY·NEW_NAME_EXAMPLES)에서
-        # 가져온다 — 목록을 개편할 때 상수만 고치면 프롬프트가 따라오고,
-        # _check_category_config() 가 기동 시 정합성을 검사한다.
-        f"기존 카테고리 후보: {candidate_names}. 내용과 무리 없이 맞는 후보가 있으면 그것을 골라라. "
-        "단, 어느 후보도 맞지 않는데 억지로 끼워 맞추지는 마라 — 그때만 새 카테고리 이름을 제안하라(2~6자). "
-        f"새 이름은 여러 이미지가 공유할 수 있는 주제 단위(예: {', '.join(NEW_NAME_EXAMPLES)})여야 한다. "
-        "브랜드명·상호명·장소명·제품명은 카테고리로 만들지 마라 — 그런 구체 정보는 태그와 주요정보에 담는다. "
-        "새 이름을 제안하기 전에 후보에 같은 주제가 이미 있으면 반드시 그 표기를 그대로 재사용하라(축약·변형 금지). "
-        f"여러 주제에 걸치는 이미지는 우선순위를 지켜라: 시간이 정해진 약속·모임·예약 정보가 중심이면 '{TIE_BREAK_CATEGORY}'을 우선한다. "
-        f"'{EMPTY_CATEGORY}'는 고르지 마라 — 어느 후보도 맞지 않으면 반드시 새 이름을 제안하라. "
-        f"예: 특정 게임 아이템 화면 → '{NEW_NAME_EXAMPLES[0]}', 특정 호텔의 식당 안내 → 기존 후보(음식), "
-        f"모임 공지(일시·장소·참석자) → 기존 후보({TIE_BREAK_CATEGORY}). "
-        "categories 에는 최종 카테고리명 하나만 넣어라.\n\n"
+        # 문장 전체가 CATEGORY_POLICY 에서 렌더링된다 — 개편은 정책 dict 수정이 전부다.
+        + _category_prompt_section(candidate_names)
         + tag_rule
         + "[주요정보] 사용자에게 보여줄 핵심 정보를 '항목: 값' 형태 문자열로 담아라. "
         "확인되지 않은 값은 넣지 마라(추측 금지).\n\n"
         + schedule_rule
         + language_rule
         + "반드시 아래 JSON만 출력. 마크다운·설명 금지.\n"
-        '{"title":"...","summary":"...","tags":["..."],"categories":["..."],'
+        + ('{"informative":true,"thumbnail_focus":0.5,' if image_bytes is not None else "{")
+        + '"title":"...","summary":"...","tags":["..."],"categories":["..."],'
         '"key_information":["..."],"analysis_confidence":0.0,'
         '"schedule":{"startAt":null,"endAt":null}}\n\n'
         f"OCR: {ocr_text}\n"
-        f"이미지 분석: {image_analysis}"
+        + ("" if image_bytes is not None
+           else f"이미지 분석: {image_analysis}")
     )
-    return gemini_client.generate_json(settings.llm_model_name, [prompt])
+    parts: list[Any] = [prompt]
+    if image_bytes is not None:
+        parts.append(gemini_client.image_part(image_bytes))
+    return gemini_client.generate_json(settings.llm_model_name, parts)
 
 
 def _split_dt(value: str | None) -> dict[str, Any] | None:
@@ -399,6 +477,7 @@ async def run_agent_core(
     analysis_dict: dict[str, Any],
     max_tags: int | None = None,
     language: str | None = None,
+    image_bytes: bytes | None = None,
 ) -> dict[str, Any]:
     """AGENT 본체. Spring 연동 경로와 앱 직결 경로가 함께 쓴다."""
     settings = get_settings()
@@ -417,8 +496,12 @@ async def run_agent_core(
     generated = await asyncio.to_thread(
         run_agent_generation,
         ocr_text, analysis_dict, [c.name for c in candidates], max_tags, language,
-        existing_tags,
+        existing_tags, image_bytes,
     )
+
+    if image_bytes is not None and not generated.get("informative", True):
+        # 융합 경로의 비정보성 판정 — 임베딩·카테고리 판정·저장을 모두 생략한다.
+        return {"informative": False, "reason": str(generated.get("reason", ""))}
 
     summary = generated.get("summary", "") or generated.get("title", "")
     proposed = (generated.get("categories") or ["기타"])[0]
@@ -495,6 +578,9 @@ async def run_agent_core(
         "documentVector": vectors[0],
         "embeddingModel": embedding_model,
         "embeddingDimension": len(vectors[0]),
+        # 융합 모드에서 모델이 짚은 시각적 핵심의 세로 위치(0~1). 썸네일 크롭용
+        # 내부 값 — 파이프라인이 pop 해서 쓰고 콜백에는 싣지 않는다.
+        "thumbnailFocus": generated.get("thumbnail_focus"),
     }
 
 
@@ -761,43 +847,82 @@ async def _run_full_pipeline(
             logger.info("전체 분석 완료(EMPTY) jobId=%s 소요=%s", job_id, timings)
             return "EMPTY", _empty_callback_result(thumbnail_key), None
 
-        with _timed(timings, "LLM"):
-            _, verdict = await asyncio.to_thread(run_llm, ocr_text)
-        if not verdict.get("informative", False):
-            reason = verdict.get("reason", "")
-            logger.info("비정보성 판정 → '기타' 분류 후 색인 jobId=%s 사유=%s",
-                        job_id, reason)
-            with _timed(timings, "INDEXING"):
-                await _index_as_other(job_id, image_id, user_id, s3_key, ocr_text)
-            timings["TOTAL"] = round(time.perf_counter() - started, 2)
-            logger.info("전체 분석 완료(비정보성) jobId=%s 소요=%s", job_id, timings)
-            return "EMPTY", _empty_callback_result(thumbnail_key), None
+        if original is not None:
+            # 1·2·3 융합) 정보성 판정·시각 이해·메타데이터 생성을 한 호출로.
+            #    모델이 화면 이미지를 직접 본다 — 별도 비전 요약을 거치면 기프티콘
+            #    바코드·문서 서식 같은 시각 신호가 한 줄로 압축되며 증발한다
+            #    (실사진 40장 파일럿: 요약 경유 45% vs 직접 투입 70%).
+            #    호출 3회 → 1회라 비용·지연도 준다. 이미지는 image_part 가
+            #    GMS 본문 한도(~90KB) 안으로 자동 축소한다.
+            job_store.update(job_id, "PROCESSING", stage="AGENT")
+            with _timed(timings, "AGENT"):
+                generated = await run_agent_core(
+                    user_id=user_id,
+                    image_id=image_id,
+                    ocr_text=ocr_text,
+                    analysis_dict={},
+                    max_tags=max_tags,
+                    language=language,
+                    image_bytes=original,
+                )
+            if not generated.get("informative", True):
+                logger.info("비정보성 판정(융합) → '기타' 분류 후 색인 jobId=%s 사유=%s",
+                            job_id, generated.get("reason", ""))
+                with _timed(timings, "INDEXING"):
+                    await _index_as_other(job_id, image_id, user_id, s3_key, ocr_text)
+                timings["TOTAL"] = round(time.perf_counter() - started, 2)
+                logger.info("전체 분석 완료(비정보성) jobId=%s 소요=%s", job_id, timings)
+                return "EMPTY", _empty_callback_result(thumbnail_key), None
+        else:
+            # 원본을 못 읽었다(스토리지 장애 등) — 기존 3단계 경로로 폴백.
+            with _timed(timings, "LLM"):
+                _, verdict = await asyncio.to_thread(run_llm, ocr_text)
+            if not verdict.get("informative", False):
+                reason = verdict.get("reason", "")
+                logger.info("비정보성 판정 → '기타' 분류 후 색인 jobId=%s 사유=%s",
+                            job_id, reason)
+                with _timed(timings, "INDEXING"):
+                    await _index_as_other(job_id, image_id, user_id, s3_key, ocr_text)
+                timings["TOTAL"] = round(time.perf_counter() - started, 2)
+                logger.info("전체 분석 완료(비정보성) jobId=%s 소요=%s", job_id, timings)
+                return "EMPTY", _empty_callback_result(thumbnail_key), None
 
-        # 2) 이미지 분석. 실패해도 OCR 만으로 계속 진행한다.
-        #    위에서 이미 돌렸으면(OCR 대체) 다시 부르지 않는다.
-        if analysis is None:
-            job_store.update(job_id, "PROCESSING", stage="IMAGE_ANALYSIS")
+            # 2) 이미지 분석. 실패해도 OCR 만으로 계속 진행한다.
+            #    위에서 이미 돌렸으면(OCR 대체) 다시 부르지 않는다.
+            if analysis is None:
+                job_store.update(job_id, "PROCESSING", stage="IMAGE_ANALYSIS")
+                try:
+                    with _timed(timings, "IMAGE_ANALYSIS"):
+                        analysis = await asyncio.to_thread(
+                            run_image_analysis, s3_key, original
+                        )
+                except Exception as e:
+                    logger.warning("이미지 분석 실패 imageId=%s: %s — OCR 만으로 진행",
+                                   image_id, e)
+                    analysis = {}
+
+            # 3) 메타데이터 생성 + 카테고리 판정
+            job_store.update(job_id, "PROCESSING", stage="AGENT")
+            with _timed(timings, "AGENT"):
+                generated = await run_agent_core(
+                    user_id=user_id,
+                    image_id=image_id,
+                    ocr_text=ocr_text,
+                    analysis_dict=analysis,
+                    max_tags=max_tags,
+                    language=language,
+                )
+        # 모델이 짚어준 시각적 핵심 위치로 썸네일을 다시 만든다(휴리스틱 크롭 대체).
+        # 콜백 계약에 새 키가 새지 않도록 여기서 pop 한다. 실패해도 0단계에서
+        # 만든 휴리스틱 썸네일이 남아 있으므로 조용히 넘어간다.
+        focus = generated.pop("thumbnailFocus", None)
+        if focus is not None and original is not None and thumbnail_key is not None:
             try:
-                with _timed(timings, "IMAGE_ANALYSIS"):
-                    analysis = await asyncio.to_thread(
-                        run_image_analysis, s3_key, original
-                    )
+                await asyncio.to_thread(
+                    storage.store_thumbnail, s3_key, original, float(focus))
             except Exception as e:
-                logger.warning("이미지 분석 실패 imageId=%s: %s — OCR 만으로 진행",
-                               image_id, e)
-                analysis = {}
+                logger.warning("포커스 썸네일 재생성 실패 imageId=%s: %s", image_id, e)
 
-        # 3) 메타데이터 생성 + 카테고리 판정
-        job_store.update(job_id, "PROCESSING", stage="AGENT")
-        with _timed(timings, "AGENT"):
-            generated = await run_agent_core(
-                user_id=user_id,
-                image_id=image_id,
-                ocr_text=ocr_text,
-                analysis_dict=analysis,
-                max_tags=max_tags,
-                language=language,
-            )
         category = generated.get("category")
         result = {
             "title": generated.get("title", ""),

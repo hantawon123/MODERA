@@ -144,12 +144,7 @@ private fun AnalyzedImageDetailScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(ModeraTheme.colors.white)
-            .windowInsetsPadding(
-                WindowInsets.safeDrawing.only(
-                    WindowInsetsSides.Vertical,
-                ),
-            ),
+            .background(ModeraTheme.colors.white),
     ) {
         AnalyzedImageDetailTopBar(
             title = topBarTitle,

@@ -41,12 +41,6 @@ fun EntryProviderScope<NavKey>.analyzedImageDetailEntry(
             onScheduleClick = {
                 // TODO 일정 화면 이동
             },
-            onReanalyzeClick = {
-                // TODO ViewModel 재분석 기능 연결
-            },
-            onDeleteClick = {
-                // TODO ViewModel 삭제 기능 연결
-            },
             onRelatedImagesClick = { imageId, sourceTitle ->
                 navigator.navigateToRelatedImages(imageId, sourceTitle)
             },

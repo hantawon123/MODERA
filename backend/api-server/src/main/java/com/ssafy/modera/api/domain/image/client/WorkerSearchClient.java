@@ -57,10 +57,48 @@ public class WorkerSearchClient {
         }
     }
 
+    /**
+     * 다중 기준 연관 이미지 검색(5-7 문서화 관련 자료). 실패 정책은 단일 검색과 같다 —
+     * 추천이 안 떠도 이미지 선택 화면은 살아야 하므로 빈 목록으로 degrade한다.
+     */
+    public List<WorkerSimilarImage> findSimilarToAll(List<Integer> imageIds, Integer userId, int limit) {
+        try {
+            WorkerMultiSimilarResponse response = workerRestClient.get()
+                    .uri(uriBuilder -> uriBuilder
+                            .path("/internal/v1/images/similar")
+                            .queryParam("imageIds", imageIds)
+                            .queryParam("userId", userId)
+                            .queryParam("limit", limit)
+                            .build())
+                    .retrieve()
+                    .body(WorkerMultiSimilarResponse.class);
+
+            if (response == null || response.results() == null) {
+                log.warn("worker 다중 연관 이미지 응답이 비어 있음: base={}장", imageIds.size());
+                return List.of();
+            }
+            return response.results();
+
+        } catch (HttpClientErrorException exception) {
+            // 401이면 internal.token이 worker의 internal.callback.token과 다르다는 뜻이다.
+            log.error("worker 다중 연관 이미지 호출 거부됨(설정·계약 확인 필요): base={}장 status={}",
+                    imageIds.size(), exception.getStatusCode());
+            return List.of();
+
+        } catch (RestClientException exception) {
+            log.warn("worker 다중 연관 이미지 호출 실패 - 빈 목록으로 응답: base={}장 cause={}",
+                    imageIds.size(), exception.getMessage());
+            return List.of();
+        }
+    }
+
     // ── worker 응답 스키마 (analysis-worker SimilarImageController 기준) ──
     // score는 worker가 float으로 계산한다. double로 넓히면 0.93f가 0.9300000071525574로
     // 보이므로 응답까지 float으로 들고 간다.
     public record WorkerSimilarResponse(Integer baseImageId, List<WorkerSimilarImage> results) {
+    }
+
+    public record WorkerMultiSimilarResponse(List<Integer> baseImageIds, List<WorkerSimilarImage> results) {
     }
 
     public record WorkerSimilarImage(Integer imageId, Float score) {

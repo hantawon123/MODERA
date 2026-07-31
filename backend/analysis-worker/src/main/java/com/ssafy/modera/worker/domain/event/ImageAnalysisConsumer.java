@@ -8,11 +8,13 @@ import com.ssafy.modera.contract.payload.AnalysisFailedPayload;
 import com.ssafy.modera.contract.payload.CategoryReanalysisRequestedPayload;
 import com.ssafy.modera.contract.payload.DocumentRequestedPayload;
 import com.ssafy.modera.contract.payload.ImageUploadedPayload;
+import com.ssafy.modera.contract.payload.ImageSemanticSearchRequestedPayload;
 import com.ssafy.modera.worker.domain.analysis.client.AnalysisClient;
 import com.ssafy.modera.worker.domain.analysis.entity.AnalysisJob;
 import com.ssafy.modera.worker.domain.analysis.repository.AnalysisJobRepository;
 import com.ssafy.modera.worker.domain.document.DocumentGenerationService;
 import com.ssafy.modera.worker.domain.category.service.CategoryReanalysisService;
+import com.ssafy.modera.worker.domain.search.service.SemanticSearchService;
 import io.lettuce.core.RedisCommandTimeoutException;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
@@ -60,6 +62,7 @@ public class ImageAnalysisConsumer {
     private final EventPublisher eventPublisher;
     private final DocumentGenerationService documentGenerationService;
     private final CategoryReanalysisService categoryReanalysisService;
+    private final SemanticSearchService semanticSearchService;
 
     private volatile boolean running = true;
     private Thread consumerThread;
@@ -160,6 +163,9 @@ public class ImageAnalysisConsumer {
             } else if (EventTypes.CATEGORY_REANALYSIS_REQUESTED.equals(envelope.eventType())) {
                 categoryReanalysisService.handle(
                         readPayload(envelope, CategoryReanalysisRequestedPayload.class));
+            } else if (EventTypes.IMAGE_SEMANTIC_SEARCH_REQUESTED.equals(envelope.eventType())) {
+                semanticSearchService.handle(
+                        readPayload(envelope, ImageSemanticSearchRequestedPayload.class));
             } else if (EventTypes.DOCUMENT_REQUESTED.equals(envelope.eventType())) {
                 // 문서 생성도 이 스트림에 실려 온다 — 전용 스트림을 파지 않은 이유는
                 // 이 컨슈머 루프와 PEL 회수(PelReclaimScanner)가 그대로 적용되기

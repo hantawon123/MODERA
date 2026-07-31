@@ -2,6 +2,9 @@ package com.ssafy.modera.api.domain.category.controller;
 
 import com.ssafy.modera.api.domain.category.dto.response.CategoryListResponse;
 import com.ssafy.modera.api.domain.category.service.CategoryQueryService;
+import com.ssafy.modera.api.global.exception.BusinessException;
+import com.ssafy.modera.api.global.exception.GlobalErrorCode;
+import com.ssafy.modera.api.global.exception.GlobalExceptionHandler;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.web.servlet.MockMvc;
@@ -24,7 +27,9 @@ class CategoryControllerTest {
     @BeforeEach
     void setUp() {
         categoryQueryService = mock(CategoryQueryService.class);
-        mockMvc = standaloneSetup(new CategoryController(categoryQueryService)).build();
+        mockMvc = standaloneSetup(new CategoryController(categoryQueryService))
+                .setControllerAdvice(new GlobalExceptionHandler())
+                .build();
     }
 
     @Test
@@ -54,5 +59,17 @@ class CategoryControllerTest {
                 .andExpect(jsonPath("$.code").value("T202"));
 
         verify(categoryQueryService).getCategories(null, "name,asc");
+    }
+
+    @Test
+    void returnsCommonApiEnvelopeForInvalidSort() throws Exception {
+        when(categoryQueryService.getCategories(null, "drop table category"))
+                .thenThrow(new BusinessException(GlobalErrorCode.INVALID_PARAMETER));
+
+        mockMvc.perform(get("/api/v1/categories")
+                        .queryParam("sort", "drop table category"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.result").value("FAIL"))
+                .andExpect(jsonPath("$.code").value("INVALID_PARAMETER"));
     }
 }

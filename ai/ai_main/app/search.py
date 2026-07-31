@@ -977,6 +977,11 @@ def ensure_category_index(force: bool = False) -> None:
             "mappings": {"properties": {
                 "user_id": {"type": "long"},
                 "name": {"type": "keyword"},
+                # name 과 같은 것을 가리키는 숫자 키(= stable_id(name)). Spring 의
+                # 카테고리 테이블은 전역이고 user_id 도 auto-increment 도 없어서
+                # 이 값이 곧 그쪽 PK 가 된다. 이름에서 파생되므로 굳이 저장하지
+                # 않아도 계산되지만, 후보에 실어 보내려면 조회 결과에 함께 와야 한다.
+                "category_id": {"type": "long"},
                 # kNN 을 쓰지 않는다. 사용자당 수십 개라 전량 읽어 파이썬에서
                 # 코사인을 도는 편이 싸고, 차원을 바꿔도 매핑을 안 건드린다.
                 "vector": {"type": "float", "index": False},
@@ -1017,7 +1022,7 @@ def load_category_vectors(user_id: int) -> dict[str, dict[str, Any]]:
                 ]}},
                 # 시드(user_id=0)를 먼저 깔고 사용자 문서로 덮으려면 정렬이 필요하다.
                 "sort": [{"user_id": {"order": "asc"}}],
-                "_source": ["name", "vector", "count"],
+                "_source": ["name", "category_id", "vector", "count"],
             },
         )
     except Exception as e:
@@ -1037,6 +1042,9 @@ def load_category_vectors(user_id: int) -> dict[str, dict[str, Any]]:
         if name and vector:
             stored[normalize_name(name)] = {
                 "name": name,
+                # 이 필드가 생기기 전에 쓰인 문서는 값이 없다. 이름에서 다시
+                # 계산하면 같은 값이라 마이그레이션 없이 섞여 있어도 된다.
+                "category_id": int(source.get("category_id") or stable_id(name)),
                 "vector": [float(v) for v in vector],
                 "count": int(source.get("count") or 0),
             }
@@ -1067,6 +1075,7 @@ def put_seed_category_vectors(name_to_vector: dict[str, list[float]]) -> int:
                 body={
                     "user_id": SEED_USER_ID,
                     "name": name,
+                    "category_id": stable_id(name),
                     "vector": list(vector),
                     "count": 0,
                     "model": settings.embedding_model_name,
@@ -1132,6 +1141,7 @@ def upsert_category_vector(
             body = {
                 "user_id": user_id,
                 "name": name,
+                "category_id": stable_id(name),
                 "vector": merged,
                 "count": count,
                 "model": settings.embedding_model_name,
@@ -1182,8 +1192,14 @@ def max_image_id() -> int:
 
 
 def stable_id(name: str) -> int:
-    """이름 → 31비트 양의 정수 ID. 같은 이름이면 항상 같은 값이 나온다."""
-    return zlib.crc32((name or "").encode("utf-8")) & 0x7FFFFFFF
+    """이름 → 31비트 양의 정수 ID. 같은 이름이면 항상 같은 값이 나온다.
+
+    정규화한 이름을 해싱한다. 카테고리의 동일성 판정은 이미 normalize_name 기준이라
+    ("쇼핑" 과 "쇼핑 " 은 같은 centroid 문서 `{userId}:{정규화이름}` 에 누적된다)
+    원문을 해싱하면 같은 카테고리가 두 개의 id 를 갖는다. Spring 은 이 id 로
+    카테고리를 식별하므로 저장소의 동일성 기준과 어긋나면 안 된다.
+    """
+    return zlib.crc32(normalize_name(name).encode("utf-8")) & 0x7FFFFFFF
 
 
 def to_tag_refs(names: list[str]) -> list[dict[str, Any]]:

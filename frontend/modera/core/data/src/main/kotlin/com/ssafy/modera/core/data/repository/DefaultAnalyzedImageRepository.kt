@@ -5,7 +5,6 @@ import com.ssafy.modera.core.common.network.ModeraDispatcher
 import com.ssafy.modera.core.model.analyzedimage.AnalyzedImage
 import com.ssafy.modera.core.model.analyzedimage.AnalyzedImageDetail
 import com.ssafy.modera.core.model.analyzedimage.AnalyzedImageQuery
-import com.ssafy.modera.core.model.analyzedimage.ImageAnalysisStatus
 import com.ssafy.modera.core.network.model.analyzedimage.asExternalModel
 import com.ssafy.modera.core.network.service.AnalyzedImageClient
 import kotlinx.coroutines.CoroutineDispatcher

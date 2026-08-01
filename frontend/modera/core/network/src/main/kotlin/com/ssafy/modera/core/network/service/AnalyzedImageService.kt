@@ -3,7 +3,6 @@ package com.ssafy.modera.core.network.service
 import com.skydoves.sandwich.ApiResponse
 import com.ssafy.modera.core.network.model.BaseResponse
 import com.ssafy.modera.core.network.model.analyzedimage.AnalyzedImageDetailResponse
-import com.ssafy.modera.core.network.model.analyzedimage.AnalyzedImageResponse
 import com.ssafy.modera.core.network.model.analyzedimage.AnalyzedImagesResponse
 import com.ssafy.modera.core.network.model.analyzedimage.DeleteAnalyzedImagesRequest
 import com.ssafy.modera.core.network.model.analyzedimage.RelatedImagesResponse

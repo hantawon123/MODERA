@@ -43,7 +43,7 @@ import com.ssafy.modera.feature.category.R
 fun CategoryTopSheet(
     visible: Boolean,
     categories: List<CategorySheetItem>,
-    selectedCategory: String,
+    selectedCategoryId: Long,
     onCategoryClick: (CategorySheetItem) -> Unit,
     onDismissRequest: () -> Unit,
     modifier: Modifier = Modifier,
@@ -105,7 +105,7 @@ fun CategoryTopSheet(
                         ) { _, category ->
                             CategoryTopSheetItem(
                                 item = category,
-                                selected = category.title == selectedCategory,
+                                selected = category.id == selectedCategoryId,
                                 onClick = {
                                     onCategoryClick(category)
                                     onDismissRequest()
@@ -233,7 +233,7 @@ private fun CategoryTopSheetPreview() {
                 CategorySheetItem(1,"음식", 123),
                 CategorySheetItem(1,"일정", 123),
             ),
-            selectedCategory = "일정",
+            selectedCategoryId = 1L,
             onCategoryClick = {},
             onDismissRequest = {},
         )

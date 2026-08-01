@@ -4,6 +4,7 @@
     <string name="category_back_description">뒤로가기</string>
     <string name="category_title_picker_description">카테고리 선택</string>
     <string name="category_item_count">%,d개</string>
+    <string name="category_load_error">카테고리 정보를 불러오지 못했어요.</string>
     <string name="category_new_badge">new</string>
 
     <string name="category_search_placeholder">키워드나 태그로 검색해보세요</string>

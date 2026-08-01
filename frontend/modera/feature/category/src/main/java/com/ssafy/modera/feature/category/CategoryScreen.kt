@@ -13,14 +13,14 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.ssafy.modera.core.ui.LoadingScreen
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -50,71 +50,72 @@ fun CategoryRoute(
     onSearchIconClick: () -> Unit,
     selectedCategoryId: Long? = null,
     modifier: Modifier = Modifier,
+    viewModel: CategoryViewModel = hiltViewModel(),
 ) {
-    // TODO: selectedCategoryId로 카테고리 필터링
-    var selectedCategory by rememberSaveable { mutableStateOf("쇼핑") }
-    var selectedSortType by rememberSaveable {
-        mutableStateOf(CategorySortType.UPDATED_DESC)
-    }
-    var showCategorySheet by rememberSaveable { mutableStateOf(false) }
-    var showSortPopup by rememberSaveable { mutableStateOf(false) }
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
-    val categories = remember { /* TODO: viewModel로 이동 */
-        listOf(
-            CategorySheetItem(1, "기사", 123),
-            CategorySheetItem(1, "기사", 123, isNew = true),
-            CategorySheetItem(1, "스포츠", 123),
-            CategorySheetItem(1, "스포츠", 123, isNew = true),
-            CategorySheetItem(1, "뉴스", 123),
-            CategorySheetItem(1, "뉴스", 123),
-            CategorySheetItem(1, "예약", 123),
-            CategorySheetItem(1, "예약", 123),
-            CategorySheetItem(1, "음식", 123),
-            CategorySheetItem(1, "음식", 123),
-            CategorySheetItem(1, "일정", 123),
-            CategorySheetItem(1, "예약", 123),
-            CategorySheetItem(1, "쇼핑", 1232),
-            CategorySheetItem(1, "음식", 123),
-            CategorySheetItem(1, "음식", 1),
-        )
+    LaunchedEffect(selectedCategoryId) {
+        viewModel.initialize(selectedCategoryId)
     }
-    val analyzedImages = remember {
-        List(16) { index ->
-            AnalyzedImage(
-                id = (index + 1).toLong(),
-                title = "성심당 케이크 리스트",
-                summary = "올해 성심당 케이크 메뉴 리스트로, 샤인머스켓 시루, 귤 시루, 맛있겠다.",
-                hashtags = listOf("기차", "예약", "KTX"),
-                thumbnailUrl = "",
+
+    when (val state = uiState) {
+        CategoryUiState.Loading -> {
+            LoadingScreen(
+                modifier = modifier,
+            )
+        }
+
+        CategoryUiState.Error -> {
+            CategoryErrorScreen(
+                modifier = modifier,
+            )
+        }
+
+        is CategoryUiState.Success -> {
+            CategoryScreen(
+                selectedCategoryId = state.selectedCategoryId,
+                selectedCategoryTitle = state.selectedCategoryTitle,
+                categories = state.categories,
+                analyzedImages = state.analyzedImages,
+                selectedSortType = state.selectedSortType,
+                showCategorySheet = state.showCategorySheet,
+                showSortPopup = state.showSortPopup,
+                onSearchIconClick = onSearchIconClick,
+                onCategoryTitleClick = viewModel::onCategoryTitleClick,
+                onCategorySheetDismiss = viewModel::onCategorySheetDismiss,
+                onCategorySelect = viewModel::onCategorySelect,
+                onSortClick = viewModel::onSortClick,
+                onSortPopupDismiss = viewModel::onSortPopupDismiss,
+                onSortTypeSelect = viewModel::onSortTypeSelect,
+                onItemClick = onItemClick,
+                modifier = modifier,
             )
         }
     }
+}
 
-    CategoryScreen(
-        selectedCategory = selectedCategory,
-        categories = categories,
-        analyzedImages = analyzedImages,
-        selectedSortType = selectedSortType,
-        showCategorySheet = showCategorySheet,
-        showSortPopup = showSortPopup,
-        onSearchIconClick = onSearchIconClick,
-        onCategoryTitleClick = { showCategorySheet = true },
-        onCategorySheetDismiss = { showCategorySheet = false },
-        onCategorySelect = { selectedCategory = it },
-        onSortClick = { showSortPopup = true },
-        onSortPopupDismiss = { showSortPopup = false },
-        onSortTypeSelect = {
-            selectedSortType = it
-            showSortPopup = false
-        },
-        onItemClick = onItemClick,
-        modifier = modifier,
-    )
+@Composable
+private fun CategoryErrorScreen(
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .background(ModeraTheme.colors.white),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = stringResource(R.string.category_load_error),
+            style = ModeraTheme.typography.bodyR14,
+            color = ModeraTheme.colors.gray700,
+        )
+    }
 }
 
 @Composable
 fun CategoryScreen(
-    selectedCategory: String,
+    selectedCategoryId: Long,
+    selectedCategoryTitle: String,
     categories: List<CategorySheetItem>,
     analyzedImages: List<AnalyzedImage>,
     selectedSortType: CategorySortType,
@@ -123,7 +124,7 @@ fun CategoryScreen(
     onSearchIconClick: () -> Unit,
     onCategoryTitleClick: () -> Unit,
     onCategorySheetDismiss: () -> Unit,
-    onCategorySelect: (String) -> Unit,
+    onCategorySelect: (Long) -> Unit,
     onSortClick: () -> Unit,
     onSortPopupDismiss: () -> Unit,
     onSortTypeSelect: (CategorySortType) -> Unit,
@@ -153,7 +154,7 @@ fun CategoryScreen(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Text(
-                            text = selectedCategory,
+                            text = selectedCategoryTitle,
                             style = ModeraTheme.typography.titleSB20,
                             color = ModeraTheme.colors.gray900,
                         )
@@ -245,8 +246,8 @@ fun CategoryScreen(
                 CategoryTopSheet(
                     visible = showCategorySheet,
                     categories = categories,
-                    selectedCategory = selectedCategory,
-                    onCategoryClick = { onCategorySelect(it.title) },
+                    selectedCategoryId = selectedCategoryId,
+                    onCategoryClick = { onCategorySelect(it.id) },
                     onDismissRequest = onCategorySheetDismiss,
                 )
 
@@ -273,11 +274,12 @@ internal object CategoryScreenDefaults {
 private fun CategoryScreenPreview() {
     ModeraTheme {
         CategoryScreen(
-            selectedCategory = "쇼핑",
+            selectedCategoryId = 1L,
+            selectedCategoryTitle = "쇼핑",
             categories = listOf(
                 CategorySheetItem(1, "쇼핑", 123),
-                CategorySheetItem(1, "음식", 1),
-                CategorySheetItem(1, "여행", 10, isNew = true),
+                CategorySheetItem(2, "음식", 1),
+                CategorySheetItem(3, "여행", 10, isNew = true),
             ),
             analyzedImages = listOf(
                 AnalyzedImage(

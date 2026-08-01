@@ -2,6 +2,7 @@ package com.ssafy.modera.feature.calendar.component
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -9,17 +10,22 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.ssafy.modera.core.designsystem.component.HorizontalDivider
+import com.ssafy.modera.core.designsystem.component.Icon
 import com.ssafy.modera.core.designsystem.component.Text
+import com.ssafy.modera.core.designsystem.icon.ModeraIcons
 import com.ssafy.modera.core.designsystem.theme.ModeraTheme
 import com.ssafy.modera.core.model.calendar.CalendarSchedule
 import com.ssafy.modera.core.model.calendar.CalendarScheduleSource
@@ -57,17 +63,21 @@ fun CalendarScheduleSection(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 20.dp, vertical = 16.dp),
-            verticalAlignment = Alignment.CenterVertically,
+            verticalAlignment = Alignment.Bottom,
         ) {
             Text(
-                text = stringResource(
-                    R.string.calendar_selected_date_label,
-                    selectedDate.dayOfMonth,
-                    selectedDate.dayOfWeek.toDisplayName(),
-                ),
+                text = selectedDate.dayOfMonth.toString(),
                 style = ModeraTheme.typography.titleSB20,
                 color = ModeraTheme.colors.gray900,
-                modifier = Modifier.weight(1f),
+            )
+
+            Text(
+                text = selectedDate.dayOfWeek.toDisplayName(),
+                style = ModeraTheme.typography.bodySB14,
+                color = ModeraTheme.colors.gray900,
+                modifier = Modifier
+                    .padding(start = 6.dp)
+                    .weight(1f),
             )
 
             Text(
@@ -88,6 +98,7 @@ fun CalendarScheduleSection(
             modifier = Modifier
                 .weight(1f)
                 .fillMaxWidth()
+                .padding(horizontal = 20.dp)
                 .verticalScroll(rememberScrollState()),
         ) {
             if (visibleSchedules.isEmpty()) {
@@ -95,7 +106,6 @@ fun CalendarScheduleSection(
                     text = stringResource(R.string.calendar_empty_schedule),
                     style = ModeraTheme.typography.bodyR14,
                     color = ModeraTheme.colors.gray500,
-                    modifier = Modifier.padding(horizontal = 20.dp),
                 )
 
                 Spacer(modifier = Modifier.height(14.dp))
@@ -130,16 +140,39 @@ fun CalendarScheduleSection(
 
                 Text(
                     text = stringResource(R.string.calendar_recognized_schedules),
-                    style = ModeraTheme.typography.bodySB14,
+                    style = ModeraTheme.typography.captionSB12,
                     color = ModeraTheme.colors.gray700,
-                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
+                    modifier = Modifier.padding(vertical = 12.dp),
                 )
 
                 pendingSchedules.forEach { schedule ->
-                    CalendarScheduleItem(
-                        schedule = schedule,
-                        onClick = { onAddScheduleClick(schedule) },
-                    )
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable(
+                                enabled = true,
+                                onClick = { onAddScheduleClick(schedule) },
+                            ),
+                        horizontalArrangement = Arrangement.SpaceEvenly,
+                    ) {
+                        Text(
+                            text = schedule.title,
+                            style = ModeraTheme.typography.bodyR16,
+                            color = ModeraTheme.colors.gray900,
+                            modifier = Modifier
+                                .weight(1f)
+                                .align(Alignment.CenterVertically),
+                        )
+
+                        Icon(
+                            imageVector = ImageVector.vectorResource(ModeraIcons.AddSquare),
+                            contentDescription = stringResource(
+                                R.string.calendar_schedule_add_content_description,
+                            ),
+                            modifier = Modifier.size(20.dp),
+                            tint = ModeraTheme.colors.yellow700,
+                        )
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(14.dp))

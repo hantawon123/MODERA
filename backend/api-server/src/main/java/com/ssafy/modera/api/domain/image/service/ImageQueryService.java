@@ -160,7 +160,9 @@ public class ImageQueryService {
                 createThumbnailUrl(row.thumbnailKey()),
                 row.tagNames(),
                 row.categoryName(),
-                row.uploadedAt()
+                row.uploadedAt(),
+                Boolean.TRUE.equals(row.isDocumented()),
+                Boolean.TRUE.equals(row.isCalendared())
         );
     }
 

@@ -51,7 +51,8 @@ class ImageQueryServiceTest {
                 .thenReturn(new ImageListPage(
                         List.of(new ImageListRow(
                                 10, "C++", "summary", false, null,
-                                List.of("C++", "공부"), "공부", uploadedAt)),
+                                List.of("C++", "공부"), "공부", uploadedAt,
+                                true, false)),
                         1
                 ));
 
@@ -64,6 +65,8 @@ class ImageQueryServiceTest {
         assertThat(response.hasPrevious()).isFalse();
         assertThat(response.list().getFirst().thumbnailUrl()).isNull();
         assertThat(response.list().getFirst().tags()).containsExactly("C++", "공부");
+        assertThat(response.list().getFirst().isDocumented()).isTrue();
+        assertThat(response.list().getFirst().isCalendared()).isFalse();
     }
 
     @Test

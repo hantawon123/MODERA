@@ -11,6 +11,8 @@ public record ImageListRow(
         String thumbnailKey,
         List<String> tagNames,
         String categoryName,
-        OffsetDateTime uploadedAt
+        OffsetDateTime uploadedAt,
+        Boolean isDocumented,
+        Boolean isCalendared
 ) {
 }

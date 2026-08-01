@@ -4,7 +4,6 @@ import app.cash.turbine.test
 import com.ssafy.modera.core.data.repository.AnalyzedImageRepository
 import com.ssafy.modera.core.data.repository.DefaultAnalyzedImageRepository
 import com.ssafy.modera.core.model.analyzedimage.AnalyzedImageQuery
-import com.ssafy.modera.core.model.analyzedimage.ImageAnalysisStatus
 import com.ssafy.modera.core.network.model.analyzedimage.AnalyzedImageDetailResponse
 import com.ssafy.modera.core.network.model.analyzedimage.AnalyzedImageResponse
 import com.ssafy.modera.core.network.model.analyzedimage.AnalyzedImagesResponse
@@ -41,9 +40,7 @@ class DefaultAnalyzedImageRepositoryTest {
     fun getAnalyzedImagesReturnsMappedImageSummaries() =
         runTest(testDispatcher) {
             val query = AnalyzedImageQuery(
-                statuses = setOf(
-                    ImageAnalysisStatus.COMPLETED,
-                ),
+                categoryId = 3L,
             )
 
             val response = AnalyzedImagesResponse(

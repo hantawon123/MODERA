@@ -20,6 +20,10 @@ interface AnalyzedImageRepository {
         imageId: Long,
     ): Flow<List<AnalyzedImage>>
 
+    fun getDocumentRecommendedImages(
+        selectedImageIds: List<Long>,
+    ): Flow<List<AnalyzedImage>>
+
     fun reanalyzeAnalyzedImage(imageId: Long): Flow<Unit>
 
     fun deleteAnalyzedImage(imageId: Long): Flow<Unit>

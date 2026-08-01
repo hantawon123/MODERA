@@ -6,6 +6,8 @@ import com.ssafy.modera.core.data.repository.DefaultAnalyzedImageRepository
 import com.ssafy.modera.core.data.repository.DefaultCategoryRepository
 import com.ssafy.modera.core.data.repository.DefaultImageRepository
 import com.ssafy.modera.core.data.repository.ImageRepository
+import com.ssafy.modera.core.data.repository.calendar.CalendarRepository
+import com.ssafy.modera.core.data.repository.calendar.DefaultCalendarRepository
 import com.ssafy.modera.core.data.repository.calendar.DefaultDeviceCalendarRepository
 import com.ssafy.modera.core.data.repository.calendar.DeviceCalendarRepository
 import com.ssafy.modera.core.data.repository.search.DefaultRecentSearchRepository
@@ -50,4 +52,9 @@ abstract class DataModule {
     abstract fun bindsDeviceCalendarRepository(
         impl: DefaultDeviceCalendarRepository,
     ): DeviceCalendarRepository
+
+    @Binds
+    abstract fun bindsCalendarRepository(
+        impl: DefaultCalendarRepository,
+    ): CalendarRepository
 }

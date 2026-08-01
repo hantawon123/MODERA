@@ -5,6 +5,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation3.runtime.EntryProviderScope
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.ui.LocalNavAnimatedContentScope
+import com.ssafy.modera.core.model.analyzedimage.AnalyzedImage
 import com.ssafy.modera.core.navigation.Navigator
 import com.ssafy.modera.feature.analyzedimagedetail.AnalyzedImageDetailScreen
 import com.ssafy.modera.feature.analyzedimagedetail.AnalyzedImageDetailViewModel
@@ -15,6 +16,7 @@ fun EntryProviderScope<NavKey>.analyzedImageDetailEntry(
     navigator: Navigator,
     sharedTransitionScope: SharedTransitionScope,
     onImageClick: (String) -> Unit,
+    onCreateDocumentClick: (AnalyzedImage) -> Unit,
     onBackClick: () -> Unit,
 ) {
     entry<AnalyzedImageDetailNavKey> { key ->
@@ -36,8 +38,9 @@ fun EntryProviderScope<NavKey>.analyzedImageDetailEntry(
             onFavoriteClick = {
                 // TODO ViewModel 즐겨찾기 기능 연결
             },
+            onCreateDocumentClick = onCreateDocumentClick,
             onDocumentClick = {
-                // TODO 문서화 화면 이동
+                // TODO 해당 문서 이동
             },
             onScheduleClick = {
                 // TODO 일정 화면 이동

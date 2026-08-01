@@ -11,8 +11,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -152,8 +150,7 @@ fun CalendarScreen(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .weight(1f)
-                .verticalScroll(rememberScrollState()),
+                .weight(1f),
         ) {
             CalendarMonthHeader(
                 visibleMonth = visibleMonth,
@@ -180,6 +177,9 @@ fun CalendarScreen(
                 onScheduleClick = onScheduleClick,
                 onAddScheduleClick = onAddScheduleClick,
                 onDeleteScheduleClick = onDeleteScheduleClick,
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth(),
             )
         }
     }

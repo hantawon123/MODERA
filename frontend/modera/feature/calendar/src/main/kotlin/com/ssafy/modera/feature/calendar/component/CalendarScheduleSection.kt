@@ -5,9 +5,12 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -47,7 +50,8 @@ fun CalendarScheduleSection(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .background(ModeraTheme.colors.gray50),
+            .fillMaxHeight()
+            .background(ModeraTheme.colors.gray100),
     ) {
         Row(
             modifier = Modifier
@@ -80,59 +84,66 @@ fun CalendarScheduleSection(
             )
         }
 
-        if (visibleSchedules.isEmpty()) {
-            Text(
-                text = stringResource(R.string.calendar_empty_schedule),
-                style = ModeraTheme.typography.bodyR14,
-                color = ModeraTheme.colors.gray500,
-                modifier = Modifier.padding(horizontal = 20.dp),
-            )
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState()),
+        ) {
+            if (visibleSchedules.isEmpty()) {
+                Text(
+                    text = stringResource(R.string.calendar_empty_schedule),
+                    style = ModeraTheme.typography.bodyR14,
+                    color = ModeraTheme.colors.gray500,
+                    modifier = Modifier.padding(horizontal = 20.dp),
+                )
 
-            Spacer(modifier = Modifier.height(14.dp))
-        } else {
-            visibleSchedules.forEach { schedule ->
-                CalendarScheduleItem(
-                    schedule = schedule,
-                    isEditMode = isEditMode,
-                    onClick = {
-                        if (isEditMode) {
-                            onDeleteScheduleClick(schedule)
+                Spacer(modifier = Modifier.height(14.dp))
+            } else {
+                visibleSchedules.forEach { schedule ->
+                    CalendarScheduleItem(
+                        schedule = schedule,
+                        isEditMode = isEditMode,
+                        onClick = {
+                            if (isEditMode) {
+                                onDeleteScheduleClick(schedule)
+                            } else {
+                                onScheduleClick(schedule)
+                            }
+                        },
+                        onDeleteClick = if (isEditMode) {
+                            { onDeleteScheduleClick(schedule) }
                         } else {
-                            onScheduleClick(schedule)
-                        }
-                    },
-                    onDeleteClick = if (isEditMode) {
-                        { onDeleteScheduleClick(schedule) }
-                    } else {
-                        null
-                    },
-                )
+                            null
+                        },
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(14.dp))
             }
 
-            Spacer(modifier = Modifier.height(14.dp))
-        }
-
-        if (!isEditMode && pendingSchedules.isNotEmpty()) {
-            HorizontalDivider(
-                thickness = 1.dp,
-                color = ModeraTheme.colors.gray100,
-            )
-
-            Text(
-                text = stringResource(R.string.calendar_recognized_schedules),
-                style = ModeraTheme.typography.bodySB14,
-                color = ModeraTheme.colors.gray700,
-                modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
-            )
-
-            pendingSchedules.forEach { schedule ->
-                CalendarScheduleItem(
-                    schedule = schedule,
-                    onClick = { onAddScheduleClick(schedule) },
+            if (!isEditMode && pendingSchedules.isNotEmpty()) {
+                HorizontalDivider(
+                    thickness = 1.dp,
+                    color = ModeraTheme.colors.gray300,
                 )
-            }
 
-            Spacer(modifier = Modifier.height(14.dp))
+                Text(
+                    text = stringResource(R.string.calendar_recognized_schedules),
+                    style = ModeraTheme.typography.bodySB14,
+                    color = ModeraTheme.colors.gray700,
+                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
+                )
+
+                pendingSchedules.forEach { schedule ->
+                    CalendarScheduleItem(
+                        schedule = schedule,
+                        onClick = { onAddScheduleClick(schedule) },
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(14.dp))
+            }
         }
     }
 }

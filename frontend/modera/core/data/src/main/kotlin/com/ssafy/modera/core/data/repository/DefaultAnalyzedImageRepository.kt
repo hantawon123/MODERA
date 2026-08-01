@@ -106,7 +106,6 @@ private val mockDocumentRecommendedImages = List(20) { index ->
             "케이크",
             "예약",
         ),
-        status = ImageAnalysisStatus.COMPLETED,
         favorite = false,
     )
 }

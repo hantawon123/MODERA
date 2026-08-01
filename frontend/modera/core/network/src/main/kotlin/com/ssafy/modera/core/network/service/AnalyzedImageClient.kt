@@ -49,10 +49,12 @@ class AnalyzedImageClient @Inject constructor(
     // Todo: api 완성 되면 mock 삭제
     suspend fun fetchRelatedImages(
         imageId: Long,
+        limit: Int = 10,
     ): List<AnalyzedImageResponse> =
-        AnalyzedImageMockDataSource.fetchRelatedImages(
-            sourceImageId = imageId,
-        )
+        analyzedImageService.fetchRelatedImages(
+            imageId = imageId,
+            limit = limit
+        ).getOrThrow().data.list
 
     suspend fun reanalyzeAnalyzedImage(
         imageId: Long,
@@ -60,9 +62,11 @@ class AnalyzedImageClient @Inject constructor(
 
     suspend fun deleteAnalyzedImage(
         imageId: List<Long>,
-    ){
-        analyzedImageService.deleteAnalyzedImages(DeleteAnalyzedImagesRequest(
-            imageId
-        ))
+    ) {
+        analyzedImageService.deleteAnalyzedImages(
+            DeleteAnalyzedImagesRequest(
+                imageId
+            )
+        )
     }
 }

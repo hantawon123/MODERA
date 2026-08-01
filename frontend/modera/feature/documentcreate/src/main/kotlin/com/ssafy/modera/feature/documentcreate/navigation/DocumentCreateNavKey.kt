@@ -13,7 +13,6 @@ data class DocumentCreateNavKey(
     val summary: String,
     val thumbnailUrl: String,
     val hashtags: List<String>,
-    val status: String,
     val favorite: Boolean,
 ) : NavKey
 
@@ -27,7 +26,6 @@ fun Navigator.navigateToDocumentCreate(
             summary = analyzedImage.summary,
             thumbnailUrl = analyzedImage.thumbnailUrl,
             hashtags = analyzedImage.hashtags,
-            status = analyzedImage.status.name,
             favorite = analyzedImage.favorite,
         ),
     )
@@ -40,6 +38,5 @@ internal fun DocumentCreateNavKey.asInitialImage(): AnalyzedImage =
         summary = summary,
         thumbnailUrl = thumbnailUrl,
         hashtags = hashtags,
-        status = ImageAnalysisStatus.valueOf(status),
         favorite = favorite,
     )

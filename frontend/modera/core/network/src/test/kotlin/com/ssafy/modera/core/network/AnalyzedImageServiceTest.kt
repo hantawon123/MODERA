@@ -52,7 +52,7 @@ class AnalyzedImageServiceTest : ApiAbstract<AnalyzedImageService>() {
         assertThat(image.title, `is`("C++ 프로그래밍 입문"))
         assertThat(image.status, `is`("COMPLETED"))
         assertThat(image.tags.first().name, `is`("C++"))
-        assertThat(image.categories.first().name, `is`("공부"))
+        assertThat(image.category.first().name, `is`("공부"))
     }
 
     @Test

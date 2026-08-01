@@ -135,10 +135,12 @@ class CalendarViewModel @Inject constructor(
 
     fun onPreviousMonth() {
         visibleMonth.update { it.minusMonths(1) }
+        selectedDate.update { it.minusMonths(1) }
     }
 
     fun onNextMonth() {
         visibleMonth.update { it.plusMonths(1) }
+        selectedDate.update { it.plusMonths(1) }
     }
 
     fun onDateClick(date: LocalDate) {

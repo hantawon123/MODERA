@@ -55,7 +55,6 @@ import com.ssafy.modera.feature.category.navigation.CategoryNavKey
 import com.ssafy.modera.feature.category.navigation.categoryEntry
 import com.ssafy.modera.feature.category.navigation.navigateToCategorySearch
 import com.ssafy.modera.feature.category.navigation.navigateToCategoryTab
-import com.ssafy.modera.feature.categoryimages.navigation.categoryImagesEntry
 import com.ssafy.modera.feature.documentcreate.navigation.documentCreateEntry
 import com.ssafy.modera.feature.documentcreate.navigation.navigateToDocumentCreate
 import com.ssafy.modera.feature.favorite.navigation.favoritesEntry
@@ -250,11 +249,6 @@ internal fun ModeraApp(
                                     onBackClick = handleBack,
                                 )
                                 documentsEntry()
-                                categoryImagesEntry(
-                                    navigator = navigator,
-                                    onImageClick = navigator::navigateToImageDetail,
-                                    onBackClick = handleBack,
-                                )
                                 analyzedImageDetailEntry(
                                     navigator = navigator,
                                     sharedTransitionScope = this@SharedTransitionLayout,

@@ -56,6 +56,19 @@ class AnalyzedImageClient @Inject constructor(
             limit = limit
         ).getOrThrow().data.list
 
+    suspend fun fetchDocumentRelatedImages(
+        imageIds: List<Long>,
+    ): List<AnalyzedImageResponse> =
+        analyzedImageService
+            .fetchDocumentRelatedImages(
+                request = ImageIdsRequest(
+                    imageIds = imageIds,
+                ),
+            )
+            .getOrThrow()
+            .data
+            .list
+
     suspend fun reanalyzeAnalyzedImage(
         imageId: Long,
     ) = AnalyzedImageMockDataSource.reanalyzeImage(imageId)

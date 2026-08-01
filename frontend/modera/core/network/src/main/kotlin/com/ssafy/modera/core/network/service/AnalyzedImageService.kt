@@ -9,6 +9,7 @@ import com.ssafy.modera.core.network.model.analyzedimage.RelatedImagesResponse
 import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.HTTP
+import retrofit2.http.POST
 import retrofit2.http.Path
 import retrofit2.http.Query
 
@@ -37,6 +38,11 @@ interface AnalyzedImageService {
         @Path("imageId") imageId: Long,
         @Query("limit") limit: Int,
     ): ApiResponse<BaseResponse<RelatedImagesResponse>>
+
+    @POST("api/v1/images/documentize")
+    suspend fun fetchDocumentRelatedImages(
+        @Body request: ImageIdsRequest,
+    ): ApiResponse<BaseResponse<AnalyzedImagesResponse>>
 
     @HTTP(
         method = "DELETE",

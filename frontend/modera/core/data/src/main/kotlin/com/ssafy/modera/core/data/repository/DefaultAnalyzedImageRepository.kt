@@ -8,12 +8,10 @@ import com.ssafy.modera.core.model.analyzedimage.AnalyzedImageQuery
 import com.ssafy.modera.core.network.model.analyzedimage.asExternalModel
 import com.ssafy.modera.core.network.service.AnalyzedImageClient
 import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import javax.inject.Inject
-import kotlin.time.Duration.Companion.milliseconds
 
 class DefaultAnalyzedImageRepository @Inject constructor(
     private val analyzedImageClient: AnalyzedImageClient,
@@ -57,15 +55,10 @@ class DefaultAnalyzedImageRepository @Inject constructor(
     override fun getDocumentRecommendedImages(
         selectedImageIds: List<Long>,
     ): Flow<List<AnalyzedImage>> = flow {
-        delay(500L.milliseconds)
-
-        val selectedImageIdSet = selectedImageIds.toSet()
-
-        val recommendedImages = mockDocumentRecommendedImages
-            .filterNot { image ->
-                image.id in selectedImageIdSet
+        val recommendedImages =
+            analyzedImageClient.fetchDocumentRelatedImages(selectedImageIds).map {
+                it.asExternalModel()
             }
-            .take(10)
 
         emit(recommendedImages)
     }.flowOn(ioDispatcher)
@@ -89,22 +82,4 @@ class DefaultAnalyzedImageRepository @Inject constructor(
 
         emit(Unit)
     }.flowOn(ioDispatcher)
-}
-
-// Todo: network 연결 후 삭제
-private val mockDocumentRecommendedImages = List(20) { index ->
-    AnalyzedImage(
-        id = 10_000L + index,
-        title = "성심당 케이크 리스트 ${index + 1}",
-        summary = "성심당 케이크 메뉴와 가격, 예약 정보를 정리한 이미지입니다.",
-        thumbnailUrl =
-            "https://picsum.photos/seed/" +
-                    "document-recommendation-$index/300/300",
-        hashtags = listOf(
-            "성심당",
-            "케이크",
-            "예약",
-        ),
-        favorite = false,
-    )
 }

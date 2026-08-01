@@ -8,7 +8,7 @@ import java.time.Instant
 data class AnalyzedImageDetailResponse(
     val imageId: Long,
     val imageUrl: String,
-    val thumbnailUrl: String,
+    val thumbnailUrl: String?,
     val title: String,
     val favorite: Boolean,
     val summary: String,
@@ -17,7 +17,6 @@ data class AnalyzedImageDetailResponse(
     val keyInformation: List<String>,
     val isDocumented: Boolean,
     val isCalendared: Boolean,
-    @Transient
     val updatedAt: String? = null,
 )
 
@@ -25,7 +24,7 @@ fun AnalyzedImageDetailResponse.asExternalModel(): AnalyzedImageDetail =
     AnalyzedImageDetail(
         id = imageId,
         imageUrl = imageUrl,
-        thumbnailUrl = thumbnailUrl,
+        thumbnailUrl = thumbnailUrl.orEmpty(),
         title = title,
         favorite = favorite,
         summary = summary,

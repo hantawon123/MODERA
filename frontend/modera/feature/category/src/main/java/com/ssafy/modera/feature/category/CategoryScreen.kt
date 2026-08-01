@@ -75,6 +75,7 @@ fun CategoryRoute(
             CategoryScreen(
                 selectedCategoryId = state.selectedCategoryId,
                 selectedCategoryTitle = state.selectedCategoryTitle,
+                isAllCategorySelected = state.isAllCategorySelected,
                 categories = state.categories,
                 analyzedImages = state.analyzedImages,
                 selectedSortType = state.selectedSortType,
@@ -116,6 +117,7 @@ private fun CategoryErrorScreen(
 fun CategoryScreen(
     selectedCategoryId: Long,
     selectedCategoryTitle: String,
+    isAllCategorySelected: Boolean,
     categories: List<CategorySheetItem>,
     analyzedImages: List<AnalyzedImage>,
     selectedSortType: CategorySortType,
@@ -134,6 +136,11 @@ fun CategoryScreen(
     val listState = rememberLazyListState()
     val showScrollToTop = rememberShowScrollToTop(listState)
     val coroutineScope = rememberCoroutineScope()
+    val displayCategoryTitle = if (isAllCategorySelected) {
+        stringResource(R.string.category_all)
+    } else {
+        selectedCategoryTitle
+    }
 
     Box(
         modifier = modifier
@@ -154,7 +161,7 @@ fun CategoryScreen(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Text(
-                            text = selectedCategoryTitle,
+                            text = displayCategoryTitle,
                             style = ModeraTheme.typography.titleSB20,
                             color = ModeraTheme.colors.gray900,
                         )
@@ -274,9 +281,16 @@ internal object CategoryScreenDefaults {
 private fun CategoryScreenPreview() {
     ModeraTheme {
         CategoryScreen(
-            selectedCategoryId = 1L,
-            selectedCategoryTitle = "쇼핑",
+            selectedCategoryId = CategorySheetItem.ALL_CATEGORY_ID,
+            selectedCategoryTitle = "",
+            isAllCategorySelected = true,
             categories = listOf(
+                CategorySheetItem(
+                    id = CategorySheetItem.ALL_CATEGORY_ID,
+                    title = "",
+                    itemCount = 134,
+                    isAll = true,
+                ),
                 CategorySheetItem(1, "쇼핑", 123),
                 CategorySheetItem(2, "음식", 1),
                 CategorySheetItem(3, "여행", 10, isNew = true),

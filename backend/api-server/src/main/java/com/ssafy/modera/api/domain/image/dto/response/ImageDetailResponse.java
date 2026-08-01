@@ -3,6 +3,7 @@ package com.ssafy.modera.api.domain.image.dto.response;
 import com.fasterxml.jackson.databind.JsonNode;
 import io.swagger.v3.oas.annotations.media.Schema;
 
+import java.time.OffsetDateTime;
 import java.util.List;
 
 public record ImageDetailResponse(
@@ -16,6 +17,8 @@ public record ImageDetailResponse(
         @Schema(description = "태그 이름 목록") List<String> tags,
         @Schema(description = "핵심 정보 목록") List<String> keyInformation,
         @Schema(description = "구조화 데이터") JsonNode structuredData,
+        @Schema(description = "최초 등록 시 저장된 OCR 원문") String ocrRawText,
+        @Schema(description = "이미지 업로드 일시") OffsetDateTime uploadedAt,
         @Schema(description = "문서화 여부") Boolean isDocumented,
         @Schema(description = "일정 등록 여부") Boolean isCalendared
 ) {

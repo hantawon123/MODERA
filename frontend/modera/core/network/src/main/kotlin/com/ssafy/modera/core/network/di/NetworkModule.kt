@@ -11,6 +11,8 @@ import com.ssafy.modera.core.network.service.CategoryClient
 import com.ssafy.modera.core.network.service.CategoryService
 import com.ssafy.modera.core.network.service.ImageClient
 import com.ssafy.modera.core.network.service.ImageService
+import com.ssafy.modera.core.network.service.document.DocumentClient
+import com.ssafy.modera.core.network.service.document.DocumentService
 import com.ssafy.modera.core.network.service.search.SearchClient
 import com.ssafy.modera.core.network.service.search.SearchService
 import dagger.Module
@@ -140,4 +142,20 @@ internal object NetworkModule {
         calendarService: CalendarService,
     ): CalendarClient =
         CalendarClient(calendarService)
+
+    @Provides
+    @Singleton
+    fun provideDocumentService(
+        retrofit: Retrofit,
+    ): DocumentService =
+        retrofit.create(DocumentService::class.java)
+
+    @Provides
+    @Singleton
+    fun provideDocumentClient(
+        documentService: DocumentService,
+    ): DocumentClient =
+        DocumentClient(
+            documentService = documentService,
+        )
 }

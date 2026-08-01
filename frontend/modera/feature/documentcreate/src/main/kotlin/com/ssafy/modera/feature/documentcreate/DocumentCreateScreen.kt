@@ -47,19 +47,26 @@ import com.ssafy.modera.feature.documentcreate.component.SelectedImagesSection
 @Composable
 internal fun DocumentCreateScreen(
     viewModel: DocumentCreateViewModel,
+    onDocumentCreated: (Long) -> Unit,
     onBackClick: () -> Unit,
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val selectedImages by viewModel.selectedImages.collectAsStateWithLifecycle()
+    val hasSelectionChanged by viewModel.hasSelectionChanged.collectAsStateWithLifecycle()
 
     DocumentCreateScreen(
         uiState = uiState,
         selectedImages = selectedImages,
+        hasSelectionChanged = hasSelectionChanged,
         onBackClick = onBackClick,
         onRefreshClick = viewModel::refreshRecommendedImages,
         onSelectedImageRemoveClick = viewModel::removeSelectedImage,
         onRecommendedImageClick = viewModel::addSelectedImage,
-        onCreateDocumentClick = viewModel::createDocument
+        onCreateDocumentClick = {
+            viewModel.createDocument { documentId ->
+                onDocumentCreated(documentId)
+            }
+        },
     )
 }
 
@@ -67,6 +74,7 @@ internal fun DocumentCreateScreen(
 private fun DocumentCreateScreen(
     uiState: DocumentCreateUiState,
     selectedImages: List<AnalyzedImage>,
+    hasSelectionChanged: Boolean,
     onBackClick: () -> Unit,
     onRefreshClick: () -> Unit,
     onSelectedImageRemoveClick: (Long) -> Unit,
@@ -74,21 +82,19 @@ private fun DocumentCreateScreen(
     onCreateDocumentClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    var isRefreshEnabled by remember {
-        mutableStateOf(false)
-    }
+
 
     val recommendedListState = rememberLazyListState()
-
-    val canRefresh =
-        isRefreshEnabled && uiState is DocumentCreateUiState.Success
 
     val canCreateDocument =
         selectedImages.size > 1 &&
                 uiState is DocumentCreateUiState.Success
+    val canRefresh =
+        hasSelectionChanged &&
+                uiState is DocumentCreateUiState.Success
 
-    LaunchedEffect(isRefreshEnabled) {
-        if (!isRefreshEnabled) {
+    LaunchedEffect(hasSelectionChanged) {
+        if (!hasSelectionChanged) {
             recommendedListState.scrollToItem(0)
         }
     }
@@ -98,34 +104,36 @@ private fun DocumentCreateScreen(
             .fillMaxSize()
             .background(ModeraTheme.colors.white),
     ) {
+        val isCreating = uiState is DocumentCreateUiState.Creating
         ModeraTopBar(
             onBackClick = onBackClick,
             centerContent = {
-                Text(
-                    text = stringResource(
-                        R.string.document_create_title,
-                    ),
-                    style = ModeraTheme.typography.bodySB16,
-                    color = ModeraTheme.colors.gray900,
-                    maxLines = 1,
-                )
+                if (!isCreating) {
+                    Text(
+                        text = stringResource(
+                            R.string.document_create_title,
+                        ),
+                        style = ModeraTheme.typography.bodySB16,
+                        color = ModeraTheme.colors.gray900,
+                        maxLines = 1,
+                    )
+                }
             },
             rightContent = {
-                IconButton(
-                    imageVector = ImageVector.vectorResource(
-                        ModeraIcons.Refresh,
-                    ),
-                    onClick = {
-                        isRefreshEnabled = false
-                        onRefreshClick()
-                    },
-                    size = 24.dp,
-                    enabled = canRefresh,
-                    colors = ModeraIconButtonDefaults.iconButtonColors(
-                        contentColor = ModeraTheme.colors.gray700,
-                        disabledContentColor = ModeraTheme.colors.gray200,
-                    ),
-                )
+                if (!isCreating) {
+                    IconButton(
+                        imageVector = ImageVector.vectorResource(
+                            ModeraIcons.Refresh,
+                        ),
+                        onClick = onRefreshClick,
+                        size = 24.dp,
+                        enabled = canRefresh,
+                        colors = ModeraIconButtonDefaults.iconButtonColors(
+                            contentColor = ModeraTheme.colors.gray700,
+                            disabledContentColor = ModeraTheme.colors.gray200,
+                        ),
+                    )
+                }
             },
         )
 
@@ -187,10 +195,7 @@ private fun DocumentCreateScreen(
                                         description = image.summary,
                                         tags = image.hashtags,
                                         imageUrl = image.thumbnailUrl,
-                                        onClick = {
-                                            isRefreshEnabled = true
-                                            onRecommendedImageClick(image)
-                                        },
+                                        onClick = { onRecommendedImageClick(image) },
                                     )
                                 }
                             }
@@ -217,12 +222,7 @@ private fun DocumentCreateScreen(
                     ) {
                         SelectedImagesSection(
                             images = selectedImages,
-                            onRemoveClick = { imageId ->
-                                if (uiState is DocumentCreateUiState.Success) {
-                                    isRefreshEnabled = true
-                                    onSelectedImageRemoveClick(imageId)
-                                }
-                            },
+                            onRemoveClick = onSelectedImageRemoveClick,
                         )
 
                         ModeraIconTextButton(
@@ -264,10 +264,7 @@ private fun DocumentCreateScreen(
             }
 
             DocumentCreateUiState.Creating -> {
-                DocumentCreatingScreen(
-                    selectedImages = selectedImages,
-                    onBackClick = onBackClick
-                )
+                DocumentCreatingScreen(selectedImages = selectedImages)
             }
 
             is DocumentCreateUiState.Error -> {
@@ -305,6 +302,7 @@ private fun DocumentCreateScreenPreview(
         DocumentCreateScreen(
             uiState = uiState,
             selectedImages = selectedImages,
+            hasSelectionChanged = false,
             onBackClick = {},
             onRefreshClick = {
                 uiState = DocumentCreateUiState.Success(

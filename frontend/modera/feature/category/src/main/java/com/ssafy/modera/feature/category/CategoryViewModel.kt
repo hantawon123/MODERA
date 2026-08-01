@@ -21,11 +21,12 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
 class CategoryViewModel @Inject constructor(
-    categoryRepository: CategoryRepository,
+    private val categoryRepository: CategoryRepository,
     private val analyzedImageRepository: AnalyzedImageRepository,
 ) : ViewModel() {
 
@@ -36,7 +37,7 @@ class CategoryViewModel @Inject constructor(
     private val showSortPopup = MutableStateFlow(false)
 
     private val categoriesResult = categoryRepository
-        .getCategories(CategorySortType.NAME_ASC)
+        .observeCategories()
         .asResult()
         .stateIn(
             scope = viewModelScope,
@@ -120,6 +121,9 @@ class CategoryViewModel @Inject constructor(
     }
 
     fun onCategoryTitleClick() {
+        viewModelScope.launch {
+            categoryRepository.clearNewCategoryFlags()
+        }
         showCategorySheet.update { true }
     }
 
@@ -186,6 +190,7 @@ class CategoryViewModel @Inject constructor(
                     id = category.id,
                     title = category.title,
                     itemCount = category.itemCount,
+                    isNew = category.isNew,
                 )
             }
 

@@ -3,6 +3,7 @@ package com.ssafy.modera.core.network.service
 import com.skydoves.sandwich.ApiResponse
 import com.ssafy.modera.core.network.model.BaseResponse
 import com.ssafy.modera.core.network.model.analyzedimage.AnalyzedImageDetailResponse
+import com.ssafy.modera.core.network.model.analyzedimage.AnalyzedImageFavoriteRequest
 import com.ssafy.modera.core.network.model.analyzedimage.AnalyzedImagesResponse
 import com.ssafy.modera.core.network.model.analyzedimage.ImageIdsRequest
 import com.ssafy.modera.core.network.model.analyzedimage.RelatedImagesResponse
@@ -10,6 +11,7 @@ import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.HTTP
 import retrofit2.http.POST
+import retrofit2.http.PUT
 import retrofit2.http.Path
 import retrofit2.http.Query
 
@@ -43,6 +45,12 @@ interface AnalyzedImageService {
     suspend fun fetchDocumentRelatedImages(
         @Body request: ImageIdsRequest,
     ): ApiResponse<BaseResponse<AnalyzedImagesResponse>>
+
+    @PUT("api/v1/images/{imageId}/favorite")
+    suspend fun updateAnalyzedImageFavorite(
+        @Path("imageId") imageId: Long,
+        @Body request: AnalyzedImageFavoriteRequest,
+    ): ApiResponse<Unit>
 
     @HTTP(
         method = "DELETE",

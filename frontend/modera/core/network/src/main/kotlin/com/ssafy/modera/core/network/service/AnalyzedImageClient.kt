@@ -4,6 +4,7 @@ import com.skydoves.sandwich.getOrThrow
 import com.ssafy.modera.core.model.analyzedimage.AnalyzedImageQuery
 import com.ssafy.modera.core.network.mock.AnalyzedImageMockDataSource
 import com.ssafy.modera.core.network.model.analyzedimage.AnalyzedImageDetailResponse
+import com.ssafy.modera.core.network.model.analyzedimage.AnalyzedImageFavoriteRequest
 import com.ssafy.modera.core.network.model.analyzedimage.AnalyzedImageResponse
 import com.ssafy.modera.core.network.model.analyzedimage.AnalyzedImagesResponse
 import com.ssafy.modera.core.network.model.analyzedimage.ImageIdsRequest
@@ -68,6 +69,20 @@ class AnalyzedImageClient @Inject constructor(
             .getOrThrow()
             .data
             .list
+
+    suspend fun updateAnalyzedImageFavorite(
+        imageId: Long,
+        favorite: Boolean,
+    ) {
+        analyzedImageService
+            .updateAnalyzedImageFavorite(
+                imageId = imageId,
+                request = AnalyzedImageFavoriteRequest(
+                    favorite = favorite,
+                ),
+            )
+            .getOrThrow()
+    }
 
     suspend fun reanalyzeAnalyzedImage(
         imageId: Long,

@@ -73,6 +73,18 @@ class DefaultAnalyzedImageRepository @Inject constructor(
         emit(Unit)
     }.flowOn(ioDispatcher)
 
+    override fun setAnalyzedImageFavorite(
+        imageId: Long,
+        favorite: Boolean,
+    ): Flow<Unit> = flow {
+        analyzedImageClient.updateAnalyzedImageFavorite(
+            imageId = imageId,
+            favorite = favorite,
+        )
+
+        emit(Unit)
+    }.flowOn(ioDispatcher)
+
     override fun deleteAnalyzedImage(
         imageId: Long,
     ): Flow<Unit> = flow {

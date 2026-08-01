@@ -18,7 +18,6 @@ import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import java.time.Instant
 import java.time.LocalDate
-import java.time.YearMonth
 import java.time.ZoneId
 
 class DefaultCalendarRepositoryTest {
@@ -40,8 +39,12 @@ class DefaultCalendarRepositoryTest {
     }
 
     @Test
-    fun getSchedulesForDateReturnsMappedSchedules() = runTest(testDispatcher) {
+    fun getSchedulesReturnsMappedSchedules() = runTest(testDispatcher) {
         val date = LocalDate.of(2026, 8, 9)
+        val request = SchedulesRequest(
+            from = date.atStartOfDay(zoneId).toInstant().toString(),
+            to = date.plusDays(1).atStartOfDay(zoneId).toInstant().minusMillis(1).toString(),
+        )
         val response = SchedulesResponse(
             list = listOf(
                 ScheduleResponse(
@@ -71,16 +74,9 @@ class DefaultCalendarRepositoryTest {
             hasPrevious = false,
         )
 
-        whenever(
-            calendarClient.fetchSchedules(
-                SchedulesRequest(
-                    from = "2026-08-09",
-                    to = "2026-08-09",
-                ),
-            ),
-        ).thenReturn(response)
+        whenever(calendarClient.fetchSchedules(request)).thenReturn(response)
 
-        repository.getSchedulesForDate(date).test {
+        repository.getSchedules(from = date, to = date).test {
             val schedules = awaitItem()
 
             assertEquals(2, schedules.size)
@@ -89,6 +85,10 @@ class DefaultCalendarRepositoryTest {
             assertEquals(2L, addedSchedule.id)
             assertEquals("성심당 케이크 예약", addedSchedule.title)
             assertEquals(CalendarScheduleSource.APP, addedSchedule.source)
+            assertEquals(
+                Instant.parse("2026-08-09T00:00:00.000Z").atZone(zoneId).toLocalDate(),
+                addedSchedule.date,
+            )
             assertEquals(
                 Instant.parse("2026-08-09T00:00:00.000Z").atZone(zoneId).toLocalTime(),
                 addedSchedule.startTime,
@@ -101,6 +101,7 @@ class DefaultCalendarRepositoryTest {
 
             val pendingSchedule = schedules.last()
             assertEquals(8L, pendingSchedule.id)
+            assertEquals(null, pendingSchedule.date)
             assertEquals(null, pendingSchedule.startTime)
             assertEquals(null, pendingSchedule.endTime)
             assertEquals(false, pendingSchedule.isAdded)
@@ -108,78 +109,6 @@ class DefaultCalendarRepositoryTest {
             awaitComplete()
         }
 
-        verify(calendarClient).fetchSchedules(
-            SchedulesRequest(
-                from = "2026-08-09",
-                to = "2026-08-09",
-            ),
-        )
-    }
-
-    @Test
-    fun getScheduleCountsForMonthReturnsCountsByDate() = runTest(testDispatcher) {
-        val yearMonth = YearMonth.of(2026, 8)
-        val response = SchedulesResponse(
-            list = listOf(
-                ScheduleResponse(
-                    scheduleId = 2L,
-                    imageId = 10L,
-                    title = "성심당 케이크 예약",
-                    startAt = "2026-08-09T00:00:00.000Z",
-                    endAt = null,
-                    calendared = true,
-                    updatedAt = "2026-08-01T00:00:00.000Z",
-                ),
-                ScheduleResponse(
-                    scheduleId = 5L,
-                    imageId = 12L,
-                    title = "KTX 예매",
-                    startAt = "2026-08-11T03:00:00.000Z",
-                    endAt = null,
-                    calendared = false,
-                    updatedAt = "2026-08-01T00:00:00.000Z",
-                ),
-                ScheduleResponse(
-                    scheduleId = 6L,
-                    imageId = 13L,
-                    title = "카페 예약",
-                    startAt = "2026-08-11T06:00:00.000Z",
-                    endAt = null,
-                    calendared = false,
-                    updatedAt = "2026-08-01T00:00:00.000Z",
-                ),
-            ),
-            page = 0,
-            size = 20,
-            totalElements = 3,
-            totalPages = 1,
-            hasNext = false,
-            hasPrevious = false,
-        )
-
-        whenever(
-            calendarClient.fetchSchedules(
-                SchedulesRequest(
-                    from = "2026-08-01",
-                    to = "2026-08-31",
-                ),
-            ),
-        ).thenReturn(response)
-
-        repository.getScheduleCountsForMonth(yearMonth).test {
-            val counts = awaitItem()
-
-            assertEquals(1, counts[Instant.parse("2026-08-09T00:00:00.000Z").atZone(zoneId).toLocalDate()])
-            assertEquals(2, counts[Instant.parse("2026-08-11T03:00:00.000Z").atZone(zoneId).toLocalDate()])
-
-            awaitComplete()
-        }
-
-        verify(calendarClient).fetchSchedules(
-            SchedulesRequest(
-                from = "2026-08-01",
-                to = "2026-08-31",
-            ),
-        )
+        verify(calendarClient).fetchSchedules(request)
     }
 }

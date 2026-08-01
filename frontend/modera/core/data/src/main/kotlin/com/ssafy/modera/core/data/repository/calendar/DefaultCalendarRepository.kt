@@ -6,16 +6,13 @@ import com.ssafy.modera.core.model.calendar.CalendarSchedule
 import com.ssafy.modera.core.network.model.calendar.ScheduleResponse
 import com.ssafy.modera.core.network.model.calendar.SchedulesRequest
 import com.ssafy.modera.core.network.model.calendar.asExternalModel
-import com.ssafy.modera.core.network.model.calendar.scheduleDate
 import com.ssafy.modera.core.network.service.CalendarClient
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import java.time.LocalDate
-import java.time.YearMonth
 import java.time.ZoneId
-import java.time.format.DateTimeFormatter
 import javax.inject.Inject
 
 class DefaultCalendarRepository @Inject constructor(
@@ -25,36 +22,21 @@ class DefaultCalendarRepository @Inject constructor(
 
     private val zoneId = ZoneId.systemDefault()
 
-    override fun getSchedulesForDate(date: LocalDate): Flow<List<CalendarSchedule>> =
-        flow {
-            val schedules = fetchAllSchedules(
+    override fun getSchedules(
+        from: LocalDate,
+        to: LocalDate,
+    ): Flow<List<CalendarSchedule>> = flow {
+        emit(
+            fetchAllSchedules(
                 SchedulesRequest(
-                    from = date.toApiDateString(),
-                    to = date.toApiDateString(),
+                    from = from.toApiFrom(zoneId),
+                    to = to.toApiTo(zoneId),
                 ),
-            )
-
-            emit(schedules.map { it.asExternalModel(zoneId) })
-        }.flowOn(ioDispatcher)
-
-    override fun getScheduleCountsForMonth(yearMonth: YearMonth): Flow<Map<LocalDate, Int>> =
-        flow {
-            val fromDate = yearMonth.atDay(1)
-            val toDate = yearMonth.atEndOfMonth()
-            val schedules = fetchAllSchedules(
-                SchedulesRequest(
-                    from = fromDate.toApiDateString(),
-                    to = toDate.toApiDateString(),
-                ),
-            )
-
-            emit(
-                schedules
-                    .mapNotNull { it.scheduleDate(zoneId) }
-                    .groupingBy { it }
-                    .eachCount(),
-            )
-        }.flowOn(ioDispatcher)
+            ).map { schedule ->
+                schedule.asExternalModel(zoneId)
+            },
+        )
+    }.flowOn(ioDispatcher)
 
     private suspend fun fetchAllSchedules(
         request: SchedulesRequest,
@@ -79,6 +61,19 @@ class DefaultCalendarRepository @Inject constructor(
         return schedules
     }
 
-    private fun LocalDate.toApiDateString(): String =
-        format(DateTimeFormatter.ISO_LOCAL_DATE)
+    private fun LocalDate.toApiFrom(
+        zoneId: ZoneId,
+    ): String =
+        atStartOfDay(zoneId)
+            .toInstant()
+            .toString()
+
+    private fun LocalDate.toApiTo(
+        zoneId: ZoneId,
+    ): String =
+        plusDays(1)
+            .atStartOfDay(zoneId)
+            .toInstant()
+            .minusMillis(1)
+            .toString()
 }

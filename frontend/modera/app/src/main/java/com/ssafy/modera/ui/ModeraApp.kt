@@ -115,7 +115,7 @@ internal fun ModeraApp(
     }
 
     LaunchedEffect(viewModel, snackbarHostState) {
-        viewModel.snackbarMessage.collect { message ->
+        viewModel.snackBarMessage.collect { message ->
             snackbarHostState.showSnackbar(message = message)
         }
     }

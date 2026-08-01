@@ -30,10 +30,4 @@ class DefaultImageRepository @Inject constructor(
         )
         emit(response.asExternalModel())
     }.flowOn(ioDispatcher)
-
-    override fun notifyUploadComplete(
-        imageId: Long,
-    ): Flow<UploadCompleteResult> = flow {
-        emit(imageClient.notifyUploadComplete(imageId).asExternalModel())
-    }.flowOn(ioDispatcher)
 }

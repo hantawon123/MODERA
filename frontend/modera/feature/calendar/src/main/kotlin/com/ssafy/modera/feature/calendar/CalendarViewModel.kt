@@ -105,15 +105,15 @@ class CalendarViewModel @Inject constructor(
         deviceScheduleState,
         localScheduleChanges,
     ) { navigation, appSchedules, deviceSchedule, localChanges ->
-        val appSchedulesForSelectedDate = appSchedules
+        val appSchedulesWithLocalChanges = appSchedules.applyLocalChanges(localChanges)
+        val appSchedulesForSelectedDate = appSchedulesWithLocalChanges
             .filter { it.date == navigation.selectedDate }
-            .applyLocalChanges(localChanges)
 
         CalendarUiState(
             visibleMonth = navigation.visibleMonth,
             selectedDate = navigation.selectedDate,
             today = today,
-            appScheduleCountByDate = appSchedules.toCountByDate(),
+            appScheduleCountByDate = appSchedulesWithLocalChanges.toCountByDate(),
             deviceScheduleCountByDate = deviceSchedule.counts,
             schedules = deviceSchedule.schedules + appSchedulesForSelectedDate,
             showYearPicker = navigation.showYearPicker,

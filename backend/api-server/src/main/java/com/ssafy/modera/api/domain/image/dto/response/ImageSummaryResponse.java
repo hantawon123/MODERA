@@ -11,6 +11,8 @@ public record ImageSummaryResponse(
         String thumbnailUrl,
         List<String> tags,
         String category,
-        OffsetDateTime uploadedAt
+        OffsetDateTime uploadedAt,
+        Boolean isDocumented,
+        Boolean isCalendared
 ) {
 }

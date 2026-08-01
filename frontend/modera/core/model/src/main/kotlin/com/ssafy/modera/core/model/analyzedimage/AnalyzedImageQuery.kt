@@ -1,10 +1,12 @@
 package com.ssafy.modera.core.model.analyzedimage
 
 data class AnalyzedImageQuery(
-    val statuses: Set<ImageAnalysisStatus> = emptySet(),
     val categoryId: Long? = null,
-    val tagId: Long? = null,
     val favorite: Boolean? = null,
-    val dateFrom: String? = null,
-    val dateTo: String? = null,
-)
+    val keyword: String? = null,
+    val sort: String = UPLOADED_DESC,
+) {
+    companion object {
+        const val UPLOADED_DESC = "UPLOADED_DESC"
+    }
+}

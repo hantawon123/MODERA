@@ -13,6 +13,8 @@ dependencies {
     api(projects.core.datastore)
     api(projects.core.network)
 
+    implementation(libs.androidx.dataStore)
+
     testImplementation(libs.junit)
     testImplementation(libs.turbine)
     testImplementation(libs.androidx.test.core)

@@ -47,6 +47,7 @@ import com.ssafy.modera.feature.documentcreate.component.SelectedImagesSection
 @Composable
 internal fun DocumentCreateScreen(
     viewModel: DocumentCreateViewModel,
+    onDocumentCreated: (Long) -> Unit,
     onBackClick: () -> Unit,
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -59,7 +60,11 @@ internal fun DocumentCreateScreen(
         onRefreshClick = viewModel::refreshRecommendedImages,
         onSelectedImageRemoveClick = viewModel::removeSelectedImage,
         onRecommendedImageClick = viewModel::addSelectedImage,
-        onCreateDocumentClick = viewModel::createDocument
+        onCreateDocumentClick = {
+            viewModel.createDocument { documentId ->
+                onDocumentCreated(documentId)
+            }
+        },
     )
 }
 

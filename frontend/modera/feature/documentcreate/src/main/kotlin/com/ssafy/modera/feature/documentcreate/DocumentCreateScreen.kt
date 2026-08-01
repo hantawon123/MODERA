@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -28,7 +27,9 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ssafy.modera.core.component.ModeraIconTextButton
 import com.ssafy.modera.core.component.ModeraTopBar
 import com.ssafy.modera.core.component.item.ModeraMaterialItem
@@ -39,18 +40,36 @@ import com.ssafy.modera.core.designsystem.component.Text
 import com.ssafy.modera.core.designsystem.icon.ModeraIcons
 import com.ssafy.modera.core.designsystem.theme.ModeraTheme
 import com.ssafy.modera.core.model.analyzedimage.AnalyzedImage
-import com.ssafy.modera.core.model.analyzedimage.ImageAnalysisStatus
 import com.ssafy.modera.core.ui.ErrorScreen
-import com.ssafy.modera.core.ui.LoadingScreen
 import com.ssafy.modera.feature.documentcreate.component.SelectedImagesSection
 
 @Composable
 internal fun DocumentCreateScreen(
+    viewModel: DocumentCreateViewModel,
+    onBackClick: () -> Unit,
+) {
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val selectedImages by viewModel.selectedImages.collectAsStateWithLifecycle()
+
+    DocumentCreateScreen(
+        uiState = uiState,
+        selectedImages = selectedImages,
+        onBackClick = onBackClick,
+        onRefreshClick = viewModel::refreshRecommendedImages,
+        onSelectedImageRemoveClick = viewModel::removeSelectedImage,
+        onRecommendedImageClick = viewModel::addSelectedImage,
+        onCreateDocumentClick = viewModel::createDocument
+    )
+}
+
+@Composable
+private fun DocumentCreateScreen(
     uiState: DocumentCreateUiState,
+    selectedImages: List<AnalyzedImage>,
     onBackClick: () -> Unit,
     onRefreshClick: () -> Unit,
     onSelectedImageRemoveClick: (Long) -> Unit,
-    onRecommendedImageClick: (Long) -> Unit,
+    onRecommendedImageClick: (AnalyzedImage) -> Unit,
     onCreateDocumentClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -59,6 +78,13 @@ internal fun DocumentCreateScreen(
     }
 
     val recommendedListState = rememberLazyListState()
+
+    val canRefresh =
+        isRefreshEnabled && uiState is DocumentCreateUiState.Success
+
+    val canCreateDocument =
+        selectedImages.size > 1 &&
+                uiState is DocumentCreateUiState.Success
 
     LaunchedEffect(isRefreshEnabled) {
         if (!isRefreshEnabled) {
@@ -73,7 +99,6 @@ internal fun DocumentCreateScreen(
     ) {
         ModeraTopBar(
             onBackClick = onBackClick,
-            modifier = modifier,
             centerContent = {
                 Text(
                     text = stringResource(
@@ -86,43 +111,161 @@ internal fun DocumentCreateScreen(
             },
             rightContent = {
                 IconButton(
-                    imageVector = ImageVector.vectorResource(ModeraIcons.Refresh),
+                    imageVector = ImageVector.vectorResource(
+                        ModeraIcons.Refresh,
+                    ),
                     onClick = {
                         isRefreshEnabled = false
                         onRefreshClick()
                     },
                     size = 24.dp,
-                    enabled = isRefreshEnabled,
+                    enabled = canRefresh,
                     colors = ModeraIconButtonDefaults.iconButtonColors(
                         contentColor = ModeraTheme.colors.gray700,
                         disabledContentColor = ModeraTheme.colors.gray200,
-                    )
+                    ),
                 )
-            }
+            },
         )
 
         when (uiState) {
-            DocumentCreateUiState.Loading -> {
-                LoadingScreen(
-                    modifier = Modifier.weight(1f),
-                )
+            DocumentCreateUiState.Loading,
+            is DocumentCreateUiState.Success,
+                -> {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f),
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        Text(
+                            text = stringResource(
+                                R.string.document_create_recommendation_guide,
+                            ),
+                            style = ModeraTheme.typography.captionSB12,
+                            color = ModeraTheme.colors.yellow700,
+                        )
+
+                        Spacer(
+                            modifier = Modifier.height(12.dp),
+                        )
+
+                        HorizontalDivider(
+                            color = ModeraTheme.colors.gray200,
+                        )
+                    }
+
+                    LazyColumn(
+                        state = recommendedListState,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f)
+                            .padding(horizontal = 24.dp),
+                    ) {
+                        when (uiState) {
+                            DocumentCreateUiState.Loading -> {
+                                item(
+                                    key = "recommendation_loading",
+                                ) {
+                                    DocumentRecommendationSkeleton()
+                                }
+                            }
+
+                            is DocumentCreateUiState.Success -> {
+                                items(
+                                    items = uiState.recommendedImages,
+                                    key = AnalyzedImage::id,
+                                ) { image ->
+                                    ModeraMaterialItem(
+                                        title = image.title,
+                                        description = image.summary,
+                                        tags = image.hashtags,
+                                        imageUrl = image.thumbnailUrl,
+                                        onClick = {
+                                            isRefreshEnabled = true
+                                            onRecommendedImageClick(image)
+                                        },
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    val bottomShape = RoundedCornerShape(
+                        topStart = 12.dp,
+                        topEnd = 12.dp,
+                    )
+
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .shadow(
+                                elevation = 8.dp,
+                                shape = bottomShape,
+                                clip = false,
+                            )
+                            .clip(bottomShape)
+                            .background(
+                                ModeraTheme.colors.white,
+                            ),
+                    ) {
+                        SelectedImagesSection(
+                            images = selectedImages,
+                            onRemoveClick = { imageId ->
+                                if (uiState is DocumentCreateUiState.Success) {
+                                    isRefreshEnabled = true
+                                    onSelectedImageRemoveClick(imageId)
+                                }
+                            },
+                        )
+
+                        ModeraIconTextButton(
+                            text = stringResource(
+                                R.string.document_create_button_label,
+                            ),
+                            icon = painterResource(
+                                ModeraIcons.FileAdd,
+                            ),
+                            enabled = canCreateDocument,
+                            onClick = onCreateDocumentClick,
+                            buttonColor = if (canCreateDocument) {
+                                ModeraTheme.colors.yellow700
+                            } else {
+                                ModeraTheme.colors.white
+                            },
+                            contentColor = if (canCreateDocument) {
+                                ModeraTheme.colors.white
+                            } else {
+                                ModeraTheme.colors.gray500
+                            },
+                            borderColor = if (canCreateDocument) {
+                                ModeraTheme.colors.white
+                            } else {
+                                ModeraTheme.colors.gray400
+                            },
+                            iconContentDescription = stringResource(
+                                R.string.document_create_button_icon_description,
+                            ),
+                            modifier = Modifier
+                                .navigationBarsPadding()
+                                .padding(
+                                    horizontal = 24.dp,
+                                    vertical = 16.dp,
+                                ),
+                        )
+                    }
+                }
             }
 
-            is DocumentCreateUiState.Success -> {
-                DocumentCreateContent(
-                    uiState = uiState,
-                    recommendedListState = recommendedListState,
-                    onSelectedImageRemoveClick = { imageId ->
-                        isRefreshEnabled = true
-                        onSelectedImageRemoveClick(imageId)
-                    },
-                    onRecommendedImageClick = { imageId ->
-                        isRefreshEnabled = true
-                        onRecommendedImageClick(imageId)
-                    },
-                    onCreateDocumentClick =
-                        onCreateDocumentClick,
-                    modifier = Modifier.weight(1f),
+            DocumentCreateUiState.Creating -> {
+                DocumentCreatingScreen(
+                    selectedImages = selectedImages,
+                    onBackClick = onBackClick
                 )
             }
 
@@ -138,203 +281,80 @@ internal fun DocumentCreateScreen(
     }
 }
 
+@Preview(
+    name = "DocumentCreateScreen",
+    showBackground = true,
+)
 @Composable
-private fun DocumentCreateContent(
-    uiState: DocumentCreateUiState.Success,
-    recommendedListState: LazyListState,
-    onSelectedImageRemoveClick: (Long) -> Unit,
-    onRecommendedImageClick: (Long) -> Unit,
-    onCreateDocumentClick: () -> Unit,
-    modifier: Modifier = Modifier,
+private fun DocumentCreateScreenPreview(
+    @PreviewParameter(
+        DocumentCreateScreenPreviewParameterProvider::class,
+    )
+    previewData: DocumentCreateScreenPreviewData,
 ) {
-    Column(
-        modifier = modifier.fillMaxSize(),
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text(
-                text = stringResource(
-                    R.string.document_create_recommendation_guide,
-                ),
-                style = ModeraTheme.typography.captionSB12,
-                color = ModeraTheme.colors.yellow700,
-            )
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            HorizontalDivider(
-                color = ModeraTheme.colors.gray200,
-            )
-        }
-        LazyColumn(
-            state = recommendedListState,
-            modifier = Modifier
-                .fillMaxSize()
-                .weight(1f)
-                .padding(horizontal = 24.dp),
-        ) {
-            if (uiState.isRecommendationLoading) {
-                item(
-                    key = "recommendation_loading",
-                ) {
-                    LoadingScreen(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(160.dp),
-                    )
-                }
-            } else {
-                items(
-                    items = uiState.recommendedImages,
-                    key = AnalyzedImage::id,
-                ) { image ->
-                    ModeraMaterialItem(
-                        title = image.title,
-                        description = image.summary,
-                        tags = image.hashtags,
-                        imageUrl = image.thumbnailUrl,
-                        onClick = {
-                            onRecommendedImageClick(image.id)
-                        },
-                    )
-                }
-            }
-        }
-
-        val shape = RoundedCornerShape(
-            topStart = 12.dp,
-            topEnd = 12.dp,
-        )
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .shadow(
-                    elevation = 8.dp,
-                    shape = shape,
-                    clip = false,
-                )
-                .clip(shape)
-                .background(ModeraTheme.colors.white)
-        ) {
-            SelectedImagesSection(
-                images = uiState.selectedImages,
-                onRemoveClick = onSelectedImageRemoveClick,
-            )
-
-            ModeraIconTextButton(
-                text = stringResource(
-                    R.string.document_create_button_label,
-                ),
-                icon = painterResource(
-                    ModeraIcons.FileAdd,
-                ),
-                enabled = uiState.canCreateDocument,
-                onClick = onCreateDocumentClick,
-                buttonColor = if (uiState.canCreateDocument) {
-                    ModeraTheme.colors.yellow700
-                } else {
-                    ModeraTheme.colors.white
-                },
-                contentColor = if (uiState.canCreateDocument) {
-                    ModeraTheme.colors.white
-                } else {
-                    ModeraTheme.colors.gray500
-                },
-                borderColor = if (uiState.canCreateDocument) {
-                    ModeraTheme.colors.white
-                } else {
-                    ModeraTheme.colors.gray400
-                },
-                iconContentDescription = stringResource(
-                    R.string.document_create_button_icon_description,
-                ),
-                modifier = Modifier
-                    .navigationBarsPadding()
-                    .padding(
-                        horizontal = 24.dp,
-                        vertical = 16.dp,
-                    ),
-            )
-        }
+    var uiState by remember(previewData) {
+        mutableStateOf(previewData.uiState)
     }
-}
 
-@Preview(name = "DocumentCreateScreen", showBackground = true)
-@Composable
-private fun DocumentCreateScreenPreview() {
-    var uiState by remember {
-        mutableStateOf(
-            DocumentCreateUiState.Success(
-                selectedImages =
-                    previewAnalyzedImages.take(5),
-                recommendedImages =
-                    previewAnalyzedImages.drop(5),
-            ),
-        )
+    var selectedImages by remember(previewData) {
+        mutableStateOf(previewData.selectedImages)
     }
 
     ModeraTheme {
         DocumentCreateScreen(
             uiState = uiState,
+            selectedImages = selectedImages,
             onBackClick = {},
-            onSelectedImageRemoveClick = { imageId ->
-                uiState = uiState.copy(
-                    selectedImages =
-                        uiState.selectedImages.filterNot {
-                            it.id == imageId
-                        },
-                )
-            },
-            onRecommendedImageClick = { imageId ->
-                val selectedImage =
-                    uiState.recommendedImages
-                        .firstOrNull {
-                            it.id == imageId
-                        }
-                        ?: return@DocumentCreateScreen
-
-                uiState = uiState.copy(
-                    selectedImages =
-                        uiState.selectedImages + selectedImage,
-                    recommendedImages =
-                        uiState.recommendedImages.filterNot {
-                            it.id == imageId
-                        },
-                )
-            },
-            onCreateDocumentClick = {},
             onRefreshClick = {
                 uiState = DocumentCreateUiState.Success(
-                    selectedImages =
-                        previewAnalyzedImages.take(5),
                     recommendedImages =
-                        previewAnalyzedImages.drop(5),
+                        previewDocumentCreateImages.filterNot { image ->
+                            selectedImages.any { selectedImage ->
+                                selectedImage.id == image.id
+                            }
+                        },
                 )
             },
+            onSelectedImageRemoveClick = { imageId ->
+                val removedImage = selectedImages
+                    .firstOrNull { image ->
+                        image.id == imageId
+                    }
+                    ?: return@DocumentCreateScreen
 
-            )
+                selectedImages = selectedImages.filterNot { image ->
+                    image.id == imageId
+                }
+
+                val successState =
+                    uiState as? DocumentCreateUiState.Success
+                        ?: return@DocumentCreateScreen
+
+                uiState = successState.copy(
+                    recommendedImages =
+                        listOf(removedImage) +
+                                successState.recommendedImages.filterNot { image ->
+                                    image.id == imageId
+                                },
+                )
+            },
+            onRecommendedImageClick = { image ->
+                selectedImages = selectedImages + image
+
+                val successState =
+                    uiState as? DocumentCreateUiState.Success
+                        ?: return@DocumentCreateScreen
+
+                uiState = successState.copy(
+                    recommendedImages =
+                        successState.recommendedImages.filterNot {
+                            it.id == image.id
+                        },
+                )
+            },
+            onCreateDocumentClick = {
+                uiState = DocumentCreateUiState.Creating
+            },
+        )
     }
-}
-
-private val previewAnalyzedImages = List(20) { index ->
-    AnalyzedImage(
-        id = index.toLong(),
-        title = "성심당 케이크 리스트",
-        summary = "올해 성심당 케이크 메뉴 리스트로, "
-                + "샤인머스켓 시루, 귤 시루, 맛있겠다.",
-        thumbnailUrl =
-            "https://picsum.photos/seed/"
-                    + "document-create-$index/300/300",
-        hashtags = listOf(
-            "기차",
-            "예약",
-            "KTX",
-        ),
-        status = ImageAnalysisStatus.COMPLETED,
-        favorite = false,
-    )
 }

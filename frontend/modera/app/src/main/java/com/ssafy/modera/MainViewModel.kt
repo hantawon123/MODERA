@@ -144,55 +144,6 @@ class MainViewModel @Inject constructor(
                 failedImages = state.failedImages + registerResult.failed,
             )
         }
-
-        registerResult.registered.forEach { registered ->
-            uploadAndNotifyComplete(index, processed, registered)
-        }
-    }
-
-    private suspend fun uploadAndNotifyComplete(
-        index: Int,
-        localImage: SelectedImage,
-        registered: RegisteredImage,
-    ) {
-        runCatching {
-            Log.d(
-                REGISTER_LOG_TAG,
-                "[$index] 스토리지 업로드 시작 imageId=${registered.imageId}, url=${registered.uploadUrl}",
-            )
-            presignedUrlUploader.upload(
-                localUri = localImage.uri,
-                uploadUrl = registered.uploadUrl,
-            )
-            Log.d(
-                REGISTER_LOG_TAG,
-                "[$index] 스토리지 업로드 성공 imageId=${registered.imageId}",
-            )
-
-            val complete = imageRepository.notifyUploadComplete(registered.imageId).first()
-            Log.d(
-                REGISTER_LOG_TAG,
-                "[$index] upload-complete 성공 imageId=${complete.imageId}, " +
-                    "uploadCompleted=${complete.uploadCompleted}, uploadedAt=${complete.uploadedAt}",
-            )
-            registered
-        }.onSuccess { uploaded ->
-            _uiState.update { state ->
-                state.copy(registeredImages = state.registeredImages + uploaded)
-            }
-        }.onFailure { error ->
-            val failed = FailedImage(
-                clientRequestId = registered.clientRequestId,
-                fileName = registered.fileName,
-                reason = error.message ?: "UPLOAD_OR_COMPLETE_FAILED",
-            )
-            Log.e(
-                REGISTER_LOG_TAG,
-                "[$index] 업로드완료알림 실패 imageId=${registered.imageId}, reason=${failed.reason}",
-                error,
-            )
-            appendFailed(failed)
-        }
     }
 
     private suspend fun notifyRegisterSummary(totalCount: Int) {

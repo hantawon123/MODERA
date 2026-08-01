@@ -68,6 +68,8 @@ public class ImageQueryService {
                 detail.tagNames(),
                 detail.keyInformation(),
                 parseStructuredData(detail.structuredDataJson()),
+                detail.ocrRawText(),
+                detail.uploadedAt(),
                 detail.documented(),
                 detail.calendared()
         );

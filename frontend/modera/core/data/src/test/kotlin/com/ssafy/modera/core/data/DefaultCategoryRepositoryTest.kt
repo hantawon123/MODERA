@@ -22,6 +22,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
 import org.mockito.kotlin.mock
+import org.mockito.kotlin.never
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 
@@ -121,6 +122,57 @@ class DefaultCategoryRepositoryTest {
         }
 
         verify(categoryClient).fetchCategories(CategorySortType.UPDATED_DESC)
+    }
+
+    @Test
+    fun refreshCategoriesIfEmptyFetchesWhenCacheIsEmpty() = runTest(testDispatcher) {
+        whenever(
+            categoryClient.fetchCategories(CategorySortType.UPDATED_DESC),
+        ).thenReturn(
+            CategoriesResponse(
+                list = listOf(
+                    CategoryResponse(
+                        categoryId = 3L,
+                        name = "공부",
+                        imageCount = 42,
+                    ),
+                ),
+            ),
+        )
+
+        repository.refreshCategoriesIfEmpty()
+
+        repository.observeCategories().test {
+            val categories = awaitItem()
+
+            assertEquals(1, categories.size)
+            assertEquals(3L, categories.first().id)
+
+            cancelAndIgnoreRemainingEvents()
+        }
+
+        verify(categoryClient).fetchCategories(CategorySortType.UPDATED_DESC)
+    }
+
+    @Test
+    fun refreshCategoriesIfEmptySkipsFetchWhenCacheExists() = runTest(testDispatcher) {
+        dataStore.updateData { current ->
+            current.toBuilder()
+                .addCategories(
+                    CategoryProto.newBuilder()
+                        .setId(3L)
+                        .setTitle("공부")
+                        .setItemCount(42)
+                        .build(),
+                )
+                .build()
+        }
+
+        repository.refreshCategoriesIfEmpty()
+
+        verify(categoryClient, never()).fetchCategories(
+            CategorySortType.UPDATED_DESC,
+        )
     }
 
     @Test

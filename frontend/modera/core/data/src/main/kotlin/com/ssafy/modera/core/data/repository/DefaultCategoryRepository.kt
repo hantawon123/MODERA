@@ -62,6 +62,18 @@ class DefaultCategoryRepository @Inject constructor(
         }
     }
 
+    override suspend fun refreshCategoriesIfEmpty() {
+        withContext(ioDispatcher) {
+            val isEmpty = categoriesDataStore.data.first()
+                .categoriesList
+                .isEmpty()
+
+            if (isEmpty) {
+                refreshCategories()
+            }
+        }
+    }
+
     override suspend fun clearNewCategoryFlags() {
         withContext(ioDispatcher) {
             categoriesDataStore.updateData { current ->

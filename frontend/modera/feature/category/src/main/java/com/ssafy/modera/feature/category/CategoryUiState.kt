@@ -18,5 +18,6 @@ sealed interface CategoryUiState {
         val selectedSortType: CategorySortType,
         val showCategorySheet: Boolean = false,
         val showSortPopup: Boolean = false,
+        val isAllCategorySelected: Boolean = false,
     ) : CategoryUiState
 }

@@ -67,56 +67,44 @@ class CategoryViewModel @Inject constructor(
 
             is Result.Success -> {
                 val categories = categoriesResult.data
+                val sheetItems = categories.toSheetItems()
                 val resolvedCategoryId = resolveCategoryId(
                     categories = categories,
                     selectedCategoryId = requestState.selectedCategoryId,
                 )
 
-                if (resolvedCategoryId == null) {
-                    flowOf(
-                        CategoryUiState.Success(
-                            selectedCategoryId = 0L,
-                            selectedCategoryTitle = "",
-                            categories = categories.toSheetItems(),
-                            analyzedImages = emptyList(),
-                            selectedSortType = requestState.selectedSortType,
-                            showCategorySheet = requestState.showCategorySheet,
-                            showSortPopup = requestState.showSortPopup,
+                analyzedImageRepository
+                    .getAnalyzedImages(
+                        page = FIRST_PAGE,
+                        query = AnalyzedImageQuery(
+                            categoryId = resolvedCategoryId.toQueryCategoryId(),
                         ),
                     )
-                } else {
-                    analyzedImageRepository
-                        .getAnalyzedImages(
-                            page = FIRST_PAGE,
-                            query = AnalyzedImageQuery(
-                                categoryId = resolvedCategoryId,
-                            ),
-                        )
-                        .asResult()
-                        .map { imagesResult ->
-                            when (imagesResult) {
-                                Result.Loading -> CategoryUiState.Loading
+                    .asResult()
+                    .map { imagesResult ->
+                        when (imagesResult) {
+                            Result.Loading -> CategoryUiState.Loading
 
-                                is Result.Error -> CategoryUiState.Error
+                            is Result.Error -> CategoryUiState.Error
 
-                                is Result.Success -> {
-                                    val selectedCategory = categories.firstOrNull {
-                                        it.id == resolvedCategoryId
-                                    }
-
-                                    CategoryUiState.Success(
-                                        selectedCategoryId = resolvedCategoryId,
-                                        selectedCategoryTitle = selectedCategory?.title.orEmpty(),
-                                        categories = categories.toSheetItems(),
-                                        analyzedImages = imagesResult.data,
-                                        selectedSortType = requestState.selectedSortType,
-                                        showCategorySheet = requestState.showCategorySheet,
-                                        showSortPopup = requestState.showSortPopup,
-                                    )
+                            is Result.Success -> {
+                                val selectedCategoryItem = sheetItems.firstOrNull {
+                                    it.id == resolvedCategoryId
                                 }
+
+                                CategoryUiState.Success(
+                                    selectedCategoryId = resolvedCategoryId,
+                                    selectedCategoryTitle = selectedCategoryItem?.title.orEmpty(),
+                                    categories = sheetItems,
+                                    analyzedImages = imagesResult.data,
+                                    selectedSortType = requestState.selectedSortType,
+                                    showCategorySheet = requestState.showCategorySheet,
+                                    showSortPopup = requestState.showSortPopup,
+                                    isAllCategorySelected = selectedCategoryItem?.isAll == true,
+                                )
                             }
                         }
-                }
+                    }
             }
         }
     }.stateIn(
@@ -164,26 +152,55 @@ class CategoryViewModel @Inject constructor(
     private fun resolveCategoryId(
         categories: List<Category>,
         selectedCategoryId: Long?,
-    ): Long? {
-        selectedCategoryId?.takeIf { id ->
-            categories.any { it.id == id }
-        }?.let { return it }
+    ): Long {
+        val visibleCategoryIds = categories
+            .filter { category -> category.itemCount > 0 }
+            .map(Category::id)
+            .toSet()
 
-        navCategoryId.value?.takeIf { id ->
-            categories.any { it.id == id }
-        }?.let { return it }
+        fun Long.isValidSelection(): Boolean =
+            this == CategorySheetItem.ALL_CATEGORY_ID || this in visibleCategoryIds
 
-        return categories.firstOrNull()?.id
+        selectedCategoryId
+            ?.takeIf(Long::isValidSelection)
+            ?.let { return it }
+
+        navCategoryId.value
+            ?.takeIf(Long::isValidSelection)
+            ?.let { return it }
+
+        return CategorySheetItem.ALL_CATEGORY_ID
     }
 
-    private fun List<Category>.toSheetItems(): List<CategorySheetItem> =
-        map { category ->
-            CategorySheetItem(
-                id = category.id,
-                title = category.title,
-                itemCount = category.itemCount,
+    private fun Long.toQueryCategoryId(): Long? =
+        takeUnless { it == CategorySheetItem.ALL_CATEGORY_ID }
+
+    private fun List<Category>.toSheetItems(): List<CategorySheetItem> {
+        val categoryItems = filter { category -> category.itemCount > 0 }
+            .sortedWith(
+                compareByDescending(Category::itemCount)
+                    .thenBy(Category::title),
             )
+            .map { category ->
+                CategorySheetItem(
+                    id = category.id,
+                    title = category.title,
+                    itemCount = category.itemCount,
+                )
+            }
+
+        return buildList {
+            add(
+                CategorySheetItem(
+                    id = CategorySheetItem.ALL_CATEGORY_ID,
+                    title = "",
+                    itemCount = sumOf(Category::itemCount),
+                    isAll = true,
+                ),
+            )
+            addAll(categoryItems)
         }
+    }
 
     private data class CategoryRequestState(
         val categoriesResult: Result<List<Category>>,

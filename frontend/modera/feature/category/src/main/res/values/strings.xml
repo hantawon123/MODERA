@@ -3,6 +3,7 @@
     <string name="icon_search_description">검색버튼</string>
     <string name="category_back_description">뒤로가기</string>
     <string name="category_title_picker_description">카테고리 선택</string>
+    <string name="category_all">전체</string>
     <string name="category_item_count">%,d개</string>
     <string name="category_load_error">카테고리 정보를 불러오지 못했어요.</string>
     <string name="category_new_badge">new</string>

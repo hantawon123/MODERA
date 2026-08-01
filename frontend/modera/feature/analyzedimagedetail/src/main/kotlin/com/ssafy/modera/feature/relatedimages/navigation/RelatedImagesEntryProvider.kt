@@ -11,6 +11,7 @@ import com.ssafy.modera.feature.relatedimages.RelatedImagesViewModel.Factory
 
 fun EntryProviderScope<NavKey>.relatedImagesEntry(
     navigator: Navigator,
+    onBackClick: () -> Unit,
 ) {
     entry<RelatedImagesNavKey> { key ->
         val viewModel =
@@ -25,7 +26,7 @@ fun EntryProviderScope<NavKey>.relatedImagesEntry(
         RelatedImagesScreen(
             sourceTitle = key.sourceTitle,
             viewModel = viewModel,
-            onBackClick = navigator::goBack,
+            onBackClick = onBackClick,
             onRelatedImageClick = { imageId ->
                 navigator.navigateToImageDetail(
                     imageId = imageId,

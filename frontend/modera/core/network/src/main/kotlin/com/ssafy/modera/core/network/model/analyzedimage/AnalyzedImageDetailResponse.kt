@@ -1,40 +1,38 @@
 package com.ssafy.modera.core.network.model.analyzedimage
 
 import com.ssafy.modera.core.model.analyzedimage.AnalyzedImageDetail
-import com.ssafy.modera.core.model.analyzedimage.ImageAnalysisStatus
 import kotlinx.serialization.Serializable
-import java.time.Instant
 
 @Serializable
 data class AnalyzedImageDetailResponse(
     val imageId: Long,
-    val fileName: String,
-    val contentHash: String,
-    val status: String,
-    val favorite: Boolean,
-    val title: String,
-    val summary: String,
-    val ocr: OcrResponse?,
-    val tags: List<AnalyzedImageTagResponse>,
-    val categories: List<AnalyzedImageCategoryResponse>,
-    val analysisConfidence: Double?,
     val imageUrl: String,
-    val createdAt: String,
-    val uploadedAt: String?,
-    val updatedAt: String,
-    val lastViewedAt: String?,
+    val thumbnailUrl: String,
+    val title: String,
+    val favorite: Boolean,
+    val summary: String,
+    val category: String,
+    val tags: List<String>,
+    val keyInformation: List<String>,
+    val isDocumented: Boolean,
+    val isCalendared: Boolean,
 )
 
-// Todo: categories -> 단일 객체로 서버에 수정 요청
-fun AnalyzedImageDetailResponse.asExternalModel(): AnalyzedImageDetail =
+fun AnalyzedImageDetailResponse.asExternalModel(
+    updatedAt: Long = 0L,
+): AnalyzedImageDetail =
     AnalyzedImageDetail(
         id = imageId,
-        favorite = favorite,
+        imageUrl = imageUrl,
+        thumbnailUrl = thumbnailUrl,
         title = title,
+        favorite = favorite,
         summary = summary,
-        ocr = ocr?.asExternalModel(),
-        tags = tags.map { it.name },
-        category = categories.first().name,
-        imageUrl = "https://i15d207.p.ssafy.io$imageUrl",
-        updatedAt = Instant.parse(updatedAt).toEpochMilli(),
+        category = category,
+        tags = tags,
+        extractedTexts = emptyList(),
+        keyInformation = keyInformation,
+        isDocumented = isDocumented,
+        isCalendared = isCalendared,
+        updatedAt = updatedAt,
     )

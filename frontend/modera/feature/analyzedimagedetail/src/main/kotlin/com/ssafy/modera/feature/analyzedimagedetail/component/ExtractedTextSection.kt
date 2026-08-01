@@ -13,7 +13,7 @@ import com.ssafy.modera.core.designsystem.component.Text
 import com.ssafy.modera.core.designsystem.theme.ModeraTheme
 
 @Composable
-internal fun OcrTextSection(
+internal fun ExtractedTextSection(
     title: String,
     content: String,
     modifier: Modifier = Modifier,
@@ -40,14 +40,14 @@ internal fun OcrTextSection(
 }
 
 @Preview(
-    name = "OcrTextSection",
+    name = "ExtractedTextSection",
     showBackground = true,
     backgroundColor = 0xFFFFFFFF,
 )
 @Composable
-private fun OcrTextSectionPreview() {
+private fun ExtractedTextSectionPreview() {
     ModeraTheme {
-        OcrTextSection(
+        ExtractedTextSection(
             title = "추출된 텍스트",
             content = """
                 2026 대학생 연합 해커톤

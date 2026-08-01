@@ -2,6 +2,9 @@ package com.ssafy.modera.feature.calendar
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.ssafy.modera.core.common.result.Result
+import com.ssafy.modera.core.common.result.asResult
+import com.ssafy.modera.core.data.repository.calendar.CalendarRepository
 import com.ssafy.modera.core.domain.calendar.GetCalendarSchedulesUseCase
 import com.ssafy.modera.core.model.calendar.CalendarSchedule
 import com.ssafy.modera.feature.calendar.state.CalendarUiState
@@ -15,6 +18,7 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.YearMonth
 import javax.inject.Inject
@@ -23,6 +27,7 @@ import javax.inject.Inject
 @HiltViewModel
 class CalendarViewModel @Inject constructor(
     private val getCalendarSchedulesUseCase: GetCalendarSchedulesUseCase,
+    private val calendarRepository: CalendarRepository,
 ) : ViewModel() {
 
     private val today = LocalDate.now()
@@ -193,9 +198,27 @@ class CalendarViewModel @Inject constructor(
         scheduleToDelete.value = null
     }
 
-    fun onAddScheduleClick(schedule: CalendarSchedule) {
-        localScheduleChanges.update { current ->
-            current + (schedule.id to LocalScheduleChange.Updated(schedule.copy(isAdded = true)))
+    fun addSchedule(schedule: CalendarSchedule) {
+        viewModelScope.launch {
+            calendarRepository.registerSchedule(schedule.id)
+                .asResult()
+                .collect { result ->
+                    when (result) {
+                        Result.Loading -> Unit
+
+                        is Result.Success -> {
+                            localScheduleChanges.update { current ->
+                                current + (
+                                    schedule.id to LocalScheduleChange.Updated(
+                                        schedule.copy(isAdded = true),
+                                    )
+                                )
+                            }
+                        }
+
+                        is Result.Error -> Unit
+                    }
+                }
         }
     }
 

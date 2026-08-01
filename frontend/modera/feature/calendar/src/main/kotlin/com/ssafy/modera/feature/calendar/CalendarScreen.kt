@@ -87,7 +87,7 @@ fun CalendarRoute(
         onDateClick = viewModel::onDateClick,
         onEditModeToggle = viewModel::onEditModeToggle,
         onScheduleClick = onScheduleClick,
-        onAddScheduleClick = viewModel::onAddScheduleClick,
+        onAddScheduleClick = viewModel::addSchedule,
         onDeleteScheduleClick = viewModel::onDeleteScheduleClick,
         onDeleteDialogConfirm = viewModel::onDeleteDialogConfirm,
         onDeleteDialogDismiss = viewModel::onDeleteDialogDismiss,

@@ -6,7 +6,6 @@ data class HomeSearchState(
     val searchQuery: String = "",
     val isSearchActive: Boolean = false,
     val isSearchBarFocused: Boolean = false,
-    val recentSearchTerms: List<String> = emptyList(),
     val searchResults: List<AnalyzedImage> = emptyList(),
     val isShowingSearchResults: Boolean = false,
     val isSearchLoading: Boolean = false,

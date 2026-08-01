@@ -83,9 +83,9 @@ private fun HomeSearchContent(
             )
         }
 
-        uiState.recentSearchTerms.isNotEmpty() -> {
+        uiState.recentSearchQueries.isNotEmpty() -> {
             RecentSearchSection(
-                recentSearchTerms = uiState.recentSearchTerms,
+                recentSearchQueries = uiState.recentSearchQueries,
                 onRecentSearchClick = onRecentSearchClick,
                 onRecentSearchDelete = onRecentSearchDelete,
                 modifier = modifier.fillMaxSize(),

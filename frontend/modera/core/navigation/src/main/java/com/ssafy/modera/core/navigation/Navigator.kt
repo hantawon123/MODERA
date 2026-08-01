@@ -12,10 +12,41 @@ class Navigator(val state: NavigationState) {
     }
 
     fun goBack() {
-        when (state.currentKey) {
-            state.startKey -> error("You cannot go back from the start route")
-            state.currentTopLevelKey -> state.topLevelStack.removeLastOrNull()
+        when {
+            state.currentKey == state.startKey -> {
+                error("You cannot go back from the start route")
+            }
+
+            state.currentSubStack.size == 1 &&
+                state.currentKey != state.currentTopLevelKey -> {
+                state.currentSubStack.apply {
+                    clear()
+                    add(state.currentTopLevelKey)
+                }
+            }
+
+            state.currentKey == state.currentTopLevelKey -> {
+                if (state.topLevelStack.size > 1) {
+                    state.topLevelStack.removeLastOrNull()
+                }
+            }
+
             else -> state.currentSubStack.removeLastOrNull()
+        }
+    }
+
+    fun navigateToTopLevelTab(
+        topLevelKey: NavKey,
+        rootKey: NavKey,
+    ) {
+        require(topLevelKey in state.topLevelKeys) {
+            "$topLevelKey is not a top-level destination"
+        }
+
+        goToTopLevel(topLevelKey)
+        state.subStacks[topLevelKey]?.apply {
+            clear()
+            add(rootKey)
         }
     }
 
@@ -28,11 +59,7 @@ class Navigator(val state: NavigationState) {
 
     private fun goToTopLevel(key: NavKey) {
         state.topLevelStack.apply {
-            if (key == state.startKey) {
-                clear()
-            } else {
-                remove(key)
-            }
+            clear()
             add(key)
         }
     }

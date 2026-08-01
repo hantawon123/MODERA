@@ -53,9 +53,10 @@ import com.ssafy.modera.feature.calendar.navigation.calendarEntry
 import com.ssafy.modera.feature.calendar.navigation.navigateToCalendar
 import com.ssafy.modera.feature.category.navigation.categoryEntry
 import com.ssafy.modera.feature.category.navigation.navigateToCategorySearch
+import com.ssafy.modera.feature.category.navigation.navigateToCategoryTab
 import com.ssafy.modera.feature.categoryimages.navigation.categoryImagesEntry
-import com.ssafy.modera.feature.categoryimages.navigation.navigateToCategoryImages
 import com.ssafy.modera.feature.favorite.navigation.favoritesEntry
+import com.ssafy.modera.feature.category.navigation.CategoryNavKey
 import com.ssafy.modera.feature.home.HomeAnalysisState
 import com.ssafy.modera.feature.home.LocalHomeAnalysisState
 import com.ssafy.modera.feature.home.navigation.HomeNavKey
@@ -134,7 +135,7 @@ internal fun ModeraApp(
     )
 
     val isTopLevelDestination =
-        appState.navigationState.currentKey == appState.navigationState.currentTopLevelKey
+        appState.navigationState.currentSubStack.size == 1
 
     CompositionLocalProvider(
         LocalHomeAnalysisState provides homeAnalysisState,
@@ -164,7 +165,15 @@ internal fun ModeraApp(
                                         ?: error("Bottom nav item requires iconTextId: $navKey")
                                     ModeraBottomNavigationItem(
                                         selected = navKey == appState.navigationState.currentTopLevelKey,
-                                        onClick = { navigator.navigate(navKey) },
+                                        onClick = {
+                                            if (navKey == CategoryNavKey()) {
+                                                navigator.navigateToCategoryTab(
+                                                    selectedCategoryId = null,
+                                                )
+                                            } else {
+                                                navigator.navigate(navKey)
+                                            }
+                                        },
                                         iconRes = navItem.icon,
                                         label = stringResource(labelRes),
                                     )
@@ -198,7 +207,7 @@ internal fun ModeraApp(
                     // Only show the top app bar on top level destinations.
                     var shouldShowTopAppBar = false
 
-                    if (appState.navigationState.currentKey in appState.navigationState.topLevelKeys) {
+                    if (appState.navigationState.currentSubStack.size == 1) {
                         shouldShowTopAppBar = true
 
                         val destination =
@@ -220,7 +229,7 @@ internal fun ModeraApp(
                         SharedTransitionLayout {
                             val entryProvider = entryProvider {
                                 homeEntry(
-                                    onCategoryClick = navigator::navigateToCategoryImages,
+                                    onCategoryClick = navigator::navigateToCategoryTab,
                                     onCalendarClick = navigator::navigateToCalendar,
                                     onSearchResultClick = navigator::navigateToImageDetail,
                                 )

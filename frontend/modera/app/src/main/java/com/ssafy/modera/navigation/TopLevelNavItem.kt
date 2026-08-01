@@ -60,7 +60,7 @@ val DOCUMENTS = TopLevelNavItem(
 /** Top-level destinations that own a navigation stack (excludes the center action). */
 val TOP_LEVEL_NAV_ITEMS = mapOf(
     HomeNavKey to HOME,
-    CategoryNavKey to CATEGORY,
+    CategoryNavKey() to CATEGORY,
     FavoritesNavKey to FAVORITES,
     DocumentsNavKey to DOCUMENTS,
 )
@@ -68,7 +68,7 @@ val TOP_LEVEL_NAV_ITEMS = mapOf(
 /** Ordered bottom navigation slots, including the center register action. */
 val BOTTOM_NAV_ITEMS = listOf(
     HomeNavKey to HOME,
-    CategoryNavKey to CATEGORY,
+    CategoryNavKey() to CATEGORY,
     RegisterNavKey to REGISTER,
     FavoritesNavKey to FAVORITES,
     DocumentsNavKey to DOCUMENTS,

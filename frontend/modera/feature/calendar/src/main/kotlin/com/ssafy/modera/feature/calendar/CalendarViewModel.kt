@@ -192,10 +192,25 @@ class CalendarViewModel @Inject constructor(
 
     fun onDeleteDialogConfirm() {
         val target = scheduleToDelete.value ?: return
-        localScheduleChanges.update { current ->
-            current + (target.id to LocalScheduleChange.Removed)
+
+        viewModelScope.launch {
+            calendarRepository.deleteSchedule(target.id)
+                .asResult()
+                .collect { result ->
+                    when (result) {
+                        Result.Loading -> Unit
+
+                        is Result.Success -> {
+                            localScheduleChanges.update { current ->
+                                current + (target.id to LocalScheduleChange.Removed)
+                            }
+                            scheduleToDelete.value = null
+                        }
+
+                        is Result.Error -> Unit
+                    }
+                }
         }
-        scheduleToDelete.value = null
     }
 
     fun addSchedule(schedule: CalendarSchedule) {

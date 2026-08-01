@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="analyzed_image_detail_more">더보기</string>
-    <string name="analyzed_image_detail_view_document">문서 보기</string>
+    <string name="analyzed_image_detail_create_document">문서만들기</string>
     <string name="analyzed_image_detail_reanalyze">재분석하기</string>
     <string name="analyzed_image_detail_delete">삭제하기</string>
     <string name="analyzed_image_detail_related_images">연관 자료 보러 가기</string>

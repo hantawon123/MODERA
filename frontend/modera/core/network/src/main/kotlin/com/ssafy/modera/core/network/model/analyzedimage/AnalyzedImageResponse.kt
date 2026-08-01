@@ -12,7 +12,7 @@ data class AnalyzedImageResponse(
     val thumbnailUrl: String,
     val tags: List<String>,
     val category: String,
-    val createdAt: String? = null,
+    val uploadedAt: String? = null,
 )
 
 fun AnalyzedImageResponse.asExternalModel(): AnalyzedImage =

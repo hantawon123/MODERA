@@ -144,6 +144,48 @@ class MainViewModel @Inject constructor(
                 failedImages = state.failedImages + registerResult.failed,
             )
         }
+
+        registerResult.registered.forEach { registered ->
+            uploadRegisteredImage(
+                index = index,
+                image = processed,
+                registered = registered,
+            )
+        }
+    }
+
+    private suspend fun uploadRegisteredImage(
+        index: Int,
+        image: SelectedImage,
+        registered: RegisteredImage,
+    ) {
+        runCatching {
+            presignedUrlUploader.upload(
+                localUri = image.uri,
+                uploadUrl = registered.uploadUrl,
+            )
+        }.onSuccess {
+            _uiState.update { state ->
+                state.copy(registeredImages = state.registeredImages + registered)
+            }
+            Log.d(
+                REGISTER_LOG_TAG,
+                "[$index] S3 업로드 성공 imageId=${registered.imageId}, file=${registered.fileName}",
+            )
+        }.onFailure { error ->
+            appendFailed(
+                FailedImage(
+                    clientRequestId = registered.clientRequestId,
+                    fileName = registered.fileName,
+                    reason = error.message ?: "UPLOAD_FAILED",
+                ),
+            )
+            Log.e(
+                REGISTER_LOG_TAG,
+                "[$index] S3 업로드 실패 imageId=${registered.imageId}, file=${registered.fileName}",
+                error,
+            )
+        }
     }
 
     private suspend fun notifyRegisterSummary(totalCount: Int) {

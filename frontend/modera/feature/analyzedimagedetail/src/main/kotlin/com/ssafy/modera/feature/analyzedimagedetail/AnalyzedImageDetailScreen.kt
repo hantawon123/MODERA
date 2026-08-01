@@ -291,7 +291,7 @@ private fun AnalyzedImageDetailContent(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             CategoryLabel(
-                category = image.categories.name,
+                category = image.category,
             )
 
             IconButton(

@@ -1,7 +1,6 @@
 package com.ssafy.modera.feature.analyzedimagedetail
 
 import androidx.compose.ui.tooling.preview.PreviewParameterProvider
-import com.ssafy.modera.core.model.analyzedimage.AnalyzedImageCategory
 import com.ssafy.modera.core.model.analyzedimage.AnalyzedImageDetail
 import com.ssafy.modera.core.model.analyzedimage.AnalyzedImageOcr
 import com.ssafy.modera.core.model.analyzedimage.ImageAnalysisStatus
@@ -41,8 +40,6 @@ internal class AnalyzedImageDetailScreenPreviewParameterProvider :
 
 private val previewAnalyzedImageDetail = AnalyzedImageDetail(
     id = 1L,
-    fileName = "samsung_stock.png",
-    status = ImageAnalysisStatus.COMPLETED,
     favorite = false,
     title = "삼성전자 주가 정보",
     summary = """
@@ -76,10 +73,7 @@ private val previewAnalyzedImageDetail = AnalyzedImageDetail(
         "주식",
         "KOSPI",
     ),
-    categories = AnalyzedImageCategory(
-        categoryId = 1L,
-        name = "금융",
-    ),
+    category = "금융",
     imageUrl = "https://picsum.photos/seed/samsung-stock/600/800",
     updatedAt = 1785376620000L,
 )

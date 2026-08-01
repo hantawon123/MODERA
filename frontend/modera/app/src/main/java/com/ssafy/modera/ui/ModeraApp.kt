@@ -109,6 +109,7 @@ internal fun ModeraApp(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val navigator = remember { Navigator(appState.navigationState) }
+    val handleBack = rememberModeraBackHandler(navigator)
     val homeAnalysisState = remember(viewModel) {
         HomeAnalysisState(onDismissRequest = viewModel::dismissAnalysisBanner)
     }
@@ -227,6 +228,8 @@ internal fun ModeraApp(
                         val listDetailStrategy = rememberListDetailSceneStrategy<NavKey>()
 
                         SharedTransitionLayout {
+                            ModeraBackHandler(onBack = handleBack)
+
                             val entryProvider = entryProvider {
                                 homeEntry(
                                     onCategoryClick = navigator::navigateToCategoryTab,
@@ -234,7 +237,7 @@ internal fun ModeraApp(
                                     onSearchResultClick = navigator::navigateToImageDetail,
                                 )
                                 categoryEntry(
-                                    onBackClick = navigator::goBack,
+                                    onBackClick = handleBack,
                                     onSearchIconClick = navigator::navigateToCategorySearch,
                                     onItemClick = { /* TODO: 자료 상세 연결 */ },
                                 )
@@ -242,29 +245,34 @@ internal fun ModeraApp(
                                     onItemClick = { /* TODO: 자료 상세 연결 */ },
                                 )
                                 calendarEntry(
-                                    onBackClick = navigator::goBack,
+                                    onBackClick = handleBack,
                                 )
                                 documentsEntry()
                                 categoryImagesEntry(
                                     navigator = navigator,
-                                    onImageClick = navigator::navigateToImageDetail
+                                    onImageClick = navigator::navigateToImageDetail,
+                                    onBackClick = handleBack,
                                 )
                                 analyzedImageDetailEntry(
                                     navigator = navigator,
                                     sharedTransitionScope = this@SharedTransitionLayout,
-                                    onImageClick = navigator::navigateToImageViewer
+                                    onImageClick = navigator::navigateToImageViewer,
+                                    onBackClick = handleBack,
                                 )
                                 imageViewerEntry(
                                     sharedTransitionScope = this@SharedTransitionLayout,
-                                    onBackClick = navigator::goBack
+                                    onBackClick = handleBack,
                                 )
-                                relatedImagesEntry(navigator)
+                                relatedImagesEntry(
+                                    navigator = navigator,
+                                    onBackClick = handleBack,
+                                )
                             }
 
                             NavDisplay(
                                 entries = appState.navigationState.toEntries(entryProvider),
 //                        sceneStrategy = listDetailStrategy,
-                                onBack = { navigator.goBack() },
+                                onBack = handleBack,
                             )
                         }
                     }

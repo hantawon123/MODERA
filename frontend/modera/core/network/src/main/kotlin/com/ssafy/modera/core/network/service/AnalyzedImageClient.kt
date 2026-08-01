@@ -36,11 +36,15 @@ class AnalyzedImageClient @Inject constructor(
 
     suspend fun fetchAnalyzedImageDetail(
         imageId: Long,
-    ): AnalyzedImageDetailResponse =
-        analyzedImageService
+    ): AnalyzedImageDetailResponse {
+        val response = analyzedImageService
             .fetchAnalyzedImageDetail(imageId)
             .getOrThrow()
-            .data
+
+        return response.data.copy(
+            updatedAt = response.timestamp,
+        )
+    }
 
     // Todo: api 완성 되면 mock 삭제
     suspend fun fetchRelatedImages(

@@ -11,6 +11,7 @@ import com.ssafy.modera.feature.categoryimages.CategoryImagesViewModel.Factory
 fun EntryProviderScope<NavKey>.categoryImagesEntry(
     navigator: Navigator,
     onImageClick: (Long) -> Unit,
+    onBackClick: () -> Unit,
 ) {
     entry<CategoryImagesNavKey> { navKey ->
         val categoryName = navKey.category.title
@@ -18,7 +19,7 @@ fun EntryProviderScope<NavKey>.categoryImagesEntry(
 
         CategoryImagesScreen(
             categoryName = categoryName,
-            onBackClick = navigator::goBack,
+            onBackClick = onBackClick,
             onImageClick = onImageClick,
             viewModel = hiltViewModel<CategoryImagesViewModel, Factory>(
                 key = categoryId.toString(),

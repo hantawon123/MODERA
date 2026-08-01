@@ -14,7 +14,8 @@ import com.ssafy.modera.feature.relatedimages.navigation.navigateToRelatedImages
 fun EntryProviderScope<NavKey>.analyzedImageDetailEntry(
     navigator: Navigator,
     sharedTransitionScope: SharedTransitionScope,
-    onImageClick:(String) -> Unit,
+    onImageClick: (String) -> Unit,
+    onBackClick: () -> Unit,
 ) {
     entry<AnalyzedImageDetailNavKey> { key ->
         val imageId = key.imageId
@@ -28,7 +29,7 @@ fun EntryProviderScope<NavKey>.analyzedImageDetailEntry(
 
         AnalyzedImageDetailScreen(
             viewModel = viewModel,
-            onBackClick = navigator::goBack,
+            onBackClick = onBackClick,
             sharedTransitionScope = sharedTransitionScope,
             animatedVisibilityScope = LocalNavAnimatedContentScope.current,
             onImageClick = onImageClick,

@@ -11,29 +11,26 @@ class Navigator(val state: NavigationState) {
         }
     }
 
-    fun goBack() {
-        when {
-            state.currentKey == state.startKey -> {
-                error("You cannot go back from the start route")
-            }
-
-            state.currentSubStack.size == 1 &&
-                state.currentKey != state.currentTopLevelKey -> {
-                state.currentSubStack.apply {
-                    clear()
-                    add(state.currentTopLevelKey)
-                }
-            }
-
-            state.currentKey == state.currentTopLevelKey -> {
-                if (state.topLevelStack.size > 1) {
-                    state.topLevelStack.removeLastOrNull()
-                }
-            }
-
-            else -> state.currentSubStack.removeLastOrNull()
+    fun popBackStack() {
+        if (state.currentSubStack.size > 1) {
+            state.currentSubStack.removeLastOrNull()
         }
     }
+
+    fun navigateToHome() {
+        val homeKey = state.startKey
+        goToTopLevel(homeKey)
+        state.subStacks[homeKey]?.apply {
+            clear()
+            add(homeKey)
+        }
+    }
+
+    fun isAtTabRoot(): Boolean =
+        state.currentSubStack.size == 1
+
+    fun isAtHomeTabRoot(): Boolean =
+        state.currentTopLevelKey == state.startKey && isAtTabRoot()
 
     fun navigateToTopLevelTab(
         topLevelKey: NavKey,

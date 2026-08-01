@@ -30,6 +30,7 @@ import com.ssafy.modera.feature.home.component.HomeSearchBarSection
 import com.ssafy.modera.feature.home.component.HomeSearchFocusEffect
 import com.ssafy.modera.feature.home.component.HomeUpperSection
 import com.ssafy.modera.feature.home.component.rememberHomeSearchLayoutState
+import com.ssafy.modera.feature.home.state.HomeUiState
 
 @Composable
 fun HomeRoute(

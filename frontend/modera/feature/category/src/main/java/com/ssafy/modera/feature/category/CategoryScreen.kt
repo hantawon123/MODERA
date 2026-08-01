@@ -52,7 +52,7 @@ fun CategoryRoute(
 ) {
     var selectedCategory by rememberSaveable { mutableStateOf("쇼핑") }
     var selectedSortType by rememberSaveable {
-        mutableStateOf(CategorySortType.UPDATED_AT_ASC)
+        mutableStateOf(CategorySortType.UPDATED_DESC)
     }
     var showCategorySheet by rememberSaveable { mutableStateOf(false) }
     var showSortPopup by rememberSaveable { mutableStateOf(false) }
@@ -286,7 +286,7 @@ private fun CategoryScreenPreview() {
                     thumbnailUrl = "",
                 ),
             ),
-            selectedSortType = CategorySortType.UPDATED_AT_ASC,
+            selectedSortType = CategorySortType.UPDATED_DESC,
             showCategorySheet = false,
             showSortPopup = false,
             onSearchIconClick = {},

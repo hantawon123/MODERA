@@ -22,7 +22,7 @@ class CategoryServiceTest : ApiAbstract<CategoryService>() {
         enqueueResponse("CategoriesResponse.json")
 
         val response = service.fetchCategories(
-            sort = "name,asc",
+            sort = "NAME_ASC",
         )
 
         val baseResponse = response.getOrThrow()

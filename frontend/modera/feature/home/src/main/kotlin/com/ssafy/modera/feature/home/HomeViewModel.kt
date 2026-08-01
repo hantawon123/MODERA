@@ -27,7 +27,7 @@ class HomeViewModel @Inject constructor(
     val uiState: StateFlow<HomeUiState> =
         combine(
             categoryRepository
-                .getCategories(CategorySortType.NAME_ASC)
+                .getCategories(CategorySortType.UPDATED_DESC)
                 .asResult(),
             searchState,
         ) { result, search ->

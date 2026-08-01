@@ -1,7 +1,6 @@
 package com.ssafy.modera.core.network
 
 import com.skydoves.sandwich.getOrThrow
-import com.ssafy.modera.core.model.analyzedimage.ImageAnalysisStatus
 import com.ssafy.modera.core.network.service.AnalyzedImageService
 import kotlinx.coroutines.test.runTest
 import org.hamcrest.CoreMatchers.`is`
@@ -23,15 +22,12 @@ class AnalyzedImageServiceTest : ApiAbstract<AnalyzedImageService>() {
         enqueueResponse("AnalyzedImagesResponse.json")
 
         val response = service.fetchAnalyzedImages(
-            statuses = listOf(ImageAnalysisStatus.COMPLETED.name),
-            categoryId = null,
-            tagId = null,
             favorite = null,
-            dateFrom = null,
-            dateTo = null,
             page = 0,
             size = 20,
-            sort = "createdAt,desc",
+            sort = "UPLOADED_DESC",
+            keyword = null,
+            categoryId = null,
         )
 
         val baseResponse = response.getOrThrow()

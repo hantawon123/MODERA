@@ -59,7 +59,7 @@ internal fun HomeSearchBarSection(
                 x = (searchBarPlaceable.width - circlePlaceable.width) / 2,
                 y = ((searchBarPlaceable.height - circlePlaceable.height) / 2f + circleExtraOffsetPx).roundToInt(),
             )
-            searchBarPlaceable.placeRelative(0, 0)
+            searchBarPlaceable.placeRelative(0, 50)
         }
     }
 }

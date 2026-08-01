@@ -5,39 +5,47 @@ import androidx.lifecycle.viewModelScope
 import com.ssafy.modera.core.common.result.Result
 import com.ssafy.modera.core.common.result.asResult
 import com.ssafy.modera.core.data.repository.CategoryRepository
+import com.ssafy.modera.core.data.repository.search.RecentSearchRepository
+import com.ssafy.modera.core.data.repository.search.SearchRepository
+import com.ssafy.modera.core.model.analyzedimage.AnalyzedImage
 import com.ssafy.modera.core.model.category.CategorySortType
+import com.ssafy.modera.feature.home.state.HomeSearchState
+import com.ssafy.modera.feature.home.state.HomeUiState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.yield
 import javax.inject.Inject
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
-    categoryRepository: CategoryRepository,
+    private val categoryRepository: CategoryRepository,
+    private val searchRepository: SearchRepository,
+    private val recentSearchRepository: RecentSearchRepository,
 ) : ViewModel() {
-    private val searchState = MutableStateFlow(SearchState())
+    private val searchState = MutableStateFlow(HomeSearchState())
 
     val uiState: StateFlow<HomeUiState> =
         combine(
             categoryRepository
-                .getCategories(CategorySortType.NAME_ASC)
+                .getCategories(CategorySortType.UPDATED_DESC)
                 .asResult(),
             searchState,
-        ) { result, search ->
+            recentSearchRepository.recentSearchQueries,
+        ) { result, search, recentSearchQueries ->
             when (result) {
                 is Result.Success -> {
                     HomeUiState.Success(
                         categories = result.data,
                         searchQuery = search.searchQuery,
                         isSearchActive = search.isSearchActive,
-                        recentSearchTerms = search.recentSearchTerms,
+                        recentSearchQueries = recentSearchQueries,
                         searchResults = search.searchResults,
                         isShowingSearchResults = search.isShowingSearchResults,
                         isSearchLoading = search.isSearchLoading,
@@ -111,10 +119,6 @@ class HomeViewModel @Inject constructor(
             state.copy(
                 searchQuery = trimmedQuery,
                 isSearchActive = true,
-                recentSearchTerms = addRecentSearchTerm(
-                    terms = state.recentSearchTerms,
-                    term = trimmedQuery,
-                ),
                 isShowingSearchResults = true,
                 isSearchLoading = true,
                 searchResults = emptyList(),
@@ -122,6 +126,8 @@ class HomeViewModel @Inject constructor(
         }
 
         viewModelScope.launch {
+            recentSearchRepository.addRecentSearchQuery(trimmedQuery)
+
             val results = fetchSearchResults(trimmedQuery)
             searchState.update { state ->
                 if (!state.isShowingSearchResults || state.searchQuery != trimmedQuery) {
@@ -135,21 +141,19 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    fun selectRecentSearch(term: String) {
+    fun selectRecentSearchQuery(query: String) {
         searchState.update { state ->
             state.copy(
-                searchQuery = term,
+                searchQuery = query,
                 isSearchActive = true,
             )
         }
         submitSearch()
     }
 
-    fun removeRecentSearchTerm(term: String) {
-        searchState.update { state ->
-            state.copy(
-                recentSearchTerms = state.recentSearchTerms.filterNot { it == term },
-            )
+    fun removeRecentSearchQuery(query: String) {
+        viewModelScope.launch {
+            recentSearchRepository.removeRecentSearchQuery(query)
         }
     }
 
@@ -166,7 +170,7 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    private fun SearchState.deactivateIfIdle(): SearchState {
+    private fun HomeSearchState.deactivateIfIdle(): HomeSearchState {
         if (!isSearchBarFocused && searchQuery.isBlank()) {
             return copy(
                 isSearchActive = false,
@@ -180,36 +184,13 @@ class HomeViewModel @Inject constructor(
 
     private suspend fun fetchSearchResults(
         query: String,
-    ): List<SearchMaterialResult> {
-        delay(HomeSearchDefaults.SearchLoadingDelayMillis)
-        // TODO: 검색 API 연동
-        return HomeSearchDummyData.searchResults
-    }
-
-    private fun addRecentSearchTerm(
-        terms: List<String>,
-        term: String,
-    ): List<String> {
-        return buildList {
-            add(term)
-            addAll(terms.filterNot { it == term })
-        }.take(HomeSearchDefaults.MaxRecentSearchTermCount)
-    }
-
-    private data class SearchState(
-        val searchQuery: String = "",
-        val isSearchActive: Boolean = false,
-        val isSearchBarFocused: Boolean = false,
-        val recentSearchTerms: List<String> = HomeSearchDummyData.recentSearchTerms,
-        val searchResults: List<SearchMaterialResult> = emptyList(),
-        val isShowingSearchResults: Boolean = false,
-        val isSearchLoading: Boolean = false,
-    )
-
-    private companion object {
-        private object HomeSearchDefaults {
-            const val MaxRecentSearchTermCount = 10
-            const val SearchLoadingDelayMillis = 2_000L
+    ): List<AnalyzedImage> {
+        return try {
+            searchRepository
+                .searchSemanticImages(query = query)
+                .first()
+        } catch (_: Exception) {
+            emptyList()
         }
     }
 }

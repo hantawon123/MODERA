@@ -10,8 +10,9 @@ fun EntryProviderScope<NavKey>.categoryEntry(
     onSearchIconClick: () -> Unit,
     onItemClick: (Long) -> Unit,
 ) {
-    entry<CategoryNavKey> {
+    entry<CategoryNavKey> { key ->
         CategoryRoute(
+            selectedCategoryId = key.selectedCategoryId,
             onSearchIconClick = onSearchIconClick,
             onItemClick = onItemClick,
         )

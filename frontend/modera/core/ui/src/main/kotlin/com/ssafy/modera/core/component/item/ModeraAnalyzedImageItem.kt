@@ -26,7 +26,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
-import com.ssafy.modera.core.component.ModeraHashtags
 import com.ssafy.modera.core.designsystem.component.HorizontalDivider
 import com.ssafy.modera.core.designsystem.component.Icon
 import com.ssafy.modera.core.designsystem.component.Text
@@ -92,7 +91,14 @@ fun ModeraAnalyzedImageItem(
 
                 if (tags.isNotEmpty()) {
                     Spacer(modifier = Modifier.height(AnalyzedImageItemDefaults.FooterSpacing))
-                    ModeraHashtags(tags = tags)
+                    Text(
+                        text = tags.joinToString(separator = " ") { "#$it" },
+                        style = ModeraTheme.typography.bodyR14,
+                        color = ModeraTheme.colors.blue,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
                 }
             }
 

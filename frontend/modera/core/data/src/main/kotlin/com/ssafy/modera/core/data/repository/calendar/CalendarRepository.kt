@@ -10,4 +10,8 @@ interface CalendarRepository {
         from: LocalDate,
         to: LocalDate,
     ): Flow<List<CalendarSchedule>>
+
+    fun registerSchedule(
+        scheduleId: Long,
+    ): Flow<Unit>
 }

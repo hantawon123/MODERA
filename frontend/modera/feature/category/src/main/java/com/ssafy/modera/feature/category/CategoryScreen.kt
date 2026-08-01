@@ -48,8 +48,10 @@ import kotlinx.coroutines.launch
 fun CategoryRoute(
     onItemClick: (Long) -> Unit,
     onSearchIconClick: () -> Unit,
+    selectedCategoryId: Long? = null,
     modifier: Modifier = Modifier,
 ) {
+    // TODO: selectedCategoryId로 카테고리 필터링
     var selectedCategory by rememberSaveable { mutableStateOf("쇼핑") }
     var selectedSortType by rememberSaveable {
         mutableStateOf(CategorySortType.UPDATED_DESC)

@@ -5,25 +5,32 @@ import androidx.lifecycle.viewModelScope
 import com.ssafy.modera.core.common.result.Result
 import com.ssafy.modera.core.common.result.asResult
 import com.ssafy.modera.core.data.repository.AnalyzedImageRepository
+import com.ssafy.modera.core.data.repository.document.DocumentRepository
 import com.ssafy.modera.core.model.analyzedimage.AnalyzedImage
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlin.time.Duration.Companion.milliseconds
+import java.util.UUID
 
 @HiltViewModel(
     assistedFactory = DocumentCreateViewModel.Factory::class,
 )
 class DocumentCreateViewModel @AssistedInject constructor(
     private val analyzedImageRepository: AnalyzedImageRepository,
+    private val documentRepository: DocumentRepository,
     @Assisted private val initialImage: AnalyzedImage,
 ) : ViewModel() {
+
+    private var clientRequestId: String =
+        UUID.randomUUID().toString()
+
+    val isCreatingDocument: StateFlow<Boolean>
+        field = MutableStateFlow(false)
 
     val selectedImages: StateFlow<List<AnalyzedImage>>
         field = MutableStateFlow(
@@ -122,25 +129,50 @@ class DocumentCreateViewModel @AssistedInject constructor(
         }
     }
 
-    fun createDocument() {
-        val successState =
-            uiState.value as? DocumentCreateUiState.Success
-                ?: return
+    fun createDocument(onCreated: (Long) -> Unit) {
+        if (isCreatingDocument.value) return
 
-        if (selectedImages.value.size <= 1) {
-            return
+        val imageIds = selectedImages.value.map {
+            it.id
         }
 
-        val selectedImageIds =
-            selectedImages.value.map(AnalyzedImage::id)
+        if (imageIds.isEmpty()) return
+
+        isCreatingDocument.value = true
 
         viewModelScope.launch {
-            uiState.value = DocumentCreateUiState.Creating
+            documentRepository
+                .createDocument(
+                    clientRequestId = clientRequestId,
+                    imageIds = imageIds,
+                )
+                .asResult()
+                .collect { result ->
+                    when (result) {
+                        Result.Loading -> {
+                            uiState.value = DocumentCreateUiState.Creating
+                        }
 
-            // TODO 문서 생성 API 연결 시 selectedImageIds 전달
-            delay(3_000L.milliseconds)
+                        is Result.Success -> {
+                            isCreatingDocument.value = false
 
-            uiState.value = successState
+                            val createdDocument = result.data
+
+                            clientRequestId =
+                                UUID.randomUUID().toString()
+
+                            onCreated(createdDocument.id)
+                        }
+
+                        is Result.Error -> {
+                            isCreatingDocument.value = false
+                            uiState.value =
+                                DocumentCreateUiState.Error(
+                                    exception = result.exception,
+                                )
+                        }
+                    }
+                }
         }
     }
 

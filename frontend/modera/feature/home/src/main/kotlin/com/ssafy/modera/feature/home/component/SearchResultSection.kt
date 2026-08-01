@@ -16,6 +16,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.ssafy.modera.core.component.item.ModeraAnalyzedImageItem
 import com.ssafy.modera.core.component.item.ModeraMaterialItem
 import com.ssafy.modera.core.designsystem.component.Text
 import com.ssafy.modera.core.designsystem.theme.ModeraTheme
@@ -74,10 +75,11 @@ internal fun SearchResultSection(
                         items = searchResults,
                         key = { it.id },
                     ) { result ->
-                        ModeraMaterialItem(
+                        ModeraAnalyzedImageItem(
                             title = result.title,
                             description = result.summary,
                             tags = result.hashtags,
+                            favorite = result.favorite,
                             imageUrl = result.thumbnailUrl.takeIf(String::isNotBlank),
                             onClick = { onSearchResultClick(result.id.toInt()) },
                             modifier = Modifier.fillMaxWidth(),

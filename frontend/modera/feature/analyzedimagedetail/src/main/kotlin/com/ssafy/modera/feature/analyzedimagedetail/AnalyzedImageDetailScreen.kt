@@ -80,7 +80,7 @@ internal fun AnalyzedImageDetailScreen(
         onCreateDocumentClick = onCreateDocumentClick,
         onDocumentClick = onDocumentClick,
         onScheduleClick = onScheduleClick,
-        onReanalyzeClick = viewModel::reanalyzeAnalyzedImage,
+        onReanalyzeClick = viewModel::reanalyzeImage,
         onDeleteClick = {
             viewModel.deleteAnalyzedImage { onBackClick() }
         },

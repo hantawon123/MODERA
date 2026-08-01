@@ -52,6 +52,10 @@ interface AnalyzedImageService {
         @Body request: AnalyzedImageFavoriteRequest,
     ): ApiResponse<Unit>
 
+    @POST("api/v1/images/{imageId}/category/reanalysis")
+    suspend fun requestImageReanalysis(
+        @Path("imageId") imageId: Long,
+    ): ApiResponse<Unit>
     @HTTP(
         method = "DELETE",
         path = "api/v1/images",

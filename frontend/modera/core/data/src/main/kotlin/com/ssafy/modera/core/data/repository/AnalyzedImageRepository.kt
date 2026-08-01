@@ -29,7 +29,7 @@ interface AnalyzedImageRepository {
         favorite: Boolean,
     ): Flow<Unit>
 
-    fun reanalyzeAnalyzedImage(imageId: Long): Flow<Unit>
+    fun reanalyzeImage(imageId: Long): Flow<Unit>
 
     fun deleteAnalyzedImage(imageId: Long): Flow<Unit>
 }

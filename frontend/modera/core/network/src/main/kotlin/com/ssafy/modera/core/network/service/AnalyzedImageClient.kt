@@ -2,7 +2,6 @@ package com.ssafy.modera.core.network.service
 
 import com.skydoves.sandwich.getOrThrow
 import com.ssafy.modera.core.model.analyzedimage.AnalyzedImageQuery
-import com.ssafy.modera.core.network.mock.AnalyzedImageMockDataSource
 import com.ssafy.modera.core.network.model.analyzedimage.AnalyzedImageDetailResponse
 import com.ssafy.modera.core.network.model.analyzedimage.AnalyzedImageFavoriteRequest
 import com.ssafy.modera.core.network.model.analyzedimage.AnalyzedImageResponse
@@ -84,9 +83,15 @@ class AnalyzedImageClient @Inject constructor(
             .getOrThrow()
     }
 
-    suspend fun reanalyzeAnalyzedImage(
+    suspend fun requestImageReanalysis(
         imageId: Long,
-    ) = AnalyzedImageMockDataSource.reanalyzeImage(imageId)
+    ) {
+        analyzedImageService
+            .requestImageReanalysis(
+                imageId = imageId,
+            )
+            .getOrThrow()
+    }
 
     suspend fun deleteAnalyzedImage(
         imageId: List<Long>,

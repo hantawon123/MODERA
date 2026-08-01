@@ -60,7 +60,7 @@ class AnalyzedImageDetailViewModel @AssistedInject constructor(
         }
     }
 
-    fun reanalyzeAnalyzedImage() {
+    fun reanalyzeImage() {
         if (uiState.value !is AnalyzedImageDetailUiState.Success) {
             return
         }
@@ -69,7 +69,7 @@ class AnalyzedImageDetailViewModel @AssistedInject constructor(
 
         viewModelScope.launch {
             analyzedImageRepository
-                .reanalyzeAnalyzedImage(
+                .reanalyzeImage(
                     imageId = imageId,
                 )
                 .flatMapLatest {

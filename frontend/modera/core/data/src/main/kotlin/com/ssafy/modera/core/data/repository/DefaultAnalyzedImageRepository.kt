@@ -63,10 +63,10 @@ class DefaultAnalyzedImageRepository @Inject constructor(
         emit(recommendedImages)
     }.flowOn(ioDispatcher)
 
-    override fun reanalyzeAnalyzedImage(
+    override fun reanalyzeImage(
         imageId: Long,
     ): Flow<Unit> = flow {
-        analyzedImageClient.reanalyzeAnalyzedImage(
+        analyzedImageClient.requestImageReanalysis(
             imageId = imageId,
         )
 

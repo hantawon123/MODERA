@@ -222,6 +222,7 @@ internal fun ModeraApp(
                                 homeEntry(
                                     onCategoryClick = navigator::navigateToCategoryImages,
                                     onCalendarClick = navigator::navigateToCalendar,
+                                    onSearchResultClick = navigator::navigateToImageDetail,
                                 )
                                 categoryEntry(
                                     onBackClick = navigator::goBack,

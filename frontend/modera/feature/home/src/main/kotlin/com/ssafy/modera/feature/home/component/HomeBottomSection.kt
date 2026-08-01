@@ -23,7 +23,7 @@ internal fun HomeBottomSection(
     onRecentSearchClick: (String) -> Unit,
     onRecentSearchDelete: (String) -> Unit,
     onSearchDeactivate: () -> Unit,
-    onSearchResultClick: (Int) -> Unit,
+    onSearchResultClick: (Long) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val focusManager = LocalFocusManager.current
@@ -70,7 +70,7 @@ private fun HomeSearchContent(
     uiState: HomeUiState.Success,
     onRecentSearchClick: (String) -> Unit,
     onRecentSearchDelete: (String) -> Unit,
-    onSearchResultClick: (Int) -> Unit,
+    onSearchResultClick: (Long) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     when {

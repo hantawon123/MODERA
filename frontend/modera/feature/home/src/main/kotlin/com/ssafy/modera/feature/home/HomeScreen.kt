@@ -37,7 +37,7 @@ fun HomeRoute(
     onCalendarClick: () -> Unit,
     onSettingsClick: () -> Unit,
     onCategoryClick: (Category) -> Unit,
-    onSearchResultClick: (Int) -> Unit,
+    onSearchResultClick: (Long) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
@@ -87,7 +87,7 @@ private fun HomeSuccessScreen(
     onRecentSearchClick: (String) -> Unit,
     onRecentSearchDelete: (String) -> Unit,
     onSearchDeactivate: () -> Unit,
-    onSearchResultClick: (Int) -> Unit,
+    onSearchResultClick: (Long) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val searchFocusRequester = remember { FocusRequester() }

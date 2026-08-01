@@ -3,7 +3,12 @@ package com.ssafy.modera.core.network.service
 import com.skydoves.sandwich.ApiResponse
 import com.ssafy.modera.core.network.model.BaseResponse
 import com.ssafy.modera.core.network.model.calendar.SchedulesResponse
+import com.ssafy.modera.core.network.model.calendar.UpdateScheduleCalendarRequest
+import com.ssafy.modera.core.network.model.calendar.UpdateScheduleCalendarResponse
+import retrofit2.http.Body
 import retrofit2.http.GET
+import retrofit2.http.PUT
+import retrofit2.http.Path
 import retrofit2.http.Query
 
 interface CalendarService {
@@ -17,4 +22,10 @@ interface CalendarService {
         @Query("size") size: Int,
         @Query("sort") sort: String,
     ): ApiResponse<BaseResponse<SchedulesResponse>>
+
+    @PUT("api/v1/schedules/{scheduleId}/calendar")
+    suspend fun updateScheduleCalendarRegistration(
+        @Path("scheduleId") scheduleId: Long,
+        @Body request: UpdateScheduleCalendarRequest,
+    ): ApiResponse<BaseResponse<UpdateScheduleCalendarResponse>>
 }

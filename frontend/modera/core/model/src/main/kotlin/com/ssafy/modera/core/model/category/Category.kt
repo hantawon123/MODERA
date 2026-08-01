@@ -6,4 +6,5 @@ data class Category(
     val thumbnailUrl: String?,
     val itemCount: Int,
     val tags: List<String>,
+    val isNew: Boolean = false,
 )

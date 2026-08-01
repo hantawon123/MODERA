@@ -2,7 +2,6 @@ package com.ssafy.modera.feature.documentcreate.navigation
 
 import androidx.navigation3.runtime.NavKey
 import com.ssafy.modera.core.model.analyzedimage.AnalyzedImage
-import com.ssafy.modera.core.model.analyzedimage.ImageAnalysisStatus
 import com.ssafy.modera.core.navigation.Navigator
 import kotlinx.serialization.Serializable
 
@@ -13,7 +12,6 @@ data class DocumentCreateNavKey(
     val summary: String,
     val thumbnailUrl: String,
     val hashtags: List<String>,
-    val status: String,
     val favorite: Boolean,
 ) : NavKey
 
@@ -27,7 +25,6 @@ fun Navigator.navigateToDocumentCreate(
             summary = analyzedImage.summary,
             thumbnailUrl = analyzedImage.thumbnailUrl,
             hashtags = analyzedImage.hashtags,
-            status = analyzedImage.status.name,
             favorite = analyzedImage.favorite,
         ),
     )
@@ -40,6 +37,5 @@ internal fun DocumentCreateNavKey.asInitialImage(): AnalyzedImage =
         summary = summary,
         thumbnailUrl = thumbnailUrl,
         hashtags = hashtags,
-        status = ImageAnalysisStatus.valueOf(status),
         favorite = favorite,
     )

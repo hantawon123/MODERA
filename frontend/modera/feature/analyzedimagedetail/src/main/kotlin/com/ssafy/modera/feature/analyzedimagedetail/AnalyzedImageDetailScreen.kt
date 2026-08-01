@@ -51,7 +51,7 @@ import com.ssafy.modera.feature.analyzedimagedetail.component.AnalyzedImageDetai
 import com.ssafy.modera.feature.analyzedimagedetail.component.AnalyzedImageDetailTopBar
 import com.ssafy.modera.feature.analyzedimagedetail.component.CategoryLabel
 import com.ssafy.modera.feature.analyzedimagedetail.component.ImageSection
-import com.ssafy.modera.feature.analyzedimagedetail.component.OcrTextSection
+import com.ssafy.modera.feature.analyzedimagedetail.component.ExtractedTextSection
 
 private val TopBarTitleScrollThreshold = 96.dp
 
@@ -62,7 +62,6 @@ internal fun AnalyzedImageDetailScreen(
     animatedVisibilityScope: AnimatedVisibilityScope,
     onBackClick: () -> Unit,
     onImageClick: (String) -> Unit,
-    onFavoriteClick: () -> Unit,
     onCreateDocumentClick: (AnalyzedImage) -> Unit,
     onDocumentClick: () -> Unit,
     onScheduleClick: () -> Unit,
@@ -77,11 +76,11 @@ internal fun AnalyzedImageDetailScreen(
         animatedVisibilityScope = animatedVisibilityScope,
         onBackClick = onBackClick,
         onImageClick = onImageClick,
-        onFavoriteClick = onFavoriteClick,
+        onFavoriteClick = viewModel::toggleAnalyzedImageFavorite,
         onCreateDocumentClick = onCreateDocumentClick,
         onDocumentClick = onDocumentClick,
         onScheduleClick = onScheduleClick,
-        onReanalyzeClick = viewModel::reanalyzeAnalyzedImage,
+        onReanalyzeClick = viewModel::reanalyzeImage,
         onDeleteClick = {
             viewModel.deleteAnalyzedImage { onBackClick() }
         },
@@ -291,7 +290,7 @@ private fun AnalyzedImageDetailContent(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             CategoryLabel(
-                category = image.categories.name,
+                category = image.category,
             )
 
             IconButton(
@@ -373,17 +372,18 @@ private fun AnalyzedImageDetailContent(
             content = image.summary,
         )
 
-        image.ocr
-            ?.rawText
-            ?.takeIf(String::isNotBlank)
-            ?.let { ocrText ->
+        image.extractedTexts
+            .filter(String::isNotBlank)
+            .takeIf(List<String>::isNotEmpty)
+            ?.joinToString(separator = ", ")
+            ?.let { extractedText ->
                 Spacer(modifier = Modifier.height(30.dp))
 
-                OcrTextSection(
+                ExtractedTextSection(
                     title = stringResource(
                         R.string.analyzed_image_detail_ocr_title,
                     ),
-                    content = ocrText,
+                    content = extractedText,
                 )
             }
 

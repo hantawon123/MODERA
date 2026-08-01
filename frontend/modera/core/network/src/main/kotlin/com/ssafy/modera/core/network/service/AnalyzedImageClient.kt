@@ -2,10 +2,11 @@ package com.ssafy.modera.core.network.service
 
 import com.skydoves.sandwich.getOrThrow
 import com.ssafy.modera.core.model.analyzedimage.AnalyzedImageQuery
-import com.ssafy.modera.core.network.mock.AnalyzedImageMockDataSource
 import com.ssafy.modera.core.network.model.analyzedimage.AnalyzedImageDetailResponse
+import com.ssafy.modera.core.network.model.analyzedimage.AnalyzedImageFavoriteRequest
 import com.ssafy.modera.core.network.model.analyzedimage.AnalyzedImageResponse
 import com.ssafy.modera.core.network.model.analyzedimage.AnalyzedImagesResponse
+import com.ssafy.modera.core.network.model.analyzedimage.ImageIdsRequest
 import javax.inject.Inject
 
 class AnalyzedImageClient @Inject constructor(
@@ -35,25 +36,70 @@ class AnalyzedImageClient @Inject constructor(
 
     suspend fun fetchAnalyzedImageDetail(
         imageId: Long,
-    ): AnalyzedImageDetailResponse =
-        analyzedImageService
+    ): AnalyzedImageDetailResponse {
+        val response = analyzedImageService
             .fetchAnalyzedImageDetail(imageId)
             .getOrThrow()
-            .data
+
+        return response.data.copy(
+            updatedAt = response.timestamp,
+        )
+    }
 
     // Todo: api 완성 되면 mock 삭제
     suspend fun fetchRelatedImages(
         imageId: Long,
+        limit: Int = 10,
     ): List<AnalyzedImageResponse> =
-        AnalyzedImageMockDataSource.fetchRelatedImages(
-            sourceImageId = imageId,
-        )
+        analyzedImageService.fetchRelatedImages(
+            imageId = imageId,
+            limit = limit
+        ).getOrThrow().data.list
 
-    suspend fun reanalyzeAnalyzedImage(
+    suspend fun fetchDocumentRelatedImages(
+        imageIds: List<Long>,
+    ): List<AnalyzedImageResponse> =
+        analyzedImageService
+            .fetchDocumentRelatedImages(
+                request = ImageIdsRequest(
+                    imageIds = imageIds,
+                ),
+            )
+            .getOrThrow()
+            .data
+            .list
+
+    suspend fun updateAnalyzedImageFavorite(
         imageId: Long,
-    ) = AnalyzedImageMockDataSource.reanalyzeImage(imageId)
+        favorite: Boolean,
+    ) {
+        analyzedImageService
+            .updateAnalyzedImageFavorite(
+                imageId = imageId,
+                request = AnalyzedImageFavoriteRequest(
+                    favorite = favorite,
+                ),
+            )
+            .getOrThrow()
+    }
+
+    suspend fun requestImageReanalysis(
+        imageId: Long,
+    ) {
+        analyzedImageService
+            .requestImageReanalysis(
+                imageId = imageId,
+            )
+            .getOrThrow()
+    }
 
     suspend fun deleteAnalyzedImage(
-        imageId: Long,
-    ) = AnalyzedImageMockDataSource.deleteImage(imageId)
+        imageId: List<Long>,
+    ) {
+        analyzedImageService.deleteAnalyzedImages(
+            ImageIdsRequest(
+                imageId
+            )
+        )
+    }
 }

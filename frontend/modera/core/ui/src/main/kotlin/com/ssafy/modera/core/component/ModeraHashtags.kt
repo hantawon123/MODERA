@@ -2,7 +2,7 @@ package com.ssafy.modera.core.component
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -32,10 +32,11 @@ fun ModeraHashtags(
 ) {
     if (tags.isEmpty()) return
 
-    Row(
+    FlowRow(
         modifier = modifier,
-        horizontalArrangement = Arrangement.spacedBy(HashtagDefaults.Spacing),
-        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+        itemVerticalAlignment = Alignment.CenterVertically,
     ) {
         tags.forEach { tag ->
             Text(
@@ -43,17 +44,15 @@ fun ModeraHashtags(
                 style = style,
                 color = color,
                 modifier = if (onTagClick != null) {
-                    Modifier.clickable { onTagClick(tag) }
+                    Modifier.clickable {
+                        onTagClick(tag)
+                    }
                 } else {
                     Modifier
                 },
             )
         }
     }
-}
-
-object HashtagDefaults {
-    val Spacing = 4.dp
 }
 
 @Preview(showBackground = true)

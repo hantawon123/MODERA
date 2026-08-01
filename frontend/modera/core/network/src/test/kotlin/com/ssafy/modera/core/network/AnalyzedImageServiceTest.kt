@@ -50,9 +50,8 @@ class AnalyzedImageServiceTest : ApiAbstract<AnalyzedImageService>() {
 
         assertThat(image.imageId, `is`(1024L))
         assertThat(image.title, `is`("C++ 프로그래밍 입문"))
-        assertThat(image.status, `is`("COMPLETED"))
-        assertThat(image.tags.first().name, `is`("C++"))
-        assertThat(image.categories.first().name, `is`("공부"))
+        assertThat(image.tags.first(), `is`("C++"))
+        assertThat(image.category, `is`("공부"))
     }
 
     @Test
@@ -70,16 +69,10 @@ class AnalyzedImageServiceTest : ApiAbstract<AnalyzedImageService>() {
         assertThat(baseResponse.message, `is`("요청이 성공했습니다."))
 
         assertThat(image.imageId, `is`(101L))
-        assertThat(
-            image.fileName,
-            `is`("Screenshot_20260723_154210.png"),
-        )
-        assertThat(image.status, `is`("COMPLETED"))
         assertThat(image.favorite, `is`(true))
         assertThat(image.title, `is`("C++ 프로그래밍 입문서 정보"))
-        assertThat(image.ocr?.confidence, `is`(0.96))
-        assertThat(image.tags.first().name, `is`("C++"))
-        assertThat(image.categories.first().name, `is`("공부"))
+        assertThat(image.tags.first(), `is`("C++"))
+        assertThat(image.category, `is`("공부"))
         assertThat(
             image.imageUrl,
             `is`("https://example.com/images/101/source"),

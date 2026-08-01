@@ -25,14 +25,17 @@ fun ScheduleResponse.asExternalModel(
         id = scheduleId,
         title = title,
         source = CalendarScheduleSource.APP,
+        date = startAt?.toLocalDateOrNull(zoneId),
         startTime = startAt?.toLocalTimeOrNull(zoneId),
         endTime = endAt?.toLocalTimeOrNull(zoneId),
         isAdded = calendared,
     )
 
-fun ScheduleResponse.scheduleDate(
-    zoneId: ZoneId = ZoneId.systemDefault(),
-) = startAt?.let { Instant.parse(it).atZone(zoneId).toLocalDate() }
+private fun String.toLocalDateOrNull(
+    zoneId: ZoneId,
+) = runCatching {
+    Instant.parse(this).atZone(zoneId).toLocalDate()
+}.getOrNull()
 
 private fun String.toLocalTimeOrNull(
     zoneId: ZoneId,

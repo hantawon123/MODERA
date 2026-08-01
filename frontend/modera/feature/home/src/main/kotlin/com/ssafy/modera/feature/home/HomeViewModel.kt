@@ -5,24 +5,29 @@ import androidx.lifecycle.viewModelScope
 import com.ssafy.modera.core.common.result.Result
 import com.ssafy.modera.core.common.result.asResult
 import com.ssafy.modera.core.data.repository.CategoryRepository
+import com.ssafy.modera.core.data.repository.search.SearchRepository
+import com.ssafy.modera.core.model.analyzedimage.AnalyzedImage
 import com.ssafy.modera.core.model.category.CategorySortType
+import com.ssafy.modera.feature.home.state.HomeSearchState
+import com.ssafy.modera.feature.home.state.HomeUiState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.yield
 import javax.inject.Inject
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
-    categoryRepository: CategoryRepository,
+    private val categoryRepository: CategoryRepository,
+    private val searchRepository: SearchRepository,
 ) : ViewModel() {
-    private val searchState = MutableStateFlow(SearchState())
+    private val searchState = MutableStateFlow(HomeSearchState())
 
     val uiState: StateFlow<HomeUiState> =
         combine(
@@ -166,7 +171,7 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    private fun SearchState.deactivateIfIdle(): SearchState {
+    private fun HomeSearchState.deactivateIfIdle(): HomeSearchState {
         if (!isSearchBarFocused && searchQuery.isBlank()) {
             return copy(
                 isSearchActive = false,
@@ -180,10 +185,14 @@ class HomeViewModel @Inject constructor(
 
     private suspend fun fetchSearchResults(
         query: String,
-    ): List<SearchMaterialResult> {
-        delay(HomeSearchDefaults.SearchLoadingDelayMillis)
-        // TODO: 검색 API 연동
-        return HomeSearchDummyData.searchResults
+    ): List<AnalyzedImage> {
+        return try {
+            searchRepository
+                .searchSemanticImages(query = query)
+                .first()
+        } catch (_: Exception) {
+            emptyList()
+        }
     }
 
     private fun addRecentSearchTerm(
@@ -196,20 +205,9 @@ class HomeViewModel @Inject constructor(
         }.take(HomeSearchDefaults.MaxRecentSearchTermCount)
     }
 
-    private data class SearchState(
-        val searchQuery: String = "",
-        val isSearchActive: Boolean = false,
-        val isSearchBarFocused: Boolean = false,
-        val recentSearchTerms: List<String> = HomeSearchDummyData.recentSearchTerms,
-        val searchResults: List<SearchMaterialResult> = emptyList(),
-        val isShowingSearchResults: Boolean = false,
-        val isSearchLoading: Boolean = false,
-    )
-
     private companion object {
         private object HomeSearchDefaults {
             const val MaxRecentSearchTermCount = 10
-            const val SearchLoadingDelayMillis = 2_000L
         }
     }
 }

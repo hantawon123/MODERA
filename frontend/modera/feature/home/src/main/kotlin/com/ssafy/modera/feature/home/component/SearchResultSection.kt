@@ -19,12 +19,13 @@ import androidx.compose.ui.unit.dp
 import com.ssafy.modera.core.component.item.ModeraMaterialItem
 import com.ssafy.modera.core.designsystem.component.Text
 import com.ssafy.modera.core.designsystem.theme.ModeraTheme
+import com.ssafy.modera.core.model.analyzedimage.AnalyzedImage
+import com.ssafy.modera.core.model.analyzedimage.ImageAnalysisStatus
 import com.ssafy.modera.feature.home.R
-import com.ssafy.modera.feature.home.SearchMaterialResult
 
 @Composable
 internal fun SearchResultSection(
-    searchResults: List<SearchMaterialResult>,
+    searchResults: List<AnalyzedImage>,
     isLoading: Boolean,
     onSearchResultClick: (Int) -> Unit,
     modifier: Modifier = Modifier,
@@ -75,10 +76,10 @@ internal fun SearchResultSection(
                     ) { result ->
                         ModeraMaterialItem(
                             title = result.title,
-                            description = result.description,
-                            tags = result.tags,
-                            imageUrl = result.imageUrl,
-                            onClick = { onSearchResultClick(result.id) },
+                            description = result.summary,
+                            tags = result.hashtags,
+                            imageUrl = result.thumbnailUrl.takeIf(String::isNotBlank),
+                            onClick = { onSearchResultClick(result.id.toInt()) },
                             modifier = Modifier.fillMaxWidth(),
                         )
                     }
@@ -94,19 +95,21 @@ private fun SearchResultSectionPreview() {
     ModeraTheme {
         SearchResultSection(
             searchResults = listOf(
-                SearchMaterialResult(
+                AnalyzedImage(
                     id = 1,
                     title = "성심당 케이크 리스트",
-                    description = "올해 성심당 케이크 메뉴 리스트로, 샤인머스켓 시루, 귤 시루, 맛있겠다.",
-                    tags = listOf("기차", "예약", "KTX"),
-                    imageUrl = "",
+                    summary = "올해 성심당 케이크 메뉴 리스트로, 샤인머스켓 시루, 귤 시루, 맛있겠다.",
+                    thumbnailUrl = "",
+                    hashtags = listOf("기차", "예약", "KTX"),
+                    status = ImageAnalysisStatus.COMPLETED,
                 ),
-                SearchMaterialResult(
+                AnalyzedImage(
                     id = 2,
                     title = "주말 브런치 레시피",
-                    description = "에그 베네딕트와 팬케이크 레시피 모음.",
-                    tags = listOf("음식", "레시피"),
-                    imageUrl = null,
+                    summary = "에그 베네딕트와 팬케이크 레시피 모음.",
+                    thumbnailUrl = "",
+                    hashtags = listOf("음식", "레시피"),
+                    status = ImageAnalysisStatus.COMPLETED,
                 ),
             ),
             isLoading = false,

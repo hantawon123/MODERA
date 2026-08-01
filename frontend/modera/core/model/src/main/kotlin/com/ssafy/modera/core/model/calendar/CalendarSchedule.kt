@@ -1,11 +1,13 @@
 package com.ssafy.modera.core.model.calendar
 
+import java.time.LocalDate
 import java.time.LocalTime
 
 data class CalendarSchedule(
     val id: Long,
     val title: String,
     val source: CalendarScheduleSource,
+    val date: LocalDate? = null,
     val startTime: LocalTime? = null,
     val endTime: LocalTime? = null,
     val isAdded: Boolean = false,

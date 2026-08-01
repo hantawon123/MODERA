@@ -18,7 +18,6 @@ import kotlinx.coroutines.flow.flowOn
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
-import java.time.YearMonth
 import java.time.ZoneId
 import javax.inject.Inject
 
@@ -32,12 +31,19 @@ class DefaultDeviceCalendarRepository @Inject constructor(
             emit(querySchedules(fromDate = date, toDateExclusive = date.plusDays(1)))
         }.flowOn(ioDispatcher)
 
-    override fun getScheduleCountsForMonth(yearMonth: YearMonth): Flow<Map<LocalDate, Int>> =
+    override fun getScheduleCountsForRange(
+        from: LocalDate,
+        toInclusive: LocalDate,
+    ): Flow<Map<LocalDate, Int>> =
         flow {
-            val fromDate = yearMonth.atDay(1)
-            val toDateExclusive = yearMonth.plusMonths(1).atDay(1)
             val zone = ZoneId.systemDefault()
-            emit(queryScheduleCounts(fromDate = fromDate, toDateExclusive = toDateExclusive, zone = zone))
+            emit(
+                queryScheduleCounts(
+                    fromDate = from,
+                    toDateExclusive = toInclusive.plusDays(1),
+                    zone = zone,
+                ),
+            )
         }.flowOn(ioDispatcher)
 
     private fun queryScheduleCounts(

@@ -4,7 +4,7 @@ import com.skydoves.sandwich.ApiResponse
 import com.ssafy.modera.core.network.model.BaseResponse
 import com.ssafy.modera.core.network.model.analyzedimage.AnalyzedImageDetailResponse
 import com.ssafy.modera.core.network.model.analyzedimage.AnalyzedImagesResponse
-import com.ssafy.modera.core.network.model.analyzedimage.DeleteAnalyzedImagesRequest
+import com.ssafy.modera.core.network.model.analyzedimage.ImageIdsRequest
 import com.ssafy.modera.core.network.model.analyzedimage.RelatedImagesResponse
 import retrofit2.http.Body
 import retrofit2.http.GET
@@ -44,6 +44,6 @@ interface AnalyzedImageService {
         hasBody = true,
     )
     suspend fun deleteAnalyzedImages(
-        @Body request: DeleteAnalyzedImagesRequest,
+        @Body request: ImageIdsRequest,
     ): ApiResponse<Unit>
 }

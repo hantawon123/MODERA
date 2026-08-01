@@ -46,7 +46,7 @@ internal object AnalyzedImageMockDataSource {
                     "https://picsum.photos/seed/related-$sourceImageId-$sequence/300/300",
                 tags = listOf("성심당", "예약", "케이크"),
                 category = "음식",
-                createdAt = "2026-07-30T07:00:00.000Z",
+                uploadedAt = "2026-07-30T07:00:00.000Z",
             )
         }
 

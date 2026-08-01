@@ -55,7 +55,7 @@ class DefaultAnalyzedImageRepositoryTest {
                         favorite = true,
                         thumbnailUrl = "/images/1024.jpg",
                         tags = listOf("C++", "공부"),
-                        createdAt = "2026-07-16T06:00:00.000Z",
+                        uploadedAt = "2026-07-16T06:00:00.000Z",
                         category = "개발",
                     ),
                 ),

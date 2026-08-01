@@ -2,6 +2,7 @@ package com.ssafy.modera.core.network.model.analyzedimage
 
 import com.ssafy.modera.core.model.analyzedimage.AnalyzedImageDetail
 import kotlinx.serialization.Serializable
+import java.time.Instant
 
 @Serializable
 data class AnalyzedImageDetailResponse(
@@ -16,11 +17,11 @@ data class AnalyzedImageDetailResponse(
     val keyInformation: List<String>,
     val isDocumented: Boolean,
     val isCalendared: Boolean,
+    @Transient
+    val updatedAt: String? = null,
 )
 
-fun AnalyzedImageDetailResponse.asExternalModel(
-    updatedAt: Long = 0L,
-): AnalyzedImageDetail =
+fun AnalyzedImageDetailResponse.asExternalModel(): AnalyzedImageDetail =
     AnalyzedImageDetail(
         id = imageId,
         imageUrl = imageUrl,
@@ -34,5 +35,8 @@ fun AnalyzedImageDetailResponse.asExternalModel(
         keyInformation = keyInformation,
         isDocumented = isDocumented,
         isCalendared = isCalendared,
-        updatedAt = updatedAt,
+        updatedAt = updatedAt
+            ?.let(Instant::parse)
+            ?.toEpochMilli()
+            ?: 0L,
     )

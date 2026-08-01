@@ -5,7 +5,9 @@ import com.ssafy.modera.core.network.model.BaseResponse
 import com.ssafy.modera.core.network.model.calendar.SchedulesResponse
 import com.ssafy.modera.core.network.model.calendar.UpdateScheduleCalendarRequest
 import com.ssafy.modera.core.network.model.calendar.UpdateScheduleCalendarResponse
+import com.ssafy.modera.core.network.model.calendar.DeleteScheduleResponse
 import retrofit2.http.Body
+import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.PUT
 import retrofit2.http.Path
@@ -28,4 +30,9 @@ interface CalendarService {
         @Path("scheduleId") scheduleId: Long,
         @Body request: UpdateScheduleCalendarRequest,
     ): ApiResponse<BaseResponse<UpdateScheduleCalendarResponse>>
+
+    @DELETE("api/v1/schedules/{scheduleId}")
+    suspend fun deleteSchedule(
+        @Path("scheduleId") scheduleId: Long,
+    ): ApiResponse<BaseResponse<DeleteScheduleResponse>>
 }

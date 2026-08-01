@@ -5,6 +5,7 @@ import com.ssafy.modera.core.network.model.calendar.SchedulesRequest
 import com.ssafy.modera.core.network.model.calendar.SchedulesResponse
 import com.ssafy.modera.core.network.model.calendar.UpdateScheduleCalendarRequest
 import com.ssafy.modera.core.network.model.calendar.UpdateScheduleCalendarResponse
+import com.ssafy.modera.core.network.model.calendar.DeleteScheduleResponse
 import javax.inject.Inject
 
 class CalendarClient @Inject constructor(
@@ -33,6 +34,14 @@ class CalendarClient @Inject constructor(
                 scheduleId = scheduleId,
                 request = UpdateScheduleCalendarRequest(calendared = true),
             )
+            .getOrThrow()
+            .data
+
+    suspend fun deleteSchedule(
+        scheduleId: Long,
+    ): DeleteScheduleResponse =
+        calendarService
+            .deleteSchedule(scheduleId)
             .getOrThrow()
             .data
 }

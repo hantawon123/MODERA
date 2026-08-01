@@ -8,6 +8,8 @@ import com.ssafy.modera.core.data.repository.DefaultImageRepository
 import com.ssafy.modera.core.data.repository.ImageRepository
 import com.ssafy.modera.core.data.repository.calendar.DefaultDeviceCalendarRepository
 import com.ssafy.modera.core.data.repository.calendar.DeviceCalendarRepository
+import com.ssafy.modera.core.data.repository.search.DefaultSearchRepository
+import com.ssafy.modera.core.data.repository.search.SearchRepository
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
@@ -31,6 +33,11 @@ abstract class DataModule {
     abstract fun bindsAnalyzedImageRepository(
         impl: DefaultAnalyzedImageRepository,
     ): AnalyzedImageRepository
+
+    @Binds
+    abstract fun bindsSearchRepository(
+        impl: DefaultSearchRepository,
+    ): SearchRepository
 
     @Binds
     abstract fun bindsDeviceCalendarRepository(

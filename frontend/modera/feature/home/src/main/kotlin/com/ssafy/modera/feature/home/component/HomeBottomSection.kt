@@ -13,7 +13,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.unit.dp
 import com.ssafy.modera.core.model.category.Category
-import com.ssafy.modera.feature.home.HomeUiState
+import com.ssafy.modera.feature.home.state.HomeUiState
 
 @Composable
 internal fun HomeBottomSection(

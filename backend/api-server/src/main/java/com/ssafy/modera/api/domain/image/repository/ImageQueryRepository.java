@@ -119,6 +119,8 @@ public class ImageQueryRepository {
                                image_view.tags,
                                image_view.key_information,
                                image_view.structured_data,
+                               ocr.content AS ocr_raw_text,
+                               image_view.uploaded_at,
                                image_view.is_documented_yn,
                                image_view.is_calendared_yn
                         FROM query_schema.user_image_view image_view
@@ -126,6 +128,8 @@ public class ImageQueryRepository {
                           ON user_image.user_id = image_view.user_id
                          AND user_image.image_id = image_view.image_id
                          AND user_image.del_yn = 'N'
+                        LEFT JOIN image_schema.ocr ocr
+                          ON ocr.image_id = image_view.image_id
                         WHERE image_view.user_id = ?
                           AND image_view.image_id = ?
                           AND image_view.del_yn = 'N'
@@ -142,6 +146,8 @@ public class ImageQueryRepository {
                                     parseTagNames(rs.getString("tags")),
                                     toStringList(rs.getArray("key_information")),
                                     rs.getString("structured_data"),
+                                    rs.getString("ocr_raw_text"),
+                                    rs.getObject("uploaded_at", java.time.OffsetDateTime.class),
                                     "Y".equals(rs.getString("is_documented_yn")),
                                     "Y".equals(rs.getString("is_calendared_yn"))
                             ),

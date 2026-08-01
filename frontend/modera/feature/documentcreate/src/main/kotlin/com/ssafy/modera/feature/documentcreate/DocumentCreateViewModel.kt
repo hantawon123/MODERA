@@ -29,6 +29,9 @@ class DocumentCreateViewModel @AssistedInject constructor(
     private var clientRequestId: String =
         UUID.randomUUID().toString()
 
+    val hasSelectionChanged: StateFlow<Boolean>
+        field = MutableStateFlow(false)
+
     val isCreatingDocument: StateFlow<Boolean>
         field = MutableStateFlow(false)
 
@@ -49,6 +52,10 @@ class DocumentCreateViewModel @AssistedInject constructor(
     fun addSelectedImage(
         analyzedImage: AnalyzedImage,
     ) {
+        if (selectedImages.value.any { it.id == analyzedImage.id }) {
+            return
+        }
+
         selectedImages.update { images ->
             if (images.any { it.id == analyzedImage.id }) {
                 images
@@ -69,6 +76,8 @@ class DocumentCreateViewModel @AssistedInject constructor(
                 state
             }
         }
+
+        hasSelectionChanged.value = true
     }
 
     fun removeSelectedImage(
@@ -96,15 +105,17 @@ class DocumentCreateViewModel @AssistedInject constructor(
                 state
             }
         }
+        hasSelectionChanged.value = true
     }
 
     fun refreshRecommendedImages() {
+        val requestedImageIds =
+            selectedImages.value.map(AnalyzedImage::id)
+
         viewModelScope.launch {
             analyzedImageRepository
                 .getDocumentRecommendedImages(
-                    selectedImageIds = selectedImages.value.map {
-                        it.id
-                    },
+                    selectedImageIds = requestedImageIds,
                 )
                 .asResult()
                 .collect { result ->
@@ -114,6 +125,10 @@ class DocumentCreateViewModel @AssistedInject constructor(
                         }
 
                         is Result.Success -> {
+                            hasSelectionChanged.value =
+                                selectedImages.value
+                                    .map(AnalyzedImage::id) != requestedImageIds
+
                             DocumentCreateUiState.Success(
                                 recommendedImages = result.data,
                             )

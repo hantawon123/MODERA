@@ -10,6 +10,7 @@ import com.ssafy.modera.feature.documentcreate.DocumentCreateViewModel.Factory
 
 fun EntryProviderScope<NavKey>.documentCreateEntry(
     navigator: Navigator,
+    onBackClick: () -> Unit,
 ) {
     entry<DocumentCreateNavKey> { key ->
         val viewModel =
@@ -23,7 +24,7 @@ fun EntryProviderScope<NavKey>.documentCreateEntry(
 
         DocumentCreateScreen(
             viewModel = viewModel,
-            onBackClick = navigator::goBack,
+            onBackClick = onBackClick,
         )
     }
 }

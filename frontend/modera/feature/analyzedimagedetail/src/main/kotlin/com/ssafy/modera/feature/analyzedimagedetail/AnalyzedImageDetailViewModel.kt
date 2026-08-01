@@ -1,5 +1,6 @@
 package com.ssafy.modera.feature.analyzedimagedetail
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ssafy.modera.core.common.result.Result
@@ -49,6 +50,7 @@ class AnalyzedImageDetailViewModel @AssistedInject constructor(
                         }
 
                         is Result.Error -> {
+                            Log.d("testaaa", "${result.exception.message}")
                             AnalyzedImageDetailUiState.Error(
                                 exception = result.exception,
                             )
@@ -127,6 +129,7 @@ class AnalyzedImageDetailViewModel @AssistedInject constructor(
                 }
         }
     }
+
     @AssistedFactory
     interface Factory {
         fun create(

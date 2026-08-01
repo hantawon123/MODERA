@@ -2,8 +2,6 @@ package com.ssafy.modera.feature.analyzedimagedetail
 
 import androidx.compose.ui.tooling.preview.PreviewParameterProvider
 import com.ssafy.modera.core.model.analyzedimage.AnalyzedImageDetail
-import com.ssafy.modera.core.model.analyzedimage.AnalyzedImageOcr
-import com.ssafy.modera.core.model.analyzedimage.ImageAnalysisStatus
 
 internal data class AnalyzedImageDetailScreenPreviewData(
     val name: String,
@@ -40,8 +38,10 @@ internal class AnalyzedImageDetailScreenPreviewParameterProvider :
 
 private val previewAnalyzedImageDetail = AnalyzedImageDetail(
     id = 1L,
-    favorite = false,
+    imageUrl = "https://picsum.photos/seed/samsung-stock/600/800",
+    thumbnailUrl = "https://picsum.photos/seed/samsung-stock/300/400",
     title = "삼성전자 주가 정보",
+    favorite = false,
     summary = """
         삼성전자 주식의 현재 가격과 등락 정보를 보여주는 화면입니다.
         현재 주가는 255,000원이며 전일 대비 24,500원 하락했습니다.
@@ -49,31 +49,30 @@ private val previewAnalyzedImageDetail = AnalyzedImageDetail(
         
         투자 판단 전 최근 실적과 시장 흐름을 함께 확인할 필요가 있습니다.
     """.trimIndent(),
-    ocr = AnalyzedImageOcr(
-        rawText = """
-            삼성
-            삼성전자
-            005930 · KOSPI
-            관심종목
-            255,000원
-            -24,500 (-8.77%)
-        """.trimIndent(),
-        refinedText = """
-            삼성전자
-            종목 코드: 005930
-            시장: KOSPI
-            현재가: 255,000원
-            전일 대비: -24,500원
-            등락률: -8.77%
-        """.trimIndent(),
-        confidence = 0.96,
-    ),
+    category = "금융",
     tags = listOf(
         "삼성전자",
         "주식",
         "KOSPI",
     ),
-    category = "금융",
-    imageUrl = "https://picsum.photos/seed/samsung-stock/600/800",
+    extractedTexts = listOf(
+        "삼성",
+        "삼성전자",
+        "005930",
+        "KOSPI",
+        "관심종목",
+        "255,000원",
+        "-24,500",
+        "-8.77%",
+    ),
+    keyInformation = listOf(
+        "종목 코드: 005930",
+        "시장: KOSPI",
+        "현재가: 255,000원",
+        "전일 대비: -24,500원",
+        "등락률: -8.77%",
+    ),
+    isDocumented = false,
+    isCalendared = false,
     updatedAt = 1785376620000L,
 )

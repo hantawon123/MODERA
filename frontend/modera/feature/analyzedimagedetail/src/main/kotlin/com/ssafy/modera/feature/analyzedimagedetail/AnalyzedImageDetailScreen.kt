@@ -51,7 +51,7 @@ import com.ssafy.modera.feature.analyzedimagedetail.component.AnalyzedImageDetai
 import com.ssafy.modera.feature.analyzedimagedetail.component.AnalyzedImageDetailTopBar
 import com.ssafy.modera.feature.analyzedimagedetail.component.CategoryLabel
 import com.ssafy.modera.feature.analyzedimagedetail.component.ImageSection
-import com.ssafy.modera.feature.analyzedimagedetail.component.OcrTextSection
+import com.ssafy.modera.feature.analyzedimagedetail.component.ExtractedTextSection
 
 private val TopBarTitleScrollThreshold = 96.dp
 
@@ -373,17 +373,18 @@ private fun AnalyzedImageDetailContent(
             content = image.summary,
         )
 
-        image.ocr
-            ?.rawText
-            ?.takeIf(String::isNotBlank)
-            ?.let { ocrText ->
+        image.extractedTexts
+            .filter(String::isNotBlank)
+            .takeIf(List<String>::isNotEmpty)
+            ?.joinToString(separator = ", ")
+            ?.let { extractedText ->
                 Spacer(modifier = Modifier.height(30.dp))
 
-                OcrTextSection(
+                ExtractedTextSection(
                     title = stringResource(
                         R.string.analyzed_image_detail_ocr_title,
                     ),
-                    content = ocrText,
+                    content = extractedText,
                 )
             }
 

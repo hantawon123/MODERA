@@ -10,7 +10,6 @@ import com.ssafy.modera.core.network.model.analyzedimage.AnalyzedImageDetailResp
 import com.ssafy.modera.core.network.model.analyzedimage.AnalyzedImageResponse
 import com.ssafy.modera.core.network.model.analyzedimage.AnalyzedImageTagResponse
 import com.ssafy.modera.core.network.model.analyzedimage.AnalyzedImagesResponse
-import com.ssafy.modera.core.network.model.analyzedimage.OcrResponse
 import com.ssafy.modera.core.network.service.AnalyzedImageClient
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.runTest
@@ -149,39 +148,23 @@ class DefaultAnalyzedImageRepositoryTest {
         runTest(testDispatcher) {
             val response = AnalyzedImageDetailResponse(
                 imageId = 101L,
-                fileName = "Screenshot_20260723_154210.png",
-                contentHash = "test-content-hash",
-                status = "COMPLETED",
-                favorite = false,
-                title = "삼성전자 주가 전망 및 투자 분석",
-                summary = "삼성전자 주가와 투자 전망을 분석한 이미지입니다.",
-                ocr = OcrResponse(
-                    rawText = "삼성전자 주가 전망",
-                    refinedText = "삼성전자 주가 전망 및 투자 분석",
-                    confidence = 0.96,
-                ),
-                tags = listOf(
-                    AnalyzedImageTagResponse(
-                        tagId = 21L,
-                        name = "주식",
-                    ),
-                    AnalyzedImageTagResponse(
-                        tagId = 22L,
-                        name = "삼성전자",
-                    ),
-                ),
-                categories = listOf(
-                    AnalyzedImageCategoryResponse(
-                        categoryId = 5L,
-                        name = "금융",
-                    ),
-                ),
-                analysisConfidence = 0.94,
                 imageUrl = "/images/101/source",
-                createdAt = "2026-07-23T06:42:10.000Z",
-                uploadedAt = "2026-07-23T06:42:12.000Z",
-                updatedAt = "2026-07-23T06:43:01.000Z",
-                lastViewedAt = "2026-07-23T07:15:30.000Z",
+                thumbnailUrl = "/images/101/thumbnail",
+                title = "삼성전자 주가 전망 및 투자 분석",
+                favorite = false,
+                summary = "삼성전자 주가와 투자 전망을 분석한 이미지입니다.",
+                category = "금융",
+                tags = listOf(
+                    "주식",
+                    "삼성전자",
+                ),
+                keyInformation = listOf(
+                    "삼성전자",
+                    "주가 전망",
+                    "투자 분석",
+                ),
+                isDocumented = true,
+                isCalendared = false,
             )
 
             whenever(
@@ -202,21 +185,26 @@ class DefaultAnalyzedImageRepositoryTest {
                         image.id,
                     )
 
-                    assertFalse(image.favorite)
+                    assertEquals(
+                        "$BASE_URL/images/101/source",
+                        image.imageUrl,
+                    )
+
+                    assertEquals(
+                        "$BASE_URL/images/101/thumbnail",
+                        image.thumbnailUrl,
+                    )
 
                     assertEquals(
                         "삼성전자 주가 전망 및 투자 분석",
                         image.title,
                     )
 
+                    assertFalse(image.favorite)
+
                     assertEquals(
                         "삼성전자 주가와 투자 전망을 분석한 이미지입니다.",
                         image.summary,
-                    )
-
-                    assertEquals(
-                        listOf("주식", "삼성전자"),
-                        image.tags,
                     )
 
                     assertEquals(
@@ -225,24 +213,31 @@ class DefaultAnalyzedImageRepositoryTest {
                     )
 
                     assertEquals(
-                        "$BASE_URL/images/101/source",
-                        image.imageUrl,
+                        listOf("주식", "삼성전자"),
+                        image.tags,
                     )
 
                     assertEquals(
-                        "삼성전자 주가 전망",
-                        image.ocr?.rawText,
+                        emptyList<String>(),
+                        image.extractedTexts,
                     )
 
                     assertEquals(
-                        "삼성전자 주가 전망 및 투자 분석",
-                        image.ocr?.refinedText,
+                        listOf(
+                            "삼성전자",
+                            "주가 전망",
+                            "투자 분석",
+                        ),
+                        image.keyInformation,
                     )
 
+                    assertTrue(image.isDocumented)
+
+                    assertFalse(image.isCalendared)
+
                     assertEquals(
-                        0.96,
-                        requireNotNull(image.ocr).confidence,
-                        0.0,
+                        0L,
+                        image.updatedAt,
                     )
 
                     awaitComplete()

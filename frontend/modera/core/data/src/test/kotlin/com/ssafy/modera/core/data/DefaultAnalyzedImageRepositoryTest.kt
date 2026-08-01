@@ -54,6 +54,8 @@ class DefaultAnalyzedImageRepositoryTest {
                         tags = listOf("C++", "공부"),
                         uploadedAt = "2026-07-16T06:00:00.000Z",
                         category = "개발",
+                        isDocumented = true,
+                        isCalendared = false,
                     ),
                 ),
                 page = 0,
@@ -105,6 +107,8 @@ class DefaultAnalyzedImageRepositoryTest {
                     )
 
                     assertTrue(image.favorite)
+                    assertTrue(image.isDocumented)
+                    assertFalse(image.hasSchedule)
 
                     awaitComplete()
                 }

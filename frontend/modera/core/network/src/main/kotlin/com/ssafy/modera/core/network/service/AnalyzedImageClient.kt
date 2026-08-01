@@ -6,6 +6,7 @@ import com.ssafy.modera.core.network.mock.AnalyzedImageMockDataSource
 import com.ssafy.modera.core.network.model.analyzedimage.AnalyzedImageDetailResponse
 import com.ssafy.modera.core.network.model.analyzedimage.AnalyzedImageResponse
 import com.ssafy.modera.core.network.model.analyzedimage.AnalyzedImagesResponse
+import com.ssafy.modera.core.network.model.analyzedimage.DeleteAnalyzedImagesRequest
 import javax.inject.Inject
 
 class AnalyzedImageClient @Inject constructor(
@@ -54,6 +55,10 @@ class AnalyzedImageClient @Inject constructor(
     ) = AnalyzedImageMockDataSource.reanalyzeImage(imageId)
 
     suspend fun deleteAnalyzedImage(
-        imageId: Long,
-    ) = AnalyzedImageMockDataSource.deleteImage(imageId)
+        imageId: List<Long>,
+    ){
+        analyzedImageService.deleteAnalyzedImages(DeleteAnalyzedImagesRequest(
+            imageId
+        ))
+    }
 }

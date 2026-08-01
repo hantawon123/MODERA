@@ -85,7 +85,7 @@ class DefaultAnalyzedImageRepository @Inject constructor(
         imageId: Long,
     ): Flow<Unit> = flow {
         analyzedImageClient.deleteAnalyzedImage(
-            imageId = imageId,
+            imageId = listOf(imageId),
         )
 
         emit(Unit)

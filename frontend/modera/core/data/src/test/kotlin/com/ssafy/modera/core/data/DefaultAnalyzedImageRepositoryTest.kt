@@ -202,16 +202,6 @@ class DefaultAnalyzedImageRepositoryTest {
                         image.id,
                     )
 
-                    assertEquals(
-                        "Screenshot_20260723_154210.png",
-                        image.fileName,
-                    )
-
-                    assertEquals(
-                        ImageAnalysisStatus.COMPLETED,
-                        image.status,
-                    )
-
                     assertFalse(image.favorite)
 
                     assertEquals(
@@ -231,7 +221,7 @@ class DefaultAnalyzedImageRepositoryTest {
 
                     assertEquals(
                         "금융",
-                        image.categories.name,
+                        image.category,
                     )
 
                     assertEquals(

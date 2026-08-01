@@ -30,7 +30,7 @@ import com.ssafy.modera.feature.home.R
 
 @Composable
 internal fun RecentSearchSection(
-    recentSearchTerms: List<String>,
+    recentSearchQueries: List<String>,
     onRecentSearchClick: (String) -> Unit,
     onRecentSearchDelete: (String) -> Unit,
     modifier: Modifier = Modifier,
@@ -48,11 +48,11 @@ internal fun RecentSearchSection(
             modifier = Modifier.padding(bottom = 12.dp),
         )
 
-        recentSearchTerms.forEach { term ->
-            RecentSearchTermItem(
-                text = term,
-                onDeleteClick = { onRecentSearchDelete(term) },
-                onItemClick = { onRecentSearchClick(term) },
+        recentSearchQueries.forEach { query ->
+            RecentSearchQueryItem(
+                text = query,
+                onDeleteClick = { onRecentSearchDelete(query) },
+                onItemClick = { onRecentSearchClick(query) },
             )
 
             Spacer(Modifier.height(8.dp))
@@ -61,7 +61,7 @@ internal fun RecentSearchSection(
 }
 
 @Composable
-private fun RecentSearchTermItem(
+private fun RecentSearchQueryItem(
     text: String,
     onDeleteClick: () -> Unit,
     onItemClick: () -> Unit,
@@ -103,7 +103,7 @@ private fun RecentSearchTermItem(
 private fun RecentSearchSectionPreview() {
     ModeraTheme {
         RecentSearchSection(
-            recentSearchTerms = listOf(
+            recentSearchQueries = listOf(
                 "성심당 케이크",
                 "KTX 예약",
                 "레시피",

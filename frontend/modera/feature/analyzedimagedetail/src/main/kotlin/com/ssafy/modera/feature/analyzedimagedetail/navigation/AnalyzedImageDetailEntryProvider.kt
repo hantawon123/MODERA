@@ -35,9 +35,6 @@ fun EntryProviderScope<NavKey>.analyzedImageDetailEntry(
             sharedTransitionScope = sharedTransitionScope,
             animatedVisibilityScope = LocalNavAnimatedContentScope.current,
             onImageClick = onImageClick,
-            onFavoriteClick = {
-                // TODO ViewModel 즐겨찾기 기능 연결
-            },
             onCreateDocumentClick = onCreateDocumentClick,
             onDocumentClick = {
                 // TODO 해당 문서 이동

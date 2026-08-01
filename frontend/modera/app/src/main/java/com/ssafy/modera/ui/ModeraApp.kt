@@ -240,7 +240,7 @@ internal fun ModeraApp(
                                 categoryEntry(
                                     onBackClick = handleBack,
                                     onSearchIconClick = navigator::navigateToCategorySearch,
-                                    onItemClick = { /* TODO: 자료 상세 연결 */ },
+                                    onItemClick = navigator::navigateToImageDetail,
                                 )
                                 favoritesEntry(
                                     onItemClick = { /* TODO: 자료 상세 연결 */ },

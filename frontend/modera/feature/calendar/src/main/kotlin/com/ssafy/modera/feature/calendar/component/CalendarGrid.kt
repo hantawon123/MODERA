@@ -15,8 +15,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.ssafy.modera.core.designsystem.component.Text
 import com.ssafy.modera.core.designsystem.theme.ModeraTheme
+import com.ssafy.modera.core.model.calendar.toVisibleGridDates
 import com.ssafy.modera.feature.calendar.R
-import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.YearMonth
 
@@ -30,7 +30,7 @@ fun CalendarGrid(
     onDateClick: (LocalDate) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val days = remember(visibleMonth) { visibleMonth.toCalendarDays() }
+    val days = remember(visibleMonth) { visibleMonth.toVisibleGridDates() }
 
     Column(
         modifier = modifier
@@ -106,15 +106,6 @@ private fun WeekdayLabel(
         textAlign = TextAlign.Center,
         modifier = modifier,
     )
-}
-
-internal fun YearMonth.toCalendarDays(): List<LocalDate> {
-    val firstOfMonth = atDay(1)
-    val sundayOffset = firstOfMonth.dayOfWeek.value % DayOfWeek.SUNDAY.value
-    val startDate = firstOfMonth.minusDays(sundayOffset.toLong())
-    val daysNeeded = sundayOffset + lengthOfMonth()
-    val weekCount = (daysNeeded + 6) / 7
-    return List(weekCount * 7) { index -> startDate.plusDays(index.toLong()) }
 }
 
 @Preview(showBackground = true, widthDp = 360)

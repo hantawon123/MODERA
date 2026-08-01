@@ -60,13 +60,15 @@ fun CalendarScheduleItem(
             .fillMaxWidth()
             .height(IntrinsicSize.Min)
             .clickable(onClick = onClick)
-            .padding(horizontal = 20.dp, vertical = 10.dp),
+            .padding(vertical = 6.dp),
         verticalAlignment = Alignment.Top,
     ) {
         ScheduleTimeColumn(
             startTime = formattedStart,
             endTime = formattedEnd,
-            modifier = Modifier.width(36.dp),
+            modifier = Modifier
+                .fillMaxHeight()
+                .width(40.dp),
         )
 
         Spacer(modifier = Modifier.width(10.dp))
@@ -150,20 +152,21 @@ private fun ScheduleTimeColumn(
 ) {
     Column(
         modifier = modifier,
-        verticalArrangement = Arrangement.spacedBy(2.dp),
         horizontalAlignment = Alignment.End,
+        verticalArrangement = Arrangement.Center,
     ) {
         if (startTime != null) {
-            Text(
-                text = startTime,
-                style = ModeraTheme.typography.captionR12,
-                color = ModeraTheme.colors.gray700,
-            )
-            if (endTime != null) {
+            listOfNotNull(
+                startTime.takeUnless { it == "00:00" },
+                endTime,
+            ).forEachIndexed { index, time ->
+                if (index > 0) {
+                    Spacer(Modifier.height(2.dp))
+                }
                 Text(
-                    text = endTime,
-                    style = ModeraTheme.typography.captionR12,
-                    color = ModeraTheme.colors.gray700,
+                    text = time,
+                    style = ModeraTheme.typography.bodyR14,
+                    color = ModeraTheme.colors.gray500,
                 )
             }
         }

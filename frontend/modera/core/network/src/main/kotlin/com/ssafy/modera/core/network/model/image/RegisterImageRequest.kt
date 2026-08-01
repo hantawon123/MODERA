@@ -23,8 +23,4 @@ fun RegisterImage.asNetworkModel(): RegisterImageRequest =
     )
 
 fun ImageOcr.asNetworkModel(): OcrRequest =
-    OcrRequest(
-        rawText = rawText,
-        lang = lang,
-        confidence = confidence,
-    )
+    OcrRequest(rawText = rawText)

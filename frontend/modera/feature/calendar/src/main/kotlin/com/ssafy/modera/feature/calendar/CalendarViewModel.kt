@@ -2,9 +2,11 @@ package com.ssafy.modera.feature.calendar
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.ssafy.modera.core.data.repository.calendar.DeviceCalendarRepository
+import com.ssafy.modera.core.common.result.Result
+import com.ssafy.modera.core.common.result.asResult
+import com.ssafy.modera.core.data.repository.calendar.CalendarRepository
+import com.ssafy.modera.core.domain.calendar.GetCalendarSchedulesUseCase
 import com.ssafy.modera.core.model.calendar.CalendarSchedule
-import com.ssafy.modera.core.model.calendar.CalendarScheduleSource
 import com.ssafy.modera.feature.calendar.state.CalendarUiState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -16,15 +18,16 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 import java.time.LocalDate
-import java.time.LocalTime
 import java.time.YearMonth
 import javax.inject.Inject
 
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class CalendarViewModel @Inject constructor(
-    private val deviceCalendarRepository: DeviceCalendarRepository,
+    private val getCalendarSchedulesUseCase: GetCalendarSchedulesUseCase,
+    private val calendarRepository: CalendarRepository,
 ) : ViewModel() {
 
     private val today = LocalDate.now()
@@ -34,7 +37,7 @@ class CalendarViewModel @Inject constructor(
     private val isEditMode = MutableStateFlow(false)
     private val scheduleToDelete = MutableStateFlow<CalendarSchedule?>(null)
     private val hasCalendarPermission = MutableStateFlow(false)
-    private val appSchedulesByDate = MutableStateFlow(CalendarDummyData.appSchedulesByDate)
+    private val localScheduleChanges = MutableStateFlow<Map<Long, LocalScheduleChange>>(emptyMap())
 
     private val navigationState = combine(
         visibleMonth,
@@ -52,6 +55,14 @@ class CalendarViewModel @Inject constructor(
         )
     }
 
+    private val appSchedules = visibleMonth
+        .flatMapLatest { month ->
+            getCalendarSchedulesUseCase.appSchedulesForVisibleGrid(
+                visibleMonth = month,
+                selectedDate = selectedDate.value,
+            )
+        }
+
     private val deviceScheduleCounts = combine(
         hasCalendarPermission,
         visibleMonth,
@@ -59,7 +70,7 @@ class CalendarViewModel @Inject constructor(
         granted to month
     }.flatMapLatest { (granted, month) ->
         if (granted) {
-            deviceCalendarRepository.getScheduleCountsForMonth(month)
+            getCalendarSchedulesUseCase.deviceScheduleCountsForVisibleGrid(month)
         } else {
             flowOf(emptyMap())
         }
@@ -72,28 +83,39 @@ class CalendarViewModel @Inject constructor(
         granted to date
     }.flatMapLatest { (granted, date) ->
         if (granted) {
-            deviceCalendarRepository.getSchedulesForDate(date)
+            getCalendarSchedulesUseCase.deviceSchedulesForDate(date)
         } else {
             flowOf(emptyList())
         }
     }
 
-    val uiState: StateFlow<CalendarUiState> = combine(
-        navigationState,
+    private val deviceScheduleState = combine(
         deviceScheduleCounts,
         deviceSchedulesForSelectedDate,
-        appSchedulesByDate,
-    ) { navigation, deviceCounts, deviceSchedules, appByDate ->
-        val appSchedules = appByDate[navigation.selectedDate].orEmpty()
-        val appCounts = appByDate.mapValues { (_, schedules) -> schedules.size }
+    ) { counts, schedules ->
+        DeviceScheduleState(
+            counts = counts,
+            schedules = schedules,
+        )
+    }
+
+    val uiState: StateFlow<CalendarUiState> = combine(
+        navigationState,
+        appSchedules,
+        deviceScheduleState,
+        localScheduleChanges,
+    ) { navigation, appSchedules, deviceSchedule, localChanges ->
+        val appSchedulesWithLocalChanges = appSchedules.applyLocalChanges(localChanges)
+        val appSchedulesForSelectedDate = appSchedulesWithLocalChanges
+            .filter { it.date == navigation.selectedDate }
 
         CalendarUiState(
             visibleMonth = navigation.visibleMonth,
             selectedDate = navigation.selectedDate,
             today = today,
-            appScheduleCountByDate = appCounts,
-            deviceScheduleCountByDate = deviceCounts,
-            schedules = deviceSchedules + appSchedules,
+            appScheduleCountByDate = appSchedulesWithLocalChanges.toCountByDate(),
+            deviceScheduleCountByDate = deviceSchedule.counts,
+            schedules = deviceSchedule.schedules + appSchedulesForSelectedDate,
             showYearPicker = navigation.showYearPicker,
             isEditMode = navigation.isEditMode,
             scheduleToDelete = navigation.scheduleToDelete,
@@ -118,15 +140,19 @@ class CalendarViewModel @Inject constructor(
 
     fun onPreviousMonth() {
         visibleMonth.update { it.minusMonths(1) }
+        selectedDate.update { it.minusMonths(1) }
     }
 
     fun onNextMonth() {
         visibleMonth.update { it.plusMonths(1) }
+        selectedDate.update { it.plusMonths(1) }
     }
 
     fun onDateClick(date: LocalDate) {
         selectedDate.value = date
-        visibleMonth.value = YearMonth.from(date)
+        if (YearMonth.from(date) != visibleMonth.value) {
+            visibleMonth.value = YearMonth.from(date)
+        }
     }
 
     fun onTodayClick() {
@@ -166,37 +192,71 @@ class CalendarViewModel @Inject constructor(
 
     fun onDeleteDialogConfirm() {
         val target = scheduleToDelete.value ?: return
-        val date = selectedDate.value
-        appSchedulesByDate.update { current ->
-            current.mapValues { (scheduleDate, schedules) ->
-                if (scheduleDate != date) {
-                    schedules
-                } else {
-                    schedules.filterNot { it.id == target.id }
-                }
-            }
-        }
-        scheduleToDelete.value = null
-    }
 
-    fun onAddScheduleClick(schedule: CalendarSchedule) {
-        val date = selectedDate.value
-        appSchedulesByDate.update { current ->
-            current.mapValues { (scheduleDate, schedules) ->
-                if (scheduleDate != date) {
-                    schedules
-                } else {
-                    schedules.map { item ->
-                        if (item.id == schedule.id) {
-                            item.copy(isAdded = true)
-                        } else {
-                            item
+        viewModelScope.launch {
+            calendarRepository.deleteSchedule(target.id)
+                .asResult()
+                .collect { result ->
+                    when (result) {
+                        Result.Loading -> Unit
+
+                        is Result.Success -> {
+                            localScheduleChanges.update { current ->
+                                current + (target.id to LocalScheduleChange.Removed)
+                            }
+                            scheduleToDelete.value = null
                         }
+
+                        is Result.Error -> Unit
                     }
                 }
+        }
+    }
+
+    fun addSchedule(schedule: CalendarSchedule) {
+        viewModelScope.launch {
+            calendarRepository.registerSchedule(schedule.id)
+                .asResult()
+                .collect { result ->
+                    when (result) {
+                        Result.Loading -> Unit
+
+                        is Result.Success -> {
+                            localScheduleChanges.update { current ->
+                                current + (
+                                    schedule.id to LocalScheduleChange.Updated(
+                                        schedule.copy(isAdded = true),
+                                    )
+                                )
+                            }
+                        }
+
+                        is Result.Error -> Unit
+                    }
+                }
+        }
+    }
+
+    private fun List<CalendarSchedule>.applyLocalChanges(
+        changes: Map<Long, LocalScheduleChange>,
+    ): List<CalendarSchedule> {
+        if (changes.isEmpty()) {
+            return this
+        }
+
+        return mapNotNull { schedule ->
+            when (val change = changes[schedule.id]) {
+                LocalScheduleChange.Removed -> null
+                is LocalScheduleChange.Updated -> change.schedule
+                null -> schedule
             }
         }
     }
+
+    private fun List<CalendarSchedule>.toCountByDate(): Map<LocalDate, Int> =
+        mapNotNull { schedule -> schedule.date?.let { date -> date to schedule } }
+            .groupBy({ it.first }, { it.second })
+            .mapValues { (_, schedules) -> schedules.size }
 
     private data class NavigationState(
         val visibleMonth: YearMonth,
@@ -205,56 +265,17 @@ class CalendarViewModel @Inject constructor(
         val isEditMode: Boolean,
         val scheduleToDelete: CalendarSchedule?,
     )
-}
 
-internal object CalendarDummyData {
-    private val augustNinth = LocalDate.of(2026, 8, 9)
-    private val augustEleventh = LocalDate.of(2026, 8, 11)
-
-    val appSchedulesByDate: Map<LocalDate, List<CalendarSchedule>> = mapOf(
-        augustNinth to listOf(
-            CalendarSchedule(
-                id = 2,
-                title = "성심당 케이크 예약",
-                source = CalendarScheduleSource.APP,
-                startTime = LocalTime.of(9, 0),
-                endTime = LocalTime.of(13, 0),
-                isAdded = true,
-            ),
-            CalendarSchedule(
-                id = 3,
-                title = "시간 없는 앱 일정",
-                source = CalendarScheduleSource.APP,
-                isAdded = true,
-            ),
-            CalendarSchedule(
-                id = 8,
-                title = "KTX 예매",
-                source = CalendarScheduleSource.APP,
-                isAdded = false,
-            ),
-            CalendarSchedule(
-                id = 9,
-                title = "카페 예약 확인",
-                source = CalendarScheduleSource.APP,
-                isAdded = false,
-            ),
-        ),
-        augustEleventh to listOf(
-            CalendarSchedule(
-                id = 5,
-                title = "성심당 케이크 예약 성심당 케이크 예약 성심당 케이크 예약 성심당 케이크 예약",
-                source = CalendarScheduleSource.APP,
-                startTime = LocalTime.of(9, 0),
-                endTime = LocalTime.of(13, 0),
-                isAdded = true,
-            ),
-            CalendarSchedule(
-                id = 6,
-                title = "KTX 예매",
-                source = CalendarScheduleSource.APP,
-                isAdded = false,
-            ),
-        ),
+    private data class DeviceScheduleState(
+        val counts: Map<LocalDate, Int>,
+        val schedules: List<CalendarSchedule>,
     )
+
+    private sealed interface LocalScheduleChange {
+        data object Removed : LocalScheduleChange
+
+        data class Updated(
+            val schedule: CalendarSchedule,
+        ) : LocalScheduleChange
+    }
 }

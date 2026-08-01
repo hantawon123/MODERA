@@ -10,8 +10,4 @@ interface ImageRepository {
     fun registerImages(
         images: List<RegisterImage>,
     ): Flow<RegisterImagesResult>
-
-    fun notifyUploadComplete(
-        imageId: Long,
-    ): Flow<UploadCompleteResult>
 }

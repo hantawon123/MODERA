@@ -5,6 +5,8 @@ import com.ssafy.modera.core.network.AccessTokenInterceptor
 import com.ssafy.modera.core.network.BuildConfig
 import com.ssafy.modera.core.network.service.AnalyzedImageClient
 import com.ssafy.modera.core.network.service.AnalyzedImageService
+import com.ssafy.modera.core.network.service.CalendarClient
+import com.ssafy.modera.core.network.service.CalendarService
 import com.ssafy.modera.core.network.service.CategoryClient
 import com.ssafy.modera.core.network.service.CategoryService
 import com.ssafy.modera.core.network.service.ImageClient
@@ -124,4 +126,18 @@ internal object NetworkModule {
         analyzedImageService: AnalyzedImageService,
     ): AnalyzedImageClient =
         AnalyzedImageClient(analyzedImageService)
+
+    @Provides
+    @Singleton
+    fun provideCalendarService(
+        retrofit: Retrofit,
+    ): CalendarService =
+        retrofit.create(CalendarService::class.java)
+
+    @Provides
+    @Singleton
+    fun provideCalendarClient(
+        calendarService: CalendarService,
+    ): CalendarClient =
+        CalendarClient(calendarService)
 }

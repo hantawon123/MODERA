@@ -8,7 +8,7 @@ data class RegisteredImageResponse(
     val clientRequestId: String,
     val imageId: Long,
     val fileName: String,
-    val uploadUrl: String,
+    val presignedURL: String,
     val uploadExpiresIn: Int,
 )
 
@@ -17,6 +17,6 @@ fun RegisteredImageResponse.asExternalModel(): RegisteredImage =
         clientRequestId = clientRequestId,
         imageId = imageId,
         fileName = fileName,
-        uploadUrl = uploadUrl,
+        uploadUrl = presignedURL,
         uploadExpiresIn = uploadExpiresIn,
     )

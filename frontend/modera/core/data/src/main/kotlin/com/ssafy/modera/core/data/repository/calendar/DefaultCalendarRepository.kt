@@ -38,6 +38,16 @@ class DefaultCalendarRepository @Inject constructor(
         )
     }.flowOn(ioDispatcher)
 
+    override fun registerSchedule(
+        scheduleId: Long,
+    ): Flow<Unit> = flow {
+        val response = calendarClient.registerSchedule(scheduleId)
+        if (!response.calendared) {
+            error("스케쥴 등록에 실패했습니다.")
+        }
+        emit(Unit)
+    }.flowOn(ioDispatcher)
+
     private suspend fun fetchAllSchedules(
         request: SchedulesRequest,
     ): List<ScheduleResponse> {

@@ -104,31 +104,36 @@ private fun DocumentCreateScreen(
             .fillMaxSize()
             .background(ModeraTheme.colors.white),
     ) {
+        val isCreating = uiState is DocumentCreateUiState.Creating
         ModeraTopBar(
             onBackClick = onBackClick,
             centerContent = {
-                Text(
-                    text = stringResource(
-                        R.string.document_create_title,
-                    ),
-                    style = ModeraTheme.typography.bodySB16,
-                    color = ModeraTheme.colors.gray900,
-                    maxLines = 1,
-                )
+                if (!isCreating) {
+                    Text(
+                        text = stringResource(
+                            R.string.document_create_title,
+                        ),
+                        style = ModeraTheme.typography.bodySB16,
+                        color = ModeraTheme.colors.gray900,
+                        maxLines = 1,
+                    )
+                }
             },
             rightContent = {
-                IconButton(
-                    imageVector = ImageVector.vectorResource(
-                        ModeraIcons.Refresh,
-                    ),
-                    onClick = onRefreshClick,
-                    size = 24.dp,
-                    enabled = canRefresh,
-                    colors = ModeraIconButtonDefaults.iconButtonColors(
-                        contentColor = ModeraTheme.colors.gray700,
-                        disabledContentColor = ModeraTheme.colors.gray200,
-                    ),
-                )
+                if (!isCreating) {
+                    IconButton(
+                        imageVector = ImageVector.vectorResource(
+                            ModeraIcons.Refresh,
+                        ),
+                        onClick = onRefreshClick,
+                        size = 24.dp,
+                        enabled = canRefresh,
+                        colors = ModeraIconButtonDefaults.iconButtonColors(
+                            contentColor = ModeraTheme.colors.gray700,
+                            disabledContentColor = ModeraTheme.colors.gray200,
+                        ),
+                    )
+                }
             },
         )
 
@@ -259,10 +264,7 @@ private fun DocumentCreateScreen(
             }
 
             DocumentCreateUiState.Creating -> {
-                DocumentCreatingScreen(
-                    selectedImages = selectedImages,
-                    onBackClick = onBackClick
-                )
+                DocumentCreatingScreen(selectedImages = selectedImages)
             }
 
             is DocumentCreateUiState.Error -> {

@@ -415,7 +415,8 @@ public class ImageQueryRepository {
                 """
                 SELECT image_view.image_id, image_view.title, image_view.summary,
                        image_view.favorite, image_view.thumbnail_key, image_view.tags,
-                       image_view.category_name, image_view.uploaded_at
+                       image_view.category_name, image_view.uploaded_at,
+                       image_view.is_documented_yn, image_view.is_calendared_yn
                 """ + where + orderBy(sort) + " LIMIT ? OFFSET ?",
                 (rs, rowNum) -> new ImageListRow(
                         rs.getInt("image_id"),
@@ -425,7 +426,9 @@ public class ImageQueryRepository {
                         rs.getString("thumbnail_key"),
                         parseTagNames(rs.getString("tags")),
                         rs.getString("category_name"),
-                        rs.getObject("uploaded_at", java.time.OffsetDateTime.class)
+                        rs.getObject("uploaded_at", java.time.OffsetDateTime.class),
+                        "Y".equals(rs.getString("is_documented_yn")),
+                        "Y".equals(rs.getString("is_calendared_yn"))
                 ),
                 contentParameters.toArray()
         );
@@ -612,7 +615,9 @@ public class ImageQueryRepository {
                        image_view.thumbnail_key,
                        image_view.tags,
                        image_view.category_name,
-                       image_view.uploaded_at
+                       image_view.uploaded_at,
+                       image_view.is_documented_yn,
+                       image_view.is_calendared_yn
                 FROM query_schema.user_image_view image_view
                 JOIN library_schema.user_image user_image
                   ON user_image.user_id = image_view.user_id
@@ -638,7 +643,9 @@ public class ImageQueryRepository {
                         rs.getString("thumbnail_key"),
                         parseTagNames(rs.getString("tags")),
                         rs.getString("category_name"),
-                        rs.getObject("uploaded_at", java.time.OffsetDateTime.class)
+                        rs.getObject("uploaded_at", java.time.OffsetDateTime.class),
+                        "Y".equals(rs.getString("is_documented_yn")),
+                        "Y".equals(rs.getString("is_calendared_yn"))
                 ),
                 parameters.toArray()
         );

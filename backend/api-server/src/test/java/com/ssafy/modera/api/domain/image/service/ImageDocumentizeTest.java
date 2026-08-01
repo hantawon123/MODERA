@@ -139,7 +139,7 @@ class ImageDocumentizeTest {
 
     private ImageSummaryResponse summary(Integer imageId) {
         return new ImageSummaryResponse(imageId, "제목", "요약", false, null,
-                List.of("태그"), "IT", OffsetDateTime.now());
+                List.of("태그"), "IT", OffsetDateTime.now(), false, false);
     }
 
     private PageResponse<ImageSummaryResponse> pageOf(ImageSummaryResponse... items) {

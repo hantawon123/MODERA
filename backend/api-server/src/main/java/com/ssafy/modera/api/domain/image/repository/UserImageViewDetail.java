@@ -1,5 +1,6 @@
 package com.ssafy.modera.api.domain.image.repository;
 
+import java.time.OffsetDateTime;
 import java.util.List;
 
 public record UserImageViewDetail(
@@ -14,6 +15,8 @@ public record UserImageViewDetail(
         List<String> tagNames,
         List<String> keyInformation,
         String structuredDataJson,
+        String ocrRawText,
+        OffsetDateTime uploadedAt,
         Boolean documented,
         Boolean calendared
 ) {

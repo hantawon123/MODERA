@@ -84,6 +84,8 @@ class ImageQueryServiceTest {
                         List.of(),
                         List.of(),
                         null,
+                        null,
+                        null,
                         false,
                         false
                 )));
@@ -110,6 +112,8 @@ class ImageQueryServiceTest {
                         List.of("C++"),
                         List.of("가격: 32000원"),
                         null,
+                        "삼성전자 제품 안내",
+                        OffsetDateTime.parse("2026-08-01T10:30:00+09:00"),
                         false,
                         false
                 )));
@@ -131,5 +135,8 @@ class ImageQueryServiceTest {
         assertThat(response.imageUrl()).isEqualTo("https://storage.example/image");
         assertThat(response.favorite()).isTrue();
         assertThat(response.tags()).containsExactly("C++");
+        assertThat(response.ocrRawText()).isEqualTo("삼성전자 제품 안내");
+        assertThat(response.uploadedAt())
+                .isEqualTo(OffsetDateTime.parse("2026-08-01T10:30:00+09:00"));
     }
 }

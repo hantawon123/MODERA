@@ -19,15 +19,12 @@ interface AnalyzedImageService {
 
     @GET("api/v1/images")
     suspend fun fetchAnalyzedImages(
-        @Query("status") statuses: List<String>?,
-        @Query("categoryId") categoryId: Long?,
-        @Query("tagId") tagId: Long?,
         @Query("favorite") favorite: Boolean?,
-        @Query("dateFrom") dateFrom: String?,
-        @Query("dateTo") dateTo: String?,
         @Query("page") page: Int,
         @Query("size") size: Int,
         @Query("sort") sort: String,
+        @Query("keyword") keyword: String?,
+        @Query("categoryId") categoryId: Long?,
     ): ApiResponse<BaseResponse<AnalyzedImagesResponse>>
 
     @GET("api/v1/images/{imageId}")

@@ -8,7 +8,7 @@ import com.ssafy.modera.core.data.repository.CategoryRepository
 import com.ssafy.modera.core.data.repository.search.RecentSearchRepository
 import com.ssafy.modera.core.data.repository.search.SearchRepository
 import com.ssafy.modera.core.model.analyzedimage.AnalyzedImage
-import com.ssafy.modera.core.model.category.CategorySortType
+import com.ssafy.modera.feature.home.HomeScreenDefaults
 import com.ssafy.modera.feature.home.state.HomeSearchState
 import com.ssafy.modera.feature.home.state.HomeUiState
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -34,7 +35,12 @@ class HomeViewModel @Inject constructor(
     val uiState: StateFlow<HomeUiState> =
         combine(
             categoryRepository
-                .getCategories(CategorySortType.UPDATED_DESC)
+                .observeCategories()
+                .map { categories ->
+                    categories
+                        .filter { category -> category.itemCount > 0 }
+                        .take(HomeScreenDefaults.MaxCategoryCount)
+                }
                 .asResult(),
             searchState,
             recentSearchRepository.recentSearchQueries,
@@ -66,7 +72,15 @@ class HomeViewModel @Inject constructor(
             .stateIn(
                 scope = viewModelScope,
                 started = SharingStarted.WhileSubscribed(5_000),
-                initialValue = HomeUiState.Loading,
+                initialValue = HomeUiState.Success(
+                    categories = emptyList(),
+                    searchQuery = "",
+                    isSearchActive = false,
+                    recentSearchQueries = emptyList(),
+                    searchResults = emptyList(),
+                    isShowingSearchResults = false,
+                    isSearchLoading = false,
+                ),
             )
 
     fun onSearchQueryChanged(query: String) {

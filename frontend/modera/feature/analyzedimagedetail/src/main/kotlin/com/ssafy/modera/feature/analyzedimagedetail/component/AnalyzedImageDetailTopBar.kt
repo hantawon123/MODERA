@@ -47,7 +47,7 @@ internal fun AnalyzedImageDetailTopBar(
         ModeraDropdownMenuItem(
             icon = ModeraIcons.FileDocument,
             label = stringResource(
-                R.string.analyzed_image_detail_view_document,
+                R.string.analyzed_image_detail_create_document,
             ),
             onClick = onDocumentClick,
         ),

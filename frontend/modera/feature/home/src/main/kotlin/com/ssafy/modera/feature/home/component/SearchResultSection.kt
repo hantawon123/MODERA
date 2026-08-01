@@ -20,7 +20,6 @@ import com.ssafy.modera.core.component.item.ModeraAnalyzedImageItem
 import com.ssafy.modera.core.designsystem.component.Text
 import com.ssafy.modera.core.designsystem.theme.ModeraTheme
 import com.ssafy.modera.core.model.analyzedimage.AnalyzedImage
-import com.ssafy.modera.core.model.analyzedimage.ImageAnalysisStatus
 import com.ssafy.modera.feature.home.R
 
 @Composable
@@ -102,7 +101,6 @@ private fun SearchResultSectionPreview() {
                     summary = "올해 성심당 케이크 메뉴 리스트로, 샤인머스켓 시루, 귤 시루, 맛있겠다.",
                     thumbnailUrl = "",
                     hashtags = listOf("기차", "예약", "KTX"),
-                    status = ImageAnalysisStatus.COMPLETED,
                 ),
                 AnalyzedImage(
                     id = 2,
@@ -110,7 +108,6 @@ private fun SearchResultSectionPreview() {
                     summary = "에그 베네딕트와 팬케이크 레시피 모음.",
                     thumbnailUrl = "",
                     hashtags = listOf("음식", "레시피"),
-                    status = ImageAnalysisStatus.COMPLETED,
                 ),
             ),
             isLoading = false,

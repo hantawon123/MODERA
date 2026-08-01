@@ -2,7 +2,6 @@ package com.ssafy.modera.feature.documentcreate
 
 import androidx.compose.ui.tooling.preview.PreviewParameterProvider
 import com.ssafy.modera.core.model.analyzedimage.AnalyzedImage
-import com.ssafy.modera.core.model.analyzedimage.ImageAnalysisStatus
 
 internal data class DocumentCreateScreenPreviewData(
     val name: String,
@@ -66,7 +65,6 @@ internal val previewDocumentCreateImages =
                 "예약",
                 "KTX",
             ),
-            status = ImageAnalysisStatus.COMPLETED,
             favorite = false,
         )
     }

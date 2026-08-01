@@ -5,12 +5,9 @@ import com.ssafy.modera.core.data.repository.AnalyzedImageRepository
 import com.ssafy.modera.core.data.repository.DefaultAnalyzedImageRepository
 import com.ssafy.modera.core.model.analyzedimage.AnalyzedImageQuery
 import com.ssafy.modera.core.model.analyzedimage.ImageAnalysisStatus
-import com.ssafy.modera.core.network.model.analyzedimage.AnalyzedImageCategoryResponse
 import com.ssafy.modera.core.network.model.analyzedimage.AnalyzedImageDetailResponse
 import com.ssafy.modera.core.network.model.analyzedimage.AnalyzedImageResponse
-import com.ssafy.modera.core.network.model.analyzedimage.AnalyzedImageTagResponse
 import com.ssafy.modera.core.network.model.analyzedimage.AnalyzedImagesResponse
-import com.ssafy.modera.core.network.model.analyzedimage.OcrResponse
 import com.ssafy.modera.core.network.service.AnalyzedImageClient
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.runTest
@@ -53,29 +50,13 @@ class DefaultAnalyzedImageRepositoryTest {
                 list = listOf(
                     AnalyzedImageResponse(
                         imageId = 1024L,
-                        fileName = "Screenshot_20260716_101010.png",
                         title = "C++ 프로그래밍 입문",
                         summary = "C++ 입문서 정보",
-                        status = "COMPLETED",
                         favorite = true,
                         thumbnailUrl = "/images/1024.jpg",
-                        tags = listOf(
-                            AnalyzedImageTagResponse(
-                                tagId = 11L,
-                                name = "C++",
-                            ),
-                            AnalyzedImageTagResponse(
-                                tagId = 12L,
-                                name = "공부",
-                            ),
-                        ),
-                        categories = listOf(
-                            AnalyzedImageCategoryResponse(
-                                categoryId = 3L,
-                                name = "개발",
-                            ),
-                        ),
-                        createdAt = "2026-07-16T06:00:00.000Z",
+                        tags = listOf("C++", "공부"),
+                        uploadedAt = "2026-07-16T06:00:00.000Z",
+                        category = "개발",
                     ),
                 ),
                 page = 0,
@@ -117,18 +98,13 @@ class DefaultAnalyzedImageRepositoryTest {
                     )
 
                     assertEquals(
-                        "$BASE_URL/images/1024.jpg",
+                        "/images/1024.jpg",
                         image.thumbnailUrl,
                     )
 
                     assertEquals(
                         listOf("C++", "공부"),
                         image.hashtags,
-                    )
-
-                    assertEquals(
-                        ImageAnalysisStatus.COMPLETED,
-                        image.status,
                     )
 
                     assertTrue(image.favorite)
@@ -149,39 +125,23 @@ class DefaultAnalyzedImageRepositoryTest {
         runTest(testDispatcher) {
             val response = AnalyzedImageDetailResponse(
                 imageId = 101L,
-                fileName = "Screenshot_20260723_154210.png",
-                contentHash = "test-content-hash",
-                status = "COMPLETED",
-                favorite = false,
-                title = "삼성전자 주가 전망 및 투자 분석",
-                summary = "삼성전자 주가와 투자 전망을 분석한 이미지입니다.",
-                ocr = OcrResponse(
-                    rawText = "삼성전자 주가 전망",
-                    refinedText = "삼성전자 주가 전망 및 투자 분석",
-                    confidence = 0.96,
-                ),
-                tags = listOf(
-                    AnalyzedImageTagResponse(
-                        tagId = 21L,
-                        name = "주식",
-                    ),
-                    AnalyzedImageTagResponse(
-                        tagId = 22L,
-                        name = "삼성전자",
-                    ),
-                ),
-                categories = listOf(
-                    AnalyzedImageCategoryResponse(
-                        categoryId = 5L,
-                        name = "금융",
-                    ),
-                ),
-                analysisConfidence = 0.94,
                 imageUrl = "/images/101/source",
-                createdAt = "2026-07-23T06:42:10.000Z",
-                uploadedAt = "2026-07-23T06:42:12.000Z",
-                updatedAt = "2026-07-23T06:43:01.000Z",
-                lastViewedAt = "2026-07-23T07:15:30.000Z",
+                thumbnailUrl = "/images/101/thumbnail",
+                title = "삼성전자 주가 전망 및 투자 분석",
+                favorite = false,
+                summary = "삼성전자 주가와 투자 전망을 분석한 이미지입니다.",
+                category = "금융",
+                tags = listOf(
+                    "주식",
+                    "삼성전자",
+                ),
+                keyInformation = listOf(
+                    "삼성전자",
+                    "주가 전망",
+                    "투자 분석",
+                ),
+                isDocumented = true,
+                isCalendared = false,
             )
 
             whenever(
@@ -203,25 +163,30 @@ class DefaultAnalyzedImageRepositoryTest {
                     )
 
                     assertEquals(
-                        "Screenshot_20260723_154210.png",
-                        image.fileName,
+                        "/images/101/source",
+                        image.imageUrl,
                     )
 
                     assertEquals(
-                        ImageAnalysisStatus.COMPLETED,
-                        image.status,
+                        "/images/101/thumbnail",
+                        image.thumbnailUrl,
                     )
-
-                    assertFalse(image.favorite)
 
                     assertEquals(
                         "삼성전자 주가 전망 및 투자 분석",
                         image.title,
                     )
 
+                    assertFalse(image.favorite)
+
                     assertEquals(
                         "삼성전자 주가와 투자 전망을 분석한 이미지입니다.",
                         image.summary,
+                    )
+
+                    assertEquals(
+                        "금융",
+                        image.category,
                     )
 
                     assertEquals(
@@ -230,29 +195,26 @@ class DefaultAnalyzedImageRepositoryTest {
                     )
 
                     assertEquals(
-                        "금융",
-                        image.categories.name,
+                        emptyList<String>(),
+                        image.extractedTexts,
                     )
 
                     assertEquals(
-                        "$BASE_URL/images/101/source",
-                        image.imageUrl,
+                        listOf(
+                            "삼성전자",
+                            "주가 전망",
+                            "투자 분석",
+                        ),
+                        image.keyInformation,
                     )
 
-                    assertEquals(
-                        "삼성전자 주가 전망",
-                        image.ocr?.rawText,
-                    )
+                    assertTrue(image.isDocumented)
+
+                    assertFalse(image.isCalendared)
 
                     assertEquals(
-                        "삼성전자 주가 전망 및 투자 분석",
-                        image.ocr?.refinedText,
-                    )
-
-                    assertEquals(
-                        0.96,
-                        requireNotNull(image.ocr).confidence,
-                        0.0,
+                        0L,
+                        image.updatedAt,
                     )
 
                     awaitComplete()
@@ -264,9 +226,4 @@ class DefaultAnalyzedImageRepositoryTest {
                 imageId = 101L,
             )
         }
-
-    private companion object {
-        const val BASE_URL =
-            "https://i15d207.p.ssafy.io"
-    }
 }

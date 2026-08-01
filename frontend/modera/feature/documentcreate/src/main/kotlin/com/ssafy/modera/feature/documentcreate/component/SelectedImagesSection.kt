@@ -47,7 +47,6 @@ import com.ssafy.modera.core.designsystem.component.Text
 import com.ssafy.modera.core.designsystem.icon.ModeraIcons
 import com.ssafy.modera.core.designsystem.theme.ModeraTheme
 import com.ssafy.modera.core.model.analyzedimage.AnalyzedImage
-import com.ssafy.modera.core.model.analyzedimage.ImageAnalysisStatus
 import com.ssafy.modera.feature.documentcreate.R
 import kotlinx.coroutines.flow.first
 
@@ -262,7 +261,6 @@ private val previewAnalyzedImages = List(5) { index ->
         summary = "문서화를 위해 선택된 분석 이미지입니다.",
         thumbnailUrl = "https://picsum.photos/seed/document-$index/300/300",
         hashtags = listOf("여행", "일정", "예약"),
-        status = ImageAnalysisStatus.COMPLETED,
         favorite = false,
     )
 }

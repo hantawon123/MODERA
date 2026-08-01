@@ -1,5 +1,6 @@
 package com.ssafy.modera.feature.analyzedimagedetail
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ssafy.modera.core.common.result.Result
@@ -49,6 +50,7 @@ class AnalyzedImageDetailViewModel @AssistedInject constructor(
                         }
 
                         is Result.Error -> {
+                            Log.d("testaaa", "${result.exception.message}")
                             AnalyzedImageDetailUiState.Error(
                                 exception = result.exception,
                             )
@@ -58,7 +60,7 @@ class AnalyzedImageDetailViewModel @AssistedInject constructor(
         }
     }
 
-    fun reanalyzeAnalyzedImage() {
+    fun reanalyzeImage() {
         if (uiState.value !is AnalyzedImageDetailUiState.Success) {
             return
         }
@@ -67,7 +69,7 @@ class AnalyzedImageDetailViewModel @AssistedInject constructor(
 
         viewModelScope.launch {
             analyzedImageRepository
-                .reanalyzeAnalyzedImage(
+                .reanalyzeImage(
                     imageId = imageId,
                 )
                 .flatMapLatest {
@@ -127,6 +129,63 @@ class AnalyzedImageDetailViewModel @AssistedInject constructor(
                 }
         }
     }
+
+    private var isFavoriteUpdating = false
+
+    fun toggleAnalyzedImageFavorite() {
+        val currentState =
+            uiState.value as? AnalyzedImageDetailUiState.Success
+                ?: return
+
+        if (isFavoriteUpdating) return
+
+        val previousImage = currentState.image
+        val updatedFavorite = !previousImage.favorite
+
+        // 클릭 즉시 화면에 반영
+        uiState.value = currentState.copy(
+            image = previousImage.copy(
+                favorite = updatedFavorite,
+            ),
+        )
+
+        isFavoriteUpdating = true
+
+        viewModelScope.launch {
+            analyzedImageRepository
+                .setAnalyzedImageFavorite(
+                    imageId = imageId,
+                    favorite = updatedFavorite,
+                )
+                .asResult()
+                .collect { result ->
+                    when (result) {
+                        Result.Loading -> Unit
+
+                        is Result.Success -> {
+                            isFavoriteUpdating = false
+                        }
+
+                        is Result.Error -> {
+                            isFavoriteUpdating = false
+
+                            // 실패하면 기존 값으로 복구
+                            val latestState =
+                                uiState.value as? AnalyzedImageDetailUiState.Success
+
+                            if (latestState != null) {
+                                uiState.value = latestState.copy(
+                                    image = latestState.image.copy(
+                                        favorite = previousImage.favorite,
+                                    ),
+                                )
+                            }
+                        }
+                    }
+                }
+        }
+    }
+
     @AssistedFactory
     interface Factory {
         fun create(

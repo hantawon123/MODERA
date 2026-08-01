@@ -24,7 +24,12 @@ interface AnalyzedImageRepository {
         selectedImageIds: List<Long>,
     ): Flow<List<AnalyzedImage>>
 
-    fun reanalyzeAnalyzedImage(imageId: Long): Flow<Unit>
+    fun setAnalyzedImageFavorite(
+        imageId: Long,
+        favorite: Boolean,
+    ): Flow<Unit>
+
+    fun reanalyzeImage(imageId: Long): Flow<Unit>
 
     fun deleteAnalyzedImage(imageId: Long): Flow<Unit>
 }

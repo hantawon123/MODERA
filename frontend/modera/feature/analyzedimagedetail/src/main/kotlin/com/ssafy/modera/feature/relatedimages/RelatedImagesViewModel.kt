@@ -1,5 +1,6 @@
 package com.ssafy.modera.feature.relatedimages
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ssafy.modera.core.common.result.Result
@@ -36,6 +37,7 @@ class RelatedImagesViewModel @AssistedInject constructor(
                         if (result.data.isEmpty()) {
                             RelatedImagesUiState.Empty
                         } else {
+                            Log.d("testaaa", "RelatedImagesViewModel - uiState: ${result.data}")
                             RelatedImagesUiState.Success(
                                 relatedImages = result.data,
                             )
@@ -44,8 +46,7 @@ class RelatedImagesViewModel @AssistedInject constructor(
 
                     is Result.Error -> {
                         RelatedImagesUiState.Error(
-                            message = result.exception.message
-                                ?: DEFAULT_ERROR_MESSAGE,
+                            message = DEFAULT_ERROR_MESSAGE,
                         )
                     }
                 }

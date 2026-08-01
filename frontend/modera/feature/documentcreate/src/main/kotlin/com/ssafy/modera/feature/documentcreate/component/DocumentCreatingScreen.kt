@@ -284,7 +284,6 @@ private val previewDocumentCreatingImages =
                 "SW",
                 "개발",
             ),
-            status = ImageAnalysisStatus.COMPLETED,
             favorite = false,
         ),
         AnalyzedImage(
@@ -298,7 +297,6 @@ private val previewDocumentCreatingImages =
                 "참가신청",
                 "서울",
             ),
-            status = ImageAnalysisStatus.COMPLETED,
             favorite = false,
         ),
         AnalyzedImage(
@@ -312,7 +310,6 @@ private val previewDocumentCreatingImages =
                 "발표",
                 "제출",
             ),
-            status = ImageAnalysisStatus.COMPLETED,
             favorite = false,
         ),
     )

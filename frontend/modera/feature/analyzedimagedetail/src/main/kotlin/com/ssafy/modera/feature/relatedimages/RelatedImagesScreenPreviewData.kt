@@ -55,7 +55,6 @@ private val previewRelatedImages = List(3) { index ->
             "예약",
             "KTX",
         ),
-        status = ImageAnalysisStatus.COMPLETED,
         favorite = false,
     )
 }

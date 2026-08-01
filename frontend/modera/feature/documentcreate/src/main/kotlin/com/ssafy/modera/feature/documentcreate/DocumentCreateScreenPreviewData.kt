@@ -66,7 +66,6 @@ internal val previewDocumentCreateImages =
                 "예약",
                 "KTX",
             ),
-            status = ImageAnalysisStatus.COMPLETED,
             favorite = false,
         )
     }

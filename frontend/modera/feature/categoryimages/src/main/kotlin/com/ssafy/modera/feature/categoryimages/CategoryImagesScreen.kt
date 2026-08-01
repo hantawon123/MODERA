@@ -293,7 +293,6 @@ private val previewAnalyzedImageSummaries = List(12) { index ->
             "삼성전자",
             "투자",
         ),
-        status = ImageAnalysisStatus.COMPLETED,
         favorite = index % 3 == 0,
     )
 }

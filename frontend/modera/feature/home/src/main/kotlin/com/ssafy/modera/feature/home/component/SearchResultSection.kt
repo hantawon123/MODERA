@@ -102,7 +102,6 @@ private fun SearchResultSectionPreview() {
                     summary = "올해 성심당 케이크 메뉴 리스트로, 샤인머스켓 시루, 귤 시루, 맛있겠다.",
                     thumbnailUrl = "",
                     hashtags = listOf("기차", "예약", "KTX"),
-                    status = ImageAnalysisStatus.COMPLETED,
                 ),
                 AnalyzedImage(
                     id = 2,
@@ -110,7 +109,6 @@ private fun SearchResultSectionPreview() {
                     summary = "에그 베네딕트와 팬케이크 레시피 모음.",
                     thumbnailUrl = "",
                     hashtags = listOf("음식", "레시피"),
-                    status = ImageAnalysisStatus.COMPLETED,
                 ),
             ),
             isLoading = false,

@@ -68,7 +68,7 @@ class DefaultAnalyzedImageRepositoryTest {
                                 name = "공부",
                             ),
                         ),
-                        categories = listOf(
+                        category = listOf(
                             AnalyzedImageCategoryResponse(
                                 categoryId = 3L,
                                 name = "개발",

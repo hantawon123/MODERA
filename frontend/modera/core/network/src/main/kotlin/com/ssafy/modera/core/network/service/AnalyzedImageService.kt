@@ -3,8 +3,10 @@ package com.ssafy.modera.core.network.service
 import com.skydoves.sandwich.ApiResponse
 import com.ssafy.modera.core.network.model.BaseResponse
 import com.ssafy.modera.core.network.model.analyzedimage.AnalyzedImageDetailResponse
+import com.ssafy.modera.core.network.model.analyzedimage.AnalyzedImageResponse
 import com.ssafy.modera.core.network.model.analyzedimage.AnalyzedImagesResponse
 import com.ssafy.modera.core.network.model.analyzedimage.DeleteAnalyzedImagesRequest
+import com.ssafy.modera.core.network.model.analyzedimage.RelatedImagesResponse
 import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.HTTP
@@ -30,6 +32,12 @@ interface AnalyzedImageService {
     suspend fun fetchAnalyzedImageDetail(
         @Path("imageId") imageId: Long,
     ): ApiResponse<BaseResponse<AnalyzedImageDetailResponse>>
+
+    @GET("api/v1/images/{imageId}/similar")
+    suspend fun fetchRelatedImages(
+        @Path("imageId") imageId: Long,
+        @Query("limit") limit: Int,
+    ): ApiResponse<BaseResponse<RelatedImagesResponse>>
 
     @HTTP(
         method = "DELETE",

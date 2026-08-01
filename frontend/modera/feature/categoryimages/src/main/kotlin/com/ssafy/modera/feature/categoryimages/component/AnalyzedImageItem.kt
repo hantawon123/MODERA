@@ -243,6 +243,5 @@ private val previewAnalyzedImage = AnalyzedImage(
         "삼성전자",
         "투자정보",
     ),
-    status = ImageAnalysisStatus.COMPLETED,
     favorite = false,
 )

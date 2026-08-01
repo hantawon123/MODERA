@@ -48,6 +48,16 @@ class DefaultCalendarRepository @Inject constructor(
         emit(Unit)
     }.flowOn(ioDispatcher)
 
+    override fun deleteSchedule(
+        scheduleId: Long,
+    ): Flow<Unit> = flow {
+        val response = calendarClient.deleteSchedule(scheduleId)
+        if (!response.deleted) {
+            error("일정 삭제에 실패했습니다.")
+        }
+        emit(Unit)
+    }.flowOn(ioDispatcher)
+
     private suspend fun fetchAllSchedules(
         request: SchedulesRequest,
     ): List<ScheduleResponse> {

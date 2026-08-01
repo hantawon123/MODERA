@@ -2,7 +2,6 @@ package com.ssafy.modera.feature.documentcreate.navigation
 
 import androidx.navigation3.runtime.NavKey
 import com.ssafy.modera.core.model.analyzedimage.AnalyzedImage
-import com.ssafy.modera.core.model.analyzedimage.ImageAnalysisStatus
 import com.ssafy.modera.core.navigation.Navigator
 import kotlinx.serialization.Serializable
 

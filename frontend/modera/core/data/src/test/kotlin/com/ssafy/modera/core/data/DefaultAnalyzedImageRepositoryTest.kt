@@ -5,10 +5,8 @@ import com.ssafy.modera.core.data.repository.AnalyzedImageRepository
 import com.ssafy.modera.core.data.repository.DefaultAnalyzedImageRepository
 import com.ssafy.modera.core.model.analyzedimage.AnalyzedImageQuery
 import com.ssafy.modera.core.model.analyzedimage.ImageAnalysisStatus
-import com.ssafy.modera.core.network.model.analyzedimage.AnalyzedImageCategoryResponse
 import com.ssafy.modera.core.network.model.analyzedimage.AnalyzedImageDetailResponse
 import com.ssafy.modera.core.network.model.analyzedimage.AnalyzedImageResponse
-import com.ssafy.modera.core.network.model.analyzedimage.AnalyzedImageTagResponse
 import com.ssafy.modera.core.network.model.analyzedimage.AnalyzedImagesResponse
 import com.ssafy.modera.core.network.service.AnalyzedImageClient
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -52,29 +50,13 @@ class DefaultAnalyzedImageRepositoryTest {
                 list = listOf(
                     AnalyzedImageResponse(
                         imageId = 1024L,
-                        fileName = "Screenshot_20260716_101010.png",
                         title = "C++ 프로그래밍 입문",
                         summary = "C++ 입문서 정보",
-                        status = "COMPLETED",
                         favorite = true,
                         thumbnailUrl = "/images/1024.jpg",
-                        tags = listOf(
-                            AnalyzedImageTagResponse(
-                                tagId = 11L,
-                                name = "C++",
-                            ),
-                            AnalyzedImageTagResponse(
-                                tagId = 12L,
-                                name = "공부",
-                            ),
-                        ),
-                        category = listOf(
-                            AnalyzedImageCategoryResponse(
-                                categoryId = 3L,
-                                name = "개발",
-                            ),
-                        ),
+                        tags = listOf("C++", "공부"),
                         createdAt = "2026-07-16T06:00:00.000Z",
+                        category = "개발",
                     ),
                 ),
                 page = 0,
@@ -116,18 +98,13 @@ class DefaultAnalyzedImageRepositoryTest {
                     )
 
                     assertEquals(
-                        "$BASE_URL/images/1024.jpg",
+                        "/images/1024.jpg",
                         image.thumbnailUrl,
                     )
 
                     assertEquals(
                         listOf("C++", "공부"),
                         image.hashtags,
-                    )
-
-                    assertEquals(
-                        ImageAnalysisStatus.COMPLETED,
-                        image.status,
                     )
 
                     assertTrue(image.favorite)
@@ -186,12 +163,12 @@ class DefaultAnalyzedImageRepositoryTest {
                     )
 
                     assertEquals(
-                        "$BASE_URL/images/101/source",
+                        "/images/101/source",
                         image.imageUrl,
                     )
 
                     assertEquals(
-                        "$BASE_URL/images/101/thumbnail",
+                        "/images/101/thumbnail",
                         image.thumbnailUrl,
                     )
 
@@ -249,9 +226,4 @@ class DefaultAnalyzedImageRepositoryTest {
                 imageId = 101L,
             )
         }
-
-    private companion object {
-        const val BASE_URL =
-            "https://i15d207.p.ssafy.io"
-    }
 }

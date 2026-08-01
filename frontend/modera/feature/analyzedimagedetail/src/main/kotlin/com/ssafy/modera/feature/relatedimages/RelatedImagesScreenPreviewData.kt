@@ -2,7 +2,6 @@ package com.ssafy.modera.feature.relatedimages
 
 import androidx.compose.ui.tooling.preview.PreviewParameterProvider
 import com.ssafy.modera.core.model.analyzedimage.AnalyzedImage
-import com.ssafy.modera.core.model.analyzedimage.ImageAnalysisStatus
 
 internal data class RelatedImagesScreenPreviewData(
     val name: String,

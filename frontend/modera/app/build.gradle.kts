@@ -65,6 +65,7 @@ dependencies {
     implementation(projects.feature.categoryimages)
     implementation(projects.feature.analyzedimagedetail)
     implementation(projects.feature.imageviewer)
+    implementation(projects.feature.documentcreate)
 
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.navigation3.ui)

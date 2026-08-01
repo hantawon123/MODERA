@@ -10,15 +10,10 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawing
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
@@ -46,6 +41,7 @@ import com.ssafy.modera.core.designsystem.component.ModeraIconButtonDefaults
 import com.ssafy.modera.core.designsystem.component.Text
 import com.ssafy.modera.core.designsystem.icon.ModeraIcons
 import com.ssafy.modera.core.designsystem.theme.ModeraTheme
+import com.ssafy.modera.core.model.analyzedimage.AnalyzedImage
 import com.ssafy.modera.core.model.analyzedimage.AnalyzedImageDetail
 import com.ssafy.modera.core.ui.ErrorScreen
 import com.ssafy.modera.core.ui.LoadingScreen
@@ -67,6 +63,7 @@ internal fun AnalyzedImageDetailScreen(
     onBackClick: () -> Unit,
     onImageClick: (String) -> Unit,
     onFavoriteClick: () -> Unit,
+    onCreateDocumentClick: (AnalyzedImage) -> Unit,
     onDocumentClick: () -> Unit,
     onScheduleClick: () -> Unit,
     onRelatedImagesClick: (Long, String) -> Unit,
@@ -81,6 +78,7 @@ internal fun AnalyzedImageDetailScreen(
         onBackClick = onBackClick,
         onImageClick = onImageClick,
         onFavoriteClick = onFavoriteClick,
+        onCreateDocumentClick = onCreateDocumentClick,
         onDocumentClick = onDocumentClick,
         onScheduleClick = onScheduleClick,
         onReanalyzeClick = viewModel::reanalyzeAnalyzedImage,
@@ -100,6 +98,7 @@ private fun AnalyzedImageDetailScreen(
     onBackClick: () -> Unit,
     onImageClick: (String) -> Unit,
     onFavoriteClick: () -> Unit,
+    onCreateDocumentClick: (AnalyzedImage) -> Unit,
     onDocumentClick: () -> Unit,
     onScheduleClick: () -> Unit,
     onReanalyzeClick: () -> Unit,
@@ -158,7 +157,19 @@ private fun AnalyzedImageDetailScreen(
             onDismissMenu = {
                 menuExpanded = false
             },
-            onDocumentClick = onDocumentClick,
+            onDocumentClick = {
+                if (uiState is AnalyzedImageDetailUiState.Success) {
+                    onCreateDocumentClick(
+                        AnalyzedImage(
+                            id = uiState.image.id,
+                            title = uiState.image.title,
+                            summary = uiState.image.summary,
+                            thumbnailUrl = uiState.image.imageUrl,
+                            hashtags = uiState.image.tags,
+                        )
+                    )
+                }
+            },
             onReanalyzeClick = {
                 menuExpanded = false
                 dialog = AnalyzedImageDetailDialog.REANALYZE
@@ -443,6 +454,7 @@ private fun AnalyzedImageDetailScreenPreview(
                             )
                         }
                     },
+                    onCreateDocumentClick = {},
                     onDocumentClick = {},
                     onScheduleClick = {},
                     onReanalyzeClick = {},

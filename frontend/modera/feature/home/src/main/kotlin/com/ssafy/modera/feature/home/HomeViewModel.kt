@@ -32,6 +32,12 @@ class HomeViewModel @Inject constructor(
 ) : ViewModel() {
     private val searchState = MutableStateFlow(HomeSearchState())
 
+    init {
+        viewModelScope.launch {
+            categoryRepository.refreshCategoriesIfEmpty()
+        }
+    }
+
     val uiState: StateFlow<HomeUiState> =
         combine(
             categoryRepository

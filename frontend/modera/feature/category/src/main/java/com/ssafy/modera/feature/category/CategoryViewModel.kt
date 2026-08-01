@@ -36,6 +36,12 @@ class CategoryViewModel @Inject constructor(
     private val showCategorySheet = MutableStateFlow(false)
     private val showSortPopup = MutableStateFlow(false)
 
+    init {
+        viewModelScope.launch {
+            categoryRepository.refreshCategoriesIfEmpty()
+        }
+    }
+
     private val categoriesResult = categoryRepository
         .observeCategories()
         .asResult()

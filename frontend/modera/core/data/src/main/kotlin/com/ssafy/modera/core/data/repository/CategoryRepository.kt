@@ -9,5 +9,7 @@ interface CategoryRepository {
 
     suspend fun refreshCategories()
 
+    suspend fun refreshCategoriesIfEmpty()
+
     suspend fun clearNewCategoryFlags()
 }

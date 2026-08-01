@@ -9,7 +9,7 @@ data class AnalyzedImageResponse(
     val title: String,
     val summary: String,
     val favorite: Boolean,
-    val thumbnailUrl: String,
+    val thumbnailUrl: String?,
     val tags: List<String>,
     val category: String,
     val uploadedAt: String? = null,
@@ -20,7 +20,7 @@ fun AnalyzedImageResponse.asExternalModel(): AnalyzedImage =
         id = imageId,
         title = title,
         summary = summary,
-        thumbnailUrl = thumbnailUrl,
+        thumbnailUrl = thumbnailUrl.orEmpty(),
         hashtags = tags,
         favorite = favorite,
     )

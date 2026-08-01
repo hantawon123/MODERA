@@ -7,15 +7,10 @@ sealed interface DocumentCreateUiState {
     data object Loading : DocumentCreateUiState
 
     data class Success(
-        val selectedImages: List<AnalyzedImage>,
         val recommendedImages: List<AnalyzedImage>,
-        val isRecommendationLoading: Boolean = false,
-        val isCreating: Boolean = false,
-    ) : DocumentCreateUiState {
+    ) : DocumentCreateUiState
 
-        val canCreateDocument: Boolean
-            get() = selectedImages.size > 1 && !isCreating
-    }
+    data object Creating : DocumentCreateUiState
 
     data class Error(
         val exception: Throwable,

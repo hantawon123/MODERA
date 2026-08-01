@@ -30,13 +30,14 @@ import com.ssafy.modera.feature.home.component.HomeSearchBarSection
 import com.ssafy.modera.feature.home.component.HomeSearchFocusEffect
 import com.ssafy.modera.feature.home.component.HomeUpperSection
 import com.ssafy.modera.feature.home.component.rememberHomeSearchLayoutState
+import com.ssafy.modera.feature.home.state.HomeUiState
 
 @Composable
 fun HomeRoute(
     onCalendarClick: () -> Unit,
     onSettingsClick: () -> Unit,
     onCategoryClick: (Category) -> Unit,
-    onSearchResultClick: (Int) -> Unit,
+    onSearchResultClick: (Long) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
@@ -58,8 +59,8 @@ fun HomeRoute(
                 onSearchQueryChange = viewModel::onSearchQueryChanged,
                 onSearchBarFocusChange = viewModel::onSearchBarFocusChanged,
                 onSearchSubmit = viewModel::submitSearch,
-                onRecentSearchClick = viewModel::selectRecentSearch,
-                onRecentSearchDelete = viewModel::removeRecentSearchTerm,
+                onRecentSearchClick = viewModel::selectRecentSearchQuery,
+                onRecentSearchDelete = viewModel::removeRecentSearchQuery,
                 onSearchDeactivate = viewModel::deactivateSearch,
                 onSearchResultClick = onSearchResultClick,
                 modifier = modifier,
@@ -86,7 +87,7 @@ private fun HomeSuccessScreen(
     onRecentSearchClick: (String) -> Unit,
     onRecentSearchDelete: (String) -> Unit,
     onSearchDeactivate: () -> Unit,
-    onSearchResultClick: (Int) -> Unit,
+    onSearchResultClick: (Long) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val searchFocusRequester = remember { FocusRequester() }

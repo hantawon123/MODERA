@@ -9,6 +9,8 @@ import com.ssafy.modera.core.network.service.CategoryClient
 import com.ssafy.modera.core.network.service.CategoryService
 import com.ssafy.modera.core.network.service.ImageClient
 import com.ssafy.modera.core.network.service.ImageService
+import com.ssafy.modera.core.network.service.search.SearchClient
+import com.ssafy.modera.core.network.service.search.SearchService
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -94,6 +96,20 @@ internal object NetworkModule {
         imageService: ImageService,
     ): ImageClient =
         ImageClient(imageService)
+
+    @Provides
+    @Singleton
+    fun provideSearchService(
+        retrofit: Retrofit,
+    ): SearchService =
+        retrofit.create(SearchService::class.java)
+
+    @Provides
+    @Singleton
+    fun provideSearchClient(
+        searchService: SearchService,
+    ): SearchClient =
+        SearchClient(searchService)
 
     @Provides
     @Singleton

@@ -53,9 +53,10 @@ import com.ssafy.modera.feature.calendar.navigation.calendarEntry
 import com.ssafy.modera.feature.calendar.navigation.navigateToCalendar
 import com.ssafy.modera.feature.category.navigation.categoryEntry
 import com.ssafy.modera.feature.category.navigation.navigateToCategorySearch
+import com.ssafy.modera.feature.category.navigation.navigateToCategoryTab
 import com.ssafy.modera.feature.categoryimages.navigation.categoryImagesEntry
-import com.ssafy.modera.feature.categoryimages.navigation.navigateToCategoryImages
 import com.ssafy.modera.feature.favorite.navigation.favoritesEntry
+import com.ssafy.modera.feature.category.navigation.CategoryNavKey
 import com.ssafy.modera.feature.home.HomeAnalysisState
 import com.ssafy.modera.feature.home.LocalHomeAnalysisState
 import com.ssafy.modera.feature.home.navigation.HomeNavKey
@@ -108,6 +109,7 @@ internal fun ModeraApp(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val navigator = remember { Navigator(appState.navigationState) }
+    val handleBack = rememberModeraBackHandler(navigator)
     val homeAnalysisState = remember(viewModel) {
         HomeAnalysisState(onDismissRequest = viewModel::dismissAnalysisBanner)
     }
@@ -134,7 +136,7 @@ internal fun ModeraApp(
     )
 
     val isTopLevelDestination =
-        appState.navigationState.currentKey == appState.navigationState.currentTopLevelKey
+        appState.navigationState.currentSubStack.size == 1
 
     CompositionLocalProvider(
         LocalHomeAnalysisState provides homeAnalysisState,
@@ -164,7 +166,15 @@ internal fun ModeraApp(
                                         ?: error("Bottom nav item requires iconTextId: $navKey")
                                     ModeraBottomNavigationItem(
                                         selected = navKey == appState.navigationState.currentTopLevelKey,
-                                        onClick = { navigator.navigate(navKey) },
+                                        onClick = {
+                                            if (navKey == CategoryNavKey()) {
+                                                navigator.navigateToCategoryTab(
+                                                    selectedCategoryId = null,
+                                                )
+                                            } else {
+                                                navigator.navigate(navKey)
+                                            }
+                                        },
                                         iconRes = navItem.icon,
                                         label = stringResource(labelRes),
                                     )
@@ -198,7 +208,7 @@ internal fun ModeraApp(
                     // Only show the top app bar on top level destinations.
                     var shouldShowTopAppBar = false
 
-                    if (appState.navigationState.currentKey in appState.navigationState.topLevelKeys) {
+                    if (appState.navigationState.currentSubStack.size == 1) {
                         shouldShowTopAppBar = true
 
                         val destination =
@@ -218,13 +228,16 @@ internal fun ModeraApp(
                         val listDetailStrategy = rememberListDetailSceneStrategy<NavKey>()
 
                         SharedTransitionLayout {
+                            ModeraBackHandler(onBack = handleBack)
+
                             val entryProvider = entryProvider {
                                 homeEntry(
-                                    onCategoryClick = navigator::navigateToCategoryImages,
+                                    onCategoryClick = navigator::navigateToCategoryTab,
                                     onCalendarClick = navigator::navigateToCalendar,
+                                    onSearchResultClick = navigator::navigateToImageDetail,
                                 )
                                 categoryEntry(
-                                    onBackClick = navigator::goBack,
+                                    onBackClick = handleBack,
                                     onSearchIconClick = navigator::navigateToCategorySearch,
                                     onItemClick = { /* TODO: 자료 상세 연결 */ },
                                 )
@@ -232,29 +245,34 @@ internal fun ModeraApp(
                                     onItemClick = { /* TODO: 자료 상세 연결 */ },
                                 )
                                 calendarEntry(
-                                    onBackClick = navigator::goBack,
+                                    onBackClick = handleBack,
                                 )
                                 documentsEntry()
                                 categoryImagesEntry(
                                     navigator = navigator,
-                                    onImageClick = navigator::navigateToImageDetail
+                                    onImageClick = navigator::navigateToImageDetail,
+                                    onBackClick = handleBack,
                                 )
                                 analyzedImageDetailEntry(
                                     navigator = navigator,
                                     sharedTransitionScope = this@SharedTransitionLayout,
-                                    onImageClick = navigator::navigateToImageViewer
+                                    onImageClick = navigator::navigateToImageViewer,
+                                    onBackClick = handleBack,
                                 )
                                 imageViewerEntry(
                                     sharedTransitionScope = this@SharedTransitionLayout,
-                                    onBackClick = navigator::goBack
+                                    onBackClick = handleBack,
                                 )
-                                relatedImagesEntry(navigator)
+                                relatedImagesEntry(
+                                    navigator = navigator,
+                                    onBackClick = handleBack,
+                                )
                             }
 
                             NavDisplay(
                                 entries = appState.navigationState.toEntries(entryProvider),
 //                        sceneStrategy = listDetailStrategy,
-                                onBack = { navigator.goBack() },
+                                onBack = handleBack,
                             )
                         }
                     }

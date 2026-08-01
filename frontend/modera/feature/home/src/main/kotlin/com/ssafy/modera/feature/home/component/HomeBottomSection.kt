@@ -13,7 +13,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.unit.dp
 import com.ssafy.modera.core.model.category.Category
-import com.ssafy.modera.feature.home.HomeUiState
+import com.ssafy.modera.feature.home.state.HomeUiState
 
 @Composable
 internal fun HomeBottomSection(
@@ -23,7 +23,7 @@ internal fun HomeBottomSection(
     onRecentSearchClick: (String) -> Unit,
     onRecentSearchDelete: (String) -> Unit,
     onSearchDeactivate: () -> Unit,
-    onSearchResultClick: (Int) -> Unit,
+    onSearchResultClick: (Long) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val focusManager = LocalFocusManager.current
@@ -70,7 +70,7 @@ private fun HomeSearchContent(
     uiState: HomeUiState.Success,
     onRecentSearchClick: (String) -> Unit,
     onRecentSearchDelete: (String) -> Unit,
-    onSearchResultClick: (Int) -> Unit,
+    onSearchResultClick: (Long) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     when {
@@ -83,9 +83,9 @@ private fun HomeSearchContent(
             )
         }
 
-        uiState.recentSearchTerms.isNotEmpty() -> {
+        uiState.recentSearchQueries.isNotEmpty() -> {
             RecentSearchSection(
-                recentSearchTerms = uiState.recentSearchTerms,
+                recentSearchQueries = uiState.recentSearchQueries,
                 onRecentSearchClick = onRecentSearchClick,
                 onRecentSearchDelete = onRecentSearchDelete,
                 modifier = modifier.fillMaxSize(),

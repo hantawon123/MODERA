@@ -11,6 +11,8 @@ import com.ssafy.modera.api.domain.schedule.exception.ScheduleErrorCode;
 import com.ssafy.modera.api.domain.schedule.repository.ScheduleQueryRepository;
 import com.ssafy.modera.api.domain.schedule.repository.ScheduleRepository;
 import com.ssafy.modera.api.global.exception.BusinessException;
+import com.ssafy.modera.api.domain.notification.outbox.UserDataChangeOutboxService;
+import com.ssafy.modera.api.domain.notification.outbox.UserDataChangeResource;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,6 +29,7 @@ public class ScheduleCommandService {
     private final ImageScheduleRepository imageScheduleRepository;
     private final ScheduleQueryRepository scheduleQueryRepository;
     private final ImageQueryRepository imageQueryRepository;
+    private final UserDataChangeOutboxService userDataChangeOutboxService;
 
     @Transactional
     public ScheduleDeleteResponse delete(Integer userId, Integer scheduleId) {
@@ -52,6 +55,8 @@ public class ScheduleCommandService {
         if (imageSchedule != null && !otherCalendared) {
             imageQueryRepository.updateCalendared(userId, imageSchedule.getImageId(), false);
         }
+        userDataChangeOutboxService.record(
+                userId, UserDataChangeResource.SCHEDULE, String.valueOf(scheduleId));
 
         return new ScheduleDeleteResponse(scheduleId, true);
     }
@@ -75,6 +80,8 @@ public class ScheduleCommandService {
         if (imageCalendared != null) {
             imageQueryRepository.updateCalendared(userId, imageSchedule.getImageId(), imageCalendared);
         }
+        userDataChangeOutboxService.record(
+                userId, UserDataChangeResource.SCHEDULE, String.valueOf(scheduleId));
 
         return new ScheduleCalendarResponse(scheduleId, calendared, now);
     }

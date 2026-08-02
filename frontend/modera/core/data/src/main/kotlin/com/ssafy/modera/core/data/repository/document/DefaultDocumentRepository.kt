@@ -53,6 +53,33 @@ class DefaultDocumentRepository @Inject constructor(
         )
     }.flowOn(ioDispatcher)
 
+    override fun regenerateDocument(
+        documentId: Long,
+        clientRequestId: String,
+    ): Flow<DocumentDetail> = flow {
+        val response = documentClient.regenerateDocument(
+            documentId = documentId,
+            clientRequestId = clientRequestId,
+            imageIds = null,
+        )
+
+        emit(response.asExternalModel())
+    }.flowOn(ioDispatcher)
+
+    override fun reconstructDocument(
+        documentId: Long,
+        clientRequestId: String,
+        imageIds: List<Long>,
+    ): Flow<DocumentDetail> = flow {
+        val response = documentClient.regenerateDocument(
+            documentId = documentId,
+            clientRequestId = clientRequestId,
+            imageIds = imageIds,
+        )
+
+        emit(response.asExternalModel())
+    }.flowOn(ioDispatcher)
+
     override fun createDocument(
         clientRequestId: String,
         imageIds: List<Long>,

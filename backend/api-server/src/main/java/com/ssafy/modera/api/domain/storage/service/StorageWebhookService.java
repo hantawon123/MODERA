@@ -78,8 +78,6 @@ public class StorageWebhookService {
             return;
         }
 
-        boolean reupload = userImageRepository.existsByUserIdAndImageIdAndDelYn(
-                userImage.getUserId(), imageAsset.getImageId(), "Y");
         boolean alreadyUploaded = "UPLOADED".equals(imageAsset.getUploadStatus());
         if (alreadyUploaded && imageQueryRepository.isAnalysisActiveOrCompleted(
                 userImage.getUserId(), imageAsset.getImageId())) {
@@ -107,7 +105,7 @@ public class StorageWebhookService {
                 imageAsset.getS3Key(),
                 clientOcr
         );
-        String eventType = reupload
+        String eventType = alreadyUploaded
                 ? EventTypes.IMAGE_REUPLOAD
                 : EventTypes.IMAGE_UPLOADED;
         eventPublisher.publish(Streams.IMAGE_ANALYSIS, eventType, 1, payload);

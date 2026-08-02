@@ -83,6 +83,10 @@ management:
       show-details: always
       probes:
         enabled: true
+  # 메트릭에 application 라벨을 붙여 api와 라벨 체계를 맞춘다.
+  metrics:
+    tags:
+      application: ${spring.application.name}
 
 # [Logging] eventId(이벤트 컨슈머/퍼블리셔가 MDC에 심음)를 모든 로그 라인에 붙인다.
 # 콜백 수신용 웹서버가 생겼지만 api-server의 RequestIdFilter 같은 요청 ID 추적

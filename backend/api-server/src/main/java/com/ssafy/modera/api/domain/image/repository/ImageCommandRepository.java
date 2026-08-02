@@ -116,6 +116,19 @@ public class ImageCommandRepository {
                 userId,
                 imageId
         );
+        jdbcTemplate.update(
+                """
+                UPDATE library_schema.user_image_category_history history
+                SET del_yn = 'Y'
+                FROM library_schema.user_image user_image
+                WHERE history.user_image_id = user_image.user_image_id
+                  AND user_image.user_id = ?
+                  AND user_image.image_id = ?
+                  AND history.del_yn = 'N'
+                """,
+                userId,
+                imageId
+        );
 
         softDeleteDocumentRelations(userId, imageId, documentIds);
         softDeleteScheduleRelations(userId, imageId);

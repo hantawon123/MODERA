@@ -5,6 +5,7 @@ import com.ssafy.modera.api.domain.category.event.CategoryReanalysisResultCoordi
 import com.ssafy.modera.api.domain.category.repository.CategoryCommandRepository;
 import com.ssafy.modera.api.domain.image.exception.ImageErrorCode;
 import com.ssafy.modera.api.domain.image.repository.ImageQueryRepository;
+import com.ssafy.modera.api.domain.notification.outbox.UserDataChangeOutboxService;
 import com.ssafy.modera.api.global.exception.BusinessException;
 import com.ssafy.modera.contract.payload.CategoryReanalysisCompletedPayload;
 import com.ssafy.modera.contract.payload.CategoryReanalysisFailedPayload;
@@ -29,6 +30,7 @@ public class CategoryCommandService {
     private final ImageQueryRepository imageQueryRepository;
     private final CategoryReanalysisRequestDispatcher requestDispatcher;
     private final CategoryReanalysisResultCoordinator resultCoordinator;
+    private final UserDataChangeOutboxService userDataChangeOutboxService;
 
     @Value("${category.reanalysis.timeout:30s}")
     private Duration reanalysisTimeout;
@@ -64,6 +66,8 @@ public class CategoryCommandService {
                 payload.categoryRequestId(), payload.userId(), payload.imageId(),
                 payload.categoryId(), payload.categoryName())) {
             imageQueryRepository.synchronizeUserCategories(payload.userId());
+            userDataChangeOutboxService.record(
+                    payload.userId(), "IMAGE_CATEGORY", String.valueOf(payload.imageId()));
             afterCommit(() -> resultCoordinator.complete(payload));
         }
     }

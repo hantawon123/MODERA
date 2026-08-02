@@ -115,8 +115,7 @@ fun FavoritesScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(color = ModeraTheme.colors.white)
-            .statusBarTopPadding(),
+            .background(color = ModeraTheme.colors.white),
     ) {
         ModeraTopBar(
             leftContent = {

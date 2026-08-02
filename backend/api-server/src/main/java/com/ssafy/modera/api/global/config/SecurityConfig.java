@@ -29,6 +29,9 @@ public class SecurityConfig {
     private static final String[] PERMIT_ALL_PATHS = {
             "/actuator/health",
             "/actuator/health/**",
+            // Prometheus 스크레이프용, actuator는 관리 전용 포트 (9080)로만 열리고
+            // 그 포트는 컨테이너 밖으로 publish 하지 않아 외부 도달 불가능
+            "/actuator/prometheus",
             "/v3/api-docs/**",
             "/swagger-ui/**",
             "/swagger-ui.html",

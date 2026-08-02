@@ -19,7 +19,17 @@ class DefaultDocumentRepository @Inject constructor(
     @param:Dispatcher(ModeraDispatcher.IO) private val ioDispatcher: CoroutineDispatcher,
 ) : DocumentRepository {
 
-    override fun fetchDocuments(
+    override fun getDocumentDetail(
+        documentId: Long,
+    ): Flow<DocumentDetail> = flow {
+        val response = documentClient.fetchDocumentDetail(
+            documentId = documentId,
+        )
+
+        emit(response.asExternalModel())
+    }.flowOn(ioDispatcher)
+
+    override fun getDocuments(
         page: Int,
         sortType: DocumentSortType,
         onLastPageReached: () -> Unit,

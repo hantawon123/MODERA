@@ -1,4 +1,4 @@
-package com.ssafy.modera.feature.document
+package com.ssafy.modera.feature.document.component
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
@@ -19,6 +19,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.ssafy.modera.core.designsystem.component.Text
 import com.ssafy.modera.core.designsystem.theme.ModeraTheme
+import com.ssafy.modera.feature.document.R
 import com.ssafy.modera.core.ui.R as uiR
 
 @Composable

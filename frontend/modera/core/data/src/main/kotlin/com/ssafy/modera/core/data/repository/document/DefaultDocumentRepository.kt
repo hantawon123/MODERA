@@ -19,7 +19,17 @@ class DefaultDocumentRepository @Inject constructor(
     @param:Dispatcher(ModeraDispatcher.IO) private val ioDispatcher: CoroutineDispatcher,
 ) : DocumentRepository {
 
-    override fun fetchDocuments(
+    override fun getDocumentDetail(
+        documentId: Long,
+    ): Flow<DocumentDetail> = flow {
+        val response = documentClient.fetchDocumentDetail(
+            documentId = documentId,
+        )
+
+        emit(response.asExternalModel())
+    }.flowOn(ioDispatcher)
+
+    override fun getDocuments(
         page: Int,
         sortType: DocumentSortType,
         onLastPageReached: () -> Unit,
@@ -43,6 +53,33 @@ class DefaultDocumentRepository @Inject constructor(
         )
     }.flowOn(ioDispatcher)
 
+    override fun regenerateDocument(
+        documentId: Long,
+        clientRequestId: String,
+    ): Flow<DocumentDetail> = flow {
+        val response = documentClient.regenerateDocument(
+            documentId = documentId,
+            clientRequestId = clientRequestId,
+            imageIds = null,
+        )
+
+        emit(response.asExternalModel())
+    }.flowOn(ioDispatcher)
+
+    override fun reconstructDocument(
+        documentId: Long,
+        clientRequestId: String,
+        imageIds: List<Long>,
+    ): Flow<DocumentDetail> = flow {
+        val response = documentClient.regenerateDocument(
+            documentId = documentId,
+            clientRequestId = clientRequestId,
+            imageIds = imageIds,
+        )
+
+        emit(response.asExternalModel())
+    }.flowOn(ioDispatcher)
+
     override fun createDocument(
         clientRequestId: String,
         imageIds: List<Long>,
@@ -53,5 +90,15 @@ class DefaultDocumentRepository @Inject constructor(
         )
 
         emit(response.asExternalModel())
+    }.flowOn(ioDispatcher)
+
+    override fun deleteDocument(
+        documentId: Long,
+    ): Flow<Unit> = flow {
+        documentClient.deleteDocument(
+            documentId = documentId,
+        )
+
+        emit(Unit)
     }.flowOn(ioDispatcher)
 }

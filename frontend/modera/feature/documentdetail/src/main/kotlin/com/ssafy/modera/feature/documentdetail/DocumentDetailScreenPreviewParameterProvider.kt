@@ -22,6 +22,10 @@ internal class DocumentDetailScreenPreviewParameterProvider :
                 ),
             ),
             DocumentDetailScreenPreviewData(
+                name = "Reanalyzing",
+                uiState = DocumentDetailUiState.Reanalyzing,
+            ),
+            DocumentDetailScreenPreviewData(
                 name = "Loading",
                 uiState = DocumentDetailUiState.Loading,
             ),

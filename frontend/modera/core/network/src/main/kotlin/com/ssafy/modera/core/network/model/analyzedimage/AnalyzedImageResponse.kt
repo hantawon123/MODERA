@@ -13,6 +13,8 @@ data class AnalyzedImageResponse(
     val tags: List<String>,
     val category: String,
     val uploadedAt: String? = null,
+    val isDocumented: Boolean = false,
+    val isCalendared: Boolean = false,
 )
 
 fun AnalyzedImageResponse.asExternalModel(): AnalyzedImage =
@@ -23,4 +25,6 @@ fun AnalyzedImageResponse.asExternalModel(): AnalyzedImage =
         thumbnailUrl = thumbnailUrl.orEmpty(),
         hashtags = tags,
         favorite = favorite,
+        isDocumented = isDocumented,
+        hasSchedule = isCalendared,
     )

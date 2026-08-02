@@ -12,13 +12,16 @@ data class CategoryResponse(
     val latestUpdatedAt: String? = null,
 )
 
-fun CategoryResponse.asExternalModel(): Category =
+fun CategoryResponse.asExternalModel(
+    isNew: Boolean = false,
+): Category =
     Category(
         id = categoryId,
         title = name,
         thumbnailUrl = categoryImageUrl.toAbsoluteUrl(),
         itemCount = imageCount,
         tags = emptyList(),
+        isNew = isNew,
     )
 
 private fun String?.toAbsoluteUrl(): String? {

@@ -2,6 +2,7 @@ package com.ssafy.modera
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.ssafy.modera.core.data.repository.CategoryRepository
 import com.ssafy.modera.core.model.image.SelectedImage
 import com.ssafy.modera.media.ImageTextRecognizer
 import com.ssafy.modera.registration.ImageRegisterLogger
@@ -26,6 +27,7 @@ import kotlin.time.Duration.Companion.seconds
 @HiltViewModel
 class MainViewModel @Inject constructor(
     private val imageRegistrationHandler: ImageRegistrationHandler,
+    private val categoryRepository: CategoryRepository,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(MainUiState())
@@ -52,6 +54,10 @@ class MainViewModel @Inject constructor(
             }
 
             notifyRegisterSummary(totalCount = images.size)
+
+            if (_uiState.value.registeredImages.isNotEmpty()) {
+                categoryRepository.refreshCategories()
+            }
 
             delay(2.seconds)
             dismissAnalysisBanner()

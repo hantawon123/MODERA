@@ -62,7 +62,6 @@ dependencies {
     implementation(projects.feature.category)
     implementation(projects.feature.favorite)
     implementation(projects.feature.calendar)
-    implementation(projects.feature.categoryimages)
     implementation(projects.feature.analyzedimagedetail)
     implementation(projects.feature.imageviewer)
     implementation(projects.feature.document)

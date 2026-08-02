@@ -16,6 +16,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -35,12 +36,13 @@ import com.ssafy.modera.core.component.item.ModeraAnalyzedImageItem
 import com.ssafy.modera.core.component.rememberShowScrollToTop
 import com.ssafy.modera.core.designsystem.component.HorizontalDivider
 import com.ssafy.modera.core.designsystem.component.Icon
+import com.ssafy.modera.core.designsystem.component.LoadingWheel
 import com.ssafy.modera.core.designsystem.component.Text
 import com.ssafy.modera.core.designsystem.icon.ModeraIcons
 import com.ssafy.modera.core.designsystem.theme.ModeraTheme
 import com.ssafy.modera.core.model.analyzedimage.AnalyzedImage
+import com.ssafy.modera.core.model.analyzedimage.AnalyzedImageSortType
 import com.ssafy.modera.core.model.category.CategorySheetItem
-import com.ssafy.modera.core.model.category.CategorySortType
 import com.ssafy.modera.feature.category.component.CategoryTopSheet
 import kotlinx.coroutines.launch
 
@@ -78,9 +80,12 @@ fun CategoryRoute(
                 isAllCategorySelected = state.isAllCategorySelected,
                 categories = state.categories,
                 analyzedImages = state.analyzedImages,
+                totalImageCount = state.totalImageCount,
                 selectedSortType = state.selectedSortType,
                 showCategorySheet = state.showCategorySheet,
                 showSortPopup = state.showSortPopup,
+                isLoadingMore = state.isLoadingMore,
+                hasNextPage = state.hasNextPage,
                 onSearchIconClick = onSearchIconClick,
                 onCategoryTitleClick = viewModel::onCategoryTitleClick,
                 onCategorySheetDismiss = viewModel::onCategorySheetDismiss,
@@ -88,6 +93,7 @@ fun CategoryRoute(
                 onSortClick = viewModel::onSortClick,
                 onSortPopupDismiss = viewModel::onSortPopupDismiss,
                 onSortTypeSelect = viewModel::onSortTypeSelect,
+                onLoadMore = viewModel::loadNextPage,
                 onItemClick = onItemClick,
                 modifier = modifier,
             )
@@ -120,16 +126,20 @@ fun CategoryScreen(
     isAllCategorySelected: Boolean,
     categories: List<CategorySheetItem>,
     analyzedImages: List<AnalyzedImage>,
-    selectedSortType: CategorySortType,
+    totalImageCount: Long,
+    selectedSortType: AnalyzedImageSortType,
     showCategorySheet: Boolean,
     showSortPopup: Boolean,
+    isLoadingMore: Boolean,
+    hasNextPage: Boolean,
     onSearchIconClick: () -> Unit,
     onCategoryTitleClick: () -> Unit,
     onCategorySheetDismiss: () -> Unit,
     onCategorySelect: (Long) -> Unit,
     onSortClick: () -> Unit,
     onSortPopupDismiss: () -> Unit,
-    onSortTypeSelect: (CategorySortType) -> Unit,
+    onSortTypeSelect: (AnalyzedImageSortType) -> Unit,
+    onLoadMore: () -> Unit,
     onItemClick: (Long) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -140,6 +150,24 @@ fun CategoryScreen(
         stringResource(R.string.category_all)
     } else {
         selectedCategoryTitle
+    }
+    val displayImageCount = if (totalImageCount > 0) {
+        totalImageCount
+    } else {
+        analyzedImages.size.toLong()
+    }
+
+    LaunchedEffect(listState, hasNextPage, isLoadingMore) {
+        snapshotFlow {
+            val layoutInfo = listState.layoutInfo
+            val lastVisibleItemIndex = layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+            val totalItems = layoutInfo.totalItemsCount
+            lastVisibleItemIndex >= totalItems - CategoryScreenDefaults.LOAD_MORE_THRESHOLD
+        }.collect { shouldLoadMore ->
+            if (shouldLoadMore && hasNextPage && !isLoadingMore) {
+                onLoadMore()
+            }
+        }
     }
 
     Box(
@@ -206,7 +234,7 @@ fun CategoryScreen(
                                 Text(
                                     text = stringResource(
                                         R.string.category_item_count,
-                                        analyzedImages.size,
+                                        displayImageCount,
                                     ),
                                     modifier = Modifier.align(Alignment.CenterStart),
                                     style = ModeraTheme.typography.bodyR14,
@@ -216,7 +244,7 @@ fun CategoryScreen(
                                 ModeraSortSection(
                                     selectedLabel = selectedSortType.label,
                                     expanded = showSortPopup,
-                                    options = CategorySortType.entries,
+                                    options = AnalyzedImageSortType.entries,
                                     selectedOption = selectedSortType,
                                     labelOf = { it.label },
                                     onSortClick = onSortClick,
@@ -248,6 +276,23 @@ fun CategoryScreen(
                             modifier = Modifier.fillMaxWidth(),
                         )
                     }
+
+                    if (isLoadingMore) {
+                        item(key = "loading_more") {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 16.dp),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                LoadingWheel(
+                                    contentDescription = stringResource(
+                                        R.string.category_loading_more_description,
+                                    ),
+                                )
+                            }
+                        }
+                    }
                 }
 
                 CategoryTopSheet(
@@ -274,6 +319,7 @@ fun CategoryScreen(
 
 internal object CategoryScreenDefaults {
     val HorizontalPadding = 20.dp
+    const val LOAD_MORE_THRESHOLD = 3
 }
 
 @Preview(showBackground = true, widthDp = 360, heightDp = 780)
@@ -304,9 +350,12 @@ private fun CategoryScreenPreview() {
                     thumbnailUrl = "",
                 ),
             ),
-            selectedSortType = CategorySortType.UPDATED_DESC,
+            totalImageCount = 1,
+            selectedSortType = AnalyzedImageSortType.UPLOADED_DESC,
             showCategorySheet = false,
             showSortPopup = false,
+            isLoadingMore = false,
+            hasNextPage = false,
             onSearchIconClick = {},
             onCategoryTitleClick = {},
             onCategorySheetDismiss = {},
@@ -314,6 +363,7 @@ private fun CategoryScreenPreview() {
             onSortClick = {},
             onSortPopupDismiss = {},
             onSortTypeSelect = {},
+            onLoadMore = {},
             onItemClick = {},
         )
     }

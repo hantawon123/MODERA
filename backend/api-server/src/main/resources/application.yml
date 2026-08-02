@@ -95,3 +95,8 @@ management:
   metrics:
     tags:
       application: ${spring.application.name}
+    # 응답시간 백분위수(p95)를 계산하려면 히스토그램 버킷이 필요하다.
+    # 기본은 count/sum/max만 노출해서 histogram_quantile()을 쓸 수 없다.
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true

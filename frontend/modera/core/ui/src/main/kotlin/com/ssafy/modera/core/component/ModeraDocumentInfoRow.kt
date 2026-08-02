@@ -69,13 +69,13 @@ private fun InfoItem(
             imageVector = ImageVector.vectorResource(icon),
             contentDescription = null,
             modifier = Modifier.size(16.dp),
-            tint = ModeraTheme.colors.gray400,
+            tint = ModeraTheme.colors.gray700,
         )
 
         Text(
             text = text,
             style = ModeraTheme.typography.captionR12,
-            color = ModeraTheme.colors.gray400,
+            color = ModeraTheme.colors.gray700,
             maxLines = 1,
         )
     }

@@ -54,11 +54,12 @@ import com.ssafy.modera.feature.category.navigation.CategoryNavKey
 import com.ssafy.modera.feature.category.navigation.categoryEntry
 import com.ssafy.modera.feature.category.navigation.navigateToCategorySearch
 import com.ssafy.modera.feature.category.navigation.navigateToCategoryTab
+import com.ssafy.modera.feature.document.navigation.DocumentNavKey
 import com.ssafy.modera.feature.document.navigation.documentEntry
 import com.ssafy.modera.feature.documentcreate.navigation.documentCreateEntry
 import com.ssafy.modera.feature.documentcreate.navigation.navigateToDocumentCreate
+import com.ssafy.modera.feature.documentdetail.navigation.DocumentDetailNavKey
 import com.ssafy.modera.feature.documentdetail.navigation.documentDetailEntry
-import com.ssafy.modera.feature.documentdetail.navigation.navigateToDocumentDetail
 import com.ssafy.modera.feature.favorite.navigation.favoritesEntry
 import com.ssafy.modera.feature.home.HomeAnalysisState
 import com.ssafy.modera.feature.home.LocalHomeAnalysisState
@@ -364,4 +365,19 @@ internal fun ModeraApp(
             }
         }
     }
+}
+
+private fun Navigator.navigateToDocumentDetail(
+    documentId: Long,
+) {
+    navigateToTopLevelTab(
+        topLevelKey = DocumentNavKey,
+        rootKey = DocumentNavKey,
+    )
+
+    navigate(
+        DocumentDetailNavKey(
+            documentId = documentId,
+        ),
+    )
 }

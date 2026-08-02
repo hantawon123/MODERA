@@ -34,6 +34,7 @@ import com.ssafy.modera.core.model.DocumentDetail
 import com.ssafy.modera.core.ui.ErrorScreen
 import com.ssafy.modera.core.ui.LoadingScreen
 import com.ssafy.modera.feature.documentdetail.component.DocumentDetailHeader
+import com.ssafy.modera.feature.documentdetail.component.DocumentDetailSkeleton
 import com.ssafy.modera.feature.documentdetail.component.DocumentDetailTopBar
 import com.ssafy.modera.feature.documentdetail.component.DocumentMarkdownText
 
@@ -53,9 +54,7 @@ internal fun DocumentDetailScreen(
         uiState = uiState,
         onBackClick = onBackClick,
         onManageImagesClick = onManageImagesClick,
-        onReanalyzeClick = {
-            // Todo: api 연결 후 작성
-        },
+        onReanalyzeClick = viewModel::regenerateDocument,
         onDeleteClick = {
             viewModel.deleteDocument(onDeleted = onBackClick)
         },
@@ -144,6 +143,15 @@ private fun DocumentDetailScreen(
             DocumentDetailUiState.Loading -> {
                 LoadingScreen(
                     modifier = Modifier.weight(1f),
+                )
+            }
+
+            DocumentDetailUiState.Reanalyzing -> {
+                DocumentDetailSkeleton(
+                    scrollState = scrollState,
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(horizontal = 24.dp),
                 )
             }
 

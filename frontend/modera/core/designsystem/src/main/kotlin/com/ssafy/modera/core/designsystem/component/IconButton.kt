@@ -19,7 +19,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.ssafy.modera.core.designsystem.R
-import com.ssafy.modera.core.designsystem.R.*
 import com.ssafy.modera.core.designsystem.theme.LocalModeraContentColor
 import com.ssafy.modera.core.designsystem.theme.ModeraTheme
 
@@ -100,7 +99,9 @@ private fun IconButtonContainer(
             .size(size)
             .padding(padding)
             .then(modifier),
-        onClick = onClick,
+        onClick = {
+            if (enabled) onClick()
+        },
         color = if (enabled) colors.containerColor else colors.disabledContainerColor,
         interactionSource = interactionSource,
         indication = indication

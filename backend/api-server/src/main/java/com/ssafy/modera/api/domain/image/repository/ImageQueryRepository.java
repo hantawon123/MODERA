@@ -445,7 +445,8 @@ public class ImageQueryRepository {
     private String orderBy(String sort) {
         return switch (sort) {
             case "TITLE_ASC" ->
-                    " ORDER BY LOWER(COALESCE(image_view.title, '')) ASC, image_view.image_id ASC";
+                    " ORDER BY LOWER(COALESCE(image_view.title, '')) " +
+                            "COLLATE \"ko-KR-x-icu\" ASC, image_view.image_id ASC";
             case "UPLOADED_ASC" ->
                     " ORDER BY image_view.uploaded_at ASC NULLS LAST, image_view.image_id ASC";
             default ->

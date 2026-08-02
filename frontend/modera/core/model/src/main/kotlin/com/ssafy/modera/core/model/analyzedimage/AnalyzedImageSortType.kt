@@ -5,7 +5,7 @@ enum class AnalyzedImageSortType(
     val queryValue: String,
 ) {
     UPLOADED_DESC(
-        label = "최신 업로드순",
+        label = "업로드순",
         queryValue = "UPLOADED_DESC",
     ),
     UPLOADED_ASC(

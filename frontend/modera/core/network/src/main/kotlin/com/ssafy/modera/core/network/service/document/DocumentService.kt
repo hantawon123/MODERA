@@ -5,6 +5,7 @@ import com.ssafy.modera.core.network.model.BaseResponse
 import com.ssafy.modera.core.network.model.document.CreateDocumentRequest
 import com.ssafy.modera.core.network.model.document.DocumentDetailResponse
 import com.ssafy.modera.core.network.model.document.DocumentsResponse
+import com.ssafy.modera.core.network.model.document.RegenerateDocumentRequest
 import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.GET
@@ -25,6 +26,12 @@ interface DocumentService {
         @Query("size") size: Int,
         @Query("sort") sort: String,
     ): ApiResponse<BaseResponse<DocumentsResponse>>
+
+    @POST("api/v1/documents/{documentId}/regenerate")
+    suspend fun regenerateDocument(
+        @Path("documentId") documentId: Long,
+        @Body request: RegenerateDocumentRequest,
+    ): ApiResponse<BaseResponse<DocumentDetailResponse>>
 
     @POST("api/v1/documents")
     suspend fun createDocument(

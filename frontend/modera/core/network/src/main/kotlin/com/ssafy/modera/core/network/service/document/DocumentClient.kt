@@ -5,6 +5,7 @@ import com.ssafy.modera.core.network.model.document.CreateDocumentRequest
 import com.ssafy.modera.core.network.model.document.DocumentDetailResponse
 import com.ssafy.modera.core.network.model.document.DocumentSortOption
 import com.ssafy.modera.core.network.model.document.DocumentsResponse
+import com.ssafy.modera.core.network.model.document.RegenerateDocumentRequest
 import javax.inject.Inject
 
 class DocumentClient @Inject constructor(
@@ -28,6 +29,22 @@ class DocumentClient @Inject constructor(
                 page = page,
                 size = PAGE_SIZE,
                 sort = sort.value,
+            )
+            .getOrThrow()
+            .data
+
+    suspend fun regenerateDocument(
+        documentId: Long,
+        clientRequestId: String,
+        imageIds: List<Long>? = null,
+    ): DocumentDetailResponse =
+        documentService
+            .regenerateDocument(
+                documentId = documentId,
+                request = RegenerateDocumentRequest(
+                    clientRequestId = clientRequestId,
+                    imageIds = imageIds,
+                ),
             )
             .getOrThrow()
             .data

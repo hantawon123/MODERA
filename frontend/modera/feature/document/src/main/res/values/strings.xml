@@ -3,8 +3,6 @@
     <string name="document_title">문서</string>
 
     <string name="document_total_count">총 %1$d개</string>
-    <string name="document_sort_latest">최신순</string>
-    <string name="document_sort_oldest">오래된순</string>
     <string name="document_sort_content_description">문서 정렬 기준 선택</string>
 
     <string name="document_source_image_count">원본 %1$d개</string>

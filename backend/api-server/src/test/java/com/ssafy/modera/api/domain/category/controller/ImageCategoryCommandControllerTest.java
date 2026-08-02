@@ -38,11 +38,11 @@ class ImageCategoryCommandControllerTest {
                         requestId,
                         18,
                         List.of(3, 5, 7),
-                        "QUEUED"
+                        "COMPLETED"
                 ));
 
         mockMvc.perform(post("/api/v1/images/18/category/reanalysis"))
-                .andExpect(status().isAccepted())
+                .andExpect(status().isOk())
                 .andExpect(jsonPath("$.result").value("SUCCESS"))
                 .andExpect(jsonPath("$.code").value("I212"))
                 .andExpect(jsonPath("$.data.categoryRequestId")
@@ -51,7 +51,7 @@ class ImageCategoryCommandControllerTest {
                 .andExpect(jsonPath("$.data.excludedCategoryIds[0]").value(3))
                 .andExpect(jsonPath("$.data.excludedCategoryIds[1]").value(5))
                 .andExpect(jsonPath("$.data.excludedCategoryIds[2]").value(7))
-                .andExpect(jsonPath("$.data.status").value("QUEUED"));
+                .andExpect(jsonPath("$.data.status").value("COMPLETED"));
 
         verify(categoryCommandService).request(null, 18);
     }

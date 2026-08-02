@@ -17,6 +17,7 @@ import androidx.compose.ui.unit.dp
 import com.ssafy.modera.core.designsystem.component.HorizontalDivider
 import com.ssafy.modera.core.designsystem.theme.ModeraTheme
 import com.ssafy.modera.core.model.document.Document
+import com.ssafy.modera.core.model.document.DocumentSortType
 import com.ssafy.modera.core.ui.ErrorScreen
 import com.ssafy.modera.core.ui.LoadingScreen
 import com.ssafy.modera.feature.document.component.DocumentEmptyScreen

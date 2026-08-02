@@ -1,6 +1,7 @@
 package com.ssafy.modera.feature.document
 
 import com.ssafy.modera.core.model.document.Document
+import com.ssafy.modera.core.model.document.DocumentSortType
 
 sealed interface DocumentUiState {
 

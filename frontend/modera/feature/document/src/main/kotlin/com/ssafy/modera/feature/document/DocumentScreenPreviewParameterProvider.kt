@@ -2,6 +2,7 @@ package com.ssafy.modera.feature.document
 
 import androidx.compose.ui.tooling.preview.PreviewParameterProvider
 import com.ssafy.modera.core.model.document.Document
+import com.ssafy.modera.core.model.document.DocumentSortType
 
 internal data class DocumentScreenPreviewData(
     val name: String,

@@ -57,7 +57,7 @@ internal fun DocumentDetailScreen(
             // Todo: api 연결 후 작성
         },
         onDeleteClick = {
-            // Todo: api 연결 후 작성
+            viewModel.deleteDocument(onDeleted = onBackClick)
         },
         modifier = modifier,
     )

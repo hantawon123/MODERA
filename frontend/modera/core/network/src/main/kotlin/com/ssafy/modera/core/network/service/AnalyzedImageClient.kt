@@ -22,7 +22,7 @@ class AnalyzedImageClient @Inject constructor(
                 favorite = query.favorite,
                 page = page,
                 size = 20,
-                sort = query.sort,
+                sort = query.sort.queryValue,
                 keyword = query.keyword,
                 categoryId = query.categoryId,
             )

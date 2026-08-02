@@ -353,11 +353,13 @@ app/
   storage.py        S3 원본 이미지 조회
   spring_client.py  10-4 콜백 / 10-5 후보 조회
   category.py       카테고리 유사도 판정 (이름 임베딩 캐시 포함)
+  category_store.py 카테고리 대표 벡터 저장소 (Gemini 768차원, 본문과 별 인덱스)
   stages.py         LLM / IMAGE_ANALYSIS / AGENT 단계 실행 + 썸네일 + 검색 색인
   document.py       Spring 이 보낸 분석 결과 묶어 마크다운 문서 생성 (파이프라인과 별개)
   search.py         OpenSearch 키워드 검색 (nori 색인/조회)
   jobs.py           jobId+stage 멱등 처리 / 앱 직결 작업 상태
   responses.py      앱 API 공통 envelope·페이지 형식
+  timeutil.py       공용 시간 형식(now_iso, 명세 1.2) 단일 출처
   main.py           FastAPI 엔드포인트
 scripts/
   seed_minio.py     로컬 MinIO 버킷·테스트 이미지 생성

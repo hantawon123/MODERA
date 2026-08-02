@@ -59,6 +59,32 @@ class DocumentDetailViewModel @AssistedInject constructor(
         }
     }
 
+    fun deleteDocument(onDeleted: () -> Unit) {
+        viewModelScope.launch {
+            documentRepository
+                .deleteDocument(documentId = documentId)
+                .asResult()
+                .collect { result ->
+                    when (result) {
+                        Result.Loading -> {
+                            uiState.value = DocumentDetailUiState.Loading
+                        }
+
+                        is Result.Success -> {
+                            onDeleted()
+                        }
+
+                        is Result.Error -> {
+                            uiState.value =
+                                DocumentDetailUiState.Error(
+                                    exception = result.exception,
+                                )
+                        }
+                    }
+                }
+        }
+    }
+
     @AssistedFactory
     interface Factory {
         fun create(

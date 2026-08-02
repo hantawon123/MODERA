@@ -11,6 +11,8 @@ import com.ssafy.modera.api.domain.library.repository.UserImageRepository;
 import com.ssafy.modera.api.domain.image.repository.ImageQueryRepository;
 import com.ssafy.modera.api.domain.image.repository.UserImageViewRow;
 import com.ssafy.modera.api.domain.schedule.service.ScheduleCreationService;
+import com.ssafy.modera.api.domain.notification.outbox.UserDataChangeOutboxService;
+import com.ssafy.modera.api.domain.notification.outbox.UserDataChangeResource;
 import com.ssafy.modera.contract.payload.AnalysisCompletedPayload;
 import com.ssafy.modera.contract.payload.AnalysisFailedPayload;
 import lombok.RequiredArgsConstructor;
@@ -33,6 +35,7 @@ public class AnalysisResultEventHandler {
     private final ImageQueryRepository imageQueryRepository;
     private final ScheduleCreationService scheduleCreationService;
     private final ObjectMapper objectMapper;
+    private final UserDataChangeOutboxService userDataChangeOutboxService;
 
     @Transactional
     public void handleCompleted(AnalysisCompletedPayload payload) {
@@ -79,6 +82,8 @@ public class AnalysisResultEventHandler {
                 payload.structuredType(),
                 payload.structuredFields()
         );
+        userDataChangeOutboxService.record(
+                payload.userId(), UserDataChangeResource.IMAGE, String.valueOf(imageId));
     }
 
     private String resolveThumbnailKey(AnalysisCompletedPayload payload, Integer imageId) {
@@ -126,5 +131,7 @@ public class AnalysisResultEventHandler {
                 imageId,
                 "FAILED"
         );
+        userDataChangeOutboxService.record(
+                payload.userId(), UserDataChangeResource.IMAGE, String.valueOf(imageId));
     }
 }

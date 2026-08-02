@@ -10,6 +10,8 @@ import com.ssafy.modera.api.domain.library.repository.UserScheduleRepository;
 import com.ssafy.modera.api.domain.schedule.entity.Schedule;
 import com.ssafy.modera.api.domain.schedule.repository.ScheduleQueryRepository;
 import com.ssafy.modera.api.domain.schedule.repository.ScheduleRepository;
+import com.ssafy.modera.api.domain.notification.outbox.UserDataChangeOutboxService;
+import com.ssafy.modera.api.domain.notification.outbox.UserDataChangeResource;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -46,6 +48,7 @@ public class ScheduleCreationService {
     private final ImageScheduleRepository imageScheduleRepository;
     private final ScheduleQueryRepository scheduleQueryRepository;
     private final ObjectMapper objectMapper;
+    private final UserDataChangeOutboxService userDataChangeOutboxService;
 
     /**
      * 구조화 타입이 일정이 아니면 아무것도 하지 않는다. 같은 이미지에 활성 일정이 이미 있으면
@@ -97,6 +100,9 @@ public class ScheduleCreationService {
                 .build());
         scheduleQueryRepository.insertView(
                 userId, schedule.getScheduleId(), imageId, schedule.getTitle(), startAt, endAt, now);
+        userDataChangeOutboxService.record(
+                userId, UserDataChangeResource.SCHEDULE,
+                String.valueOf(schedule.getScheduleId()));
         log.info("분석 결과로 일정 후보 생성: imageId={} scheduleId={} startAt={} endAt={}",
                 imageId, schedule.getScheduleId(), startAt, endAt);
     }

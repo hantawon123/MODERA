@@ -18,6 +18,7 @@ import com.ssafy.modera.api.domain.library.entity.UserImage;
 import com.ssafy.modera.api.domain.library.repository.UserImageRepository;
 import com.ssafy.modera.api.global.config.StorageProperties;
 import com.ssafy.modera.api.global.exception.BusinessException;
+import com.ssafy.modera.api.domain.notification.outbox.UserDataChangeOutboxService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -58,6 +59,7 @@ class ImageCommandServiceTest {
     @Mock S3Presigner s3Presigner;
     @Mock PlatformTransactionManager transactionManager;
     @Mock TransactionStatus transactionStatus;
+    @Mock UserDataChangeOutboxService userDataChangeOutboxService;
     @InjectMocks ImageCommandService imageCommandService;
 
     @Test
@@ -343,6 +345,7 @@ class ImageCommandServiceTest {
 
     @Test
     void deletesMultipleImagesAndContinuesAfterItemFailure() {
+        when(transactionManager.getTransaction(any())).thenReturn(transactionStatus);
         when(imageCommandRepository.deleteImage(1, 10)).thenReturn(ImageDeleteStatus.DELETED);
         when(imageCommandRepository.deleteImage(1, 11)).thenReturn(ImageDeleteStatus.ALREADY_DELETED);
         when(imageCommandRepository.deleteImage(1, 12)).thenReturn(ImageDeleteStatus.NOT_FOUND);

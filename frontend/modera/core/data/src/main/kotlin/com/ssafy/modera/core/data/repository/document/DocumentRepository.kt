@@ -21,4 +21,8 @@ interface DocumentRepository {
         clientRequestId: String,
         imageIds: List<Long>,
     ): Flow<DocumentDetail>
+
+    fun deleteDocument(
+        documentId: Long,
+    ): Flow<Unit>
 }

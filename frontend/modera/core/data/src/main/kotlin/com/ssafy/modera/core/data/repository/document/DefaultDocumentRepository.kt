@@ -64,4 +64,14 @@ class DefaultDocumentRepository @Inject constructor(
 
         emit(response.asExternalModel())
     }.flowOn(ioDispatcher)
+
+    override fun deleteDocument(
+        documentId: Long,
+    ): Flow<Unit> = flow {
+        documentClient.deleteDocument(
+            documentId = documentId,
+        )
+
+        emit(Unit)
+    }.flowOn(ioDispatcher)
 }

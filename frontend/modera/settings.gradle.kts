@@ -147,6 +147,7 @@ include(":core:common")
 include(":core:domain")
 include(":core:ui")
 
+include(":feature:splash")
 include(":feature:home")
 include(":feature:analyzedimagedetail")
 include(":feature:imageviewer")

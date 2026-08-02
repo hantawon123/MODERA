@@ -132,7 +132,7 @@ public class DocumentController {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "accessToken 없음/무효(UNAUTHORIZED)"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "본인 소유가 아니거나 존재하지 않는 documentId(DOCUMENT_NOT_FOUND)")
     })
-    @GetMapping("/{documentId}")
+    @GetMapping(value = "/{documentId}", produces = "application/json;charset=UTF-8")
     public ResponseEntity<ApiResponse<DocumentDetailResponse>> getDocument(
             @AuthenticationPrincipal Integer userId,
             @Parameter(description = "조회할 문서 ID") @PathVariable(name = "documentId") Integer documentId

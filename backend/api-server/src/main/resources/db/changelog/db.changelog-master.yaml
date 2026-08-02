@@ -77,3 +77,5 @@ databaseChangeLog:
       file: db/changelog/038-default-notification-disabled.sql
   - include:
       file: db/changelog/039-add-soft-delete-to-user-category-history.sql
+  - include:
+      file: db/changelog/040-create-user-push-token.sql

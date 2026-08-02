@@ -14,9 +14,9 @@ import logging
 from fastapi import APIRouter, Depends, Query
 
 from . import responses, search
+from .timeutil import now_iso
 from .deps import (
     CurrentUserId,
-    _now_iso,
     _resolve_filters,
     _tag_refs,
     _thumbnail_url,
@@ -253,7 +253,7 @@ async def app_home(user_id: CurrentUserId):
                                  str(e)[:300], http_status=500)
 
     home = HomeResponse(
-        home_date=_now_iso()[:10],
+        home_date=now_iso()[:10],
         analysis_status=HomeAnalysisStatus(
             has_active_jobs=bool(queued or processing),
             queued_count=len(queued),

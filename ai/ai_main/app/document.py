@@ -19,12 +19,12 @@ OpenSearch 가 죽어 있어도 문서화는 동작한다.
 
 import logging
 import re
-from datetime import datetime, timezone
 from typing import Any
 
 from . import gemini_client
 from .config import get_settings
 from .schemas import DocumentImage
+from .timeutil import now_iso
 
 logger = logging.getLogger(__name__)
 
@@ -41,12 +41,6 @@ OCR_CHARS = 1500
 
 class NoSourceError(RuntimeError):
     """문서를 만들 수 있는 이미지가 하나도 없다."""
-
-
-# ponytail: main·stages·responses·jobs 에도 같은 함수가 있다(4번째 사본).
-#           손대는 김에 정리하려면 공용 헬퍼로 빼고 5개 파일에서 import 할 것.
-def _now_iso() -> str:
-    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
 
 
 # ── 1) 소스 정리 ──────────────────────────────────────────────────────────
@@ -258,5 +252,5 @@ def generate(
         "source_image_ids": [s["image_id"] for s in sources],
         "skipped": skipped,
         "model_version": get_settings().llm_model_name,
-        "generated_at": _now_iso(),
+        "generated_at": now_iso(),
     }

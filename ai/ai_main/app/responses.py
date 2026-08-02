@@ -7,14 +7,11 @@
 내부 API(`/internal/v1/*`)는 서비스 간 통신 전용이라 이 형식을 쓰지 않는다(raw JSON).
 """
 
-from datetime import datetime, timezone
 from typing import Any
 
 from fastapi.responses import JSONResponse
 
-
-def _now() -> str:
-    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
+from .timeutil import now_iso
 
 
 def success(
@@ -22,7 +19,7 @@ def success(
 ) -> JSONResponse:
     return JSONResponse(
         status_code=http_status,
-        content={"code": "SUCCESS", "message": message, "data": data, "timestamp": _now()},
+        content={"code": "SUCCESS", "message": message, "data": data, "timestamp": now_iso()},
     )
 
 
@@ -32,7 +29,7 @@ def failure(
     """에러 응답. data 에는 상세 문자열 또는 필드 오류 배열을 담는다."""
     return JSONResponse(
         status_code=http_status,
-        content={"code": code, "message": message, "data": data, "timestamp": _now()},
+        content={"code": code, "message": message, "data": data, "timestamp": now_iso()},
     )
 
 

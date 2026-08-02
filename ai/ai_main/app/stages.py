@@ -12,10 +12,11 @@ from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
-from . import gemini_client, search, spring_client, storage
+from . import category_store, gemini_client, search, spring_client, storage
 from .category import CategoryResolution, normalize_name, resolve_category
 from .config import get_settings
 from .jobs import job_registry, job_store
+from .timeutil import now_iso
 from .schemas import (
     AnalyzeRequest,
     CallbackError,
@@ -184,22 +185,18 @@ def seed_default_category_vectors() -> int:
     for problem in _check_category_config():
         logger.warning("카테고리 설정 불일치: %s", problem)
     try:
-        existing = search.load_category_vectors(search.SEED_USER_ID)
+        existing = category_store.load_category_vectors(category_store.SEED_USER_ID)
         missing = [n for n in DEFAULT_CATEGORIES if normalize_name(n) not in existing]
         if not missing:
             logger.info("카테고리 시드 %s건 이미 존재 — 임베딩 생략", len(existing))
             return 0
         _, vectors = gemini_client.embed(missing, "DOCUMENT")
-        written = search.put_seed_category_vectors(dict(zip(missing, vectors)))
+        written = category_store.put_seed_category_vectors(dict(zip(missing, vectors)))
         logger.info("카테고리 시드 %s건 생성 (기존 %s건)", written, len(existing))
         return written
     except Exception as e:
         logger.warning("카테고리 시드 준비 실패: %s — 콜드 스타트는 이름 일치로 진행", e)
         return 0
-
-
-def _now_iso() -> str:
-    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
 
 
 @contextmanager
@@ -442,7 +439,7 @@ def build_candidates(
     대표 벡터는 Spring 의 representativeVector 가 우선, 없으면 저장소 값을 채운다
     (저장소가 사용자 centroid > 전역 시드 순으로 이미 정리해 준다).
     """
-    stored = search.load_category_vectors(user_id)
+    stored = category_store.load_category_vectors(user_id)
     merged = list(candidates)
     seen = {normalize_name(c.name) for c in merged}
     for key, entry in stored.items():
@@ -601,7 +598,7 @@ async def run_agent_core(
         )
     else:
         await asyncio.to_thread(
-            search.upsert_category_vector, user_id, resolution.name, vectors[0]
+            category_store.upsert_category_vector, user_id, resolution.name, vectors[0]
         )
 
     tags = [str(t) for t in (generated.get("tags") or [])][:max_tags]
@@ -655,7 +652,7 @@ async def _index_for_search(request: AnalyzeRequest, result: dict[str, Any]) -> 
             tags=result.get("tags", []),
             category_name=result.get("category"),
             raw_text=raw_text,
-            created_at=_now_iso(),
+            created_at=now_iso(),
         )
     except Exception as e:
         logger.warning("검색 색인 실패 imageId=%s: %s (분석은 정상 진행)",
@@ -695,7 +692,7 @@ async def _index_as_other(
             tags=[],
             category_name=OTHER_CATEGORY,
             raw_text=ocr_text,
-            created_at=_now_iso(),
+            created_at=now_iso(),
             s3_key=s3_key,
             key_information=[],
             # 명세 1.4: OCR 이 비었거나 비정보성이면 LLM 단계 결과가 EMPTY 다.
@@ -1001,7 +998,7 @@ async def _run_full_pipeline(
                     tags=result["tags"],
                     category_name=category,
                     raw_text=ocr_text,
-                    created_at=_now_iso(),
+                    created_at=now_iso(),
                     s3_key=s3_key,
                     key_information=result["key_information"],
                     status="COMPLETED",
@@ -1113,6 +1110,6 @@ async def _execute_stage(request: AnalyzeRequest) -> None:
         result=result,
         error=error,
         model_version=model_version,
-        completed_at=_now_iso(),
+        completed_at=now_iso(),
     )
     await spring_client.post_callback(payload, request.callback_url)

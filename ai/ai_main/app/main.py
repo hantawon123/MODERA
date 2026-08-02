@@ -26,7 +26,6 @@ from .deps import (
     _image_url,
     _is_app_api,
     _MissingUserId,
-    _now_iso,
     _owned_image,
     _resolve_filters,
     _tag_refs,

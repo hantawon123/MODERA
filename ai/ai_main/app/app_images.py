@@ -15,11 +15,11 @@ from fastapi.responses import Response
 
 from . import responses, search, storage
 from .config import get_settings
+from .timeutil import now_iso
 from .deps import (
     CurrentUserId,
     _category_refs,
     _image_url,
-    _now_iso,
     _owned_image,
     _resolve_filters,
     _tag_refs,
@@ -144,7 +144,7 @@ async def app_image_upload(user_id: CurrentUserId, request: UploadRequest):
             search.create_pending_document,
             image_id=image_id, user_id=user_id, s3_key=s3_key,
             file_name=item.file_name, content_hash=item.content_hash,
-            file_size=item.file_size, created_at=_now_iso(),
+            file_size=item.file_size, created_at=now_iso(),
             raw_text=ocr_text,
             ocr_confidence=item.ocr.confidence,
         )
@@ -204,7 +204,7 @@ async def app_upload_complete(
         return responses.failure("UPLOAD_NOT_FOUND", "업로드된 파일을 찾을 수 없습니다.",
                                  f"imageId: {image_id}", http_status=409)
 
-    uploaded_at = _now_iso()
+    uploaded_at = now_iso()
     await asyncio.to_thread(search.mark_uploaded, image_id, uploaded_at)
 
     job = job_store.create(found.get("user_id") or 0, s3_key, image_id)
@@ -365,7 +365,7 @@ async def app_image_detail(image_id: int, user_id: CurrentUserId):
 
     # 명세 8-1: lastViewedAt 은 6-2 상세 조회 성공 시에만 갱신한다.
     # 응답에는 이번 조회 이전 값을 담아 내려보낸다(방금 본 시각을 돌려주면 무의미하다).
-    await asyncio.to_thread(search.touch_last_viewed, found["image_id"], _now_iso())
+    await asyncio.to_thread(search.touch_last_viewed, found["image_id"], now_iso())
     return responses.success(detail.model_dump(by_alias=True))
 
 

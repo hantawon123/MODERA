@@ -2,4 +2,6 @@
 <resources>
     <string name="favorites_title">즐겨찾기</string>
     <string name="favorites_item_count">%1$d개</string>
+    <string name="favorites_load_error">즐겨찾기 목록을 불러오지 못했어요.</string>
+    <string name="favorites_loading_more_description">더 불러오는 중</string>
 </resources>

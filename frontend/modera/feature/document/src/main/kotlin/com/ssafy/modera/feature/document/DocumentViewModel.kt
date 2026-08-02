@@ -36,7 +36,7 @@ internal class DocumentViewModel @Inject constructor(
     val uiState: StateFlow<DocumentUiState> =
         request.flatMapLatest { request ->
             documentRepository
-                .fetchDocuments(
+                .getDocuments(
                     page = request.page,
                     sortType = request.sortType,
                     onLastPageReached = {

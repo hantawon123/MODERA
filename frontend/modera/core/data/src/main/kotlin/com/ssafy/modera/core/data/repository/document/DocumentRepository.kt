@@ -7,7 +7,11 @@ import kotlinx.coroutines.flow.Flow
 
 interface DocumentRepository {
 
-    fun fetchDocuments(
+    fun getDocumentDetail(
+        documentId: Long,
+    ): Flow<DocumentDetail>
+
+    fun getDocuments(
         page: Int = 0,
         sortType: DocumentSortType = DocumentSortType.LATEST,
         onLastPageReached: () -> Unit,

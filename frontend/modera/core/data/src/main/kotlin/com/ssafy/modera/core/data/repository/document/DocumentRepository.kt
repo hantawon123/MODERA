@@ -17,6 +17,17 @@ interface DocumentRepository {
         onLastPageReached: () -> Unit,
     ): Flow<List<Document>>
 
+    fun regenerateDocument(
+        documentId: Long,
+        clientRequestId: String,
+    ): Flow<DocumentDetail>
+
+    fun reconstructDocument(
+        documentId: Long,
+        clientRequestId: String,
+        imageIds: List<Long>,
+    ): Flow<DocumentDetail>
+
     fun createDocument(
         clientRequestId: String,
         imageIds: List<Long>,

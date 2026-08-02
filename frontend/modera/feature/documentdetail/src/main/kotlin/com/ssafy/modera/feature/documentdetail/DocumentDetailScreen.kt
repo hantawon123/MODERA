@@ -25,6 +25,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ssafy.modera.core.component.ModeraConfirmDialog
 import com.ssafy.modera.core.designsystem.component.Text
 import com.ssafy.modera.core.designsystem.icon.ModeraIcons
@@ -40,10 +41,33 @@ import com.ssafy.modera.feature.documentdetail.component.DocumentMarkdownText
 private val TopBarTitleScrollThreshold = 96.dp
 
 @Composable
+internal fun DocumentDetailScreen(
+    viewModel: DocumentDetailViewModel,
+    onBackClick: () -> Unit,
+    onManageImagesClick: (Long) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
+    DocumentDetailScreen(
+        uiState = uiState,
+        onBackClick = onBackClick,
+        onManageImagesClick = onManageImagesClick,
+        onReanalyzeClick = {
+            // Todo: api 연결 후 작성
+        },
+        onDeleteClick = {
+            // Todo: api 연결 후 작성
+        },
+        modifier = modifier,
+    )
+}
+
+@Composable
 private fun DocumentDetailScreen(
     uiState: DocumentDetailUiState,
     onBackClick: () -> Unit,
-    onManageImagesClick: () -> Unit,
+    onManageImagesClick: (Long) -> Unit,
     onReanalyzeClick: () -> Unit,
     onDeleteClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -127,7 +151,9 @@ private fun DocumentDetailScreen(
                 DocumentDetailContent(
                     document = uiState.document,
                     scrollState = scrollState,
-                    onManageImagesClick = onManageImagesClick,
+                    onManageImagesClick = {
+                        onManageImagesClick(uiState.document.id)
+                    },
                     modifier = Modifier
                         .weight(1f)
                         .padding(horizontal = 24.dp),

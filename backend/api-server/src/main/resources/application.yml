@@ -49,6 +49,12 @@ oauth:
     client-secret: ${KAKAO_CLIENT_SECRET:}
     redirect-uri: ${KAKAO_REDIRECT_URI:}
 
+# FCM data-only 메시지. 운영에서는 서비스 계정 JSON 파일을 컨테이너에 마운트하고
+# GOOGLE_APPLICATION_CREDENTIALS에 해당 파일 경로를 지정한 뒤 FIREBASE_ENABLED=true로 켠다.
+firebase:
+  enabled: ${FIREBASE_ENABLED:false}
+  project-id: ${FIREBASE_PROJECT_ID:}
+
 # [Docs] Swagger는 /api/v1/**만 다룬다 — /internal/**은 JWT가 아니라
 # X-Webhook-Token으로 인증하는 서버 간 내부 API라 문서에서 뺀다(SwaggerConfig 설명 참고).
 springdoc:

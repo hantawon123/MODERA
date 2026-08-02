@@ -43,7 +43,7 @@ import com.ssafy.modera.feature.category.R
 fun CategoryTopSheet(
     visible: Boolean,
     categories: List<CategorySheetItem>,
-    selectedCategory: String,
+    selectedCategoryId: Long,
     onCategoryClick: (CategorySheetItem) -> Unit,
     onDismissRequest: () -> Unit,
     modifier: Modifier = Modifier,
@@ -101,11 +101,11 @@ fun CategoryTopSheet(
                     ) {
                         itemsIndexed(
                             items = categories,
-                            key = { index, _ -> index },
+                            key = { _, category -> category.id },
                         ) { _, category ->
                             CategoryTopSheetItem(
                                 item = category,
-                                selected = category.title == selectedCategory,
+                                selected = category.id == selectedCategoryId,
                                 onClick = {
                                     onCategoryClick(category)
                                     onDismissRequest()
@@ -153,7 +153,11 @@ private fun CategoryTopSheetItem(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    text = item.title,
+                    text = if (item.isAll) {
+                        stringResource(R.string.category_all)
+                    } else {
+                        item.title
+                    },
                     modifier = Modifier.weight(1f, fill = false),
                     style = if (selected) {
                         ModeraTheme.typography.bodySB14
@@ -221,19 +225,20 @@ private fun CategoryTopSheetPreview() {
         CategoryTopSheet(
             visible = true,
             categories = listOf(
-                CategorySheetItem(1,"기사", 123),
-                CategorySheetItem(1,"기사asdfasdfasdfasdf", 123, isNew = true),
-                CategorySheetItem(1,"스포츠", 123),
-                CategorySheetItem(1,"스포츠", 123, isNew = true),
-                CategorySheetItem(1,"뉴스", 123),
-                CategorySheetItem(1,"뉴스", 123),
-                CategorySheetItem(1,"예약", 123),
-                CategorySheetItem(1,"예약", 123),
-                CategorySheetItem(1,"음식", 123),
-                CategorySheetItem(1,"음식", 123),
-                CategorySheetItem(1,"일정", 123),
+                CategorySheetItem(
+                    id = CategorySheetItem.ALL_CATEGORY_ID,
+                    title = "",
+                    itemCount = 500,
+                    isAll = true,
+                ),
+                CategorySheetItem(1, "기사", 123),
+                CategorySheetItem(2, "스포츠", 100, isNew = true),
+                CategorySheetItem(3, "뉴스", 80),
+                CategorySheetItem(4, "예약", 50),
+                CategorySheetItem(5, "음식", 30),
+                CategorySheetItem(6, "일정", 10),
             ),
-            selectedCategory = "일정",
+            selectedCategoryId = CategorySheetItem.ALL_CATEGORY_ID,
             onCategoryClick = {},
             onDismissRequest = {},
         )

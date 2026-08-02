@@ -5,4 +5,9 @@ data class CategorySheetItem(
     val title: String,
     val itemCount: Int,
     val isNew: Boolean = false,
-)
+    val isAll: Boolean = false,
+) {
+    companion object {
+        const val ALL_CATEGORY_ID = 0L
+    }
+}

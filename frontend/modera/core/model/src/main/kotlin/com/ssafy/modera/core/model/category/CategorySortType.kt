@@ -5,6 +5,6 @@ enum class CategorySortType(
     val queryValue: String,
 ) {
     NAME_ASC(label = "이름순", queryValue = "NAME_ASC"),
-    UPDATED_DESC(label = "최신 순", queryValue = "UPDATED_DESC"),
+    UPDATED_DESC(label = "최신순", queryValue = "UPDATED_DESC"),
     IMAGE_COUNT_DESC(label = "사진 많은 순", queryValue = "IMAGE_COUNT_DESC"),
 }

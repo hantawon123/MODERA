@@ -13,14 +13,15 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.ssafy.modera.core.ui.LoadingScreen
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -35,12 +36,13 @@ import com.ssafy.modera.core.component.item.ModeraAnalyzedImageItem
 import com.ssafy.modera.core.component.rememberShowScrollToTop
 import com.ssafy.modera.core.designsystem.component.HorizontalDivider
 import com.ssafy.modera.core.designsystem.component.Icon
+import com.ssafy.modera.core.designsystem.component.LoadingWheel
 import com.ssafy.modera.core.designsystem.component.Text
 import com.ssafy.modera.core.designsystem.icon.ModeraIcons
 import com.ssafy.modera.core.designsystem.theme.ModeraTheme
 import com.ssafy.modera.core.model.analyzedimage.AnalyzedImage
+import com.ssafy.modera.core.model.analyzedimage.AnalyzedImageSortType
 import com.ssafy.modera.core.model.category.CategorySheetItem
-import com.ssafy.modera.core.model.category.CategorySortType
 import com.ssafy.modera.feature.category.component.CategoryTopSheet
 import kotlinx.coroutines.launch
 
@@ -50,89 +52,123 @@ fun CategoryRoute(
     onSearchIconClick: () -> Unit,
     selectedCategoryId: Long? = null,
     modifier: Modifier = Modifier,
+    viewModel: CategoryViewModel = hiltViewModel(),
 ) {
-    // TODO: selectedCategoryId로 카테고리 필터링
-    var selectedCategory by rememberSaveable { mutableStateOf("쇼핑") }
-    var selectedSortType by rememberSaveable {
-        mutableStateOf(CategorySortType.UPDATED_DESC)
-    }
-    var showCategorySheet by rememberSaveable { mutableStateOf(false) }
-    var showSortPopup by rememberSaveable { mutableStateOf(false) }
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
-    val categories = remember { /* TODO: viewModel로 이동 */
-        listOf(
-            CategorySheetItem(1, "기사", 123),
-            CategorySheetItem(1, "기사", 123, isNew = true),
-            CategorySheetItem(1, "스포츠", 123),
-            CategorySheetItem(1, "스포츠", 123, isNew = true),
-            CategorySheetItem(1, "뉴스", 123),
-            CategorySheetItem(1, "뉴스", 123),
-            CategorySheetItem(1, "예약", 123),
-            CategorySheetItem(1, "예약", 123),
-            CategorySheetItem(1, "음식", 123),
-            CategorySheetItem(1, "음식", 123),
-            CategorySheetItem(1, "일정", 123),
-            CategorySheetItem(1, "예약", 123),
-            CategorySheetItem(1, "쇼핑", 1232),
-            CategorySheetItem(1, "음식", 123),
-            CategorySheetItem(1, "음식", 1),
-        )
+    LaunchedEffect(selectedCategoryId) {
+        viewModel.initialize(selectedCategoryId)
     }
-    val analyzedImages = remember {
-        List(16) { index ->
-            AnalyzedImage(
-                id = (index + 1).toLong(),
-                title = "성심당 케이크 리스트",
-                summary = "올해 성심당 케이크 메뉴 리스트로, 샤인머스켓 시루, 귤 시루, 맛있겠다.",
-                hashtags = listOf("기차", "예약", "KTX"),
-                thumbnailUrl = "",
+
+    when (val state = uiState) {
+        CategoryUiState.Loading -> {
+            LoadingScreen(
+                modifier = modifier,
+            )
+        }
+
+        CategoryUiState.Error -> {
+            CategoryErrorScreen(
+                modifier = modifier,
+            )
+        }
+
+        is CategoryUiState.Success -> {
+            CategoryScreen(
+                selectedCategoryId = state.selectedCategoryId,
+                selectedCategoryTitle = state.selectedCategoryTitle,
+                isAllCategorySelected = state.isAllCategorySelected,
+                categories = state.categories,
+                analyzedImages = state.analyzedImages,
+                totalImageCount = state.totalImageCount,
+                selectedSortType = state.selectedSortType,
+                showCategorySheet = state.showCategorySheet,
+                showSortPopup = state.showSortPopup,
+                isLoadingMore = state.isLoadingMore,
+                hasNextPage = state.hasNextPage,
+                onSearchIconClick = onSearchIconClick,
+                onCategoryTitleClick = viewModel::onCategoryTitleClick,
+                onCategorySheetDismiss = viewModel::onCategorySheetDismiss,
+                onCategorySelect = viewModel::onCategorySelect,
+                onSortClick = viewModel::onSortClick,
+                onSortPopupDismiss = viewModel::onSortPopupDismiss,
+                onSortTypeSelect = viewModel::onSortTypeSelect,
+                onLoadMore = viewModel::loadNextPage,
+                onItemClick = onItemClick,
+                modifier = modifier,
             )
         }
     }
+}
 
-    CategoryScreen(
-        selectedCategory = selectedCategory,
-        categories = categories,
-        analyzedImages = analyzedImages,
-        selectedSortType = selectedSortType,
-        showCategorySheet = showCategorySheet,
-        showSortPopup = showSortPopup,
-        onSearchIconClick = onSearchIconClick,
-        onCategoryTitleClick = { showCategorySheet = true },
-        onCategorySheetDismiss = { showCategorySheet = false },
-        onCategorySelect = { selectedCategory = it },
-        onSortClick = { showSortPopup = true },
-        onSortPopupDismiss = { showSortPopup = false },
-        onSortTypeSelect = {
-            selectedSortType = it
-            showSortPopup = false
-        },
-        onItemClick = onItemClick,
-        modifier = modifier,
-    )
+@Composable
+private fun CategoryErrorScreen(
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .background(ModeraTheme.colors.white),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = stringResource(R.string.category_load_error),
+            style = ModeraTheme.typography.bodyR14,
+            color = ModeraTheme.colors.gray700,
+        )
+    }
 }
 
 @Composable
 fun CategoryScreen(
-    selectedCategory: String,
+    selectedCategoryId: Long,
+    selectedCategoryTitle: String,
+    isAllCategorySelected: Boolean,
     categories: List<CategorySheetItem>,
     analyzedImages: List<AnalyzedImage>,
-    selectedSortType: CategorySortType,
+    totalImageCount: Long,
+    selectedSortType: AnalyzedImageSortType,
     showCategorySheet: Boolean,
     showSortPopup: Boolean,
+    isLoadingMore: Boolean,
+    hasNextPage: Boolean,
     onSearchIconClick: () -> Unit,
     onCategoryTitleClick: () -> Unit,
     onCategorySheetDismiss: () -> Unit,
-    onCategorySelect: (String) -> Unit,
+    onCategorySelect: (Long) -> Unit,
     onSortClick: () -> Unit,
     onSortPopupDismiss: () -> Unit,
-    onSortTypeSelect: (CategorySortType) -> Unit,
+    onSortTypeSelect: (AnalyzedImageSortType) -> Unit,
+    onLoadMore: () -> Unit,
     onItemClick: (Long) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val listState = rememberLazyListState()
     val showScrollToTop = rememberShowScrollToTop(listState)
     val coroutineScope = rememberCoroutineScope()
+    val displayCategoryTitle = if (isAllCategorySelected) {
+        stringResource(R.string.category_all)
+    } else {
+        selectedCategoryTitle
+    }
+    val displayImageCount = if (totalImageCount > 0) {
+        totalImageCount
+    } else {
+        analyzedImages.size.toLong()
+    }
+
+    LaunchedEffect(listState, hasNextPage, isLoadingMore) {
+        snapshotFlow {
+            val layoutInfo = listState.layoutInfo
+            val lastVisibleItemIndex = layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+            val totalItems = layoutInfo.totalItemsCount
+            lastVisibleItemIndex >= totalItems - CategoryScreenDefaults.LOAD_MORE_THRESHOLD
+        }.collect { shouldLoadMore ->
+            if (shouldLoadMore && hasNextPage && !isLoadingMore) {
+                onLoadMore()
+            }
+        }
+    }
 
     Box(
         modifier = modifier
@@ -153,7 +189,7 @@ fun CategoryScreen(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Text(
-                            text = selectedCategory,
+                            text = displayCategoryTitle,
                             style = ModeraTheme.typography.titleSB20,
                             color = ModeraTheme.colors.gray900,
                         )
@@ -198,7 +234,7 @@ fun CategoryScreen(
                                 Text(
                                     text = stringResource(
                                         R.string.category_item_count,
-                                        analyzedImages.size,
+                                        displayImageCount,
                                     ),
                                     modifier = Modifier.align(Alignment.CenterStart),
                                     style = ModeraTheme.typography.bodyR14,
@@ -208,7 +244,7 @@ fun CategoryScreen(
                                 ModeraSortSection(
                                     selectedLabel = selectedSortType.label,
                                     expanded = showSortPopup,
-                                    options = CategorySortType.entries,
+                                    options = AnalyzedImageSortType.entries,
                                     selectedOption = selectedSortType,
                                     labelOf = { it.label },
                                     onSortClick = onSortClick,
@@ -240,13 +276,30 @@ fun CategoryScreen(
                             modifier = Modifier.fillMaxWidth(),
                         )
                     }
+
+                    if (isLoadingMore) {
+                        item(key = "loading_more") {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 16.dp),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                LoadingWheel(
+                                    contentDescription = stringResource(
+                                        R.string.category_loading_more_description,
+                                    ),
+                                )
+                            }
+                        }
+                    }
                 }
 
                 CategoryTopSheet(
                     visible = showCategorySheet,
                     categories = categories,
-                    selectedCategory = selectedCategory,
-                    onCategoryClick = { onCategorySelect(it.title) },
+                    selectedCategoryId = selectedCategoryId,
+                    onCategoryClick = { onCategorySelect(it.id) },
                     onDismissRequest = onCategorySheetDismiss,
                 )
 
@@ -266,6 +319,7 @@ fun CategoryScreen(
 
 internal object CategoryScreenDefaults {
     val HorizontalPadding = 20.dp
+    const val LOAD_MORE_THRESHOLD = 3
 }
 
 @Preview(showBackground = true, widthDp = 360, heightDp = 780)
@@ -273,11 +327,19 @@ internal object CategoryScreenDefaults {
 private fun CategoryScreenPreview() {
     ModeraTheme {
         CategoryScreen(
-            selectedCategory = "쇼핑",
+            selectedCategoryId = CategorySheetItem.ALL_CATEGORY_ID,
+            selectedCategoryTitle = "",
+            isAllCategorySelected = true,
             categories = listOf(
+                CategorySheetItem(
+                    id = CategorySheetItem.ALL_CATEGORY_ID,
+                    title = "",
+                    itemCount = 134,
+                    isAll = true,
+                ),
                 CategorySheetItem(1, "쇼핑", 123),
-                CategorySheetItem(1, "음식", 1),
-                CategorySheetItem(1, "여행", 10, isNew = true),
+                CategorySheetItem(2, "음식", 1),
+                CategorySheetItem(3, "여행", 10, isNew = true),
             ),
             analyzedImages = listOf(
                 AnalyzedImage(
@@ -288,9 +350,12 @@ private fun CategoryScreenPreview() {
                     thumbnailUrl = "",
                 ),
             ),
-            selectedSortType = CategorySortType.UPDATED_DESC,
+            totalImageCount = 1,
+            selectedSortType = AnalyzedImageSortType.UPLOADED_DESC,
             showCategorySheet = false,
             showSortPopup = false,
+            isLoadingMore = false,
+            hasNextPage = false,
             onSearchIconClick = {},
             onCategoryTitleClick = {},
             onCategorySheetDismiss = {},
@@ -298,6 +363,7 @@ private fun CategoryScreenPreview() {
             onSortClick = {},
             onSortPopupDismiss = {},
             onSortTypeSelect = {},
+            onLoadMore = {},
             onItemClick = {},
         )
     }

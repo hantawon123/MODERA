@@ -4,7 +4,6 @@ import app.cash.turbine.test
 import com.ssafy.modera.core.data.repository.AnalyzedImageRepository
 import com.ssafy.modera.core.data.repository.DefaultAnalyzedImageRepository
 import com.ssafy.modera.core.model.analyzedimage.AnalyzedImageQuery
-import com.ssafy.modera.core.model.analyzedimage.ImageAnalysisStatus
 import com.ssafy.modera.core.network.model.analyzedimage.AnalyzedImageDetailResponse
 import com.ssafy.modera.core.network.model.analyzedimage.AnalyzedImageResponse
 import com.ssafy.modera.core.network.model.analyzedimage.AnalyzedImagesResponse
@@ -41,9 +40,7 @@ class DefaultAnalyzedImageRepositoryTest {
     fun getAnalyzedImagesReturnsMappedImageSummaries() =
         runTest(testDispatcher) {
             val query = AnalyzedImageQuery(
-                statuses = setOf(
-                    ImageAnalysisStatus.COMPLETED,
-                ),
+                categoryId = 3L,
             )
 
             val response = AnalyzedImagesResponse(
@@ -57,6 +54,8 @@ class DefaultAnalyzedImageRepositoryTest {
                         tags = listOf("C++", "공부"),
                         uploadedAt = "2026-07-16T06:00:00.000Z",
                         category = "개발",
+                        isDocumented = true,
+                        isCalendared = false,
                     ),
                 ),
                 page = 0,
@@ -108,6 +107,8 @@ class DefaultAnalyzedImageRepositoryTest {
                     )
 
                     assertTrue(image.favorite)
+                    assertTrue(image.isDocumented)
+                    assertFalse(image.hasSchedule)
 
                     awaitComplete()
                 }

@@ -139,7 +139,6 @@ include(":core:domain")
 include(":core:ui")
 
 include(":feature:home")
-include(":feature:categoryimages")
 include(":feature:analyzedimagedetail")
 include(":feature:imageviewer")
 include(":feature:category")

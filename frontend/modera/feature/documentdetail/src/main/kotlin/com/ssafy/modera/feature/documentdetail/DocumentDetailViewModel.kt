@@ -12,6 +12,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import java.util.UUID
 
 @HiltViewModel(
     assistedFactory = DocumentDetailViewModel.Factory::class,
@@ -25,6 +26,8 @@ class DocumentDetailViewModel @AssistedInject constructor(
         field = MutableStateFlow<DocumentDetailUiState>(
             DocumentDetailUiState.Loading,
         )
+
+    private var regenerateClientRequestId: String? = null
 
     init {
         loadDocumentDetail()
@@ -44,6 +47,52 @@ class DocumentDetailViewModel @AssistedInject constructor(
                         }
 
                         is Result.Success -> {
+                            DocumentDetailUiState.Success(
+                                document = result.data,
+                            )
+                        }
+
+                        is Result.Error -> {
+                            DocumentDetailUiState.Error(
+                                exception = result.exception,
+                            )
+                        }
+                    }
+                }
+        }
+    }
+
+    fun regenerateDocument() {
+        if (uiState.value !is DocumentDetailUiState.Success) {
+            return
+        }
+
+        val clientRequestId =
+            regenerateClientRequestId
+                ?: UUID.randomUUID()
+                    .toString()
+                    .also { requestId ->
+                        regenerateClientRequestId = requestId
+                    }
+
+        uiState.value = DocumentDetailUiState.Reanalyzing
+
+        viewModelScope.launch {
+            documentRepository
+                .regenerateDocument(
+                    documentId = documentId,
+                    clientRequestId = clientRequestId,
+                )
+                .asResult()
+                .collect { result ->
+                    uiState.value = when (result) {
+                        Result.Loading -> {
+                            DocumentDetailUiState.Reanalyzing
+                        }
+
+                        is Result.Success -> {
+                            regenerateClientRequestId = null
+
                             DocumentDetailUiState.Success(
                                 document = result.data,
                             )

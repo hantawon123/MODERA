@@ -55,6 +55,13 @@ firebase:
   enabled: ${FIREBASE_ENABLED:false}
   project-id: ${FIREBASE_PROJECT_ID:}
 
+notification:
+  outbox:
+    poll-delay-ms: ${FCM_OUTBOX_POLL_DELAY_MS:1000}
+    batch-size: ${FCM_OUTBOX_BATCH_SIZE:100}
+    max-retries: ${FCM_OUTBOX_MAX_RETRIES:5}
+    stale-seconds: ${FCM_OUTBOX_STALE_SECONDS:300}
+
 # [Docs] Swagger는 /api/v1/**만 다룬다 — /internal/**은 JWT가 아니라
 # X-Webhook-Token으로 인증하는 서버 간 내부 API라 문서에서 뺀다(SwaggerConfig 설명 참고).
 springdoc:

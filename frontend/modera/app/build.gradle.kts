@@ -64,6 +64,7 @@ dependencies {
     implementation(projects.feature.calendar)
     implementation(projects.feature.analyzedimagedetail)
     implementation(projects.feature.imageviewer)
+    implementation(projects.feature.document)
     implementation(projects.feature.documentcreate)
 
     implementation(libs.androidx.activity.compose)

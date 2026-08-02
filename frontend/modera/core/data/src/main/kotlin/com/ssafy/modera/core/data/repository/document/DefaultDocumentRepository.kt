@@ -3,6 +3,9 @@ package com.ssafy.modera.core.data.repository.document
 import com.ssafy.modera.core.common.network.Dispatcher
 import com.ssafy.modera.core.common.network.ModeraDispatcher
 import com.ssafy.modera.core.model.DocumentDetail
+import com.ssafy.modera.core.model.document.Document
+import com.ssafy.modera.core.model.document.DocumentSortType
+import com.ssafy.modera.core.network.model.document.DocumentSortOption
 import com.ssafy.modera.core.network.model.document.asExternalModel
 import com.ssafy.modera.core.network.service.document.DocumentClient
 import kotlinx.coroutines.CoroutineDispatcher
@@ -13,8 +16,32 @@ import javax.inject.Inject
 
 class DefaultDocumentRepository @Inject constructor(
     private val documentClient: DocumentClient,
-    @Dispatcher(ModeraDispatcher.IO) private val ioDispatcher: CoroutineDispatcher,
+    @param:Dispatcher(ModeraDispatcher.IO) private val ioDispatcher: CoroutineDispatcher,
 ) : DocumentRepository {
+
+    override fun fetchDocuments(
+        page: Int,
+        sortType: DocumentSortType,
+        onLastPageReached: () -> Unit,
+    ): Flow<List<Document>> = flow {
+        val sortOption = when (sortType) {
+            DocumentSortType.LATEST -> DocumentSortOption.UPDATED_DESC
+            DocumentSortType.OLDEST -> DocumentSortOption.UPDATED_ASC
+        }
+
+        val response = documentClient.fetchDocuments(
+            page = page,
+            sort = sortOption,
+        )
+
+        if (!response.hasNext) {
+            onLastPageReached()
+        }
+
+        emit(
+            response.list.map { it.asExternalModel() },
+        )
+    }.flowOn(ioDispatcher)
 
     override fun createDocument(
         clientRequestId: String,

@@ -20,4 +20,5 @@
     <string name="category_automotive">자동차</string>
     <string name="category_pet">반려동물</string>
     <string name="category_etc">기타</string>
+    <string name="logo_content_description">Modera 로고</string>
 </resources>

@@ -1,14 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="document_detail_regenerate">재분석하기</string>
+    <string name="document_detail_more">문서 더보기</string>
+    <string name="document_detail_reanalyze">재분석하기</string>
     <string name="document_detail_delete">삭제하기</string>
-    <string name="document_detail_summary_title">문서 요약</string>
-    <string name="document_detail_image_count">관련 %1$d개</string>
-    <string name="document_detail_updated_at">%1$s 업데이트</string>
-    <string name="document_detail_manage_images">스크린샷 관리</string>
-    <string name="document_detail_manage_images_information">스크린샷 관리 안내</string>
-    <string name="document_detail_manage_images_tooltip">스크린샷을 추가하거나 제거하면 AI가 문서를 다시 정리해요.</string>
-    <string name="document_detail_deleted_image_count">삭제된 이미지 %1$d장이 포함되어 있어요.</string>
-    <string name="document_detail_regenerating">변경된 이미지를 바탕으로 문서를 다시 정리하고 있어요.</string>
-    <string name="document_detail_empty_content">생성된 문서 내용이 없습니다.</string>
+    <string name="document_detail_load_error">문서 정보를 불러오지 못했습니다.</string>
+
+    <string name="document_source_image_count">관련 %1$d개</string>
+    <string name="document_updated_at">%1$s 업데이트</string>
+
+    <string name="document_manage_screenshots">스크린샷 관리</string>
+    <string name="document_manage_screenshots_information">스크린샷 관리 안내</string>
+    <string name="document_manage_screenshots_tooltip">스크린샷을 추가하거나 제거하면\nAI가 문서를 다시 정리해요.</string>
+
+    <string name="document_summary_title">문서 요약</string>
 </resources>

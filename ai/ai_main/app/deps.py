@@ -10,7 +10,6 @@ main.py 가 1300 줄을 넘어가 라우터를 파일별로 쪼갰다. 라우트
 """
 
 import asyncio
-from datetime import datetime, timezone
 from typing import Annotated, Any
 
 from fastapi import Depends, Query, Request
@@ -20,11 +19,6 @@ from fastapi.security import APIKeyHeader
 from . import search, storage
 from .config import get_settings
 from .schemas import CategoryRef, ImageListItem, TagRef
-
-
-def _now_iso() -> str:
-    """명세 1.2 시간 형식: ISO-8601 UTC, 밀리초 3자리."""
-    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
 
 
 def _error(code: str, message: str, detail: Any = None, http_status: int = 400) -> JSONResponse:

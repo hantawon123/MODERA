@@ -32,6 +32,7 @@ from pydantic import Field
 
 from . import search
 from .config import get_settings
+from .deps import _error
 from .schemas import CamelModel, SearchHit
 
 logger = logging.getLogger(__name__)
@@ -264,10 +265,10 @@ async def related_search(request: RelatedSearchRequest):
             request.size, request.page,
         )
     except ImageNotFoundError as e:
-        return error_response("IMAGE_NOT_FOUND", str(e), 404)
+        return _error("IMAGE_NOT_FOUND", str(e), http_status=404)
     except Exception as e:
         logger.exception("연관 이미지 검색 실패 imageId=%s", request.image_id)
-        return error_response("SEARCH_FAILED", str(e)[:500], 502)
+        return _error("SEARCH_FAILED", str(e)[:500], http_status=502)
 
     event = ImageSearchCompletedEvent(payload=ImageSearchPayload(
         correlation_id=correlation_id, total=total,
@@ -275,12 +276,3 @@ async def related_search(request: RelatedSearchRequest):
         hits=[SearchHit(**h) for h in hits],
     ))
     return JSONResponse(status_code=200, content=event.model_dump(by_alias=True))
-
-
-def error_response(code: str, message: str, http_status: int) -> JSONResponse:
-    """내부 API 공통 에러 형식(main._error 와 같은 모양). main 을 import 하면
-    순환 참조가 되므로 이 네 줄만 여기 둔다. doc_selection.py 도 이걸 쓴다."""
-    return JSONResponse(
-        status_code=http_status,
-        content={"error": code, "message": message, "detail": {}},
-    )

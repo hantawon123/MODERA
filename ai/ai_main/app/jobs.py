@@ -11,8 +11,9 @@ import logging
 import threading
 import time
 from collections import OrderedDict
-from datetime import datetime, timezone
 from typing import Any
+
+from .timeutil import now_iso
 
 logger = logging.getLogger(__name__)
 
@@ -62,10 +63,6 @@ class JobStore:
         self._next_job_id = 1
         self._next_image_id = 1
         self._seeded = False
-
-    @staticmethod
-    def _now() -> str:
-        return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
 
     def _seed(self) -> None:
         """채번 시작점을 정한다(최초 1회). 반드시 락 안에서 호출한다.
@@ -117,8 +114,8 @@ class JobStore:
                 "status": "QUEUED",
                 "result": None,
                 "error": None,
-                "created_at": self._now(),
-                "updated_at": self._now(),
+                "created_at": now_iso(),
+                "updated_at": now_iso(),
             }
             self._next_job_id += 1
             self._jobs[job["job_id"]] = job
@@ -151,7 +148,7 @@ class JobStore:
             if job is None:
                 return
             job["status"] = status
-            job["updated_at"] = self._now()
+            job["updated_at"] = now_iso()
             if stage is not None:
                 job["stage"] = stage
             if result is not None:

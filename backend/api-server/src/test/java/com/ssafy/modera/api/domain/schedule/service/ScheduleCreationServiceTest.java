@@ -6,6 +6,7 @@ import com.ssafy.modera.api.domain.library.repository.UserScheduleRepository;
 import com.ssafy.modera.api.domain.schedule.entity.Schedule;
 import com.ssafy.modera.api.domain.schedule.repository.ScheduleQueryRepository;
 import com.ssafy.modera.api.domain.schedule.repository.ScheduleRepository;
+import com.ssafy.modera.api.domain.notification.outbox.UserDataChangeOutboxService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -32,6 +33,7 @@ class ScheduleCreationServiceTest {
     @Mock UserScheduleRepository userScheduleRepository;
     @Mock ImageScheduleRepository imageScheduleRepository;
     @Mock ScheduleQueryRepository scheduleQueryRepository;
+    @Mock UserDataChangeOutboxService userDataChangeOutboxService;
 
     private ScheduleCreationService scheduleCreationService;
 
@@ -42,7 +44,8 @@ class ScheduleCreationServiceTest {
                 userScheduleRepository,
                 imageScheduleRepository,
                 scheduleQueryRepository,
-                new ObjectMapper()
+                new ObjectMapper(),
+                userDataChangeOutboxService
         );
     }
 

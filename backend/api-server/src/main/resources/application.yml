@@ -77,6 +77,8 @@ springdoc:
 
 # [Observability] 액추에이터 기본 노출
 management:
+  server:
+    port: 9080
   endpoints:
     web:
       exposure:

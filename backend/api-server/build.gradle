@@ -45,6 +45,9 @@ dependencies {
     testImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'
     testImplementation 'org.springframework.security:spring-security-test'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+
+    // Prometheus 스크레이프용. actuator만으로는 /actuator/prometheus가 생기지 않는다..
+    implementation 'io.micrometer:micrometer-registry-prometheus'
 }
 
 def querydslSrcDir = layout.buildDirectory.dir("generated/querydsl").get().asFile

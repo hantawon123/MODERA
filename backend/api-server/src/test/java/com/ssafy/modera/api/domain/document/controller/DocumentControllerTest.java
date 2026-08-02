@@ -1,5 +1,6 @@
 package com.ssafy.modera.api.domain.document.controller;
 
+import com.ssafy.modera.api.domain.document.dto.response.DocumentDetailResponse;
 import com.ssafy.modera.api.domain.document.service.DocumentCommandService;
 import com.ssafy.modera.api.domain.document.service.DocumentDeleteService;
 import com.ssafy.modera.api.domain.document.service.DocumentQueryService;
@@ -8,8 +9,14 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.nio.charset.StandardCharsets;
+import java.time.OffsetDateTime;
+import java.util.List;
+
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -82,5 +89,32 @@ class DocumentControllerTest {
                 .andExpect(status().isBadRequest());
 
         verifyNoInteractions(commandService, queryService, deleteService);
+    }
+
+    @Test
+    void returnsMarkdownContentWithActualNewlinesAfterSingleJsonDeserialization() throws Exception {
+        String markdown = "# 문서 제목\n\n첫 번째 문단입니다.\n- 항목 1\n- 항목 2";
+        when(queryService.getDocument(null, 101)).thenReturn(new DocumentDetailResponse(
+                101,
+                "테스트 문서",
+                "문서 요약",
+                markdown,
+                1,
+                0,
+                List.of(1),
+                false,
+                OffsetDateTime.parse("2026-08-02T12:00:00+09:00")
+        ));
+
+        mockMvc.perform(get("/api/v1/documents/101"))
+                .andExpect(status().isOk())
+                .andExpect(result -> assertThat(result.getResponse().getContentType())
+                        .isEqualTo("application/json;charset=UTF-8"))
+                .andExpect(jsonPath("$.data.content").value(markdown))
+                .andExpect(result -> {
+                    String body = result.getResponse().getContentAsString(StandardCharsets.UTF_8);
+                    assertThat(body).contains("# 문서 제목\\n\\n첫 번째 문단입니다.");
+                    assertThat(body).doesNotContain("# 문서 제목\\\\n");
+                });
     }
 }

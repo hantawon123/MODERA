@@ -10,6 +10,15 @@ import javax.inject.Inject
 class DocumentClient @Inject constructor(
     private val documentService: DocumentService,
 ) {
+
+    suspend fun fetchDocumentDetail(
+        documentId: Long,
+    ): DocumentDetailResponse =
+        documentService
+            .fetchDocumentDetail(documentId)
+            .getOrThrow()
+            .data
+
     suspend fun fetchDocuments(
         page: Int,
         sort: DocumentSortOption = DocumentSortOption.UPDATED_DESC,

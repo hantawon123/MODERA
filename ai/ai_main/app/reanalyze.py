@@ -27,7 +27,7 @@ from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 from pydantic import Field
 
-from . import gemini_client, search, spring_client, stages
+from . import category_store, gemini_client, search, spring_client, stages
 from .category import normalize_name, resolve_category
 from .config import get_settings
 from .deps import _error
@@ -201,7 +201,7 @@ async def reanalyze_category(request: ReanalyzeRequest):
                        name, confidence, guard)
     else:
         try:
-            await asyncio.to_thread(search.upsert_category_vector, user_id, name, vectors[0])
+            await asyncio.to_thread(category_store.upsert_category_vector, user_id, name, vectors[0])
         except Exception as e:
             logger.warning("카테고리 벡터 갱신 실패 '%s': %s", name, e)
 

@@ -93,8 +93,8 @@ def build_prompt(
     for s in sources:
         blocks.append(
             f"[이미지 #{s['image_id']}]\n"
-            f"제목: {s['title']}\n"
-            f"요약: {s['summary']}\n"
+            f"제목(참고용 메타데이터): {s['title']}\n"
+            f"요약(참고용 메타데이터): {s['summary']}\n"
             f"카테고리: {s['category']}\n"
             f"태그: {', '.join(s['tags'])}\n"
             f"주요정보: {' / '.join(s['key_information'])}\n"
@@ -111,11 +111,19 @@ def build_prompt(
 
     return (
         "아래는 사용자가 저장한 스크린샷들의 분석 결과와 OCR 원문이다. "
-        "이것들을 종합해 하나의 읽을 수 있는 문서로 재구성하라.\n\n"
+        "이것들을 종합해 사람이 처음부터 쓴 것처럼 읽히는 하나의 글로 다시 써라.\n\n"
         "[규칙]\n"
         + title_rule
-        + "- 내용이 비슷한 이미지는 한 섹션으로 묶고, 성격이 다르면 섹션을 나눈다.\n"
-        "- 각 섹션에는 근거가 된 이미지 번호를 imageIds 에 정확히 담는다.\n"
+        + "- 각 이미지의 '제목'·'요약'은 우리 분석기가 붙인 참고용 메타데이터다. 그 문장을"
+        " 그대로 옮기거나 '제목:', '요약:' 같은 라벨을 출력하지 마라. 본문은 OCR 원문과"
+        " 주요정보를 근거로 새 문장으로 쓴다.\n"
+        "- 이미지 하나가 섹션 하나가 되면 안 된다. 이미지 경계는 결과물에 드러나지 않아야"
+        " 한다. '이미지', '스크린샷', 이미지 번호를 본문에 쓰지 마라.\n"
+        "- 소재끼리 직접적 연관이 없어 보여도 각각을 따로 나열하지 말고, 공통 축(목적·시기·"
+        "주제·행동)을 찾아 적은 수의 섹션으로 통합한다. 한 섹션 안에서는 여러 소재의 내용을"
+        " 한 흐름의 문장으로 이어 쓰고, 서로 어떻게 이어지는지 한 문장으로 연결해 준다.\n"
+        "- 정말 어디에도 묶이지 않는 소재만 마지막 '그 외' 섹션에 함께 정리한다.\n"
+        "- 각 섹션에는 근거가 된 이미지 번호를 imageIds 에 정확히 담는다(본문에는 쓰지 마라).\n"
         "- 가격·날짜·장소 같은 사실은 원문 그대로 쓴다. 확인되지 않은 값은 넣지 마라(추측 금지).\n"
         "- bullets 는 표처럼 나열할 항목에만 쓰고, 서술이 자연스러우면 body 만 채운다.\n"
         "- 마크다운 기호(#, -, *)를 값 안에 넣지 마라. 문서 조립은 서버가 한다.\n"
@@ -186,8 +194,12 @@ def _prose(value: Any) -> str:
 
 
 # ── 3) 마크다운 렌더링 ────────────────────────────────────────────────────
-def render_markdown(document: dict[str, Any], sources: list[dict[str, Any]]) -> str:
-    """문서 구조 + 소스 목록 → 마크다운 문자열."""
+def render_markdown(document: dict[str, Any]) -> str:
+    """문서 구조 → 마크다운 문자열.
+
+    이미지 id 는 렌더에 넣지 않는다. 사용자에게 내부 id 는 의미가 없고, 출처 표기가
+    본문 흐름을 끊는다. 근거 매핑은 응답 JSON 의 sections[].imageIds 로만 나간다.
+    """
     lines: list[str] = [f"# {document['title']}", ""]
 
     if document.get("summary"):
@@ -200,27 +212,8 @@ def render_markdown(document: dict[str, Any], sources: list[dict[str, Any]]) -> 
         if section.get("bullets"):
             lines += [f"- {b}" for b in section["bullets"]]
             lines.append("")
-        if section.get("image_ids"):
-            refs = ", ".join(f"#{i}" for i in section["image_ids"])
-            lines += [f"> 출처: {refs}", ""]
-
-    # 어떤 스크린샷에서 나온 문서인지 남긴다. 사용자가 원본을 다시 찾을 수 있어야 한다.
-    if sources:
-        lines += ["---", "", "## 출처", "", "| 이미지 | 제목 | 카테고리 | 저장 시각 |",
-                  "| --- | --- | --- | --- |"]
-        for s in sources:
-            lines.append(
-                f"| #{s['image_id']} | {_cell(s['title'])} | "
-                f"{_cell(s['category'])} | {_cell(s['created_at'])} |"
-            )
-        lines.append("")
 
     return "\n".join(lines).rstrip() + "\n"
-
-
-def _cell(value: Any) -> str:
-    """표 셀. 파이프가 들어가면 열이 밀린다."""
-    return _oneline(value).replace("|", "\\|") or "-"
 
 
 # ── 진입점 ────────────────────────────────────────────────────────────────
@@ -239,7 +232,7 @@ def generate(
         )
 
     document = generate_document(sources, title, instruction, language)
-    markdown = render_markdown(document, sources)
+    markdown = render_markdown(document)
     logger.info(
         "문서 생성 userId=%s 사용=%s 건너뜀=%s 섹션=%s 길이=%s",
         user_id, len(sources), len(skipped),

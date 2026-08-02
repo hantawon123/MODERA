@@ -7,18 +7,21 @@ import com.ssafy.modera.core.common.result.asResult
 import com.ssafy.modera.core.data.repository.AnalyzedImageRepository
 import com.ssafy.modera.core.data.repository.CategoryRepository
 import com.ssafy.modera.core.model.analyzedimage.AnalyzedImageQuery
-import com.ssafy.modera.core.model.category.Category
-import com.ssafy.modera.core.model.category.CategorySheetItem
-import com.ssafy.modera.core.model.category.CategorySortType
+import com.ssafy.modera.core.model.analyzedimage.AnalyzedImageSortType
+import com.ssafy.modera.feature.category.state.CategoryImageListState
+import com.ssafy.modera.feature.category.state.CategoryImageListState.Companion.FIRST_PAGE
+import com.ssafy.modera.feature.category.state.CategoryImageListState.Companion.PAGE_SIZE
+import com.ssafy.modera.feature.category.state.CategoryScreenState
+import com.ssafy.modera.feature.category.state.buildCategoryUiState
+import com.ssafy.modera.feature.category.state.resolveCategoryId
+import com.ssafy.modera.feature.category.state.toQueryCategoryId
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -31,16 +34,9 @@ class CategoryViewModel @Inject constructor(
 ) : ViewModel() {
 
     private val navCategoryId = MutableStateFlow<Long?>(null)
-    private val selectedCategoryId = MutableStateFlow<Long?>(null)
-    private val selectedSortType = MutableStateFlow(CategorySortType.UPDATED_DESC)
-    private val showCategorySheet = MutableStateFlow(false)
-    private val showSortPopup = MutableStateFlow(false)
-
-    init {
-        viewModelScope.launch {
-            categoryRepository.refreshCategoriesIfEmpty()
-        }
-    }
+    private val screenState = MutableStateFlow(CategoryScreenState())
+    private val imageListState = MutableStateFlow(CategoryImageListState())
+    private var imageLoadGeneration = 0
 
     private val categoriesResult = categoryRepository
         .observeCategories()
@@ -51,74 +47,65 @@ class CategoryViewModel @Inject constructor(
             initialValue = Result.Loading,
         )
 
-    @OptIn(ExperimentalCoroutinesApi::class)
-    val uiState: StateFlow<CategoryUiState> = combine(
+    private val imageQuery = combine(
         categoriesResult,
-        selectedCategoryId,
-        selectedSortType,
-        showCategorySheet,
-        showSortPopup,
-    ) { categories, categoryId, sortType, categorySheetVisible, sortPopupVisible ->
-        CategoryRequestState(
-            categoriesResult = categories,
-            selectedCategoryId = categoryId,
-            selectedSortType = sortType,
-            showCategorySheet = categorySheetVisible,
-            showSortPopup = sortPopupVisible,
-        )
-    }.flatMapLatest { requestState ->
-        when (val categoriesResult = requestState.categoriesResult) {
-            Result.Loading -> flowOf(CategoryUiState.Loading)
-
-            is Result.Error -> flowOf(CategoryUiState.Error)
-
+        screenState,
+    ) { categories, screen ->
+        when (categories) {
             is Result.Success -> {
-                val categories = categoriesResult.data
-                val sheetItems = categories.toSheetItems()
                 val resolvedCategoryId = resolveCategoryId(
-                    categories = categories,
-                    selectedCategoryId = requestState.selectedCategoryId,
+                    categories = categories.data,
+                    selectedCategoryId = screen.selectedCategoryId,
+                    navCategoryId = navCategoryId.value,
                 )
 
-                analyzedImageRepository
-                    .getAnalyzedImages(
-                        page = FIRST_PAGE,
-                        query = AnalyzedImageQuery(
-                            categoryId = resolvedCategoryId.toQueryCategoryId(),
-                        ),
-                    )
-                    .asResult()
-                    .map { imagesResult ->
-                        when (imagesResult) {
-                            Result.Loading -> CategoryUiState.Loading
-
-                            is Result.Error -> CategoryUiState.Error
-
-                            is Result.Success -> {
-                                val selectedCategoryItem = sheetItems.firstOrNull {
-                                    it.id == resolvedCategoryId
-                                }
-
-                                CategoryUiState.Success(
-                                    selectedCategoryId = resolvedCategoryId,
-                                    selectedCategoryTitle = selectedCategoryItem?.title.orEmpty(),
-                                    categories = sheetItems,
-                                    analyzedImages = imagesResult.data,
-                                    selectedSortType = requestState.selectedSortType,
-                                    showCategorySheet = requestState.showCategorySheet,
-                                    showSortPopup = requestState.showSortPopup,
-                                    isAllCategorySelected = selectedCategoryItem?.isAll == true,
-                                )
-                            }
-                        }
-                    }
+                AnalyzedImageQuery(
+                    categoryId = resolvedCategoryId.toQueryCategoryId(),
+                    sort = screen.selectedSortType,
+                )
             }
+
+            else -> null
         }
+    }
+        .distinctUntilChanged()
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = null,
+        )
+
+    val uiState: StateFlow<CategoryUiState> = combine(
+        categoriesResult,
+        screenState,
+        imageListState,
+        navCategoryId,
+    ) { categoriesResult, screen, images, navCategoryId ->
+        buildCategoryUiState(
+            categoriesResult = categoriesResult,
+            screenState = screen,
+            imageListState = images,
+            navCategoryId = navCategoryId,
+        )
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5_000),
         initialValue = CategoryUiState.Loading,
     )
+
+    init {
+        viewModelScope.launch {
+            categoryRepository.refreshCategoriesIfEmpty()
+        }
+
+        viewModelScope.launch {
+            imageQuery.collect { query ->
+                if (query != null) {
+                    loadInitialPage(query)
+                }
+            }
+        }
+    }
 
     fun initialize(
         selectedCategoryId: Long?,
@@ -130,98 +117,122 @@ class CategoryViewModel @Inject constructor(
         viewModelScope.launch {
             categoryRepository.clearNewCategoryFlags()
         }
-        showCategorySheet.update { true }
+        screenState.update { it.copy(showCategorySheet = true) }
     }
 
     fun onCategorySheetDismiss() {
-        showCategorySheet.update { false }
+        screenState.update { it.copy(showCategorySheet = false) }
     }
 
     fun onCategorySelect(
         categoryId: Long,
     ) {
-        selectedCategoryId.value = categoryId
-        showCategorySheet.update { false }
-    }
-
-    fun onSortClick() {
-        showSortPopup.update { true }
-    }
-
-    fun onSortPopupDismiss() {
-        showSortPopup.update { false }
-    }
-
-    fun onSortTypeSelect(
-        sortType: CategorySortType,
-    ) {
-        selectedSortType.value = sortType
-        showSortPopup.update { false }
-    }
-
-    private fun resolveCategoryId(
-        categories: List<Category>,
-        selectedCategoryId: Long?,
-    ): Long {
-        val visibleCategoryIds = categories
-            .filter { category -> category.itemCount > 0 }
-            .map(Category::id)
-            .toSet()
-
-        fun Long.isValidSelection(): Boolean =
-            this == CategorySheetItem.ALL_CATEGORY_ID || this in visibleCategoryIds
-
-        selectedCategoryId
-            ?.takeIf(Long::isValidSelection)
-            ?.let { return it }
-
-        navCategoryId.value
-            ?.takeIf(Long::isValidSelection)
-            ?.let { return it }
-
-        return CategorySheetItem.ALL_CATEGORY_ID
-    }
-
-    private fun Long.toQueryCategoryId(): Long? =
-        takeUnless { it == CategorySheetItem.ALL_CATEGORY_ID }
-
-    private fun List<Category>.toSheetItems(): List<CategorySheetItem> {
-        val categoryItems = filter { category -> category.itemCount > 0 }
-            .sortedWith(
-                compareByDescending(Category::itemCount)
-                    .thenBy(Category::title),
+        screenState.update {
+            it.copy(
+                selectedCategoryId = categoryId,
+                showCategorySheet = false,
             )
-            .map { category ->
-                CategorySheetItem(
-                    id = category.id,
-                    title = category.title,
-                    itemCount = category.itemCount,
-                    isNew = category.isNew,
-                )
-            }
-
-        return buildList {
-            add(
-                CategorySheetItem(
-                    id = CategorySheetItem.ALL_CATEGORY_ID,
-                    title = "",
-                    itemCount = sumOf(Category::itemCount),
-                    isAll = true,
-                ),
-            )
-            addAll(categoryItems)
         }
     }
 
-    private data class CategoryRequestState(
-        val categoriesResult: Result<List<Category>>,
-        val selectedCategoryId: Long?,
-        val selectedSortType: CategorySortType,
-        val showCategorySheet: Boolean,
-        val showSortPopup: Boolean,
-    )
+    fun onSortClick() {
+        screenState.update { it.copy(showSortPopup = true) }
+    }
 
-    private companion object {
-        const val FIRST_PAGE = 0
+    fun onSortPopupDismiss() {
+        screenState.update { it.copy(showSortPopup = false) }
+    }
+
+    fun onSortTypeSelect(
+        sortType: AnalyzedImageSortType,
+    ) {
+        screenState.update {
+            it.copy(
+                selectedSortType = sortType,
+                showSortPopup = false,
+            )
+        }
+    }
+
+    fun loadNextPage() {
+        val query = imageQuery.value ?: return
+        val currentState = imageListState.value
+
+        if (
+            !currentState.hasNext ||
+            currentState.isInitialLoading ||
+            currentState.isLoadingMore
+        ) {
+            return
+        }
+
+        viewModelScope.launch {
+            val generation = imageLoadGeneration
+            imageListState.update { it.copy(isLoadingMore = true) }
+
+            runCatching {
+                analyzedImageRepository
+                    .getAnalyzedImages(
+                        page = currentState.nextPage,
+                        query = query,
+                    )
+                    .first()
+            }.onSuccess { images ->
+                if (generation != imageLoadGeneration) {
+                    return@onSuccess
+                }
+
+                imageListState.update { state ->
+                    state.copy(
+                        images = state.images + images,
+                        hasNext = images.size >= PAGE_SIZE,
+                        nextPage = currentState.nextPage + 1,
+                        isLoadingMore = false,
+                    )
+                }
+            }.onFailure {
+                if (generation != imageLoadGeneration) {
+                    return@onFailure
+                }
+
+                imageListState.update { it.copy(isLoadingMore = false) }
+            }
+        }
+    }
+
+    private suspend fun loadInitialPage(
+        query: AnalyzedImageQuery,
+    ) {
+        val generation = ++imageLoadGeneration
+        imageListState.value = CategoryImageListState(isInitialLoading = true)
+
+        runCatching {
+            analyzedImageRepository
+                .getAnalyzedImages(
+                    page = FIRST_PAGE,
+                    query = query,
+                )
+                .first()
+        }.onSuccess { images ->
+            if (generation != imageLoadGeneration) {
+                return@onSuccess
+            }
+
+            imageListState.value = CategoryImageListState(
+                images = images,
+                hasNext = images.size >= PAGE_SIZE,
+                nextPage = FIRST_PAGE + 1,
+                isInitialLoading = false,
+            )
+        }.onFailure { error ->
+            if (generation != imageLoadGeneration) {
+                return@onFailure
+            }
+
+            imageListState.value = CategoryImageListState(
+                error = error,
+                isInitialLoading = false,
+            )
+        }
     }
 }

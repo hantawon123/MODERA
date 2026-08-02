@@ -35,7 +35,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.navigation3.runtime.EntryProviderScope
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.ui.NavDisplay
@@ -56,6 +55,7 @@ import com.ssafy.modera.feature.category.navigation.categoryEntry
 import com.ssafy.modera.feature.category.navigation.navigateToCategorySearch
 import com.ssafy.modera.feature.category.navigation.navigateToCategoryTab
 import com.ssafy.modera.feature.categoryimages.navigation.categoryImagesEntry
+import com.ssafy.modera.feature.document.navigation.documentEntry
 import com.ssafy.modera.feature.documentcreate.navigation.documentCreateEntry
 import com.ssafy.modera.feature.documentcreate.navigation.navigateToDocumentCreate
 import com.ssafy.modera.feature.favorite.navigation.favoritesEntry
@@ -68,7 +68,6 @@ import com.ssafy.modera.feature.imageviewer.navigation.navigateToImageViewer
 import com.ssafy.modera.feature.relatedimages.navigation.relatedImagesEntry
 import com.ssafy.modera.media.rememberGalleryPickerLauncher
 import com.ssafy.modera.navigation.BOTTOM_NAV_ITEMS
-import com.ssafy.modera.navigation.DocumentsNavKey
 import com.ssafy.modera.navigation.TOP_LEVEL_NAV_ITEMS
 
 @Composable
@@ -249,7 +248,9 @@ internal fun ModeraApp(
                                 calendarEntry(
                                     onBackClick = handleBack,
                                 )
-                                documentsEntry()
+                                documentEntry(onDocumentClick = {
+                                    // Todo: document detail screen 으로 이동
+                                })
                                 categoryImagesEntry(
                                     navigator = navigator,
                                     onImageClick = navigator::navigateToImageDetail,
@@ -290,8 +291,4 @@ internal fun ModeraApp(
             }
         }
     }
-}
-
-fun EntryProviderScope<NavKey>.documentsEntry() {
-    entry<DocumentsNavKey> {}
 }

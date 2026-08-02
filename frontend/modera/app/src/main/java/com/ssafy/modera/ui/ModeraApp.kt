@@ -77,15 +77,21 @@ fun ModeraApp(
     windowAdaptiveInfo: WindowAdaptiveInfo = currentWindowAdaptiveInfo(),
     viewModel: MainViewModel = hiltViewModel(),
 ) {
-//    val shouldShowGradientBackground = appState.navigationState.currentTopLevelKey == ForYouNavKey
-    var showSettingsDialog by rememberSaveable { mutableStateOf(false) }
-    val snackbarHostState = remember { SnackbarHostState() }
+    var showSettingsDialog by rememberSaveable {
+        mutableStateOf(false)
+    }
+
+    val snackbarHostState = remember {
+        SnackbarHostState()
+    }
 
     val localSnackbarHostState = compositionLocalOf<SnackbarHostState> {
         error("SnackbarHostState state should be initialized at runtime")
     }
 
-    CompositionLocalProvider(localSnackbarHostState provides snackbarHostState) {
+    CompositionLocalProvider(
+        localSnackbarHostState provides snackbarHostState,
+    ) {
         ModeraApp(
             appState = appState,
             viewModel = viewModel,
@@ -109,19 +115,34 @@ internal fun ModeraApp(
     windowAdaptiveInfo: WindowAdaptiveInfo = currentWindowAdaptiveInfo(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val navigator = remember { Navigator(appState.navigationState) }
-    val handleBack = rememberModeraBackHandler(navigator)
-    val homeAnalysisState = remember(viewModel) {
-        HomeAnalysisState(onDismissRequest = viewModel::dismissAnalysisBanner)
+
+    val navigator = remember {
+        Navigator(appState.navigationState)
     }
 
-    LaunchedEffect(viewModel, snackbarHostState) {
+    val handleBack = rememberModeraBackHandler(navigator)
+
+    val homeAnalysisState = remember(viewModel) {
+        HomeAnalysisState(
+            onDismissRequest = viewModel::dismissAnalysisBanner,
+        )
+    }
+
+    LaunchedEffect(
+        viewModel,
+        snackbarHostState,
+    ) {
         viewModel.snackBarMessage.collect { message ->
-            snackbarHostState.showSnackbar(message = message)
+            snackbarHostState.showSnackbar(
+                message = message,
+            )
         }
     }
 
-    LaunchedEffect(uiState.showAnalysisBanner, uiState.analysisImageCount) {
+    LaunchedEffect(
+        uiState.showAnalysisBanner,
+        uiState.analysisImageCount,
+    ) {
         homeAnalysisState.sync(
             showBanner = uiState.showAnalysisBanner,
             imageCount = uiState.analysisImageCount,
@@ -130,7 +151,10 @@ internal fun ModeraApp(
 
     val launchGalleryPicker = rememberGalleryPickerLauncher(
         onImagesPicked = { images ->
-            if (images.isEmpty()) return@rememberGalleryPickerLauncher
+            if (images.isEmpty()) {
+                return@rememberGalleryPickerLauncher
+            }
+
             viewModel.onImagesPicked(images)
             navigator.navigate(HomeNavKey)
         },
@@ -150,8 +174,13 @@ internal fun ModeraApp(
             Scaffold(
                 modifier = modifier,
                 containerColor = Color.Transparent,
-                contentColor = Color.Gray, // TODO : 추후 컬러 변경
-                contentWindowInsets = WindowInsets(0, 0, 0, 0),
+                contentColor = Color.Gray,
+                contentWindowInsets = WindowInsets(
+                    left = 0,
+                    top = 0,
+                    right = 0,
+                    bottom = 0,
+                ),
                 bottomBar = {
                     if (isTopLevelDestination) {
                         ModeraBottomNavigation {
@@ -160,13 +189,21 @@ internal fun ModeraApp(
                                     ModeraBottomNavigationAction(
                                         onClick = launchGalleryPicker,
                                         iconRes = navItem.icon,
-                                        contentDescription = stringResource(navItem.titleTextId),
+                                        contentDescription = stringResource(
+                                            navItem.titleTextId,
+                                        ),
                                     )
                                 } else {
                                     val labelRes = navItem.iconTextId
-                                        ?: error("Bottom nav item requires iconTextId: $navKey")
+                                        ?: error(
+                                            "Bottom nav item requires iconTextId: $navKey",
+                                        )
+
                                     ModeraBottomNavigationItem(
-                                        selected = navKey == appState.navigationState.currentTopLevelKey,
+                                        selected =
+                                            navKey ==
+                                                appState.navigationState
+                                                    .currentTopLevelKey,
                                         onClick = {
                                             if (navKey == CategoryNavKey()) {
                                                 navigator.navigateToCategoryTab(
@@ -186,7 +223,7 @@ internal fun ModeraApp(
                 },
                 snackbarHost = {
                     SnackbarHost(
-                        snackbarHostState,
+                        hostState = snackbarHostState,
                         modifier = Modifier.windowInsetsPadding(
                             WindowInsets.safeDrawing.exclude(
                                 WindowInsets.ime,
@@ -196,7 +233,7 @@ internal fun ModeraApp(
                 },
             ) { padding ->
                 Column(
-                    Modifier
+                    modifier = Modifier
                         .fillMaxSize()
                         .padding(padding)
                         .consumeWindowInsets(padding)
@@ -206,83 +243,123 @@ internal fun ModeraApp(
                             ),
                         ),
                 ) {
-                    // Only show the top app bar on top level destinations.
                     var shouldShowTopAppBar = false
 
-                    if (appState.navigationState.currentSubStack.size == 1) {
+                    if (
+                        appState.navigationState.currentSubStack.size == 1
+                    ) {
                         shouldShowTopAppBar = true
 
-                        val destination =
-                            TOP_LEVEL_NAV_ITEMS[appState.navigationState.currentTopLevelKey]
-                                ?: error("Top level nav item not found for ${appState.navigationState.currentTopLevelKey}")
+                        TOP_LEVEL_NAV_ITEMS[
+                            appState.navigationState.currentTopLevelKey
+                        ] ?: error(
+                            "Top level nav item not found for " +
+                                "${appState.navigationState.currentTopLevelKey}",
+                        )
                     }
 
                     Box(
                         modifier = Modifier.consumeWindowInsets(
                             if (shouldShowTopAppBar) {
-                                WindowInsets.safeDrawing.only(WindowInsetsSides.Top)
+                                WindowInsets.safeDrawing.only(
+                                    WindowInsetsSides.Top,
+                                )
                             } else {
-                                WindowInsets(0, 0, 0, 0)
+                                WindowInsets(
+                                    left = 0,
+                                    top = 0,
+                                    right = 0,
+                                    bottom = 0,
+                                )
                             },
                         ),
                     ) {
-                        val listDetailStrategy = rememberListDetailSceneStrategy<NavKey>()
+                        val listDetailStrategy =
+                            rememberListDetailSceneStrategy<NavKey>()
 
                         SharedTransitionLayout {
-                            ModeraBackHandler(onBack = handleBack)
+                            ModeraBackHandler(
+                                onBack = handleBack,
+                            )
 
                             val entryProvider = entryProvider {
                                 homeEntry(
-                                    onCategoryClick = navigator::navigateToCategoryTab,
-                                    onCalendarClick = navigator::navigateToCalendar,
-                                    onSearchResultClick = navigator::navigateToImageDetail,
+                                    onCategoryClick =
+                                        navigator::navigateToCategoryTab,
+                                    onCalendarClick =
+                                        navigator::navigateToCalendar,
+                                    onSearchResultClick =
+                                        navigator::navigateToImageDetail,
                                 )
+
                                 categoryEntry(
                                     onBackClick = handleBack,
-                                    onSearchIconClick = navigator::navigateToCategorySearch,
-                                    onItemClick = { /* TODO: 자료 상세 연결 */ },
+                                    onSearchIconClick =
+                                        navigator::navigateToCategorySearch,
+                                    onItemClick =
+                                        navigator::navigateToImageDetail,
                                 )
+
                                 favoritesEntry(
-                                    onItemClick = { /* TODO: 자료 상세 연결 */ },
+                                    onItemClick = {
+                                        // TODO: 자료 상세 연결
+                                    },
                                 )
+
                                 calendarEntry(
                                     onBackClick = handleBack,
                                 )
-                                documentEntry(onDocumentClick = {
-                                    // Todo: document detail screen 으로 이동
-                                })
+
+                                documentEntry(
+                                    onDocumentClick = { documentId ->
+                                        // TODO: 문서 상세 화면으로 이동
+                                    },
+                                )
+
                                 categoryImagesEntry(
                                     navigator = navigator,
-                                    onImageClick = navigator::navigateToImageDetail,
+                                    onImageClick =
+                                        navigator::navigateToImageDetail,
                                     onBackClick = handleBack,
                                 )
+
                                 analyzedImageDetailEntry(
                                     navigator = navigator,
-                                    sharedTransitionScope = this@SharedTransitionLayout,
-                                    onImageClick = navigator::navigateToImageViewer,
+                                    sharedTransitionScope =
+                                        this@SharedTransitionLayout,
+                                    onImageClick =
+                                        navigator::navigateToImageViewer,
                                     onBackClick = handleBack,
-                                    onCreateDocumentClick = navigator::navigateToDocumentCreate
+                                    onCreateDocumentClick =
+                                        navigator::navigateToDocumentCreate,
                                 )
+
                                 imageViewerEntry(
-                                    sharedTransitionScope = this@SharedTransitionLayout,
+                                    sharedTransitionScope =
+                                        this@SharedTransitionLayout,
                                     onBackClick = handleBack,
                                 )
+
                                 relatedImagesEntry(
                                     navigator = navigator,
                                     onBackClick = handleBack,
                                 )
+
                                 documentCreateEntry(
                                     navigator = navigator,
                                     onBackClick = handleBack,
                                     onDocumentCreated = { documentId ->
-                                        // Todo: document detail screen 으로 이동
-                                    }
+                                        // TODO: 문서 상세 화면으로 이동
+                                    },
                                 )
                             }
 
                             NavDisplay(
-                                entries = appState.navigationState.toEntries(entryProvider),
-//                        sceneStrategy = listDetailStrategy,
+                                entries =
+                                    appState.navigationState.toEntries(
+                                        entryProvider,
+                                    ),
+                                // sceneStrategy = listDetailStrategy,
                                 onBack = handleBack,
                             )
                         }

@@ -19,17 +19,12 @@ class AnalyzedImageClient @Inject constructor(
     ): AnalyzedImagesResponse =
         analyzedImageService
             .fetchAnalyzedImages(
-                statuses = query.statuses
-                    .map { it.name }
-                    .takeIf { it.isNotEmpty() },
-                categoryId = query.categoryId,
-                tagId = query.tagId,
                 favorite = query.favorite,
-                dateFrom = query.dateFrom,
-                dateTo = query.dateTo,
                 page = page,
                 size = 20,
-                sort = "createdAt,desc",
+                sort = query.sort.queryValue,
+                keyword = query.keyword,
+                categoryId = query.categoryId,
             )
             .getOrThrow()
             .data

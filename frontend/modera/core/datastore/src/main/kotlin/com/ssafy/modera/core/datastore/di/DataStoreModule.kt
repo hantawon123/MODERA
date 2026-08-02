@@ -2,6 +2,8 @@ package com.ssafy.modera.core.datastore.di
 
 import android.content.Context
 import androidx.datastore.core.DataStore
+import com.ssafy.modera.core.datastore.categoriesCacheDataStore
+import com.ssafy.modera.core.datastore.proto.CategoriesCache
 import com.ssafy.modera.core.datastore.recentSearchesDataStore
 import com.ssafy.modera.core.datastore.proto.RecentSearches
 import dagger.Module
@@ -20,4 +22,10 @@ object DataStoreModule {
     fun providesRecentSearchesDataStore(
         @ApplicationContext context: Context,
     ): DataStore<RecentSearches> = context.recentSearchesDataStore
+
+    @Provides
+    @Singleton
+    fun providesCategoriesCacheDataStore(
+        @ApplicationContext context: Context,
+    ): DataStore<CategoriesCache> = context.categoriesCacheDataStore
 }

@@ -29,6 +29,7 @@ from fastapi.responses import JSONResponse
 from pydantic import Field, model_validator
 
 from . import related
+from .deps import _error
 from .schemas import CamelModel, SearchHit
 
 logger = logging.getLogger(__name__)
@@ -95,10 +96,10 @@ async def document_candidates(request: DocSelectionRequest):
             request.size, request.page,
         )
     except related.ImageNotFoundError as e:
-        return related.error_response("IMAGE_NOT_FOUND", str(e), 404)
+        return _error("IMAGE_NOT_FOUND", str(e), http_status=404)
     except Exception as e:
         logger.exception("문서화 후보 검색 실패 imageIds=%s", selection)
-        return related.error_response("SEARCH_FAILED", str(e)[:500], 502)
+        return _error("SEARCH_FAILED", str(e)[:500], http_status=502)
 
     event = DocSelectionEvent(payload=DocSelectionPayload(
         correlation_id=correlation_id, total=total,

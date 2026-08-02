@@ -27,9 +27,10 @@ from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 from pydantic import Field
 
-from . import gemini_client, related, search, spring_client, stages
+from . import gemini_client, search, spring_client, stages
 from .category import normalize_name, resolve_category
 from .config import get_settings
+from .deps import _error
 from .schemas import CamelModel, CategoryCandidate
 
 logger = logging.getLogger(__name__)
@@ -114,15 +115,15 @@ async def reanalyze_category(request: ReanalyzeRequest):
     settings = get_settings()
     found = await asyncio.to_thread(search.get_image, request.image_id)
     if found is None:
-        return related.error_response("IMAGE_NOT_FOUND", f"imageId: {request.image_id}", 404)
+        return _error("IMAGE_NOT_FOUND", f"imageId: {request.image_id}", http_status=404)
 
     # 요약을 임베딩한다 — 카테고리 centroid 가 요약 임베딩의 평균이라(분석 경로와
     # 같은 벡터 공간) 다른 텍스트를 넣으면 유사도 기준이 조용히 어긋난다.
     summary = (found.get("summary") or found.get("title") or "").strip()
     if not summary:
-        return related.error_response(
+        return _error(
             "NO_ANALYSIS_SOURCE",
-            "재분석할 분석 결과가 없습니다(분석 전이거나 EMPTY).", 400)
+            "재분석할 분석 결과가 없습니다(분석 전이거나 EMPTY).", http_status=400)
 
     user_id = found.get("user_id") or 0
     excluded_ids = set(request.excluded_category_ids)
@@ -162,7 +163,7 @@ async def reanalyze_category(request: ReanalyzeRequest):
         )
     except Exception as e:
         logger.exception("카테고리 재분석 실패 imageId=%s", request.image_id)
-        return related.error_response("REANALYZE_FAILED", str(e)[:500], 502)
+        return _error("REANALYZE_FAILED", str(e)[:500], http_status=502)
 
     name_vectors = {normalize_name(n): v for n, v in zip(name_slots, vectors[1:])}
     resolution = resolve_category(
@@ -181,8 +182,8 @@ async def reanalyze_category(request: ReanalyzeRequest):
         fallback = next((n for _, n in resolution.ranking
                          if not _rejected(n, excluded_keys)), None)
         if fallback is None:
-            return related.error_response(
-                "REANALYZE_FAILED", "배제 후 남은 카테고리 후보가 없습니다.", 502)
+            return _error(
+                "REANALYZE_FAILED", "배제 후 남은 카테고리 후보가 없습니다.", http_status=502)
         logger.warning("재분석이 거부된 이름 '%s' 을 재제안 → 폴백 '%s' imageId=%s",
                        name, fallback, request.image_id)
         name = fallback

@@ -16,6 +16,7 @@ from . import gemini_client, search, spring_client, storage
 from .category import CategoryResolution, normalize_name, resolve_category
 from .config import get_settings
 from .jobs import job_registry, job_store
+from .timeutil import now_iso
 from .schemas import (
     AnalyzeRequest,
     CallbackError,
@@ -196,10 +197,6 @@ def seed_default_category_vectors() -> int:
     except Exception as e:
         logger.warning("카테고리 시드 준비 실패: %s — 콜드 스타트는 이름 일치로 진행", e)
         return 0
-
-
-def _now_iso() -> str:
-    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
 
 
 @contextmanager
@@ -655,7 +652,7 @@ async def _index_for_search(request: AnalyzeRequest, result: dict[str, Any]) -> 
             tags=result.get("tags", []),
             category_name=result.get("category"),
             raw_text=raw_text,
-            created_at=_now_iso(),
+            created_at=now_iso(),
         )
     except Exception as e:
         logger.warning("검색 색인 실패 imageId=%s: %s (분석은 정상 진행)",
@@ -695,7 +692,7 @@ async def _index_as_other(
             tags=[],
             category_name=OTHER_CATEGORY,
             raw_text=ocr_text,
-            created_at=_now_iso(),
+            created_at=now_iso(),
             s3_key=s3_key,
             key_information=[],
             # 명세 1.4: OCR 이 비었거나 비정보성이면 LLM 단계 결과가 EMPTY 다.
@@ -1001,7 +998,7 @@ async def _run_full_pipeline(
                     tags=result["tags"],
                     category_name=category,
                     raw_text=ocr_text,
-                    created_at=_now_iso(),
+                    created_at=now_iso(),
                     s3_key=s3_key,
                     key_information=result["key_information"],
                     status="COMPLETED",
@@ -1113,6 +1110,6 @@ async def _execute_stage(request: AnalyzeRequest) -> None:
         result=result,
         error=error,
         model_version=model_version,
-        completed_at=_now_iso(),
+        completed_at=now_iso(),
     )
     await spring_client.post_callback(payload, request.callback_url)

@@ -12,7 +12,7 @@ from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
-from . import gemini_client, search, spring_client, storage
+from . import category_store, gemini_client, search, spring_client, storage
 from .category import CategoryResolution, normalize_name, resolve_category
 from .config import get_settings
 from .jobs import job_registry, job_store
@@ -185,13 +185,13 @@ def seed_default_category_vectors() -> int:
     for problem in _check_category_config():
         logger.warning("카테고리 설정 불일치: %s", problem)
     try:
-        existing = search.load_category_vectors(search.SEED_USER_ID)
+        existing = category_store.load_category_vectors(category_store.SEED_USER_ID)
         missing = [n for n in DEFAULT_CATEGORIES if normalize_name(n) not in existing]
         if not missing:
             logger.info("카테고리 시드 %s건 이미 존재 — 임베딩 생략", len(existing))
             return 0
         _, vectors = gemini_client.embed(missing, "DOCUMENT")
-        written = search.put_seed_category_vectors(dict(zip(missing, vectors)))
+        written = category_store.put_seed_category_vectors(dict(zip(missing, vectors)))
         logger.info("카테고리 시드 %s건 생성 (기존 %s건)", written, len(existing))
         return written
     except Exception as e:
@@ -439,7 +439,7 @@ def build_candidates(
     대표 벡터는 Spring 의 representativeVector 가 우선, 없으면 저장소 값을 채운다
     (저장소가 사용자 centroid > 전역 시드 순으로 이미 정리해 준다).
     """
-    stored = search.load_category_vectors(user_id)
+    stored = category_store.load_category_vectors(user_id)
     merged = list(candidates)
     seen = {normalize_name(c.name) for c in merged}
     for key, entry in stored.items():
@@ -598,7 +598,7 @@ async def run_agent_core(
         )
     else:
         await asyncio.to_thread(
-            search.upsert_category_vector, user_id, resolution.name, vectors[0]
+            category_store.upsert_category_vector, user_id, resolution.name, vectors[0]
         )
 
     tags = [str(t) for t in (generated.get("tags") or [])][:max_tags]

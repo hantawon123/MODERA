@@ -22,14 +22,25 @@ public class UserPushNotificationService {
             String resource,
             String resourceId
     ) {
+        return sendDataChanged(
+                UUID.randomUUID(), userId, resource, resourceId, OffsetDateTime.now());
+    }
+
+    public PushSendResult sendDataChanged(
+            UUID eventId,
+            Integer userId,
+            String resource,
+            String resourceId,
+            OffsetDateTime occurredAt
+    ) {
         Map<String, String> data = new LinkedHashMap<>();
         data.put("type", "DATA_CHANGED");
-        data.put("eventId", UUID.randomUUID().toString());
+        data.put("eventId", eventId.toString());
         data.put("resource", resource);
         if (resourceId != null && !resourceId.isBlank()) {
             data.put("resourceId", resourceId);
         }
-        data.put("occurredAt", OffsetDateTime.now().toString());
+        data.put("occurredAt", occurredAt.toString());
         return pushMessageSender.send(
                 pushTokenQueryRepository.findActiveTokens(userId),
                 Map.copyOf(data)

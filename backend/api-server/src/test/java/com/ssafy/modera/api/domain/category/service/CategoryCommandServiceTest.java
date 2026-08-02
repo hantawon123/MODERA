@@ -4,6 +4,7 @@ import com.ssafy.modera.api.domain.category.repository.CategoryCommandRepository
 import com.ssafy.modera.api.domain.category.event.CategoryReanalysisResultCoordinator;
 import com.ssafy.modera.api.domain.image.exception.ImageErrorCode;
 import com.ssafy.modera.api.domain.image.repository.ImageQueryRepository;
+import com.ssafy.modera.api.domain.notification.outbox.UserDataChangeOutboxService;
 import com.ssafy.modera.api.global.exception.BusinessException;
 import com.ssafy.modera.contract.payload.CategoryReanalysisCompletedPayload;
 import com.ssafy.modera.contract.payload.InitialCategoryResolvedPayload;
@@ -32,6 +33,7 @@ class CategoryCommandServiceTest {
     @Mock ImageQueryRepository imageQueryRepository;
     @Mock CategoryReanalysisRequestDispatcher requestDispatcher;
     @Mock CategoryReanalysisResultCoordinator resultCoordinator;
+    @Mock UserDataChangeOutboxService userDataChangeOutboxService;
     @InjectMocks CategoryCommandService categoryCommandService;
 
     @Test
@@ -73,6 +75,7 @@ class CategoryCommandServiceTest {
         categoryCommandService.complete(payload);
 
         verify(imageQueryRepository).synchronizeUserCategories(7);
+        verify(userDataChangeOutboxService).record(7, "IMAGE_CATEGORY", "18");
     }
 
     @Test

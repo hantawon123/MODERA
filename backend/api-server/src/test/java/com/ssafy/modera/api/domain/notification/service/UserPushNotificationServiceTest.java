@@ -11,6 +11,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
 import java.util.Map;
+import java.time.OffsetDateTime;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.verify;
@@ -45,5 +47,25 @@ class UserPushNotificationServiceTest {
                 .containsEntry("resourceId", "41")
                 .containsKeys("eventId", "occurredAt");
         assertThat(result.successCount()).isEqualTo(2);
+    }
+
+    @Test
+    void preservesOutboxIdentityAcrossDispatchAttempts() {
+        UUID eventId = UUID.randomUUID();
+        OffsetDateTime occurredAt = OffsetDateTime.parse("2026-08-02T10:15:30+09:00");
+        when(tokenQueryRepository.findActiveTokens(7)).thenReturn(List.of("token-a"));
+        when(pushMessageSender.send(org.mockito.ArgumentMatchers.anyList(),
+                org.mockito.ArgumentMatchers.anyMap()))
+                .thenReturn(new PushSendResult(true, 1, 1, 0));
+
+        service.sendDataChanged(eventId, 7, "IMAGE_CATEGORY", "41", occurredAt);
+
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<Map<String, String>> data = ArgumentCaptor.forClass(Map.class);
+        verify(pushMessageSender).send(
+                org.mockito.ArgumentMatchers.eq(List.of("token-a")), data.capture());
+        assertThat(data.getValue())
+                .containsEntry("eventId", eventId.toString())
+                .containsEntry("occurredAt", occurredAt.toString());
     }
 }

@@ -6,6 +6,7 @@ import androidx.navigation3.runtime.NavKey
 import com.ssafy.modera.R
 import com.ssafy.modera.core.designsystem.icon.ModeraIcons
 import com.ssafy.modera.feature.category.navigation.CategoryNavKey
+import com.ssafy.modera.feature.document.navigation.DocumentNavKey
 import com.ssafy.modera.feature.favorite.navigation.FavoritesNavKey
 import com.ssafy.modera.feature.home.navigation.HomeNavKey
 import kotlinx.serialization.Serializable
@@ -62,7 +63,7 @@ val TOP_LEVEL_NAV_ITEMS = mapOf(
     HomeNavKey to HOME,
     CategoryNavKey() to CATEGORY,
     FavoritesNavKey to FAVORITES,
-    DocumentsNavKey to DOCUMENTS,
+    DocumentNavKey to DOCUMENTS,
 )
 
 /** Ordered bottom navigation slots, including the center register action. */
@@ -71,12 +72,9 @@ val BOTTOM_NAV_ITEMS = listOf(
     CategoryNavKey() to CATEGORY,
     RegisterNavKey to REGISTER,
     FavoritesNavKey to FAVORITES,
-    DocumentsNavKey to DOCUMENTS,
+    DocumentNavKey to DOCUMENTS,
 )
 
 /* TODO: 추후 코드 이동 */
 @Serializable
 object RegisterNavKey : NavKey
-
-@Serializable
-object DocumentsNavKey : NavKey

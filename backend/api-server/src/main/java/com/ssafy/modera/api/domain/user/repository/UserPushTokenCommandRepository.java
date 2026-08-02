@@ -45,4 +45,14 @@ public class UserPushTokenCommandRepository {
                 userId, deviceId
         );
     }
+
+    public void deleteByToken(String fcmToken) {
+        jdbcTemplate.update(
+                """
+                DELETE FROM user_schema.user_push_token
+                WHERE fcm_token = ?
+                """,
+                fcmToken
+        );
+    }
 }

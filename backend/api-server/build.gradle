@@ -29,6 +29,8 @@ dependencies {
     implementation platform("software.amazon.awssdk:bom:${AWS_SDK_VERSION}")
     implementation 'software.amazon.awssdk:s3'
 
+    implementation "com.google.firebase:firebase-admin:${FIREBASE_ADMIN_VERSION}"
+
     implementation "io.github.openfeign.querydsl:querydsl-core:${QUERYDSL_VERSION}"
     implementation "io.github.openfeign.querydsl:querydsl-jpa:${QUERYDSL_VERSION}"
     annotationProcessor "io.github.openfeign.querydsl:querydsl-apt:${QUERYDSL_VERSION}:jpa"

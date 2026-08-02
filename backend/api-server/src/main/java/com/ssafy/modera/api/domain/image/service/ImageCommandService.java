@@ -23,6 +23,8 @@ import com.ssafy.modera.api.domain.image.repository.UserImageViewDetail;
 import com.ssafy.modera.api.domain.category.repository.CategoryCommandRepository;
 import com.ssafy.modera.api.domain.library.entity.UserImage;
 import com.ssafy.modera.api.domain.library.repository.UserImageRepository;
+import com.ssafy.modera.api.domain.notification.outbox.UserDataChangeOutboxService;
+import com.ssafy.modera.api.domain.notification.outbox.UserDataChangeResource;
 import com.ssafy.modera.api.global.config.StorageProperties;
 import com.ssafy.modera.api.global.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
@@ -31,6 +33,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.support.TransactionTemplate;
+import org.springframework.transaction.annotation.Transactional;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.HeadObjectRequest;
 import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
@@ -68,6 +71,7 @@ public class ImageCommandService {
     private final S3Client s3Client;
     private final S3Presigner s3Presigner;
     private final PlatformTransactionManager transactionManager;
+    private final UserDataChangeOutboxService userDataChangeOutboxService;
 
     public ImageRegisterResponse register(Integer userId, ImageRegisterRequest request) {
         List<ImageRegisterResponse.Registered> registered = new ArrayList<>();
@@ -139,7 +143,7 @@ public class ImageCommandService {
 
         for (Integer imageId : new LinkedHashSet<>(request.imageIds())) {
             try {
-                ImageDeleteStatus status = imageCommandRepository.deleteImage(userId, imageId);
+                ImageDeleteStatus status = deleteInIndependentTransaction(userId, imageId);
                 switch (status) {
                     case DELETED -> deletedImageIds.add(imageId);
                     case ALREADY_DELETED -> alreadyDeletedImageIds.add(imageId);
@@ -163,6 +167,7 @@ public class ImageCommandService {
         );
     }
 
+    @Transactional
     public ImageFavoriteResponse updateFavorite(
             Integer userId,
             Integer imageId,
@@ -177,6 +182,9 @@ public class ImageCommandService {
                 )
                 .orElseThrow(() -> new BusinessException(ImageErrorCode.IMAGE_NOT_FOUND));
 
+        userDataChangeOutboxService.record(
+                userId, UserDataChangeResource.IMAGE_FAVORITE, String.valueOf(imageId));
+
         return new ImageFavoriteResponse(
                 imageId,
                 request.favorite(),
@@ -189,6 +197,19 @@ public class ImageCommandService {
         TransactionTemplate transaction = new TransactionTemplate(transactionManager);
         transaction.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
         return transaction.execute(status -> registerOne(userId, request));
+    }
+
+    private ImageDeleteStatus deleteInIndependentTransaction(Integer userId, Integer imageId) {
+        TransactionTemplate transaction = new TransactionTemplate(transactionManager);
+        transaction.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+        return transaction.execute(status -> {
+            ImageDeleteStatus result = imageCommandRepository.deleteImage(userId, imageId);
+            if (result == ImageDeleteStatus.DELETED) {
+                userDataChangeOutboxService.record(
+                        userId, UserDataChangeResource.IMAGE, String.valueOf(imageId));
+            }
+            return result;
+        });
     }
 
     private RegistrationResult registerOne(Integer userId, ImageRegisterItemRequest request) {
@@ -238,6 +259,11 @@ public class ImageCommandService {
         }
 
         history.complete(imageAsset.getImageId(), duplicated, OffsetDateTime.now());
+        if (!duplicated) {
+            userDataChangeOutboxService.record(
+                    userId, UserDataChangeResource.IMAGE,
+                    String.valueOf(imageAsset.getImageId()));
+        }
         return duplicated ? duplicated(imageAsset.getImageId()) : registered(imageAsset);
     }
 

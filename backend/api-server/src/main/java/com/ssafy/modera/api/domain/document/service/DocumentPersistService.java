@@ -10,6 +10,8 @@ import com.ssafy.modera.api.domain.library.entity.ImageDocument;
 import com.ssafy.modera.api.domain.library.entity.UserDocument;
 import com.ssafy.modera.api.domain.library.repository.ImageDocumentRepository;
 import com.ssafy.modera.api.domain.library.repository.UserDocumentRepository;
+import com.ssafy.modera.api.domain.notification.outbox.UserDataChangeOutboxService;
+import com.ssafy.modera.api.domain.notification.outbox.UserDataChangeResource;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -39,6 +41,7 @@ public class DocumentPersistService {
     private final ImageDocumentRepository imageDocumentRepository;
     private final DocumentViewRepository documentViewRepository;
     private final DocumentCommandRepository documentCommandRepository;
+    private final UserDataChangeOutboxService userDataChangeOutboxService;
 
     /**
      * @return 저장된 문서 ID. 재분석 대상 문서가 그 사이 삭제됐으면 null(요청은 실패로 닫는다).
@@ -96,6 +99,9 @@ public class DocumentPersistService {
         documentViewRepository.markDocumented(request.getUserId(), imageIds);
 
         request.complete(document.getDocumentId(), now);
+        userDataChangeOutboxService.record(
+                request.getUserId(), UserDataChangeResource.DOCUMENT,
+                String.valueOf(document.getDocumentId()));
 
         log.info("문서 저장 완료: documentRequestId={} documentId={} images={}",
                 request.getId(), document.getDocumentId(), imageIds.size());
@@ -147,6 +153,8 @@ public class DocumentPersistService {
         documentViewRepository.unmarkDocumentedIfOrphan(userId, removed);
 
         request.complete(documentId, now);
+        userDataChangeOutboxService.record(
+                userId, UserDataChangeResource.DOCUMENT, String.valueOf(documentId));
 
         log.info("문서 재분석 반영 완료: documentRequestId={} documentId={} images={} removed={}",
                 request.getId(), documentId, imageIds.size(), removed.size());

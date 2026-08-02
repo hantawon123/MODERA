@@ -6,6 +6,8 @@ import com.ssafy.modera.api.domain.document.repository.DocumentCommandRepository
 import com.ssafy.modera.api.domain.document.repository.DocumentQueryRepository;
 import com.ssafy.modera.api.domain.document.repository.DocumentViewRepository;
 import com.ssafy.modera.api.global.exception.BusinessException;
+import com.ssafy.modera.api.domain.notification.outbox.UserDataChangeOutboxService;
+import com.ssafy.modera.api.domain.notification.outbox.UserDataChangeResource;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -25,6 +27,7 @@ public class DocumentDeleteService {
     private final DocumentQueryRepository documentQueryRepository;
     private final DocumentCommandRepository documentCommandRepository;
     private final DocumentViewRepository documentViewRepository;
+    private final UserDataChangeOutboxService userDataChangeOutboxService;
 
     @Transactional
     public DocumentDeleteResponse delete(Integer userId, Integer documentId) {
@@ -41,6 +44,8 @@ public class DocumentDeleteService {
         // 관계를 끈 뒤에 호출해야 한다 — 이 문서의 관계가 아직 살아 있으면 "다른 문서에
         // 포함되어 있다"고 판정해 표시를 끄지 못한다.
         documentViewRepository.unmarkDocumentedIfOrphan(userId, imageIds);
+        userDataChangeOutboxService.record(
+                userId, UserDataChangeResource.DOCUMENT, String.valueOf(documentId));
 
         log.info("문서 삭제: userId={} documentId={} images={}", userId, documentId, imageIds.size());
         return new DocumentDeleteResponse(documentId, true);

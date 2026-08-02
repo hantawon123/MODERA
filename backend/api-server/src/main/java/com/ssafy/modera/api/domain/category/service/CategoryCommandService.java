@@ -6,6 +6,7 @@ import com.ssafy.modera.api.domain.category.repository.CategoryCommandRepository
 import com.ssafy.modera.api.domain.image.exception.ImageErrorCode;
 import com.ssafy.modera.api.domain.image.repository.ImageQueryRepository;
 import com.ssafy.modera.api.domain.notification.outbox.UserDataChangeOutboxService;
+import com.ssafy.modera.api.domain.notification.outbox.UserDataChangeResource;
 import com.ssafy.modera.api.global.exception.BusinessException;
 import com.ssafy.modera.contract.payload.CategoryReanalysisCompletedPayload;
 import com.ssafy.modera.contract.payload.CategoryReanalysisFailedPayload;
@@ -67,7 +68,8 @@ public class CategoryCommandService {
                 payload.categoryId(), payload.categoryName())) {
             imageQueryRepository.synchronizeUserCategories(payload.userId());
             userDataChangeOutboxService.record(
-                    payload.userId(), "IMAGE_CATEGORY", String.valueOf(payload.imageId()));
+                    payload.userId(), UserDataChangeResource.IMAGE_CATEGORY,
+                    String.valueOf(payload.imageId()));
             afterCommit(() -> resultCoordinator.complete(payload));
         }
     }
@@ -86,6 +88,9 @@ public class CategoryCommandService {
                 payload.userId(), payload.imageId(),
                 payload.categoryId(), payload.categoryName());
         imageQueryRepository.synchronizeUserCategories(payload.userId());
+        userDataChangeOutboxService.record(
+                payload.userId(), UserDataChangeResource.IMAGE_CATEGORY,
+                String.valueOf(payload.imageId()));
     }
 
     private void afterCommit(Runnable action) {

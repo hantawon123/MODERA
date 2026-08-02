@@ -79,6 +79,7 @@ dependencies {
     implementation(projects.core.navigation)
     implementation(projects.core.ui)
 
+    implementation(projects.feature.splash)
     implementation(projects.feature.home)
     implementation(projects.feature.category)
     implementation(projects.feature.favorite)

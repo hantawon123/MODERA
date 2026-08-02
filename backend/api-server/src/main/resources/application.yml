@@ -65,6 +65,8 @@ notification:
       retention-days: ${FCM_OUTBOX_SENT_RETENTION_DAYS:7}
       batch-size: ${FCM_OUTBOX_CLEANUP_BATCH_SIZE:1000}
       max-batches: ${FCM_OUTBOX_CLEANUP_MAX_BATCHES:10}
+      soft-delete-batch-size: ${SOFT_DELETE_CLEANUP_BATCH_SIZE:1000}
+      soft-delete-max-batches: ${SOFT_DELETE_CLEANUP_MAX_BATCHES:10}
       cron: ${FCM_OUTBOX_CLEANUP_CRON:0 0 4 * * *}
       zone: ${FCM_OUTBOX_CLEANUP_ZONE:Asia/Seoul}
 

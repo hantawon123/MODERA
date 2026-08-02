@@ -21,6 +21,7 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -52,6 +53,7 @@ import com.ssafy.modera.feature.analyzedimagedetail.component.AnalyzedImageDetai
 import com.ssafy.modera.feature.analyzedimagedetail.component.CategoryLabel
 import com.ssafy.modera.feature.analyzedimagedetail.component.ImageSection
 import com.ssafy.modera.feature.analyzedimagedetail.component.ExtractedTextSection
+import com.ssafy.modera.feature.analyzedimagedetail.component.KeyInformationSection
 
 private val TopBarTitleScrollThreshold = 96.dp
 
@@ -273,6 +275,17 @@ private fun AnalyzedImageDetailContent(
     onRelatedImagesClick: (Long, String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    var isExtractedTextExpanded by rememberSaveable(image.id) {
+        mutableStateOf(false)
+    }
+
+    val keyInformation = image.keyInformation
+        .filter(String::isNotBlank)
+
+    val extractedText = image.extractedTexts
+        .filter(String::isNotBlank)
+        .joinToString(separator = ", ")
+
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -341,21 +354,25 @@ private fun AnalyzedImageDetailContent(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            AnalyzedImageDetailActionItem(
-                iconRes = ModeraIcons.FileDocument,
-                text = stringResource(
-                    R.string.analyzed_image_detail_document,
-                ),
-                onClick = onDocumentClick,
-            )
+            if(image.isDocumented) {
+                AnalyzedImageDetailActionItem(
+                    iconRes = ModeraIcons.FileDocument,
+                    text = stringResource(
+                        R.string.analyzed_image_detail_document,
+                    ),
+                    onClick = onDocumentClick,
+                )
+            }
 
-            AnalyzedImageDetailActionItem(
-                iconRes = ModeraIcons.CalendarNumber,
-                text = stringResource(
-                    R.string.analyzed_image_detail_schedule,
-                ),
-                onClick = onScheduleClick,
-            )
+            if(image.isCalendared) {
+                AnalyzedImageDetailActionItem(
+                    iconRes = ModeraIcons.CalendarNumber,
+                    text = stringResource(
+                        R.string.analyzed_image_detail_schedule,
+                    ),
+                    onClick = onScheduleClick,
+                )
+            }
         }
 
         if (image.tags.isNotEmpty()) {
@@ -372,20 +389,31 @@ private fun AnalyzedImageDetailContent(
             content = image.summary,
         )
 
-        image.extractedTexts
-            .filter(String::isNotBlank)
-            .takeIf(List<String>::isNotEmpty)
-            ?.joinToString(separator = ", ")
-            ?.let { extractedText ->
-                Spacer(modifier = Modifier.height(30.dp))
+        if (keyInformation.isNotEmpty()) {
+            Spacer(modifier = Modifier.height(30.dp))
 
-                ExtractedTextSection(
-                    title = stringResource(
-                        R.string.analyzed_image_detail_ocr_title,
-                    ),
-                    content = extractedText,
-                )
-            }
+            KeyInformationSection(
+                title = stringResource(
+                    R.string.analyzed_image_detail_key_information_title,
+                ),
+                items = keyInformation,
+            )
+        }
+
+        if (extractedText.isNotBlank()) {
+            Spacer(modifier = Modifier.height(30.dp))
+
+            ExtractedTextSection(
+                title = stringResource(
+                    R.string.analyzed_image_detail_ocr_title,
+                ),
+                content = extractedText,
+                expanded = isExtractedTextExpanded,
+                onExpandClick = {
+                    isExtractedTextExpanded = !isExtractedTextExpanded
+                },
+            )
+        }
 
         Spacer(modifier = Modifier.height(30.dp))
 

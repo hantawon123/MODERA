@@ -34,7 +34,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.ssafy.modera.core.component.ModeraTopBar
 import com.ssafy.modera.core.designsystem.component.Text
 import com.ssafy.modera.core.designsystem.theme.ModeraTheme
 import com.ssafy.modera.core.model.analyzedimage.AnalyzedImage
@@ -44,11 +43,7 @@ import kotlinx.coroutines.isActive
 import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
-internal fun DocumentCreatingScreen(
-    selectedImages: List<AnalyzedImage>,
-    onBackClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
+internal fun DocumentCreatingScreen(selectedImages: List<AnalyzedImage>) {
     val selectedImageIds = selectedImages.map(AnalyzedImage::id)
 
     var currentImageIndex by remember(selectedImageIds) {
@@ -75,87 +70,78 @@ internal fun DocumentCreatingScreen(
     )
 
     Column(
-        modifier = modifier
-            .fillMaxSize(),
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = 32.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        ModeraTopBar(
-            onBackClick = onBackClick,
+        Spacer(
+            modifier = Modifier.weight(0.5f),
         )
 
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 32.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Spacer(
-                modifier = Modifier.weight(0.5f),
-            )
+        DocumentCreatingCharacter(
+            characterPainter = painterResource(R.drawable.img_character_document_creating),
+        )
 
-            DocumentCreatingCharacter(
-                characterPainter = painterResource(R.drawable.img_character_document_creating),
-            )
+        Spacer(
+            modifier = Modifier.height(24.dp),
+        )
 
-            Spacer(
-                modifier = Modifier.height(24.dp),
-            )
+        Text(
+            text = stringResource(
+                R.string.document_creating_title,
+            ),
+            style = ModeraTheme.typography.bodySB16,
+            color = ModeraTheme.colors.gray900,
+            textAlign = TextAlign.Center,
+        )
 
-            Text(
-                text = stringResource(
-                    R.string.document_creating_title,
-                ),
-                style = ModeraTheme.typography.bodySB16,
-                color = ModeraTheme.colors.gray900,
-                textAlign = TextAlign.Center,
-            )
+        Spacer(
+            modifier = Modifier.height(12.dp),
+        )
 
-            Spacer(
-                modifier = Modifier.height(12.dp),
-            )
+        Text(
+            text = stringResource(
+                R.string.document_creating_description,
+            ),
+            style = ModeraTheme.typography.bodyR14,
+            color = ModeraTheme.colors.gray500,
+            textAlign = TextAlign.Center,
+        )
 
-            Text(
-                text = stringResource(
-                    R.string.document_creating_description,
-                ),
-                style = ModeraTheme.typography.bodyR14,
-                color = ModeraTheme.colors.gray500,
-                textAlign = TextAlign.Center,
-            )
+        Spacer(
+            modifier = Modifier.height(64.dp),
+        )
 
-            Spacer(
-                modifier = Modifier.height(64.dp),
-            )
-
-            AnimatedContent(
-                targetState = currentImage,
-                contentKey = { image ->
-                    image?.id
-                },
-                transitionSpec = {
-                    (
-                            fadeIn() +
-                                    slideInVertically { height ->
-                                        height / 3
-                                    }
-                            ) togetherWith (
-                            fadeOut() +
-                                    slideOutVertically { height ->
-                                        -height / 3
-                                    }
-                            )
-                },
-                label = "documentCreatingContent",
-                modifier = Modifier.fillMaxWidth(),
-            ) { image ->
-                if (image != null) {
-                    DocumentCreatingImageContent(image = image)
-                }
+        AnimatedContent(
+            targetState = currentImage,
+            contentKey = { image ->
+                image?.id
+            },
+            transitionSpec = {
+                (
+                        fadeIn() +
+                                slideInVertically { height ->
+                                    height / 3
+                                }
+                        ) togetherWith (
+                        fadeOut() +
+                                slideOutVertically { height ->
+                                    -height / 3
+                                }
+                        )
+            },
+            label = "documentCreatingContent",
+            modifier = Modifier.fillMaxWidth(),
+        ) { image ->
+            if (image != null) {
+                DocumentCreatingImageContent(image = image)
             }
-
-            Spacer(
-                modifier = Modifier.weight(1f),
-            )
         }
+
+        Spacer(
+            modifier = Modifier.weight(1f),
+        )
     }
 }
 
@@ -261,10 +247,7 @@ private const val DocumentCreatingItemDurationMillis = 1_800L
 @Composable
 private fun DocumentCreatingScreenPreview() {
     ModeraTheme {
-        DocumentCreatingScreen(
-            selectedImages = previewDocumentCreatingImages,
-            onBackClick = {},
-        )
+        DocumentCreatingScreen(selectedImages = previewDocumentCreatingImages)
     }
 }
 

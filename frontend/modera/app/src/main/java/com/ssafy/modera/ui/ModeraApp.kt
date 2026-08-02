@@ -267,6 +267,9 @@ internal fun ModeraApp(
                                 documentCreateEntry(
                                     navigator = navigator,
                                     onBackClick = handleBack,
+                                    onDocumentCreated = { documentId ->
+                                        // Todo: document detail screen 으로 이동
+                                    }
                                 )
                             }
 

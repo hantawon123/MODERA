@@ -54,7 +54,6 @@ import com.ssafy.modera.feature.category.navigation.CategoryNavKey
 import com.ssafy.modera.feature.category.navigation.categoryEntry
 import com.ssafy.modera.feature.category.navigation.navigateToCategorySearch
 import com.ssafy.modera.feature.category.navigation.navigateToCategoryTab
-import com.ssafy.modera.feature.categoryimages.navigation.categoryImagesEntry
 import com.ssafy.modera.feature.document.navigation.documentEntry
 import com.ssafy.modera.feature.documentcreate.navigation.documentCreateEntry
 import com.ssafy.modera.feature.documentcreate.navigation.navigateToDocumentCreate
@@ -202,8 +201,8 @@ internal fun ModeraApp(
                                     ModeraBottomNavigationItem(
                                         selected =
                                             navKey ==
-                                                appState.navigationState
-                                                    .currentTopLevelKey,
+                                                    appState.navigationState
+                                                        .currentTopLevelKey,
                                         onClick = {
                                             if (navKey == CategoryNavKey()) {
                                                 navigator.navigateToCategoryTab(
@@ -254,7 +253,7 @@ internal fun ModeraApp(
                             appState.navigationState.currentTopLevelKey
                         ] ?: error(
                             "Top level nav item not found for " +
-                                "${appState.navigationState.currentTopLevelKey}",
+                                    "${appState.navigationState.currentTopLevelKey}",
                         )
                     }
 
@@ -314,13 +313,6 @@ internal fun ModeraApp(
                                     onDocumentClick = { documentId ->
                                         // TODO: 문서 상세 화면으로 이동
                                     },
-                                )
-
-                                categoryImagesEntry(
-                                    navigator = navigator,
-                                    onImageClick =
-                                        navigator::navigateToImageDetail,
-                                    onBackClick = handleBack,
                                 )
 
                                 analyzedImageDetailEntry(

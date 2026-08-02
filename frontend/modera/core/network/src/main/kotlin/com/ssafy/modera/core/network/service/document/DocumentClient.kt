@@ -3,11 +3,25 @@ package com.ssafy.modera.core.network.service.document
 import com.skydoves.sandwich.getOrThrow
 import com.ssafy.modera.core.network.model.document.CreateDocumentRequest
 import com.ssafy.modera.core.network.model.document.DocumentDetailResponse
+import com.ssafy.modera.core.network.model.document.DocumentSortOption
+import com.ssafy.modera.core.network.model.document.DocumentsResponse
 import javax.inject.Inject
 
 class DocumentClient @Inject constructor(
     private val documentService: DocumentService,
 ) {
+    suspend fun fetchDocuments(
+        page: Int,
+        sort: DocumentSortOption = DocumentSortOption.UPDATED_DESC,
+    ): DocumentsResponse =
+        documentService
+            .fetchDocuments(
+                page = page,
+                size = PAGE_SIZE,
+                sort = sort.value,
+            )
+            .getOrThrow()
+            .data
 
     suspend fun createDocument(
         clientRequestId: String,
@@ -22,4 +36,8 @@ class DocumentClient @Inject constructor(
             )
             .getOrThrow()
             .data
+
+    private companion object {
+        const val PAGE_SIZE = 20
+    }
 }

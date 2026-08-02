@@ -32,11 +32,12 @@ internal class DocumentViewModel @Inject constructor(
     private var documents: List<Document> = emptyList()
     private var isLoading = true
     private var isLastPageReached = false
+    private var hasResumedOnce = false
 
     val uiState: StateFlow<DocumentUiState> =
         request.flatMapLatest { request ->
             documentRepository
-                .fetchDocuments(
+                .getDocuments(
                     page = request.page,
                     sortType = request.sortType,
                     onLastPageReached = {
@@ -102,6 +103,28 @@ internal class DocumentViewModel @Inject constructor(
                 initialValue = DocumentUiState.Loading,
             )
 
+    fun onScreenResumed() {
+        if (!hasResumedOnce) {
+            hasResumedOnce = true
+            return
+        }
+
+        refreshDocuments()
+    }
+
+    private fun refreshDocuments() {
+        documents = emptyList()
+        isLoading = true
+        isLastPageReached = false
+
+        request.update { currentRequest ->
+            currentRequest.copy(
+                page = INITIAL_PAGE,
+                refreshVersion = currentRequest.refreshVersion + 1,
+            )
+        }
+    }
+
     fun updateSortType(
         sortType: DocumentSortType,
     ) {
@@ -132,6 +155,7 @@ internal class DocumentViewModel @Inject constructor(
     private data class DocumentRequest(
         val page: Int,
         val sortType: DocumentSortType,
+        val refreshVersion: Long = 0L,
     )
 
     private companion object {

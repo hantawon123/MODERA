@@ -1,4 +1,4 @@
-package com.ssafy.modera.feature.analyzedimagedetail.component
+package com.ssafy.modera.feature.documentdetail.component
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -24,16 +24,16 @@ import com.ssafy.modera.core.designsystem.component.Icon
 import com.ssafy.modera.core.designsystem.component.Text
 import com.ssafy.modera.core.designsystem.icon.ModeraIcons
 import com.ssafy.modera.core.designsystem.theme.ModeraTheme
-import com.ssafy.modera.feature.analyzedimagedetail.R
+import com.ssafy.modera.feature.documentdetail.R
 
 @Composable
-internal fun AnalyzedImageDetailTopBar(
+internal fun DocumentDetailTopBar(
     title: String,
+    menuVisible: Boolean,
     menuExpanded: Boolean,
     onBackClick: () -> Unit,
     onMoreClick: () -> Unit,
     onDismissMenu: () -> Unit,
-    onDocumentClick: () -> Unit,
     onReanalyzeClick: () -> Unit,
     onDeleteClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -47,23 +47,16 @@ internal fun AnalyzedImageDetailTopBar(
 
     val menuItems = listOf(
         ModeraDropdownMenuItem(
-            icon = ModeraIcons.FileDocument,
-            label = stringResource(
-                R.string.analyzed_image_detail_create_document,
-            ),
-            onClick = onDocumentClick,
-        ),
-        ModeraDropdownMenuItem(
             icon = ModeraIcons.Refresh,
             label = stringResource(
-                R.string.analyzed_image_detail_reanalyze,
+                R.string.document_detail_reanalyze,
             ),
             onClick = onReanalyzeClick,
         ),
         ModeraDropdownMenuItem(
             icon = ModeraIcons.Trash,
             label = stringResource(
-                R.string.analyzed_image_detail_delete,
+                R.string.document_detail_delete,
             ),
             contentColor = ModeraTheme.colors.red,
             onClick = onDeleteClick,
@@ -84,70 +77,44 @@ internal fun AnalyzedImageDetailTopBar(
             )
         },
         rightContent = {
-            Box {
-                Icon(
-                    imageVector = ImageVector.vectorResource(
-                        ModeraIcons.MoreVertical,
-                    ),
-                    contentDescription = stringResource(
-                        R.string.analyzed_image_detail_more,
-                    ),
-                    modifier = Modifier
-                        .size(ModeraTopBarDefaults.IconSize)
-                        .clickable(onClick = onMoreClick),
-                    tint = ModeraTheme.colors.gray700,
-                )
+            if (menuVisible) {
+                Box {
+                    Icon(
+                        imageVector = ImageVector.vectorResource(
+                            ModeraIcons.MoreVertical,
+                        ),
+                        contentDescription = stringResource(
+                            R.string.document_detail_more,
+                        ),
+                        modifier = Modifier
+                            .size(ModeraTopBarDefaults.IconSize)
+                            .clickable(onClick = onMoreClick),
+                        tint = ModeraTheme.colors.gray700,
+                    )
 
-                ModeraDropdownMenu(
-                    expanded = menuExpanded,
-                    items = menuItems,
-                    onDismissRequest = onDismissMenu,
-                    offset = menuOffset,
-                )
+                    ModeraDropdownMenu(
+                        expanded = menuExpanded,
+                        items = menuItems,
+                        onDismissRequest = onDismissMenu,
+                        offset = menuOffset,
+                    )
+                }
             }
         },
     )
 }
 
-@Preview(
-    name = "AnalyzedImageDetailTopBar",
-    showBackground = true,
-)
+@Preview(name = "DocumentDetailTopBar", showBackground = true)
 @Composable
-private fun AnalyzedImageDetailTopBarPreview() {
+private fun DocumentDetailTopBarPreview() {
     ModeraTheme {
-        AnalyzedImageDetailTopBar(
+        DocumentDetailTopBar(
             title = "",
+            menuVisible = true,
             menuExpanded = false,
             onBackClick = {},
             onMoreClick = {},
             onDismissMenu = {},
-            onDocumentClick = {},
-            onReanalyzeClick = {},
-            onDeleteClick = {},
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(ModeraTheme.colors.white),
-        )
-    }
-}
-
-@Preview(
-    name = "AnalyzedImageDetailTopBar - Menu Expanded",
-    showBackground = true,
-    widthDp = 360,
-    heightDp = 240,
-)
-@Composable
-private fun AnalyzedImageDetailTopBarMenuPreview() {
-    ModeraTheme {
-        AnalyzedImageDetailTopBar(
-            title = "",
-            menuExpanded = true,
-            onBackClick = {},
-            onMoreClick = {},
-            onDismissMenu = {},
-            onDocumentClick = {},
             onReanalyzeClick = {},
             onDeleteClick = {},
             modifier = Modifier

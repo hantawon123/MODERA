@@ -5,9 +5,6 @@
     <string name="document_total_count">총 %1$d개</string>
     <string name="document_sort_content_description">문서 정렬 기준 선택</string>
 
-    <string name="document_source_image_count">원본 %1$d개</string>
-    <string name="document_updated_at">%1$s 업데이트</string>
-
     <string name="document_empty_title">스크린샷을 문서로 정리해보세요!</string>
     <string name="document_empty_description">기존 이미지를 선택하면\nAI가 관련 이미지를 추천해드려요.</string>
 

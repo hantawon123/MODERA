@@ -24,6 +24,16 @@ public enum ImageErrorCode implements ErrorCode {
             HttpStatus.CONFLICT,
             "CATEGORY_REANALYSIS_UNAVAILABLE",
             "카테고리 재분석을 요청할 수 없는 상태입니다."
+    ),
+    CATEGORY_REANALYSIS_FAILED(
+            HttpStatus.BAD_GATEWAY,
+            "CATEGORY_REANALYSIS_FAILED",
+            "카테고리 재분류 처리에 실패했습니다."
+    ),
+    CATEGORY_REANALYSIS_TIMEOUT(
+            HttpStatus.GATEWAY_TIMEOUT,
+            "CATEGORY_REANALYSIS_TIMEOUT",
+            "카테고리 재분류 응답 시간이 초과되었습니다."
     );
 
     private final HttpStatus status;

@@ -6,6 +6,7 @@ import com.ssafy.modera.core.network.model.document.CreateDocumentRequest
 import com.ssafy.modera.core.network.model.document.DocumentDetailResponse
 import com.ssafy.modera.core.network.model.document.DocumentsResponse
 import retrofit2.http.Body
+import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.POST
 import retrofit2.http.Path
@@ -29,4 +30,9 @@ interface DocumentService {
     suspend fun createDocument(
         @Body request: CreateDocumentRequest,
     ): ApiResponse<BaseResponse<DocumentDetailResponse>>
+
+    @DELETE("api/v1/documents/{documentId}")
+    suspend fun deleteDocument(
+        @Path("documentId") documentId: Long,
+    ): ApiResponse<Unit>
 }

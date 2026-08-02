@@ -46,6 +46,16 @@ class DocumentClient @Inject constructor(
             .getOrThrow()
             .data
 
+    suspend fun deleteDocument(
+        documentId: Long,
+    ) {
+        documentService
+            .deleteDocument(
+                documentId = documentId,
+            )
+            .getOrThrow()
+    }
+
     private companion object {
         const val PAGE_SIZE = 20
     }

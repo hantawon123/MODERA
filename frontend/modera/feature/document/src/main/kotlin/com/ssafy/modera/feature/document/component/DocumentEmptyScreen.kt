@@ -22,7 +22,7 @@ import com.ssafy.modera.core.designsystem.theme.ModeraTheme
 import com.ssafy.modera.core.ui.R as uiR
 
 @Composable
-private fun DocumentEmptyScreen(
+internal fun DocumentEmptyScreen(
     modifier: Modifier = Modifier,
 ) {
     Box(

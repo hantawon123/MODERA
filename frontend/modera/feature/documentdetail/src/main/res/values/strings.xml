@@ -13,4 +13,9 @@
     <string name="document_manage_screenshots_tooltip">스크린샷을 추가하거나 제거하면\nAI가 문서를 다시 정리해요.</string>
 
     <string name="document_summary_title">문서 요약</string>
+
+    <string name="document_detail_delete_dialog_title">해당 문서를 삭제하시겠어요?</string>
+    <string name="document_detail_delete_dialog_description">문서 내용은 복구가 불가능합니다.</string>
+    <string name="document_detail_delete_dialog_confirm">삭제</string>
+    <string name="document_detail_delete_dialog_cancel">취소</string>
 </resources>

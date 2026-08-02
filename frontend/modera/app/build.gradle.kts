@@ -3,6 +3,7 @@ plugins {
     alias(libs.plugins.modera.android.application.compose)
     alias(libs.plugins.modera.hilt)
     alias(libs.plugins.kotlinx.serialization)
+    alias(libs.plugins.google.services)
 }
 
 android {
@@ -23,7 +24,7 @@ android {
 
     buildTypes {
         debug {
-            applicationIdSuffix = ".debug"
+//            applicationIdSuffix = ".debug"
             versionNameSuffix = "-debug"
         }
 
@@ -71,6 +72,8 @@ dependencies {
     implementation(libs.androidx.navigation3.ui)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.core.splashscreen)
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.messaging)
     implementation(libs.androidx.lifecycle.runtimeCompose)
     implementation(libs.androidx.lifecycle.viewModelCompose)
     implementation(libs.androidx.lifecycle.viewModel.navigation3)

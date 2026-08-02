@@ -100,4 +100,22 @@ public class UserDataChangeOutboxRepository {
                 outboxId
         );
     }
+
+    public int deleteSentBefore(OffsetDateTime cutoff, int batchSize) {
+        return jdbcTemplate.update(
+                """
+                DELETE FROM event_schema.user_data_change_outbox
+                WHERE outbox_id IN (
+                    SELECT outbox_id
+                    FROM event_schema.user_data_change_outbox
+                    WHERE status = 'SENT'
+                      AND sent_at < ?
+                    ORDER BY sent_at, outbox_id
+                    LIMIT ?
+                )
+                """,
+                cutoff,
+                batchSize
+        );
+    }
 }

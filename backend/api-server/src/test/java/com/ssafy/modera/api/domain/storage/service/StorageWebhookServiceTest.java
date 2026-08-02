@@ -42,25 +42,8 @@ class StorageWebhookServiceTest {
     @InjectMocks StorageWebhookService storageWebhookService;
 
     @Test
-    void retriesAnalysisForUploadedAssetWhoseViewIsNone() {
+    void publishesReuploadForUploadedAssetWhoseViewIsNotReusable() {
         stubUploadedAssetAndOwner(false);
-        when(ocrRepository.findByImageId(7)).thenReturn(Optional.empty());
-
-        storageWebhookService.handle(webhook());
-
-        verify(imageQueryRepository).markUploadProcessing(6, 7);
-        verify(eventPublisher).publish(
-                eq(Streams.IMAGE_ANALYSIS),
-                eq(EventTypes.IMAGE_UPLOADED),
-                eq(1),
-                any(ImageUploadedPayload.class));
-    }
-
-    @Test
-    void publishesReuploadWhenDeletedImageHasNoReusableView() {
-        stubUploadedAssetAndOwner(false);
-        when(userImageRepository.existsByUserIdAndImageIdAndDelYn(6, 7, "Y"))
-                .thenReturn(true);
         when(ocrRepository.findByImageId(7)).thenReturn(Optional.empty());
 
         storageWebhookService.handle(webhook());
@@ -69,6 +52,21 @@ class StorageWebhookServiceTest {
         verify(eventPublisher).publish(
                 eq(Streams.IMAGE_ANALYSIS),
                 eq(EventTypes.IMAGE_REUPLOAD),
+                eq(1),
+                any(ImageUploadedPayload.class));
+    }
+
+    @Test
+    void publishesInitialUploadForANewAsset() {
+        stubAssetAndOwner("PENDING", false);
+        when(ocrRepository.findByImageId(7)).thenReturn(Optional.empty());
+
+        storageWebhookService.handle(webhook());
+
+        verify(imageQueryRepository).markUploadProcessing(6, 7);
+        verify(eventPublisher).publish(
+                eq(Streams.IMAGE_ANALYSIS),
+                eq(EventTypes.IMAGE_UPLOADED),
                 eq(1),
                 any(ImageUploadedPayload.class));
     }
@@ -86,8 +84,6 @@ class StorageWebhookServiceTest {
     @Test
     void restoredCompletedReuploadDoesNotPublishAnyAnalysisEvent() {
         stubUploadedAssetAndOwner(true);
-        when(userImageRepository.existsByUserIdAndImageIdAndDelYn(6, 7, "Y"))
-                .thenReturn(true);
 
         storageWebhookService.handle(webhook());
 
@@ -96,13 +92,17 @@ class StorageWebhookServiceTest {
     }
 
     private void stubUploadedAssetAndOwner(boolean activeOrCompleted) {
+        stubAssetAndOwner("UPLOADED", activeOrCompleted);
+    }
+
+    private void stubAssetAndOwner(String uploadStatus, boolean activeOrCompleted) {
         ImageAsset asset = ImageAsset.builder()
                 .imageId(7)
                 .fileName("60.jpg")
                 .contentHash("a".repeat(64))
                 .fileSize(200)
                 .s3Key("6/7-60.jpg")
-                .uploadStatus("UPLOADED")
+                .uploadStatus(uploadStatus)
                 .build();
         ImageRegistrationRequest request = new ImageRegistrationRequest(
                 6, UUID.randomUUID(), OffsetDateTime.now());
@@ -117,8 +117,10 @@ class StorageWebhookServiceTest {
         when(userImageRepository.findByUserIdAndImageIdAndDelYn(6, 7, "N"))
                 .thenReturn(Optional.of(
                         UserImage.builder().userId(6).imageId(7).build()));
-        when(imageQueryRepository.isAnalysisActiveOrCompleted(6, 7))
-                .thenReturn(activeOrCompleted);
+        if ("UPLOADED".equals(uploadStatus)) {
+            when(imageQueryRepository.isAnalysisActiveOrCompleted(6, 7))
+                    .thenReturn(activeOrCompleted);
+        }
     }
 
     private MinioWebhookEvent webhook() {

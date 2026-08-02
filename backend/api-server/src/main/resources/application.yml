@@ -61,6 +61,12 @@ notification:
     batch-size: ${FCM_OUTBOX_BATCH_SIZE:100}
     max-retries: ${FCM_OUTBOX_MAX_RETRIES:5}
     stale-seconds: ${FCM_OUTBOX_STALE_SECONDS:300}
+    cleanup:
+      retention-days: ${FCM_OUTBOX_SENT_RETENTION_DAYS:7}
+      batch-size: ${FCM_OUTBOX_CLEANUP_BATCH_SIZE:1000}
+      max-batches: ${FCM_OUTBOX_CLEANUP_MAX_BATCHES:10}
+      cron: ${FCM_OUTBOX_CLEANUP_CRON:0 0 4 * * *}
+      zone: ${FCM_OUTBOX_CLEANUP_ZONE:Asia/Seoul}
 
 # [Docs] Swagger는 /api/v1/**만 다룬다 — /internal/**은 JWT가 아니라
 # X-Webhook-Token으로 인증하는 서버 간 내부 API라 문서에서 뺀다(SwaggerConfig 설명 참고).

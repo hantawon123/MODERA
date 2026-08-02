@@ -6,6 +6,7 @@ sealed interface DocumentDetailUiState {
 
     data object Loading : DocumentDetailUiState
 
+    data object Reanalyzing : DocumentDetailUiState
     data class Success(
         val document: DocumentDetail,
     ) : DocumentDetailUiState

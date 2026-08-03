@@ -1,5 +1,8 @@
 # Modera 백엔드 성능 테스트 분석
 
+> 개선 전 API의 40개 혼합 사용자 흐름 동시성 테스트는
+> [mixed-user-scenario-test.md](./mixed-user-scenario-test.md)에 별도로 기록했다.
+
 ## 1. 문서 목적
 
 이 문서는 현재 배포된 Modera 백엔드에 대해 수행한 k6 부하 테스트, 과부하 테스트, 사용자 플로우 테스트의 조건과 결과를 기록한다.

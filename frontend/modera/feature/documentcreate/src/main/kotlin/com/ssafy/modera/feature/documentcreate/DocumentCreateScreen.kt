@@ -40,8 +40,8 @@ import com.ssafy.modera.core.designsystem.component.Text
 import com.ssafy.modera.core.designsystem.icon.ModeraIcons
 import com.ssafy.modera.core.designsystem.theme.ModeraTheme
 import com.ssafy.modera.core.model.analyzedimage.AnalyzedImage
+import com.ssafy.modera.core.ui.DocumentCreatingScreen
 import com.ssafy.modera.core.ui.ErrorScreen
-import com.ssafy.modera.feature.documentcreate.component.DocumentCreatingScreen
 import com.ssafy.modera.feature.documentcreate.component.SelectedImagesSection
 
 @Composable

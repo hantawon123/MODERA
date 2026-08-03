@@ -8,12 +8,4 @@
     <string name="document_create_selected_image_description">%1$s 선택된 자료 이미지</string>
     <string name="document_create_remove_selected_image">%1$s 선택 해제</string>
     <string name="document_create_load_error">문서화할 자료를 불러오지 못했습니다.</string>
-
-    <string name="document_creating_title">해당 자료를 바탕으로 문서화를 진행합니다</string>
-
-    <string name="document_creating_description">아래 내용들로 문서를 만들고 있어요</string>
-
-    <string name="document_creating_image_title">“%1$s”</string>
-
-    <string name="document_creating_progress">자료를 정리하고 있어요</string>
 </resources>

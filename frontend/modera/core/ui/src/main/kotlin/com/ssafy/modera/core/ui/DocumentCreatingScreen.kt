@@ -1,4 +1,4 @@
-package com.ssafy.modera.feature.documentcreate.component
+package com.ssafy.modera.core.ui
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.fadeIn
@@ -37,13 +37,12 @@ import androidx.compose.ui.unit.dp
 import com.ssafy.modera.core.designsystem.component.Text
 import com.ssafy.modera.core.designsystem.theme.ModeraTheme
 import com.ssafy.modera.core.model.analyzedimage.AnalyzedImage
-import com.ssafy.modera.feature.documentcreate.R
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
-internal fun DocumentCreatingScreen(selectedImages: List<AnalyzedImage>) {
+fun DocumentCreatingScreen(selectedImages: List<AnalyzedImage>) {
     val selectedImageIds = selectedImages.map(AnalyzedImage::id)
 
     var currentImageIndex by remember(selectedImageIds) {
@@ -238,7 +237,7 @@ private fun DocumentCreatingImageContent(
     }
 }
 
-private const val DocumentCreatingItemDurationMillis = 1_800L
+private const val DocumentCreatingItemDurationMillis = 1_500L
 
 @Preview(
     name = "Document Creating Screen",

@@ -7,6 +7,16 @@ plugins {
     alias(libs.plugins.kotlinx.serialization)
 }
 
+val localProperties = Properties().apply {
+    val localFile = rootProject.file("local.properties")
+    if (localFile.exists()) {
+        localFile.inputStream().use(::load)
+    }
+}
+
+val kakaoNativeAppKeyDebug = localProperties.getProperty("kakaoNativeAppKeyDebug", "")
+val kakaoNativeAppKeyRelease = localProperties.getProperty("kakaoNativeAppKeyRelease", "")
+
 android {
     namespace = "com.ssafy.modera"
     compileSdk {
@@ -113,13 +123,3 @@ dependencies {
 
     androidTestImplementation(libs.hilt.android.testing)
 }
-
-val localProperties = Properties().apply {
-    val localFile = rootProject.file("local.properties")
-    if (localFile.exists()) {
-        localFile.inputStream().use(::load)
-    }
-}
-
-val kakaoNativeAppKeyDebug = localProperties.getProperty("kakaoNativeAppKeyDebug", "")
-val kakaoNativeAppKeyRelease = localProperties.getProperty("kakaoNativeAppKeyRelease", "")

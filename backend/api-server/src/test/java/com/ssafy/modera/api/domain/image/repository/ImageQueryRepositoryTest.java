@@ -21,6 +21,60 @@ class ImageQueryRepositoryTest {
 
     @Test
     @SuppressWarnings("unchecked")
+    void usesCategoryReadModelCountForUnfilteredCategoryList() {
+        JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
+        ImageQueryRepository repository =
+                new ImageQueryRepository(jdbcTemplate, new ObjectMapper());
+        ArgumentCaptor<String> countSql = ArgumentCaptor.forClass(String.class);
+
+        when(jdbcTemplate.queryForObject(
+                anyString(), eq(Long.class), eq(7), eq(3)
+        )).thenReturn(135L);
+        when(jdbcTemplate.query(
+                anyString(), any(RowMapper.class), any(Object[].class)
+        )).thenReturn(List.of());
+
+        ImageListPage result = repository.findImages(
+                7, null, 3, null, "UPLOADED_DESC", 0, 20);
+
+        verify(jdbcTemplate).queryForObject(
+                countSql.capture(), eq(Long.class), eq(7), eq(3));
+        assertThat(countSql.getValue())
+                .contains("query_schema.user_category_view")
+                .contains("category_view.image_count")
+                .doesNotContain("COUNT(*)");
+        assertThat(result.totalElements()).isEqualTo(135L);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void usesExactCountForFavoriteOrKeywordFilters() {
+        JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
+        ImageQueryRepository repository =
+                new ImageQueryRepository(jdbcTemplate, new ObjectMapper());
+        ArgumentCaptor<String> countSql = ArgumentCaptor.forClass(String.class);
+
+        when(jdbcTemplate.queryForObject(
+                anyString(), eq(Long.class), any(Object[].class)
+        )).thenReturn(12L);
+        when(jdbcTemplate.query(
+                anyString(), any(RowMapper.class), any(Object[].class)
+        )).thenReturn(List.of());
+
+        ImageListPage result = repository.findImages(
+                7, true, 3, "receipt", "UPLOADED_DESC", 0, 20);
+
+        verify(jdbcTemplate).queryForObject(
+                countSql.capture(), eq(Long.class), any(Object[].class));
+        assertThat(countSql.getValue())
+                .startsWith("SELECT COUNT(*)")
+                .contains("image_view.favorite = ?")
+                .contains("jsonb_array_elements(image_view.tags)");
+        assertThat(result.totalElements()).isEqualTo(12L);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
     void sortsTitlesUsingKoreanDictionaryCollation() {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
         ImageQueryRepository repository =
@@ -87,10 +141,14 @@ class ImageQueryRepositoryTest {
         verify(jdbcTemplate, times(2)).update(sqlCaptor.capture(), eq(7));
         assertThat(sqlCaptor.getAllValues().get(0))
                 .contains("INSERT INTO query_schema.user_category_view")
+                .contains("analysis_status IN ('COMPLETED', 'EMPTY')")
+                .doesNotContain("JOIN library_schema.user_image")
                 .contains("ON CONFLICT (user_id, category_id) DO UPDATE");
         assertThat(sqlCaptor.getAllValues().get(1))
                 .contains("UPDATE query_schema.user_category_view")
                 .contains("image_count")
-                .contains("latest_uploaded_at");
+                .contains("latest_uploaded_at")
+                .contains("analysis_status IN ('COMPLETED', 'EMPTY')")
+                .doesNotContain("JOIN library_schema.user_image");
     }
 }

@@ -264,24 +264,18 @@ public class ImageCommandRepository {
                     SET image_count = (
                             SELECT COUNT(*)
                             FROM query_schema.user_image_view image_view
-                            JOIN library_schema.user_image user_image
-                              ON user_image.user_id = image_view.user_id
-                             AND user_image.image_id = image_view.image_id
-                             AND user_image.del_yn = 'N'
                             WHERE image_view.user_id = ?
                               AND image_view.category_id = ?
                               AND image_view.del_yn = 'N'
+                              AND image_view.analysis_status IN ('COMPLETED', 'EMPTY')
                         ),
                         latest_uploaded_at = (
                             SELECT MAX(image_view.uploaded_at)
                             FROM query_schema.user_image_view image_view
-                            JOIN library_schema.user_image user_image
-                              ON user_image.user_id = image_view.user_id
-                             AND user_image.image_id = image_view.image_id
-                             AND user_image.del_yn = 'N'
                             WHERE image_view.user_id = ?
                               AND image_view.category_id = ?
                               AND image_view.del_yn = 'N'
+                              AND image_view.analysis_status IN ('COMPLETED', 'EMPTY')
                         )
                     WHERE category_view.user_id = ?
                       AND category_view.category_id = ?

@@ -58,6 +58,7 @@ dependencies {
     implementation(projects.core.model)
     implementation(projects.core.navigation)
 
+    implementation(projects.feature.splash)
     implementation(projects.feature.home)
     implementation(projects.feature.category)
     implementation(projects.feature.favorite)

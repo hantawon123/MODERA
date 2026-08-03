@@ -151,6 +151,17 @@ class Settings:
         # 실데이터 누수율 측정 후 INFORMATIVE_MODEL_NAME 로 명시 옵트인할 것.
         self.informative_model_name = (
             os.environ.get("INFORMATIVE_MODEL_NAME") or self.llm_model_name)
+        # 문서 생성(명세 11장) 전용 모델. 사용자 대면 장문이라 품질 우선 —
+        # 대량 분석(AGENT)을 싼 모델로 내려도 문서 품질은 따로 지킨다.
+        # 호출이 희소해 단가가 사실상 무의미한 경로다. 미설정 시 AGENT 를 따른다.
+        self.document_model_name = (
+            os.environ.get("DOCUMENT_MODEL_NAME") or self.llm_model_name)
+        # 자연어 검색 조건 변환(10-3) 전용 모델. 키워드·가격·날짜 추출 수준이라
+        # 최경량이면 충분하고, 검색은 사용자가 기다리는 경로라 지연에 민감하다.
+        # AGENT 모델을 따라가게 두면 검색마다 상위 모델 단가·추론 토큰을 내게 된다
+        # (GMS 실측 계기 — 2026-08-03). 미설정 시 AGENT 를 따른다(기존 동작 호환).
+        self.query_parse_model_name = (
+            os.environ.get("QUERY_PARSE_MODEL_NAME") or self.llm_model_name)
         self.embedding_model_name = os.environ.get("EMBEDDING_MODEL_NAME", "gemini-embedding-2")
         # 임베딩 차원. 팀 합의로 768 고정이며 pgvector 컬럼(vector(768))과 일치해야 한다.
         # gemini-embedding-2 의 기본 출력은 3072 라 호출 시 명시적으로 줄여서 받는다.

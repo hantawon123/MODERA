@@ -122,13 +122,13 @@ async def query_parse(request: QueryParseRequest):
     try:
         import asyncio
         parsed = await asyncio.to_thread(
-            gemini_client.generate_json, settings.llm_model_name, [prompt]
+            gemini_client.generate_json, settings.query_parse_model_name, [prompt]
         )
         conditions = ParsedConditions.model_validate(
             {k: v for k, v in parsed.items() if k != "confidence"}
         )
         response = QueryParseResponse(
-            model_version=settings.llm_model_name,
+            model_version=settings.query_parse_model_name,
             parsed_conditions=conditions,
             confidence=float(parsed.get("confidence", 0.0)),
         )
@@ -136,7 +136,7 @@ async def query_parse(request: QueryParseRequest):
         # 완전 실패도 에러 코드로 올리지 않고 parsedConditions=null 로 degrade
         logger.warning("조건 변환 실패: %s", e)
         response = QueryParseResponse(
-            model_version=settings.llm_model_name,
+            model_version=settings.query_parse_model_name,
             parsed_conditions=None,
             confidence=0.0,
         )

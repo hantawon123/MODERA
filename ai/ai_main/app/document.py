@@ -145,7 +145,7 @@ def generate_document(
     """Gemini 로 문서 구조를 만든다. 반환값은 그대로 render_markdown 에 넣는다."""
     settings = get_settings()
     prompt = build_prompt(sources, title, instruction, language)
-    parsed = gemini_client.generate_json(settings.llm_model_name, [prompt])
+    parsed = gemini_client.generate_json(settings.document_model_name, [prompt])
 
     valid_ids = {s["image_id"] for s in sources}
     sections = []
@@ -244,6 +244,6 @@ def generate(
         "markdown": markdown,
         "source_image_ids": [s["image_id"] for s in sources],
         "skipped": skipped,
-        "model_version": get_settings().llm_model_name,
+        "model_version": get_settings().document_model_name,
         "generated_at": now_iso(),
     }

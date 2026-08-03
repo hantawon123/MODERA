@@ -10,10 +10,10 @@ import com.ssafy.modera.api.domain.library.repository.UserImageRepository;
 import com.ssafy.modera.api.global.exception.BusinessException;
 import com.ssafy.modera.api.global.exception.GlobalErrorCode;
 import com.ssafy.modera.api.global.response.PageResponse;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
@@ -51,8 +51,19 @@ class ImageDocumentizeTest {
     @Mock
     private ImageQueryService imageQueryService;
 
-    @InjectMocks
     private ImageSimilarService imageSimilarService;
+
+    @BeforeEach
+    void setUp() {
+        // 검증 로직은 ImageSimilarReader로 옮겨졌지만 검증 규칙 자체는 그대로다 —
+        // mock 리포지토리를 실제 reader로 감싸 기존 시나리오를 동일하게 태운다.
+        imageSimilarService = new ImageSimilarService(
+                new ImageSimilarReader(userImageRepository, imageQueryRepository),
+                workerSearchClient,
+                thumbnailUrlFactory,
+                imageQueryService
+        );
+    }
 
     @Test
     @DisplayName("worker 결과를 5-1 DTO로, 기준 이미지는 결과에서 제거한다")

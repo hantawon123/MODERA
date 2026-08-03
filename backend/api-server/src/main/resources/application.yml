@@ -45,6 +45,9 @@ jwt:
 
 oauth:
   kakao:
+    # 운영 기본값은 실제 Kakao API다. 성능 테스트 배포에서만
+    # KAKAO_API_BASE_URL=http://modera-mock-kakao:8080 으로 덮어쓴다.
+    api-base-url: ${KAKAO_API_BASE_URL:https://kapi.kakao.com}
     allowed-app-ids: ${KAKAO_ALLOWED_APP_IDS:1525155}
     connect-timeout: ${KAKAO_CONNECT_TIMEOUT:3s}
     read-timeout: ${KAKAO_READ_TIMEOUT:5s}

@@ -169,6 +169,12 @@ private fun ScheduleTimeColumn(
                     color = ModeraTheme.colors.gray500,
                 )
             }
+        } else {
+            Text(
+                text = "종일",
+                style = ModeraTheme.typography.bodyR14,
+                color = ModeraTheme.colors.gray500,
+            )
         }
     }
 }

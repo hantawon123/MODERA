@@ -76,7 +76,7 @@ fun CalendarScheduleSection(
                 style = ModeraTheme.typography.bodySB14,
                 color = ModeraTheme.colors.gray900,
                 modifier = Modifier
-                    .padding(start = 6.dp)
+                    .padding(start = 6.dp, bottom = 2.dp)
                     .weight(1f),
             )
 
@@ -141,7 +141,7 @@ fun CalendarScheduleSection(
                 Text(
                     text = stringResource(R.string.calendar_recognized_schedules),
                     style = ModeraTheme.typography.captionSB12,
-                    color = ModeraTheme.colors.gray700,
+                    color = ModeraTheme.colors.gray500,
                     modifier = Modifier.padding(vertical = 12.dp),
                 )
 

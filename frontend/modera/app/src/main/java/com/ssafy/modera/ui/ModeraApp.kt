@@ -69,6 +69,10 @@ import com.ssafy.modera.feature.imageviewer.navigation.imageViewerEntry
 import com.ssafy.modera.feature.imageviewer.navigation.navigateToImageViewer
 import com.ssafy.modera.feature.relatedimages.navigation.relatedImagesEntry
 import com.ssafy.modera.media.rememberGalleryPickerLauncher
+import com.ssafy.modera.feature.login.LoginRoute
+import com.ssafy.modera.core.ui.LoadingScreen
+import com.ssafy.modera.session.AppSessionUiState
+import com.ssafy.modera.session.AppSessionViewModel
 import com.ssafy.modera.navigation.BOTTOM_NAV_ITEMS
 import com.ssafy.modera.navigation.TOP_LEVEL_NAV_ITEMS
 
@@ -78,7 +82,24 @@ fun ModeraApp(
     modifier: Modifier = Modifier,
     windowAdaptiveInfo: WindowAdaptiveInfo = currentWindowAdaptiveInfo(),
     viewModel: MainViewModel = hiltViewModel(),
+    sessionViewModel: AppSessionViewModel = hiltViewModel(),
 ) {
+    val sessionUiState by sessionViewModel.uiState.collectAsStateWithLifecycle()
+
+    when (sessionUiState) {
+        AppSessionUiState.Loading -> {
+            LoadingScreen(modifier = modifier)
+            return
+        }
+
+        AppSessionUiState.Unauthenticated -> {
+            LoginRoute(modifier = modifier)
+            return
+        }
+
+        AppSessionUiState.Authenticated -> Unit
+    }
+
     var showSettingsDialog by rememberSaveable {
         mutableStateOf(false)
     }

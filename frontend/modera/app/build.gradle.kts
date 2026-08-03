@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.modera.android.application)
     alias(libs.plugins.modera.android.application.compose)
@@ -21,10 +23,16 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    buildFeatures {
+        buildConfig = true
+    }
+
     buildTypes {
         debug {
             applicationIdSuffix = ".debug"
             versionNameSuffix = "-debug"
+            buildConfigField("String", "KAKAO_NATIVE_APP_KEY", "\"$kakaoNativeAppKeyDebug\"")
+            manifestPlaceholders["kakaoScheme"] = "kakao$kakaoNativeAppKeyDebug"
         }
 
         release {
@@ -34,6 +42,8 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
             )
+            buildConfigField("String", "KAKAO_NATIVE_APP_KEY", "\"$kakaoNativeAppKeyRelease\"")
+            manifestPlaceholders["kakaoScheme"] = "kakao$kakaoNativeAppKeyRelease"
         }
     }
 
@@ -57,6 +67,7 @@ dependencies {
     implementation(projects.core.data)
     implementation(projects.core.model)
     implementation(projects.core.navigation)
+    implementation(projects.core.ui)
 
     implementation(projects.feature.home)
     implementation(projects.feature.category)
@@ -67,6 +78,7 @@ dependencies {
     implementation(projects.feature.document)
     implementation(projects.feature.documentdetail)
     implementation(projects.feature.documentcreate)
+    implementation(projects.feature.login)
 
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.navigation3.ui)
@@ -79,6 +91,7 @@ dependencies {
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.okhttp)
+    implementation(libs.kakao.user)
 
     // material3
     implementation(libs.androidx.compose.material3)
@@ -100,3 +113,13 @@ dependencies {
 
     androidTestImplementation(libs.hilt.android.testing)
 }
+
+val localProperties = Properties().apply {
+    val localFile = rootProject.file("local.properties")
+    if (localFile.exists()) {
+        localFile.inputStream().use(::load)
+    }
+}
+
+val kakaoNativeAppKeyDebug = localProperties.getProperty("kakaoNativeAppKeyDebug", "")
+val kakaoNativeAppKeyRelease = localProperties.getProperty("kakaoNativeAppKeyRelease", "")

@@ -2,6 +2,9 @@
 
 import com.skydoves.sandwich.retrofit.adapters.ApiResponseCallAdapterFactory
 import com.ssafy.modera.core.network.AccessTokenInterceptor
+import com.ssafy.modera.core.network.AccessTokenAuthenticator
+import com.ssafy.modera.core.network.AuthHttpClient
+import com.ssafy.modera.core.network.AuthRetrofit
 import com.ssafy.modera.core.network.BuildConfig
 import com.ssafy.modera.core.network.service.AnalyzedImageClient
 import com.ssafy.modera.core.network.service.AnalyzedImageService
@@ -15,6 +18,8 @@ import com.ssafy.modera.core.network.service.document.DocumentClient
 import com.ssafy.modera.core.network.service.document.DocumentService
 import com.ssafy.modera.core.network.service.search.SearchClient
 import com.ssafy.modera.core.network.service.search.SearchService
+import com.ssafy.modera.core.network.service.auth.AuthClient
+import com.ssafy.modera.core.network.service.auth.AuthService
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -41,9 +46,13 @@ internal object NetworkModule {
 
     @Provides
     @Singleton
-    fun provideOkHttpClient(): OkHttpClient =
+    fun provideOkHttpClient(
+        accessTokenInterceptor: AccessTokenInterceptor,
+        accessTokenAuthenticator: AccessTokenAuthenticator,
+    ): OkHttpClient =
         OkHttpClient.Builder()
-            .addInterceptor(AccessTokenInterceptor())
+            .addInterceptor(accessTokenInterceptor)
+            .authenticator(accessTokenAuthenticator)
             .readTimeout(
                 180,
                 TimeUnit.SECONDS,
@@ -53,11 +62,39 @@ internal object NetworkModule {
                     addNetworkInterceptor(
                         HttpLoggingInterceptor().apply {
                             level = HttpLoggingInterceptor.Level.BODY
+                            redactHeader("Authorization")
                         },
                     )
                 }
             }
             .build()
+
+    @Provides
+    @Singleton
+    @AuthHttpClient
+    fun provideAuthOkHttpClient(): OkHttpClient =
+        OkHttpClient.Builder()
+            .readTimeout(180, TimeUnit.SECONDS)
+            .apply {
+                if (BuildConfig.DEBUG) {
+                    addNetworkInterceptor(
+                        HttpLoggingInterceptor().apply {
+                            level = HttpLoggingInterceptor.Level.BASIC
+                        },
+                    )
+                }
+            }
+            .build()
+
+    @Provides
+    @Singleton
+    fun provideAuthService(@AuthRetrofit retrofit: Retrofit): AuthService =
+        retrofit.create(AuthService::class.java)
+
+    @Provides
+    @Singleton
+    fun provideAuthClient(authService: AuthService): AuthClient =
+        AuthClient(authService)
 
     @Provides
     @Singleton
@@ -76,6 +113,22 @@ internal object NetworkModule {
             .addCallAdapterFactory(
                 ApiResponseCallAdapterFactory.create(),
             )
+            .build()
+
+    @Provides
+    @Singleton
+    @AuthRetrofit
+    fun provideAuthRetrofit(
+        json: Json,
+        @AuthHttpClient okHttpClient: OkHttpClient,
+    ): Retrofit =
+        Retrofit.Builder()
+            .baseUrl("https://i15d207.p.ssafy.io:8443/")
+            .client(okHttpClient)
+            .addConverterFactory(
+                json.asConverterFactory("application/json".toMediaType()),
+            )
+            .addCallAdapterFactory(ApiResponseCallAdapterFactory.create())
             .build()
 
     @Provides

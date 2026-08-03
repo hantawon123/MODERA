@@ -10,6 +10,7 @@ import com.ssafy.modera.api.domain.image.dto.response.ImageDetailResponse;
 import com.ssafy.modera.api.domain.image.dto.response.ImageFavoriteResponse;
 import com.ssafy.modera.api.domain.image.dto.response.ImageRegisterResponse;
 import com.ssafy.modera.api.domain.image.dto.response.ImageSummaryResponse;
+import com.ssafy.modera.api.domain.image.dto.response.ImageListResponse;
 import com.ssafy.modera.api.domain.image.dto.response.ImageUploadUrlResponse;
 import com.ssafy.modera.api.domain.image.service.ImageQueryService;
 import com.ssafy.modera.api.domain.image.service.ImageCommandService;
@@ -99,7 +100,7 @@ public class ImageController {
 
     @Operation(summary = "이미지 목록 조회", description = "활성 이미지 목록을 필터링·정렬하여 페이지로 조회한다.")
     @GetMapping
-    public ResponseEntity<ApiResponse<PageResponse<ImageSummaryResponse>>> getImages(
+    public ResponseEntity<ApiResponse<ImageListResponse>> getImages(
             @AuthenticationPrincipal Integer userId,
             @RequestParam(name = "favorite", required = false) Boolean favorite,
             @RequestParam(name = "page", defaultValue = "0") int page,
@@ -108,7 +109,7 @@ public class ImageController {
             @RequestParam(name = "keyword", required = false) String keyword,
             @RequestParam(name = "categoryId", required = false) Integer categoryId
     ) {
-        PageResponse<ImageSummaryResponse> response = imageQueryService.getImages(
+        ImageListResponse response = imageQueryService.getImages(
                 userId, favorite, page, size, sort, keyword, categoryId);
         return ResponseEntity.ok(ApiResponse.success("I205", response));
     }

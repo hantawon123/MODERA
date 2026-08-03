@@ -307,8 +307,8 @@ def run_agent_generation(
     """
     settings = get_settings()
     tag_rule = (
-        f"[태그] 핵심 키워드 위주로 최대 {max_tags}개, 중복·과도한 일반 태그 제외.\n"
-        if max_tags else "[태그] 중복·과도한 일반 태그 제외.\n"
+        f"[태그] 핵심 키워드 위주로 최대 {max_tags}개, 중복·과도한 일반 태그 제외. 사람 이름은 태그로 만들지 마라(본인 갤러리라 검색에 쓸 데가 없고, 손글씨·서명은 오독 위험이 크다).\n"
+        if max_tags else "[태그] 중복·과도한 일반 태그 제외. 사람 이름은 태그로 만들지 마라.\n"
     )
     # 기존 태그를 기준점으로 준다. 의미가 같은 태그의 난립('맛집' vs '맛집추천')을 막고
     # 어휘를 수렴시킨다. 카테고리의 기존 후보 제시와 같은 취지. 없으면 자유 생성(콜드스타트).
@@ -341,11 +341,23 @@ def run_agent_generation(
             "순수 UI 요소(홈/검색/설정 같은 내비게이션만 있는 화면), 계산기·시계·배터리처럼 "
             "도구 화면에 떠 있는 일시적 숫자, 네트워크 오류·로딩 화면, 빈 화면, 의미 없는 "
             "밈/장식이면 informative 를 false 로 하고 나머지 필드는 비워 둬라. "
+            "카메라로 찍은 일상 사진처럼 읽을 글자가 전혀 없는 이미지도 false 다 — "
+            "이 서비스는 화면 속 정보를 모으는 곳이라 글자 없는 사진은 대상이 아니다. "
+            "단, 화이트보드·영수증·명함처럼 글자를 찍은 사진은 정보성이다. "
             "정보성일 때만 아래를 채운다.\n\n"
             "[썸네일] thumbnail_focus 에 화면의 시각적 핵심(상품·음식 사진, 그림, 지도, "
             "포스터 등)이 있는 세로 위치를 0.0(맨 위)~1.0(맨 아래) 숫자로 담아라. "
             "가격표·버튼·설명 텍스트가 아니라 눈에 보여줄 이미지가 있는 곳이다. "
             "그런 시각 요소가 없으면 본문 내용이 시작되는 위치를 담아라.\n\n"
+            # 프론트 상세화면이 "분석 근거"로 보여주는 값이다(2026-08-03 프론트 요청).
+            # 그래서 요약·선별이 아니라 **OCR 원문 교정**으로 범위를 좁힌다 — 없던
+            # 내용을 채우거나 UI 잡음을 지우면 원문과 대응되지 않아 근거로 못 쓴다.
+            "[정제텍스트] refined_text 에 OCR 텍스트를 그대로 살리면서 깨진 글자만 "
+            "바로잡아 담아라. 이미지를 보고 오인식을 교정하고(예: '동으1서' → '동의서'), "
+            "줄바꿈·공백만 읽기 좋게 정돈하라. OCR 에 없는 내용을 새로 채우지 말고, "
+            "있는 줄을 지우거나 요약하지도 마라 — 버튼·탭 같은 UI 문구도 OCR 에 있으면 "
+            "그대로 남긴다. 손글씨·서명처럼 확신할 수 없는 글자는 추측해 바꾸지 마라. "
+            "OCR 이 비어 있으면 빈 문자열.\n\n"
         )
     else:
         header = "OCR 텍스트와 이미지 분석 결과를 종합해 개인 지식 DB용 메타데이터를 생성하라.\n\n"
@@ -363,7 +375,7 @@ def run_agent_generation(
         + schedule_rule
         + language_rule
         + "반드시 아래 JSON만 출력. 마크다운·설명 금지.\n"
-        + ('{"informative":true,"thumbnail_focus":0.5,' if image_bytes is not None else "{")
+        + ('{"informative":true,"thumbnail_focus":0.5,"refined_text":"...",' if image_bytes is not None else "{")
         + '"title":"...","summary":"...","tags":["..."],"categories":["..."],'
         '"key_information":["..."],"analysis_confidence":0.0,'
         '"schedule":{"startAt":null,"endAt":null}}\n\n'
@@ -628,6 +640,9 @@ async def run_agent_core(
         "documentVector": vectors[0],
         "embeddingModel": embedding_model,
         "embeddingDimension": len(vectors[0]),
+        # 앱 상세화면 "추출된 텍스트"용. 융합 경로에서 모델이 이미지를 보고 교정한
+        # 화면 텍스트다(요약 아님). rawText 는 오인식이 그대로라 폴백으로 쓰지 않는다.
+        "ocrRefinedText": (generated.get("refined_text") or "").strip() or None,
         # 융합 모드에서 모델이 짚은 시각적 핵심의 세로 위치(0~1). 썸네일 크롭용
         # 내부 값 — 파이프라인이 pop 해서 쓰고 콜백에는 싣지 않는다.
         "thumbnailFocus": generated.get("thumbnail_focus"),
@@ -710,7 +725,8 @@ def _empty_callback_result(thumbnail_key: str | None = None) -> dict[str, Any]:
     Spring 의 AnalysisCallbackService 는 EMPTY 도 성공으로 취급해 결과 행을 남기므로
     (`case "COMPLETED", "EMPTY" -> handleSuccess`), **키 구조를 COMPLETED 와 완전히
     동일하게** 맞추고 값만 비운다(2026-07-29 백엔드 요청 — 만들지 않은 값은 null).
-    informative·ocrRefinedText·reason 은 콜백에서 제외(백엔드 미사용 확정) —
+    informative·reason 은 콜백에서 제외(백엔드 미사용 확정) — ocrRefinedText 는
+    2026-07-31 앱 '추출된 텍스트' 표시용으로 다시 넣었다(융합 경로에서만 값이 찬다).
     판정 사유(reason)는 서버 로그에 남는다(비정보성 판정 → '기타' 분류 INFO 로그).
     """
     return {
@@ -731,6 +747,7 @@ def _empty_callback_result(thumbnail_key: str | None = None) -> dict[str, Any]:
         "documentVector": None,
         "embeddingModel": None,
         "embeddingDimension": None,
+        "ocrRefinedText": None,
         "thumbnailKey": thumbnail_key,
     }
 
@@ -876,8 +893,17 @@ async def _run_full_pipeline(
         #    IMAGE_ANALYSIS·AGENT 를 생략하고 '기타' 로 분류한 뒤 색인한다.
         #    분석을 건너뛸 뿐 사용자 이미지는 목록·검색에서 사라지지 않는다.
         analysis: dict[str, Any] | None = None
-        if not ocr_text.strip() and allow_vision_ocr:
-            # OCR 이 없는 FULL 요청. 이미지 분석을 앞당겨 읽어낸 텍스트로 대신한다.
+        if not ocr_text.strip() and allow_vision_ocr and original is None:
+            # OCR 이 없고 **융합도 못 하는** 경우(원본 확보 실패)에만 이미지 분석을
+            # 앞당겨 그 묘사를 텍스트로 대신한다.
+            #
+            # 융합이 가능하면 이 호출을 하지 않는다: 융합 호출이 이미지를 직접 보므로
+            # 묘사를 미리 만들 필요가 없고, 워커가 FULL 요청에 OCR 을 안 실어 보내므로
+            # (FastApiAnalysisClient 가 image 만 담는다) 그대로 두면 **모든 이미지가
+            # 비전 1콜을 추가로 태워** 융합의 3콜→1콜 이점이 절반 사라진다(2026-08-03 실측).
+            # 부작용으로 '글자가 전혀 없는 사진'은 아래 게이트에서 EMPTY 가 되는데,
+            # 스크린샷 지식 DB 라는 제품 성격상 그게 맞는 판정이다(카메라로 찍은 밥상
+            # 사진이 '음식' 으로 분석되던 것을 오너가 기타로 교정, 2026-08-03).
             job_store.update(job_id, "PROCESSING", stage="IMAGE_ANALYSIS")
             try:
                 with _timed(timings, "IMAGE_ANALYSIS"):
@@ -1014,7 +1040,7 @@ async def _run_full_pipeline(
                     job_id, image_id, category, timings)
 
         # 콜백 result. Spring 의 AnalysisCallbackService 가 읽는 키를 이 이름으로 담는다.
-        # informative·ocrRefinedText 는 싣지 않는다(2026-07-29 백엔드 합의) —
+        # informative 는 싣지 않는다(2026-07-29 백엔드 합의) —
         # 정보성 여부는 status(COMPLETED/EMPTY)로 구분되고, OCR 원문은 앱이 4-1 로
         # 보낸 것을 Spring 이 자체 보관(image_schema.ocr.content)한다.
         callback_result = dict(generated)

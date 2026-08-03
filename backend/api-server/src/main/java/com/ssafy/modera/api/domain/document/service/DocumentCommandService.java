@@ -110,7 +110,8 @@ public class DocumentCommandService {
      * 재분석. 완료되면 새 문서를 만들지 않고 대상 문서를 갱신한다.
      *
      * <p>imageIds를 생략하면 현재 구성 이미지를 그대로 쓴다(내용만 다시 정리). 값을 주면
-     * 그것이 최종 구성이 되므로 이미지 추가·제외도 같은 경로로 처리된다.
+     * 그것이 최종 구성이 되므로 이미지 추가·제외도 같은 경로로 처리된다. 제외 전용
+     * API(8-7)는 이것과 완전히 겹쳐서 없앴다 — 이미지를 빼려면 남길 목록을 여기로 보낸다.
      */
     public DocumentDetailResponse regenerate(
             Integer userId, Integer documentId, DocumentRegenerateRequest request) {
@@ -155,37 +156,7 @@ public class DocumentCommandService {
     }
 
     /**
-     * 이미지 제외(8-7). 현재 구성에서 요청 이미지를 뺀 목록으로 문서를 다시 만든다.
-     *
-     * <p>전부 빼는 건 허용하지 않는다 — 재료가 없는 문서는 만들 수 없고, 그건 문서를
-     * 지우겠다는 뜻이므로 삭제(8-5)를 써야 한다.
-     */
-    public DocumentDetailResponse excludeImages(
-            Integer userId, Integer documentId, DocumentImagesRequest request) {
-        List<Integer> current = requireOwnedDocumentImages(userId, documentId);
-
-        Integer replayed = replayDocumentId(userId, request.clientRequestId());
-        if (replayed != null) {
-            return documentQueryService.getDocument(userId, replayed);
-        }
-
-        if (!current.containsAll(request.imageIds())) {
-            throw new BusinessException(DocumentErrorCode.DOCUMENT_IMAGE_NOT_FOUND);
-        }
-
-        List<Integer> remaining = current.stream()
-                .filter(imageId -> !request.imageIds().contains(imageId))
-                .toList();
-        if (remaining.isEmpty()) {
-            throw new BusinessException(DocumentErrorCode.INVALID_DOCUMENT_IMAGES);
-        }
-
-        return rebuild(userId, documentId, remaining, request.clientRequestId(),
-                DocumentGenerationRequest.OPERATION_EXCLUDE_IMAGES);
-    }
-
-    /**
-     * 재분석·추가·제외가 공유하는 본체. 최종 이미지 목록을 정하는 방법만 다르고, 여기서부터는
+     * 재분석·추가가 공유하는 본체. 최종 이미지 목록을 정하는 방법만 다르고, 여기서부터는
      * 완전히 같다 — 검증도, 진행 중 잠금도, AI 호출도, upsert 저장도.
      */
     private DocumentDetailResponse rebuild(Integer userId, Integer documentId,

@@ -63,16 +63,6 @@ public enum DocumentErrorCode implements ErrorCode {
     ),
 
     /**
-     * 제외하려는 이미지가 이 문서의 구성에 없다. 앱이 들고 있던 구성 목록이 낡았다는
-     * 뜻이라(그 사이 다른 경로로 빠졌다), 문서를 다시 조회하면 해소된다.
-     */
-    DOCUMENT_IMAGE_NOT_FOUND(
-            HttpStatus.NOT_FOUND,
-            "DOCUMENT_IMAGE_NOT_FOUND",
-            "문서에 포함되지 않은 이미지입니다."
-    ),
-
-    /**
      * 같은 문서에 대한 재분석이 아직 진행 중이다. 두 요청이 겹치면 나중에 도착한 완료
      * 이벤트가 앞선 결과를 덮어써 사용자가 무엇을 보게 될지 예측할 수 없다.
      */

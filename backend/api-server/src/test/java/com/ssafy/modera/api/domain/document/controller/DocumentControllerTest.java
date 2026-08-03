@@ -62,10 +62,6 @@ class DocumentControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"clientRequestId\":\"" + requestId + "\",\"imageIds\":[2]}"))
                 .andExpect(status().isOk());
-        mockMvc.perform(post("/api/v1/documents/1/images/exclude")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"clientRequestId\":\"" + requestId + "\",\"imageIds\":[1]}"))
-                .andExpect(status().isOk());
         mockMvc.perform(delete("/api/v1/documents/1"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.code").value("D205"));
     }
@@ -80,10 +76,6 @@ class DocumentControllerTest {
                         .contentType(MediaType.APPLICATION_JSON).content("{}"))
                 .andExpect(status().isBadRequest());
         mockMvc.perform(post("/api/v1/documents/1/images")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"clientRequestId\":null,\"imageIds\":[]}"))
-                .andExpect(status().isBadRequest());
-        mockMvc.perform(post("/api/v1/documents/1/images/exclude")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"clientRequestId\":null,\"imageIds\":[]}"))
                 .andExpect(status().isBadRequest());

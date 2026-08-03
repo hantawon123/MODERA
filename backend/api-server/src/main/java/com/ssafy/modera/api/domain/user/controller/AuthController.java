@@ -67,7 +67,11 @@ public class AuthController {
         return ResponseEntity.ok(ApiResponse.success("A202", authService.login(request)));
     }
 
-    @Operation(summary = "카카오 로그인", description = "카카오 인가 코드를 검증하고 로컬 로그인과 동일한 서비스 토큰을 발급합니다.")
+    @Operation(
+            summary = "카카오 로그인",
+            description = "Android Kakao SDK가 발급한 Access Token을 카카오 사용자·앱 정보 API로 검증하고 " +
+                    "MODERA accessToken/refreshToken/userId를 발급합니다."
+    )
     @PostMapping("/kakao/login")
     public ResponseEntity<ApiResponse<TokenResponse>> kakaoLogin(
             @RequestBody @Valid KakaoLoginRequest request

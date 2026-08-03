@@ -90,7 +90,8 @@ public class AuthService {
 
     @Transactional
     public TokenResponse kakaoLogin(KakaoLoginRequest request) {
-        KakaoClient.KakaoUser kakaoUser = kakaoClient.getUser(request.authorizationCode());
+        KakaoClient.KakaoUser kakaoUser = kakaoClient.getVerifiedUser(request.kakaoAccessToken());
+        validateKakaoEmail(kakaoUser);
         String providerId = kakaoUser.id().toString();
 
         User user = userRepository.findByProviderAndProviderId(PROVIDER_KAKAO, providerId)
@@ -166,9 +167,9 @@ public class AuthService {
     private User createKakaoUser(KakaoClient.KakaoUser kakaoUser, String providerId) {
         OffsetDateTime now = OffsetDateTime.now();
         String email = normalizeEmail(kakaoUser.email());
-        if (email != null && userRepository.existsByEmail(email)) {
+        if (userRepository.existsByEmail(email)) {
             // 이메일은 카카오 회원의 영구 식별자가 아니므로 기존 계정을 자동 연결하지 않는다.
-            email = null;
+            throw new BusinessException(UserErrorCode.DUPLICATE_EMAIL);
         }
 
         User user = userRepository.save(User.builder()
@@ -189,8 +190,7 @@ public class AuthService {
 
         // users.email은 UNIQUE다. 같은 이메일의 로컬/다른 소셜 계정을 자동 병합하지 않는다.
         if (userRepository.existsByEmail(email)) {
-            log.info("카카오 이메일 동기화 생략: email already used, userId={}", user.getUserId());
-            return;
+            throw new BusinessException(UserErrorCode.DUPLICATE_EMAIL);
         }
 
         user.updateEmail(email, OffsetDateTime.now());
@@ -202,6 +202,15 @@ public class AuthService {
             return null;
         }
         return email.trim().toLowerCase(Locale.ROOT);
+    }
+
+    private void validateKakaoEmail(KakaoClient.KakaoUser kakaoUser) {
+        if (normalizeEmail(kakaoUser.email()) == null) {
+            throw new BusinessException(UserErrorCode.KAKAO_EMAIL_REQUIRED);
+        }
+        if (!kakaoUser.hasValidVerifiedEmail()) {
+            throw new BusinessException(UserErrorCode.KAKAO_EMAIL_NOT_VERIFIED);
+        }
     }
 
     private TokenResponse issueTokens(User user, String deviceId) {

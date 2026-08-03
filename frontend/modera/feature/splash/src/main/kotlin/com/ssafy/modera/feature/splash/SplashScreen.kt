@@ -27,6 +27,7 @@ import com.airbnb.lottie.compose.LottieAnimation
 import com.airbnb.lottie.compose.LottieCompositionSpec
 import com.airbnb.lottie.compose.animateLottieCompositionAsState
 import com.airbnb.lottie.compose.rememberLottieComposition
+import com.ssafy.modera.core.component.PulsingGradientCircle
 import com.ssafy.modera.core.designsystem.theme.ModeraTheme
 
 @Composable
@@ -70,6 +71,16 @@ fun SplashScreen(
             )
             Spacer(modifier = Modifier.weight(3f))
         }
+
+        PulsingGradientCircle(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .offset(
+                    y = with(density) {
+                        (characterHeightPx * 0.3f).toDp()
+                    },
+                ),
+        )
 
         Image(
             painter = painterResource(R.drawable.img_character_waiting),

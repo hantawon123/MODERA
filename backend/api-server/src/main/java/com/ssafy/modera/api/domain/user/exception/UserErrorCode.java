@@ -18,6 +18,9 @@ public enum UserErrorCode implements ErrorCode {
     DUPLICATE_EMAIL(HttpStatus.CONFLICT, "DUPLICATE_EMAIL", "이미 사용 중인 이메일입니다."),
     LOGIN_FAILED(HttpStatus.UNAUTHORIZED, "LOGIN_FAILED", "아이디 또는 비밀번호가 올바르지 않습니다."),
     KAKAO_LOGIN_FAILED(HttpStatus.UNAUTHORIZED, "KAKAO_LOGIN_FAILED", "카카오 로그인에 실패했습니다."),
+    KAKAO_APP_NOT_ALLOWED(HttpStatus.UNAUTHORIZED, "KAKAO_APP_NOT_ALLOWED", "허용되지 않은 카카오 앱의 토큰입니다."),
+    KAKAO_EMAIL_REQUIRED(HttpStatus.BAD_REQUEST, "KAKAO_EMAIL_REQUIRED", "카카오 계정의 이메일 제공 동의가 필요합니다."),
+    KAKAO_EMAIL_NOT_VERIFIED(HttpStatus.BAD_REQUEST, "KAKAO_EMAIL_NOT_VERIFIED", "유효하고 인증된 카카오 이메일이 필요합니다."),
     INVALID_REFRESH_TOKEN(HttpStatus.UNAUTHORIZED, "INVALID_REFRESH_TOKEN", "유효하지 않은 리프레시 토큰입니다."),
     USER_NOT_FOUND(HttpStatus.NOT_FOUND, "USER_NOT_FOUND", "사용자를 찾을 수 없습니다.");
 

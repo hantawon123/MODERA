@@ -7,11 +7,13 @@ import com.ssafy.modera.api.domain.user.dto.request.RefreshRequest;
 import com.ssafy.modera.api.domain.user.dto.request.RegisterRequest;
 import com.ssafy.modera.api.domain.user.entity.RefreshToken;
 import com.ssafy.modera.api.domain.user.entity.User;
+import com.ssafy.modera.api.domain.user.exception.UserErrorCode;
 import com.ssafy.modera.api.domain.user.repository.RefreshTokenRepository;
 import com.ssafy.modera.api.domain.user.repository.UserRepository;
 import com.ssafy.modera.api.domain.user.repository.UserSettingCommandRepository;
 import com.ssafy.modera.api.global.security.jwt.JwtProperties;
 import com.ssafy.modera.api.global.security.jwt.JwtTokenProvider;
+import com.ssafy.modera.api.global.exception.BusinessException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -28,6 +30,7 @@ import java.util.HexFormat;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -140,7 +143,7 @@ class AuthServiceTest {
     @Test
     void createsKakaoUserWithConsentedEmail() {
         KakaoClient.KakaoUser kakaoUser = kakaoUser(123L, " User@Example.com ");
-        when(kakaoClient.getUser("code")).thenReturn(kakaoUser);
+        when(kakaoClient.getVerifiedUser("kakao-access-token")).thenReturn(kakaoUser);
         when(userRepository.findByProviderAndProviderId("KAKAO", "123")).thenReturn(Optional.empty());
         when(userRepository.existsByEmail("user@example.com")).thenReturn(false);
         when(userRepository.save(any(User.class))).thenAnswer(invocation -> {
@@ -153,11 +156,15 @@ class AuthServiceTest {
         when(refreshTokenRepository.findByUserIdAndDeviceId(any(), any())).thenReturn(Optional.empty());
         when(jwtProperties.getRefreshTokenValidityInSeconds()).thenReturn(1209600L);
 
-        authService.kakaoLogin(new KakaoLoginRequest("code", "device"));
+        var response = authService.kakaoLogin(
+                new KakaoLoginRequest("kakao-access-token", "device"));
 
         ArgumentCaptor<User> userCaptor = ArgumentCaptor.forClass(User.class);
         verify(userRepository).save(userCaptor.capture());
         assertThat(userCaptor.getValue().getEmail()).isEqualTo("user@example.com");
+        assertThat(response.accessToken()).isEqualTo("access");
+        assertThat(response.refreshToken()).isEqualTo("refresh");
+        assertThat(response.userId()).isEqualTo(2);
         verify(userSettingCommandRepository).createDefaults(2);
     }
 
@@ -168,8 +175,9 @@ class AuthServiceTest {
                 .providerId("123")
                 .updatedAt(OffsetDateTime.now())
                 .build();
+        ReflectionTestUtils.setField(user, "userId", 3);
         KakaoClient.KakaoUser kakaoUser = kakaoUser(123L, "user@example.com");
-        when(kakaoClient.getUser("code")).thenReturn(kakaoUser);
+        when(kakaoClient.getVerifiedUser("kakao-access-token")).thenReturn(kakaoUser);
         when(userRepository.findByProviderAndProviderId("KAKAO", "123")).thenReturn(Optional.of(user));
         when(userRepository.existsByEmail("user@example.com")).thenReturn(false);
         when(jwtTokenProvider.createAccessToken(any())).thenReturn("access");
@@ -177,13 +185,55 @@ class AuthServiceTest {
         when(refreshTokenRepository.findByUserIdAndDeviceId(any(), any())).thenReturn(Optional.empty());
         when(jwtProperties.getRefreshTokenValidityInSeconds()).thenReturn(1209600L);
 
-        authService.kakaoLogin(new KakaoLoginRequest("code", "device"));
+        var response = authService.kakaoLogin(
+                new KakaoLoginRequest("kakao-access-token", "device"));
 
         assertThat(user.getEmail()).isEqualTo("user@example.com");
+        assertThat(response.userId()).isEqualTo(3);
+    }
+
+    @Test
+    void rejectsKakaoLoginWhenEmailIsMissing() {
+        KakaoClient.KakaoUser kakaoUser = new KakaoClient.KakaoUser(
+                123L, new KakaoClient.KakaoAccount(null, false, false));
+        when(kakaoClient.getVerifiedUser("kakao-access-token")).thenReturn(kakaoUser);
+
+        assertThatThrownBy(() -> authService.kakaoLogin(
+                new KakaoLoginRequest("kakao-access-token", "device")))
+                .isInstanceOf(BusinessException.class)
+                .extracting(exception -> ((BusinessException) exception).getErrorCode())
+                .isEqualTo(UserErrorCode.KAKAO_EMAIL_REQUIRED);
+    }
+
+    @Test
+    void rejectsKakaoLoginWhenEmailIsNotVerified() {
+        KakaoClient.KakaoUser kakaoUser = new KakaoClient.KakaoUser(
+                123L, new KakaoClient.KakaoAccount("user@example.com", true, false));
+        when(kakaoClient.getVerifiedUser("kakao-access-token")).thenReturn(kakaoUser);
+
+        assertThatThrownBy(() -> authService.kakaoLogin(
+                new KakaoLoginRequest("kakao-access-token", "device")))
+                .isInstanceOf(BusinessException.class)
+                .extracting(exception -> ((BusinessException) exception).getErrorCode())
+                .isEqualTo(UserErrorCode.KAKAO_EMAIL_NOT_VERIFIED);
+    }
+
+    @Test
+    void rejectsKakaoLoginWhenEmailIsInvalid() {
+        KakaoClient.KakaoUser kakaoUser = new KakaoClient.KakaoUser(
+                123L, new KakaoClient.KakaoAccount("user@example.com", false, true));
+        when(kakaoClient.getVerifiedUser("kakao-access-token")).thenReturn(kakaoUser);
+
+        assertThatThrownBy(() -> authService.kakaoLogin(
+                new KakaoLoginRequest("kakao-access-token", "device")))
+                .isInstanceOf(BusinessException.class)
+                .extracting(exception -> ((BusinessException) exception).getErrorCode())
+                .isEqualTo(UserErrorCode.KAKAO_EMAIL_NOT_VERIFIED);
     }
 
     private KakaoClient.KakaoUser kakaoUser(Long id, String email) {
-        return new KakaoClient.KakaoUser(id, new KakaoClient.KakaoAccount(email));
+        return new KakaoClient.KakaoUser(
+                id, new KakaoClient.KakaoAccount(email, true, true));
     }
 
     private String sha256(String value) throws Exception {

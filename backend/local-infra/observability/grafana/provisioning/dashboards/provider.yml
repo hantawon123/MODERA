@@ -1,0 +1,9 @@
+apiVersion: 1
+
+providers:
+  - name: modera-local
+    folder: Modera Local
+    type: file
+    allowUiUpdates: true
+    options:
+      path: /var/lib/grafana/dashboards

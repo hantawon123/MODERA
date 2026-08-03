@@ -35,11 +35,6 @@ public class DocumentQueryService {
     private static final Set<String> SUPPORTED_SORTS =
             Set.of("UPDATED_DESC", "UPDATED_ASC", "NAME_ASC");
 
-    /** 문서 구성 이미지는 업로드 시각이 조회 모델에 없어 "문서에 포함된 시각" 기준으로 정렬한다. */
-    private static final String DEFAULT_IMAGE_SORT = "ADDED_DESC";
-    private static final Set<String> SUPPORTED_IMAGE_SORTS =
-            Set.of("ADDED_DESC", "ADDED_ASC", "TITLE_ASC");
-
     private final DocumentQueryRepository documentQueryRepository;
     private final DocumentGenerationRequestRepository documentGenerationRequestRepository;
     private final ThumbnailUrlFactory thumbnailUrlFactory;
@@ -83,18 +78,16 @@ public class DocumentQueryService {
         );
     }
 
-    public PageResponse<DocumentImageResponse> getDocumentImages(
-            Integer userId, Integer documentId, int page, int size, String sort) {
-        validatePaging(page, size);
-        String normalizedSort = normalizeSort(sort, DEFAULT_IMAGE_SORT, SUPPORTED_IMAGE_SORTS);
-
+    /**
+     * 문서 구성 이미지(8-4). 한 문서에 넣을 수 있는 이미지가 최대 30장
+     * (DocumentCommandService.MAX_IMAGES)이라 페이지를 나누지 않고 전부 준다.
+     */
+    public List<DocumentImageResponse> getDocumentImages(Integer userId, Integer documentId) {
         if (!documentQueryRepository.existsDocument(userId, documentId)) {
             throw new BusinessException(DocumentErrorCode.DOCUMENT_NOT_FOUND);
         }
 
-        long totalElements = documentQueryRepository.countDocumentImages(userId, documentId);
-        List<DocumentImageResponse> list = documentQueryRepository
-                .findDocumentImages(userId, documentId, normalizedSort, page, size)
+        return documentQueryRepository.findDocumentImages(userId, documentId)
                 .stream()
                 .map(row -> new DocumentImageResponse(
                         row.imageId(),
@@ -105,8 +98,6 @@ public class DocumentQueryService {
                         row.addedAt()
                 ))
                 .toList();
-
-        return toPage(list, page, size, totalElements);
     }
 
     private boolean isRegenerating(Integer userId, Integer documentId) {

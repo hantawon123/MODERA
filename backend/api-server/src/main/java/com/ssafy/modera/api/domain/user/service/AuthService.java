@@ -40,11 +40,13 @@ import java.util.Locale;
 public class AuthService {
 
     private static final String PROVIDER_LOCAL = "LOCAL";
-    private static final String PROVIDER_KAKAO = "KAKAO";
     private static final String HASH_ALGORITHM = "SHA-256";
 
     private final UserRepository userRepository;
     private final RefreshTokenRepository refreshTokenRepository;
+    private final LoginCredentialReader loginCredentialReader;
+    private final RefreshTokenCommandService refreshTokenCommandService;
+    private final KakaoUserTransactionService kakaoUserTransactionService;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
     private final JwtProperties jwtProperties;
@@ -76,29 +78,28 @@ public class AuthService {
     }
 
     /** loginId 미존재와 비밀번호 불일치를 구분하지 않고 LOGIN_FAILED로 통합한다(계정 열거 방지). */
-    @Transactional
     public TokenResponse login(LoginRequest request) {
-        User user = userRepository.findByLoginId(request.loginId())
-                .orElseThrow(() -> new BusinessException(UserErrorCode.LOGIN_FAILED));
+        LoginCredentialReader.LoginCredential credential =
+                loginCredentialReader.findByLoginId(request.loginId());
 
-        if (user.getPasswordHash() == null || !passwordEncoder.matches(request.password(), user.getPasswordHash())) {
+        if (credential.passwordHash() == null
+                || !passwordEncoder.matches(request.password(), credential.passwordHash())) {
             throw new BusinessException(UserErrorCode.LOGIN_FAILED);
         }
 
-        return issueTokens(user, request.deviceId());
+        return issueTokens(credential.userId(), credential.provider(), request.deviceId());
     }
 
-    @Transactional
     public TokenResponse kakaoLogin(KakaoLoginRequest request) {
         KakaoClient.KakaoUser kakaoUser = kakaoClient.getVerifiedUser(request.kakaoAccessToken());
         validateKakaoEmail(kakaoUser);
         String providerId = kakaoUser.id().toString();
+        String email = normalizeEmail(kakaoUser.email());
 
-        User user = userRepository.findByProviderAndProviderId(PROVIDER_KAKAO, providerId)
-                .orElseGet(() -> createKakaoUser(kakaoUser, providerId));
-        synchronizeKakaoEmail(user, kakaoUser.email());
+        KakaoUserTransactionService.AuthenticatedKakaoUser user =
+                kakaoUserTransactionService.resolve(providerId, email);
 
-        return issueTokens(user, request.deviceId());
+        return issueTokens(user.userId(), user.provider(), request.deviceId());
     }
 
     /**
@@ -150,53 +151,6 @@ public class AuthService {
         return LogoutResponse.success();
     }
 
-    private void upsertRefreshToken(Integer userId, String deviceId, String refreshToken) {
-        refreshTokenRepository.findByUserIdAndDeviceId(userId, deviceId)
-                .ifPresentOrElse(
-                        existing -> existing.rotate(hash(refreshToken), refreshTokenExpiry()),
-                        () -> refreshTokenRepository.save(RefreshToken.builder()
-                                .userId(userId)
-                                .deviceId(deviceId)
-                                .tokenHash(hash(refreshToken))
-                                .expiresAt(refreshTokenExpiry())
-                                .createdAt(OffsetDateTime.now())
-                                .build())
-                );
-    }
-
-    private User createKakaoUser(KakaoClient.KakaoUser kakaoUser, String providerId) {
-        OffsetDateTime now = OffsetDateTime.now();
-        String email = normalizeEmail(kakaoUser.email());
-        if (userRepository.existsByEmail(email)) {
-            // 이메일은 카카오 회원의 영구 식별자가 아니므로 기존 계정을 자동 연결하지 않는다.
-            throw new BusinessException(UserErrorCode.DUPLICATE_EMAIL);
-        }
-
-        User user = userRepository.save(User.builder()
-                .provider(PROVIDER_KAKAO)
-                .providerId(providerId)
-                .email(email)
-                .updatedAt(now)
-                .build());
-        userSettingCommandRepository.createDefaults(user.getUserId());
-        return user;
-    }
-
-    private void synchronizeKakaoEmail(User user, String kakaoEmail) {
-        String email = normalizeEmail(kakaoEmail);
-        if (email == null || email.equals(user.getEmail())) {
-            return;
-        }
-
-        // users.email은 UNIQUE다. 같은 이메일의 로컬/다른 소셜 계정을 자동 병합하지 않는다.
-        if (userRepository.existsByEmail(email)) {
-            throw new BusinessException(UserErrorCode.DUPLICATE_EMAIL);
-        }
-
-        user.updateEmail(email, OffsetDateTime.now());
-        log.info("카카오 이메일 동기화 완료: userId={}", user.getUserId());
-    }
-
     private String normalizeEmail(String email) {
         if (email == null || email.isBlank()) {
             return null;
@@ -213,14 +167,15 @@ public class AuthService {
         }
     }
 
-    private TokenResponse issueTokens(User user, String deviceId) {
-        String accessToken = jwtTokenProvider.createAccessToken(user.getUserId());
-        String refreshToken = jwtTokenProvider.createRefreshToken(user.getUserId(), deviceId);
-        upsertRefreshToken(user.getUserId(), deviceId, refreshToken);
+    private TokenResponse issueTokens(Integer userId, String provider, String deviceId) {
+        String accessToken = jwtTokenProvider.createAccessToken(userId);
+        String refreshToken = jwtTokenProvider.createRefreshToken(userId, deviceId);
+        refreshTokenCommandService.upsert(
+                userId, deviceId, hash(refreshToken), refreshTokenExpiry());
 
         log.info("로그인 성공: provider={}, userId={}, deviceId={}",
-                user.getProvider(), user.getUserId(), deviceId);
-        return new TokenResponse(accessToken, refreshToken, user.getUserId());
+                provider, userId, deviceId);
+        return new TokenResponse(accessToken, refreshToken, userId);
     }
 
     private OffsetDateTime refreshTokenExpiry() {

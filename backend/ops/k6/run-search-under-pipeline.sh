@@ -27,8 +27,9 @@ stamp() { printf '%s\t%s\t%s\n' "$1" "$(date +%s)" "$(date -Iseconds)" | tee -a 
 printf 'phase\tepoch\tiso\n' > "$manifest"
 
 stamp pipeline_start
+# pipeline-common.js가 /images/의 실제 파일을 open하므로 이미지 디렉터리를 마운트한다.
 docker run --rm --user 0:0 --network "$network" \
-  -v "$script_dir:/scripts:ro" -v "$result_dir:/results" \
+  -v "$script_dir:/scripts:ro" -v "$script_dir/images:/images:ro" -v "$result_dir:/results" \
   grafana/k6 run --quiet \
   -e BASE_URL="$base_url" -e RATE="$pipeline_rate" -e DURATION="$pipeline_duration" \
   --summary-export=/results/pipeline.json /scripts/pipeline-load.js \

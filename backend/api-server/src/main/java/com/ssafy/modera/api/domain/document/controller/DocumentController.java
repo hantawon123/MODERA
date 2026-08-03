@@ -31,6 +31,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
+
 @Tag(name = "문서", description = "선택한 이미지로 마크다운 문서 생성")
 @ApiV1Controller
 @RestController
@@ -43,7 +45,6 @@ public class DocumentController {
     private static final String MESSAGE_CREATED = "문서가 생성되었습니다.";
     private static final String MESSAGE_REGENERATED = "문서를 다시 정리했습니다.";
     private static final String MESSAGE_IMAGES_ADDED = "이미지를 추가해 문서를 다시 정리했습니다.";
-    private static final String MESSAGE_IMAGES_EXCLUDED = "이미지를 제외해 문서를 다시 정리했습니다.";
 
     private final DocumentCommandService documentCommandService;
     private final DocumentQueryService documentQueryService;
@@ -148,26 +149,22 @@ public class DocumentController {
             description = """
                     이 문서가 어떤 스크린샷으로 만들어졌는지 조회한다. 삭제된 이미지는 빠진다.
 
-                    정렬은 문서에 포함된 시각 기준이다(업로드 시각은 이 조회 모델에 없다).
+                    한 문서에 들어갈 수 있는 이미지가 최대 30장이라 페이지를 나누지 않고 전부 준다.
+                    순서는 문서에 포함된 시각의 역순이다(업로드 시각은 이 조회 모델에 없다).
                     """
     )
     @ApiResponses({
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "조회 성공. 구성 이미지가 없으면 빈 배열"),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "page/size/sort 값이 올바르지 않음(INVALID_PARAMETER)"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "본인 소유가 아니거나 존재하지 않는 documentId(DOCUMENT_NOT_FOUND)")
     })
     @GetMapping("/{documentId}/images")
-    public ResponseEntity<ApiResponse<PageResponse<DocumentImageResponse>>> getDocumentImages(
+    public ResponseEntity<ApiResponse<List<DocumentImageResponse>>> getDocumentImages(
             @AuthenticationPrincipal Integer userId,
-            @PathVariable(name = "documentId") Integer documentId,
-            @RequestParam(name = "page", defaultValue = "0") int page,
-            @RequestParam(name = "size", defaultValue = "20") int size,
-            @Parameter(description = "ADDED_DESC, ADDED_ASC, TITLE_ASC")
-            @RequestParam(name = "sort", defaultValue = "ADDED_DESC") String sort
+            @Parameter(description = "조회할 문서 ID") @PathVariable(name = "documentId") Integer documentId
     ) {
         return ResponseEntity.ok(ApiResponse.success(
                 "D204",
-                documentQueryService.getDocumentImages(userId, documentId, page, size, sort)
+                documentQueryService.getDocumentImages(userId, documentId)
         ));
     }
 
@@ -241,38 +238,6 @@ public class DocumentController {
                 CODE_CREATED,
                 MESSAGE_IMAGES_ADDED,
                 documentCommandService.addImages(userId, documentId, request)
-        ));
-    }
-
-    @Operation(
-            summary = "문서에서 이미지 제외",
-            description = """
-                    현재 구성에서 이미지를 뺀 결과로 문서를 다시 만들고 **갱신된 문서를 돌려준다.**
-                    documentId는 유지되고, 제외한 이미지 원본은 삭제되지 않는다.
-
-                    문서에 없는 이미지를 빼려 하면 404(DOCUMENT_IMAGE_NOT_FOUND)다 — 앱의 구성
-                    목록이 낡았다는 뜻이라 문서를 다시 조회하면 해소된다.
-
-                    전부 제외할 수는 없다(400). 그건 문서를 지우겠다는 뜻이므로 삭제를 쓴다.
-                    """
-    )
-    @ApiResponses({
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "완료. data는 상세 조회(8-3)와 같은 형식"),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "남는 이미지가 없음(INVALID_DOCUMENT_IMAGES)"),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "문서가 없거나(DOCUMENT_NOT_FOUND) 문서에 없는 이미지(DOCUMENT_IMAGE_NOT_FOUND)"),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409", description = "같은 요청 처리 중 또는 이미 재분석 진행 중"),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "502", description = "AI 장애·타임아웃 또는 요청 거부")
-    })
-    @PostMapping("/{documentId}/images/exclude")
-    public ResponseEntity<ApiResponse<DocumentDetailResponse>> excludeImages(
-            @AuthenticationPrincipal Integer userId,
-            @PathVariable(name = "documentId") Integer documentId,
-            @RequestBody @Valid DocumentImagesRequest request
-    ) {
-        return ResponseEntity.ok(ApiResponse.success(
-                CODE_CREATED,
-                MESSAGE_IMAGES_EXCLUDED,
-                documentCommandService.excludeImages(userId, documentId, request)
         ));
     }
 

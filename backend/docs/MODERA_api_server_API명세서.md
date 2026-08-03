@@ -170,7 +170,6 @@ CANCELED            취소
 | 8-4 | GET | /documents/{documentId}/images | 문서를 구성하는 이미지 목록 조회 |
 | 8-5 | DELETE | /documents/{documentId} | 문서 삭제 |
 | 8-6 | POST | /documents/{documentId}/images | 이미지 추가 후 새 문서 생성 요청 |
-| 8-7 | POST | /documents/{documentId}/images/exclude | 이미지 제외 후 새 문서 생성 요청 |
 | 9-1 | GET | /schedules | 내 일정 후보·캘린더 일정 목록 조회 |
 | 9-2 | DELETE | /schedules/{scheduleId} | 일정 삭제 |
 | 9-3 | PUT | /schedules/{scheduleId}/calendar | 캘린더 등록 상태 변경 |
@@ -1661,57 +1660,45 @@ DB 저장 중 하나라도 실패하면 전체 트랜잭션을 롤백하고 성�
 | --- | --- |
 | API | `GET /api/v1/documents/{documentId}/images` |
 | 인증 | Bearer |
-| 설명 | 문서 ID를 기준으로 본인이 소유한 문서를 구성하는 삭제되지 않은 이미지 목록을 조회한다. 응답 항목은 5-1 이미지 목록 조회의 Response DTO를 그대로 사용한다. |
+| 설명 | 문서 ID를 기준으로 본인이 소유한 문서를 구성하는 삭제되지 않은 이미지 목록을 조회한다. 한 문서에 포함될 수 있는 이미지가 최대 30장(8-2 참고)이라 페이지를 나누지 않고 전부 반환한다. |
 
 ### Query Parameters
 
-| 파라미터 | 타입 | 설명 |
-| --- | --- | --- |
-| page | Number | 페이지 번호, 0부터 시작. 기본값 `0` |
-| size | Number | 페이지 크기. 기본값 `20`, 최대 `100` |
-| sort | String | 정렬 기준. `TITLE_ASC`, `UPLOADED_DESC`, `UPLOADED_ASC` 중 하나. 기본값 `UPLOADED_DESC` |
+없다. `documentId`만 받는다.
 
-### Response `data` (5-1과 동일한 페이지 형식 및 list 항목)
+### Response `data` (배열)
 
 ```json
 {
   "result": "SUCCESS",
   "code": "D204",
   "message": "요청이 성공했습니다.",
-  "data": {
-    "list": [
-      {
-        "imageId": 1024,
-        "title": "C++ 프로그래밍 입문",
-        "summary": "교보문고에서 판매 중인 C++ 프로그래밍 입문서, 32,000원",
-        "favorite": false,
-        "thumbnailUrl": "https://.../thumb.jpg",
-        "tags": ["C++", "쇼핑"],
-        "category": "공부",
-        "uploadedAt": "2026-07-16T06:00:00.000Z"
-      }
-    ],
-    "page": 0,
-    "size": 20,
-    "totalElements": 1,
-    "totalPages": 1,
-    "hasNext": false,
-    "hasPrevious": false
-  },
+  "data": [
+    {
+      "imageId": 1024,
+      "title": "C++ 프로그래밍 입문",
+      "summary": "교보문고에서 판매 중인 C++ 프로그래밍 입문서, 32,000원",
+      "thumbnailUrl": "https://.../thumb.jpg",
+      "tags": ["C++", "쇼핑"],
+      "addedAt": "2026-07-16T06:00:00.000Z"
+    }
+  ],
   "timestamp": "2026-07-16T06:00:00.000Z"
 }
 ```
+
+`favorite`·`category`는 조회 모델(`query_schema.document_image_view`)에 없어 포함하지 않는다. 5-1 이미지 목록과 항목 구성이 다르다.
 
 ### 처리 규칙
 
 - 로그인한 사용자가 소유한 문서만 조회할 수 있다.
 - `library_schema.image_document` 관계와 로그인 사용자의 `library_schema.user_image` 관계가 모두 유효한 이미지만 반환한다.
-- 문서에 포함된 이미지가 없으면 `list`가 빈 배열인 정상 응답을 반환한다.
+- 정렬은 문서에 포함된 시각(`addedAt`)의 역순 고정이다. 업로드 시각은 이 조회 모델에 없다.
+- 문서에 포함된 이미지가 없으면 빈 배열인 정상 응답을 반환한다.
 
 ### 에러
 
 - `DOCUMENT_NOT_FOUND` (404)
-- `INVALID_PARAMETER` (400)
 
 ---
 
@@ -1805,67 +1792,6 @@ DB 저장 중 하나라도 실패하면 전체 트랜잭션을 롤백하고 성�
 - `IMAGE_NOT_FOUND` (404)
 - `DOCUMENT_IMAGE_NOT_OWNED` (403)
 - `IMAGE_ANALYSIS_NOT_COMPLETED` (409)
-- `DUPLICATE_CLIENT_REQUEST` (409)
-
----
-
-## 8-7 이미지 제외 후 새 문서 생성
-
-| 항목 | 내용 |
-| --- | --- |
-| API | `POST /api/v1/documents/{documentId}/images/exclude` |
-| 인증 | Bearer |
-| 처리 방식 | 비동기 |
-| 성공 상태 | `202 Accepted` |
-| 설명 | 기존 문서의 이미지 목록에서 선택한 이미지를 제외한 결과로 새 문서 생성을 요청한다. 새 문서 저장이 완료되면 기존 문서는 soft delete하며 원본 이미지는 변경하지 않는다. |
-
-### Request
-
-```json
-{
-  "clientRequestId": "472b64ba-b6ef-4af3-a31c-73064a7ea8bc",
-  "imageIds": [1024, 1025]
-}
-```
-
-| 필드 | 타입 | 필수 | 설명 |
-| --- | --- | --- | --- |
-| clientRequestId | String(UUID) | 필수 | 요청 추적 및 중복 처리 방지를 위한 요청 ID |
-| imageIds | Number[] | 필수 | 새 문서 생성 시 기존 문서의 이미지 목록에서 제외할 이미지 ID |
-
-### Response `202 Accepted`
-
-```json
-{
-  "result": "SUCCESS",
-  "code": "DOCUMENT_GENERATION_ACCEPTED",
-  "message": "이미지 제외를 반영한 새 문서 생성 요청이 접수되었습니다.",
-  "data": {
-    "clientRequestId": "472b64ba-b6ef-4af3-a31c-73064a7ea8bc",
-    "sourceDocumentId": 101,
-    "status": "QUEUED"
-  },
-  "timestamp": "2026-07-29T07:00:00.000Z"
-}
-```
-
-### 처리 규칙
-
-1. 기존 문서의 이미지 ID 목록을 조회한다.
-2. 요청의 `imageIds`를 제외하여 최종 이미지 ID 목록을 만든다.
-3. 요청한 모든 이미지가 기존 문서에 포함되어 있는지 확인하고, 최종 이미지 ID 목록이 1개 이상인지 검증한다.
-4. 최종 이미지 ID 목록에 8-2와 동일한 소유권·삭제 여부·분석 완료 검증을 적용한다.
-5. 8-2 문서 생성과 동일한 애플리케이션 서비스를 호출하여 `DOCUMENT_GENERATION_REQUESTED` 이벤트를 발행한다. API 서버 내부에서 8-2 HTTP API를 다시 호출하지 않는다.
-6. Analysis Worker와 AI 서버의 처리가 끝나면 새 문서와 새로운 관계·조회 모델을 저장한다.
-7. 새 문서 저장이 모두 성공한 같은 트랜잭션에서 기존 `document`, `user_document`, `image_document`, `user_document_view`, `document_image_view`를 soft delete한다. 원본 이미지는 변경하지 않는다.
-8. 새 문서에 포함된 이미지의 `user_image_view.is_documented_yn`을 갱신하고, 기존 문서에서 제외된 이미지는 다른 활성 문서 포함 여부를 확인해 값을 다시 계산한다.
-9. 새 문서의 DB 트랜잭션 커밋 후 8-2와 동일한 FCM 완료 알림을 전송한다.
-
-### 에러
-
-- `DOCUMENT_NOT_FOUND` (404)
-- `DOCUMENT_IMAGE_NOT_FOUND` (404)
-- `INVALID_DOCUMENT_IMAGES` (400)
 - `DUPLICATE_CLIENT_REQUEST` (409)
 
 ---
@@ -2043,13 +1969,12 @@ DB 저장 중 하나라도 실패하면 전체 트랜잭션을 롤백하고 성�
 | CONFIRM_REQUIRED | 400 | 7-2 | 저장 데이터 초기화 확인 문자열이 없거나 올바르지 않음 |
 | INVALID_FCM_TOKEN | 400 | 7-4 | FCM 등록 토큰 형식이 올바르지 않음 |
 | ANALYSIS_FAILED | FCM | 7-7 | 이미지 분석 비동기 처리 실패 알림 코드 |
-| INVALID_DOCUMENT_IMAGES | 400 | 8-2, 8-7 | 문서 생성 이미지 목록이 비어 있거나 중복·제외 결과가 올바르지 않음 |
+| INVALID_DOCUMENT_IMAGES | 400 | 8-2, 8-6 | 문서 생성 이미지 목록이 비어 있거나 중복이거나 개수 상한을 넘음 |
 | DOCUMENT_IMAGE_NOT_OWNED | 403 | 8-2, 8-6 | 문서 생성에 사용할 이미지가 요청 사용자 소유가 아님 |
 | IMAGE_ANALYSIS_NOT_COMPLETED | 409 | 5-2, 5-6, 5-7, 8-2, 8-6 | 대상 이미지의 분석이 완료되지 않음 |
-| DUPLICATE_CLIENT_REQUEST | 409 | 8-2, 8-6, 8-7 | 동일 사용자의 동일한 clientRequestId 재요청을 중복 실행으로 인한 오류 방지를 위해 차단 |
-| DOCUMENT_GENERATION_FAILED | Redis 이벤트·FCM | 8-2, 8-6, 8-7 | AI 문서 생성 비동기 처리 실패 |
-| DOCUMENT_NOT_FOUND | 404 | 8-3, 8-4, 8-5, 8-6, 8-7 | 문서가 없거나 요청 사용자가 소유하지 않음 |
-| DOCUMENT_IMAGE_NOT_FOUND | 404 | 8-7 | 제외하려는 이미지가 기존 문서에 포함되어 있지 않음 |
+| DUPLICATE_CLIENT_REQUEST | 409 | 8-2, 8-6 | 동일 사용자의 동일한 clientRequestId 재요청을 중복 실행으로 인한 오류 방지를 위해 차단 |
+| DOCUMENT_GENERATION_FAILED | Redis 이벤트·FCM | 8-2, 8-6 | AI 문서 생성 비동기 처리 실패 |
+| DOCUMENT_NOT_FOUND | 404 | 8-3, 8-4, 8-5, 8-6 | 문서가 없거나 요청 사용자가 소유하지 않음 |
 | SCHEDULE_NOT_FOUND | 404 | 9-2, 9-3 | 일정이 없거나 요청 사용자가 소유하지 않음 |
 | AI_SEARCH_FAILED | 500 / Redis 결과 이벤트 | 5-5, 5-6, 5-7 | Analysis Worker의 이미지 검색 처리 실패 |
 | AI_SEARCH_TIMEOUT | 504 | 5-5, 5-6, 5-7 | 지정된 대기 시간 안에 검색 결과 이벤트를 받지 못함 |

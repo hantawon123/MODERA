@@ -1,7 +1,11 @@
 """Gemini 호출 래퍼.
 
-SDK 의존성을 이 파일에만 가둔다. 현재는 google-generativeai 를 쓰지만
-지원 종료 예고가 있으므로, 이후 google-genai 로 옮길 때 이 파일만 고치면 된다.
+SDK 의존성을 이 파일에만 가둔다. google-generativeai(지원 종료 예고)에서
+google-genai 로 이전했다(2026-08-03). 이전 이유는 폐기 대비만이 아니라
+**thinking 제어**다 — thinking 토큰은 출력 단가로 과금되는데(2.5-flash 기본
+ON, 3.5-flash 기본 medium) 구 SDK 는 thinkingConfig 를 넘길 수 없어서
+분석 1건마다 보이지 않는 출력 토큰을 내고 있었다. 신 SDK 는 REST(httpx)
+기반이라 경로 접두사가 있는 GMS 프록시 문제(gRPC 불가)도 자연 해소된다.
 """
 
 import io
@@ -24,7 +28,7 @@ def _is_rate_limit(exc: Exception) -> bool:
     """429(rate limit / quota) 성격의 예외인지 판별한다.
 
     SDK·전송 계층에 따라 예외 타입이 제각각이라, 상태코드·클래스명·메시지를
-    폭넓게 본다. (google.api_core.exceptions.ResourceExhausted 등)
+    폭넓게 본다. (google.genai.errors.ClientError 는 .code 에 HTTP 상태를 담는다)
     """
     if getattr(exc, "status_code", None) == 429 or getattr(exc, "code", None) == 429:
         return True
@@ -63,33 +67,87 @@ def _call_with_retry(label: str, fn: Callable[[], Any]) -> Any:
             time.sleep(delay)
 
 
-def _request_options() -> dict[str, Any]:
-    """SDK 호출 1회의 타임아웃. 기본값은 무제한이라 반드시 넘긴다.
-
-    무제한이면 응답이 오지 않는 요청 하나가 asyncio.to_thread 스레드를 붙잡고,
-    분석은 max_concurrent_stages(4)만큼 쌓이면 파이프라인 전체가 멈춘다.
-    타임아웃은 429 가 아니므로 _call_with_retry 가 재시도하지 않고 바로 올린다.
-    """
-    return {"timeout": get_settings().gemini_timeout}
-
-
-def _genai():
+def _sdk():
+    """google-genai 모듈을 지연 import 한다. MOCK_AI 경로는 SDK 없이도 돌아야 한다."""
     try:
-        import google.generativeai as genai
+        from google import genai
+        from google.genai import types
     except ImportError as e:  # pragma: no cover
-        raise GeminiError("google-generativeai 가 설치되지 않았습니다.") from e
+        raise GeminiError("google-genai 가 설치되지 않았습니다.") from e
+    return genai, types
+
+
+# Client 는 내부에 httpx 커넥션 풀을 들고 있어 호출마다 만들면 낭비다.
+# 설정은 기동 시 고정(get_settings lru_cache)이라 싱글턴으로 충분하다.
+_client_instance: Any = None
+
+
+def _client():
+    global _client_instance
+    if _client_instance is None:
+        genai, types = _sdk()
+        settings = get_settings()
+        _client_instance = genai.Client(
+            api_key=settings.gemini_api_key,
+            http_options=types.HttpOptions(
+                # GMS 프록시 경유 — SDK 가 이 값 뒤에 /v1beta/... 를 붙인다.
+                base_url=settings.gemini_base_url,
+                # ⚠️ 신 SDK 의 timeout 은 **밀리초**다(구 SDK 는 초).
+                # 무제한이면 응답 없는 요청 하나가 asyncio.to_thread 스레드를
+                # 영구 점유하고, max_concurrent_stages(4)만큼 쌓이면 파이프라인이 멈춘다.
+                timeout=int(settings.gemini_timeout * 1000),
+            ),
+        )
+    return _client_instance
+
+
+def _thinking_config(model_name: str, types: Any) -> Any:
+    """모델 세대에 맞는 thinking 설정을 만든다. None 이면 미전송(모델 기본값).
+
+    thinking 토큰은 출력 단가로 과금된다 — 이 함수가 비용 절감의 본체다.
+    세대별 파라미터가 다르다: 2.5 는 thinking_budget(정수, 0=끔), 3.x 는
+    thinking_level(minimal/low/medium/high). 한 요청에 둘을 같이 보내면 400
+    이므로 모델명을 보고 하나만 고른다.
+    """
     settings = get_settings()
-    # 경로 접두사가 있는 프록시(GMS)는 gRPC 로 못 붙는다. REST 로 고정한다.
-    genai.configure(
-        api_key=settings.gemini_api_key,
-        transport="rest",
-        client_options={"api_endpoint": settings.gemini_base_url},
-    )
-    return genai
+    if model_name.startswith("gemini-3"):
+        if settings.gemini_thinking_level:
+            return types.ThinkingConfig(thinking_level=settings.gemini_thinking_level)
+        return None
+    if settings.gemini_thinking_budget >= 0:
+        return types.ThinkingConfig(thinking_budget=settings.gemini_thinking_budget)
+    return None
+
+
+def _log_usage(model_name: str, response: Any) -> None:
+    """토큰 사용량 계측. '예상보다 많이 먹는다'를 감이 아니라 숫자로 확인하기 위한 로그.
+
+    thoughts 가 thinking 토큰이며 **출력 단가로 과금**된다 — thinking 제어가
+    실제로 먹혔는지는 이 값이 0/None 인지로 판정한다. 계측 실패가 본 호출을
+    죽여서는 안 되므로 전부 best-effort 다.
+    """
+    try:
+        usage = getattr(response, "usage_metadata", None)
+        if usage is None:
+            return
+        logger.info(
+            "Gemini usage model=%s prompt=%s thoughts=%s candidates=%s total=%s",
+            model_name,
+            getattr(usage, "prompt_token_count", None),
+            getattr(usage, "thoughts_token_count", None),
+            getattr(usage, "candidates_token_count", None),
+            getattr(usage, "total_token_count", None),
+        )
+    except Exception:  # noqa: BLE001 — 계측은 부가 기능
+        pass
 
 
 def parse_json_response(text: str) -> dict[str, Any]:
-    """모델 응답에서 JSON 을 추출한다. 코드펜스·잡문이 섞여도 복구를 시도한다."""
+    """모델 응답에서 JSON 을 추출한다. 코드펜스·잡문이 섞여도 복구를 시도한다.
+
+    generate_json 이 response_mime_type=application/json 을 요구하므로 보통은
+    바로 json.loads 로 끝나지만, 프록시 경유 변형·모델 일탈 대비 방어선으로 유지한다.
+    """
     cleaned = (text or "").strip()
     if cleaned.startswith("```"):
         parts = cleaned.split("```")
@@ -161,12 +219,20 @@ def generate_json(model_name: str, parts: list[Any]) -> dict[str, Any]:
     if get_settings().mock_ai:
         logger.info("MOCK_AI — generate_json 가짜 응답 (model=%s)", model_name)
         return _mock_json(parts)
-    genai = _genai()
-    model = genai.GenerativeModel(model_name)
+    _, types = _sdk()
+    config = types.GenerateContentConfig(
+        # JSON 모드 — 코드펜스·설명문이 사라져 파싱 실패와 잡토큰이 준다.
+        response_mime_type="application/json",
+        thinking_config=_thinking_config(model_name, types),
+    )
+    client = _client()
     response = _call_with_retry(
         f"generate_content:{model_name}",
-        lambda: model.generate_content(parts, request_options=_request_options()),
+        lambda: client.models.generate_content(
+            model=model_name, contents=parts, config=config,
+        ),
     )
+    _log_usage(model_name, response)
     return parse_json_response(response.text)
 
 
@@ -193,7 +259,7 @@ def image_part(image_bytes: bytes):
     if len(image_bytes) <= _IMAGE_BYTE_BUDGET:
         # 이미 한도 안 — 원본 바이트를 그대로 보낸다(재인코딩 팽창 방지).
         mime = Image.MIME.get(im.format or "", "image/png")
-        return {"mime_type": mime, "data": image_bytes}
+        return _to_part(image_bytes, mime)
     im = ImageOps.exif_transpose(im).convert("RGB")
     # 너비 기준 축소는 세로로 긴 캡처(대화 전체 저장·전체 페이지)에서 실패한다 —
     # 360px 폭이어도 높이가 수천 px 면 수백 KB 다(실측: 카톡 장문 캡처 181KB 통과
@@ -213,7 +279,21 @@ def image_part(image_bytes: bytes):
                             max(1, int(im.height * 0.7))))
         else:
             break  # 4만 픽셀 미만 q50 이 예산을 넘는 경우는 없지만, 무한루프 안전핀
-    return {"mime_type": "image/jpeg", "data": buf.getvalue()}
+    return _to_part(buf.getvalue(), "image/jpeg")
+
+
+def _to_part(data: bytes, mime: str):
+    """바이트를 SDK Part 로 감싼다. MOCK 모드는 SDK 없이 돌아야 하므로 dict 로 대신한다
+    (_mock_json 은 문자열 파트만 보므로 내용은 쓰이지 않는다)."""
+    if get_settings().mock_ai:
+        return {"mime_type": mime, "data": data}
+    _, types = _sdk()
+    return types.Part.from_bytes(data=data, mime_type=mime)
+
+
+# batchEmbedContents 의 요청당 상한. 구 SDK 는 초과분을 알아서 쪼갰지만
+# 신 SDK 는 그대로 보내므로 여기서 나눈다.
+_EMBED_BATCH_LIMIT = 100
 
 
 def embed(texts: list[str], purpose: str = "DOCUMENT") -> tuple[str, list[list[float]]]:
@@ -227,23 +307,39 @@ def embed(texts: list[str], purpose: str = "DOCUMENT") -> tuple[str, list[list[f
         ]
     if not texts:
         return settings.embedding_model_name, []
-    genai = _genai()
-    task_type = "retrieval_query" if purpose == "QUERY" else "retrieval_document"
-    # content 에 리스트를 주면 SDK 가 batch_embed_contents 로 한 번에 보낸다
-    # (100건 초과는 SDK 가 알아서 쪼갠다). 텍스트당 1회 순차 호출이던 것이 배치가
-    # 되어, 카테고리 이름 17종 콜드 스타트가 17 RTT 에서 1 RTT 로 줄어든다.
-    response = _call_with_retry(
-        "embed_content",
-        lambda: genai.embed_content(
-            model=settings.embedding_model_name,
-            content=texts,
-            task_type=task_type,
-            # 차원을 명시해 모델 기본값(3072)이 아닌 합의된 값으로 받는다.
-            output_dimensionality=settings.embedding_dim,
-            request_options=_request_options(),
-        ),
+    _, types = _sdk()
+    client = _client()
+    task_type = "RETRIEVAL_QUERY" if purpose == "QUERY" else "RETRIEVAL_DOCUMENT"
+    config = types.EmbedContentConfig(
+        task_type=task_type,
+        # 차원을 명시해 모델 기본값(3072)이 아닌 합의된 값으로 받는다.
+        output_dimensionality=settings.embedding_dim,
     )
-    vectors = [list(v) for v in response["embedding"]]
+    vectors: list[list[float]] = []
+    for start in range(0, len(texts), _EMBED_BATCH_LIMIT):
+        chunk = texts[start:start + _EMBED_BATCH_LIMIT]
+        response = _call_with_retry(
+            "embed_content",
+            lambda c=chunk: client.models.embed_content(
+                model=settings.embedding_model_name, contents=c, config=config,
+            ),
+        )
+        got = [list(e.values) for e in response.embeddings]
+        if len(got) != len(chunk):
+            # GMS 프록시는 batchEmbedContents 를 지원하지 않아 몇 개를 보내든
+            # 첫 항목의 임베딩 1개만 돌려준다(2026-08-03 실측). 구글 직결에서는
+            # 배치가 그대로 동작하므로, 개수가 어긋난 경우에만 단건으로 나눠 다시 받는다.
+            logger.warning("배치 임베딩 응답 %s/%s — 단건 호출로 폴백", len(got), len(chunk))
+            got = []
+            for text in chunk:
+                response = _call_with_retry(
+                    "embed_content",
+                    lambda t=text: client.models.embed_content(
+                        model=settings.embedding_model_name, contents=t, config=config,
+                    ),
+                )
+                got.extend(list(e.values) for e in response.embeddings)
+        vectors.extend(got)
     # 호출자는 입력 순서와 벡터 순서가 같다고 보고 zip 한다
     # (stages.seed_default_category_vectors, 10-2 /internal/v1/embed 의 index).
     # 개수가 어긋나면 이름과 벡터가 밀려 붙으므로 여기서 끊는다.

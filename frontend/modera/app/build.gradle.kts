@@ -59,6 +59,7 @@ dependencies {
     implementation(projects.core.model)
     implementation(projects.core.navigation)
 
+    implementation(projects.feature.splash)
     implementation(projects.feature.home)
     implementation(projects.feature.category)
     implementation(projects.feature.favorite)
@@ -66,6 +67,7 @@ dependencies {
     implementation(projects.feature.analyzedimagedetail)
     implementation(projects.feature.imageviewer)
     implementation(projects.feature.document)
+    implementation(projects.feature.documentdetail)
     implementation(projects.feature.documentcreate)
 
     implementation(libs.androidx.activity.compose)

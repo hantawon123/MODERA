@@ -37,7 +37,6 @@ import com.ssafy.modera.feature.calendar.R
 
 private const val YearsPerPage = 8
 private const val YearColumns = 4
-/** 연도 페이지 기준점. 2021~2028이 한 페이지로 고정된다. */
 private const val YearPageOrigin = 2021
 
 internal fun yearPageStart(year: Int): Int {

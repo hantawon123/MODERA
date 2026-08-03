@@ -63,6 +63,7 @@ public class ImageAnalysisConsumer {
     private final DocumentGenerationService documentGenerationService;
     private final CategoryReanalysisService categoryReanalysisService;
     private final SemanticSearchService semanticSearchService;
+    private final EventPerformanceMetrics performanceMetrics;
 
     private volatile boolean running = true;
     private Thread consumerThread;
@@ -153,6 +154,7 @@ public class ImageAnalysisConsumer {
         }
 
         MDC.put(MDC_KEY_EVENT_ID, envelope.eventId());
+        long processingStarted = System.nanoTime();
         try {
             if (EventTypes.IMAGE_UPLOADED.equals(envelope.eventType())) {
                 ImageUploadedPayload payload = readPayload(envelope, ImageUploadedPayload.class);
@@ -179,11 +181,16 @@ public class ImageAnalysisConsumer {
                 log.warn("알 수 없는 eventType이라 무시한다: eventId={}, eventType={}", envelope.eventId(), envelope.eventType());
             }
             acknowledge(record);
+            performanceMetrics.recordAck(envelope.eventType());
+            performanceMetrics.record(envelope, System.nanoTime() - processingStarted, "SUCCESS");
         } catch (PayloadParseException e) {
             log.error("image-analysis payload 파싱 실패(영구 오류로 판단, 스킵): eventId={}, eventType={}",
                     envelope.eventId(), envelope.eventType(), e.getCause());
             acknowledge(record);
+            performanceMetrics.recordAck(envelope.eventType());
+            performanceMetrics.record(envelope, System.nanoTime() - processingStarted, "INVALID_PAYLOAD");
         } catch (Exception e) {
+            performanceMetrics.record(envelope, System.nanoTime() - processingStarted, "FAILED");
             log.error("image-analysis 이벤트 처리 중 일시 오류로 판단, XACK 보류(재전달 대기): eventId={}, eventType={}",
                     envelope.eventId(), envelope.eventType(), e);
         } finally {

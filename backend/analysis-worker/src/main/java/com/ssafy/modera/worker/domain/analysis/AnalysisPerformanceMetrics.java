@@ -9,6 +9,7 @@ import org.springframework.stereotype.Component;
 
 import java.time.Duration;
 import java.time.OffsetDateTime;
+import java.util.concurrent.TimeUnit;
 
 /** Records end-to-end and AI-stage timings for asynchronous image analysis. */
 @Component
@@ -16,6 +17,19 @@ import java.time.OffsetDateTime;
 public class AnalysisPerformanceMetrics {
 
     private final MeterRegistry meterRegistry;
+
+    public void recordAiRequest(long elapsedNanos, String outcome) {
+        Timer.builder("modera.analysis.ai.request.duration")
+                .description("Time required for the worker to submit an analysis request")
+                .tag("outcome", normalize(outcome))
+                .publishPercentileHistogram()
+                .register(meterRegistry)
+                .record(elapsedNanos, TimeUnit.NANOSECONDS);
+        Counter.builder("modera.analysis.ai.requests")
+                .tag("outcome", normalize(outcome))
+                .register(meterRegistry)
+                .increment();
+    }
 
     public void recordCallback(AnalysisJob job, String resultStatus) {
         OffsetDateTime completedAt = OffsetDateTime.now();

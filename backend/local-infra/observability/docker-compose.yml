@@ -1,0 +1,43 @@
+# 로컬 부하테스트 관측 스택 (Prometheus + Grafana).
+# 원격 서버의 ops/grafana/ 스택과 완전히 별개다 — 호스트에서 직접 띄운
+# api-server(:9080)·analysis-worker(:8082)의 actuator를 스크레이프한다.
+#
+#   docker compose up -d          # 기동
+#   http://localhost:3000         # Grafana (익명 조회 가능, 편집은 admin/localdev)
+#   http://localhost:9090         # Prometheus
+services:
+  prometheus:
+    image: prom/prometheus:v3.1.0
+    container_name: modera-local-prometheus
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.retention.time=7d
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    extra_hosts:
+      # Docker Desktop은 기본 제공하지만 Linux 팀원 호환을 위해 명시한다.
+      - "host.docker.internal:host-gateway"
+
+  grafana:
+    image: grafana/grafana:11.5.2
+    container_name: modera-local-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: localdev
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+    depends_on:
+      - prometheus
+
+volumes:
+  prometheus-data:
+  grafana-data:

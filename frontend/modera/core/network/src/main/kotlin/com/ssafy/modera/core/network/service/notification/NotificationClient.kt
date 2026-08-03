@@ -21,4 +21,12 @@ class NotificationClient @Inject constructor(
             )
             .getOrThrow()
             .data
+
+    suspend fun deletePushToken(
+        deviceId: String,
+    ): String =
+        notificationService
+            .deletePushToken(deviceId)
+            .getOrThrow()
+            .data
 }

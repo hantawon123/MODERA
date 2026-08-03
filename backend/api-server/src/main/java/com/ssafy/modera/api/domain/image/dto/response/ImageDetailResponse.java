@@ -17,7 +17,7 @@ public record ImageDetailResponse(
         @Schema(description = "태그 이름 목록") List<String> tags,
         @Schema(description = "핵심 정보 목록") List<String> keyInformation,
         @Schema(description = "구조화 데이터(일정·상품 등 type별 fields)") Map<String, Object> scheduledData,
-        @Schema(description = "최초 등록 시 저장된 OCR 원문") String ocrRawText,
+        @Schema(description = "AI가 정제한 OCR 텍스트(정제본이 없으면 null)") String ocrRefinedText,
         @Schema(description = "이미지 업로드 일시") OffsetDateTime uploadedAt,
         @Schema(description = "문서화 여부") Boolean isDocumented,
         @Schema(description = "일정 등록 여부") Boolean isCalendared

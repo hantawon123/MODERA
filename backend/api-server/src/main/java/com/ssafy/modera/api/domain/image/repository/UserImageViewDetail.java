@@ -15,7 +15,7 @@ public record UserImageViewDetail(
         List<String> tagNames,
         List<String> keyInformation,
         String structuredDataJson,
-        String ocrRawText,
+        String ocrRefinedText,
         OffsetDateTime uploadedAt,
         Boolean documented,
         Boolean calendared

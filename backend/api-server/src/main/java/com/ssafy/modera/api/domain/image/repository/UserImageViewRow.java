@@ -19,6 +19,7 @@ public record UserImageViewRow(
         List<String> tagNames,
         List<String> keyInformation,
         String structuredDataJson,
+        String ocrRefinedText,
         String uploadStatus,
         String analysisStatus,
         Boolean favorite,

@@ -36,18 +36,14 @@ pipeline {
         stage('Deploy') {
             when { changeset "backend/**" }
             steps {
-                sh '''
-                    cd /home/ubuntu/app/spring
-                    docker compose up -d --force-recreate 2>&1
-                '''
-                echo 'Wait for startup'
-                sh 'sleep 20'
-                echo 'Health check: api'
-                sh 'docker exec infra-nginx-1 wget -qO- http://modera-api:8080/actuator/health || true'
-                echo 'Health check: worker'
-                sh 'docker ps --filter name=modera-worker --format "{{.Names}} {{.Status}}" 2>&1'
+                echo 'Deploy: api (blue-green, zero-downtime)'
+                sh 'bash infra/deploy-api.sh ${BUILD_NUMBER}'
+                echo 'Deploy: worker'
+                sh 'cd /home/ubuntu/app/spring && docker compose up -d --force-recreate modera-worker 2>&1'
+                sh 'docker ps --filter name=modera- --format "{{.Names}} {{.Status}}"'
             }
         }
+
     }
 
     post {

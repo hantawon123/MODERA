@@ -25,6 +25,14 @@ class DefaultPushTokenRepository @Inject constructor(
         }
     }
 
+    override suspend fun deletePushToken() {
+        withContext(ioDispatcher) {
+            notificationClient.deletePushToken(
+                deviceId = requireDeviceId(),
+            )
+        }
+    }
+
     private fun getOrCreateDeviceId(): String {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         return prefs.getString(KEY_DEVICE_ID, null)
@@ -33,6 +41,12 @@ class DefaultPushTokenRepository @Inject constructor(
                     .putString(KEY_DEVICE_ID, deviceId)
                     .apply()
             }
+    }
+
+    private fun requireDeviceId(): String {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        return prefs.getString(KEY_DEVICE_ID, null)
+            ?: error("Device ID not found")
     }
 
     private companion object {

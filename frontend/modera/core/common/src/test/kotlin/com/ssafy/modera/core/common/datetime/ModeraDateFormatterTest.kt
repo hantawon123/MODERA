@@ -1,10 +1,11 @@
 package com.ssafy.modera.core.common.datetime
 
-import java.time.Clock
-import java.time.Instant
-import java.time.ZoneId
 import org.junit.Assert.assertEquals
 import org.junit.Test
+import java.time.Clock
+import java.time.Instant
+import java.time.OffsetDateTime
+import java.time.ZoneId
 
 class ModeraDateFormatterTest {
 
@@ -150,5 +151,44 @@ class ModeraDateFormatterTest {
         )
 
         assertEquals(secondsResult, millisResult)
+    }
+
+    @Test
+    fun `Instant Z 포맷을 ZonedDateTime으로 파싱한다`() {
+        val actual = ModeraDateFormatter.parseToZonedDateTimeOrNull(
+            value = "2026-08-09T00:00:00.000Z",
+            zoneId = zoneId,
+        )
+
+        assertEquals(
+            Instant.parse("2026-08-09T00:00:00.000Z").atZone(zoneId),
+            actual,
+        )
+    }
+
+    @Test
+    fun `OffsetDateTime 포맷을 ZonedDateTime으로 파싱한다`() {
+        val actual = ModeraDateFormatter.parseToZonedDateTimeOrNull(
+            value = "2026-08-09T19:00:00+09:00",
+            zoneId = zoneId,
+        )
+
+        assertEquals(
+            OffsetDateTime.parse("2026-08-09T19:00:00+09:00")
+                .atZoneSameInstant(zoneId),
+            actual,
+        )
+    }
+
+    @Test
+    fun `빈 값이면 null을 반환한다`() {
+        assertEquals(
+            null,
+            ModeraDateFormatter.parseToZonedDateTimeOrNull(null, zoneId),
+        )
+        assertEquals(
+            null,
+            ModeraDateFormatter.parseToZonedDateTimeOrNull("  ", zoneId),
+        )
     }
 }

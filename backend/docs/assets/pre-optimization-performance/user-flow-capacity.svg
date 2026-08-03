@@ -1,0 +1,100 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="940" viewBox="0 0 1400 940" role="img" aria-labelledby="title desc">
+  <title id="title">5분 실제 사용자 흐름 동시 사용자 수별 처리 결과</title>
+  <desc id="desc">사용자별 로그인 1회와 애플리케이션 API 200회를 수행한 테스트에서 125명까지 오류 없이 완료했고 130명부터 데이터베이스 연결 획득 오류가 발생했다.</desc>
+  <defs>
+    <style>
+      .bg { fill: #ffffff; }
+      .title { font: 700 32px 'Pretendard','Noto Sans KR','Malgun Gothic',sans-serif; fill: #172033; }
+      .subtitle { font: 400 17px 'Pretendard','Noto Sans KR','Malgun Gothic',sans-serif; fill: #667085; }
+      .section { font: 700 19px 'Pretendard','Noto Sans KR','Malgun Gothic',sans-serif; fill: #25324b; }
+      .axis-label { font: 500 15px 'Pretendard','Noto Sans KR','Malgun Gothic',sans-serif; fill: #344054; }
+      .tick { font: 400 14px 'Pretendard','Noto Sans KR','Malgun Gothic',sans-serif; fill: #667085; }
+      .value { font: 700 15px 'Pretendard','Noto Sans KR','Malgun Gothic',sans-serif; fill: #172033; }
+      .note { font: 500 15px 'Pretendard','Noto Sans KR','Malgun Gothic',sans-serif; fill: #344054; }
+      .small { font: 400 13px 'Pretendard','Noto Sans KR','Malgun Gothic',sans-serif; fill: #667085; }
+      .grid { stroke: #e4e7ec; stroke-width: 1; }
+      .axis { stroke: #98a2b3; stroke-width: 1.4; }
+      .pass { fill: #20a66a; }
+      .fail { fill: #e05a5a; }
+      .planned { fill: none; stroke: #b42318; stroke-width: 2; stroke-dasharray: 7 5; }
+      .boundary { stroke: #b42318; stroke-width: 2; stroke-dasharray: 6 6; }
+      .callout-pass { fill: #ecfdf3; stroke: #6ce9a6; }
+      .callout-fail { fill: #fef3f2; stroke: #fda29b; }
+    </style>
+  </defs>
+  <rect class="bg" width="1400" height="940"/>
+  <text class="title" x="70" y="60">5분 실제 사용자 흐름: 무오류 한계 125명</text>
+  <text class="subtitle" x="70" y="94">사용자마다 로그인 1회 + 앱 API 200회 · 10초 분산 시작 · AI/Worker/MinIO 제외 · 개선 전 이미지(modera-api:132)</text>
+
+  <rect class="callout-pass" x="70" y="119" width="360" height="55" rx="8"/>
+  <text class="note" x="88" y="143">최대 무오류 단계</text>
+  <text class="value" x="88" y="164">125명 · 25,000회 · 오류 사용자 0명</text>
+  <rect class="callout-fail" x="450" y="119" width="420" height="55" rx="8"/>
+  <text class="note" x="468" y="143">최초 실패 단계</text>
+  <text class="value" x="468" y="164">130명 · 실제 24,400회 · 오류 사용자 31명</text>
+
+  <text class="section" x="70" y="218">사용자 시나리오 API 호출 완료 수</text>
+  <text class="small" x="1328" y="218" text-anchor="end">막대: 실제 호출 · 점선: 계획 호출</text>
+  <line class="grid" x1="150" y1="530" x2="1325" y2="530"/>
+  <line class="grid" x1="150" y1="413" x2="1325" y2="413"/>
+  <line class="grid" x1="150" y1="297" x2="1325" y2="297"/>
+  <line class="grid" x1="150" y1="180" x2="1325" y2="180"/>
+  <line class="axis" x1="150" y1="530" x2="1325" y2="530"/>
+  <text class="tick" x="135" y="535" text-anchor="end">0</text>
+  <text class="tick" x="135" y="418" text-anchor="end">10,000</text>
+  <text class="tick" x="135" y="302" text-anchor="end">20,000</text>
+  <text class="tick" x="135" y="185" text-anchor="end">30,000회</text>
+
+  <rect class="pass" x="190" y="437" width="90" height="93" rx="5"/>
+  <text class="value" x="235" y="426" text-anchor="middle">8,000</text>
+  <rect class="pass" x="340" y="390" width="90" height="140" rx="5"/>
+  <text class="value" x="385" y="379" text-anchor="middle">12,000</text>
+  <rect class="pass" x="490" y="343" width="90" height="187" rx="5"/>
+  <text class="value" x="535" y="332" text-anchor="middle">16,000</text>
+  <rect class="pass" x="640" y="297" width="90" height="233" rx="5"/>
+  <text class="value" x="685" y="286" text-anchor="middle">20,000</text>
+  <rect class="pass" x="790" y="250" width="90" height="280" rx="5"/>
+  <text class="value" x="835" y="239" text-anchor="middle">24,000</text>
+  <rect class="pass" x="940" y="238" width="90" height="292" rx="5"/>
+  <text class="value" x="985" y="227" text-anchor="middle">25,000</text>
+  <rect class="fail" x="1090" y="245" width="90" height="285" rx="5"/>
+  <rect class="planned" x="1090" y="227" width="90" height="303" rx="5"/>
+  <text class="value" x="1135" y="216" text-anchor="middle">24,400 / 26,000</text>
+  <rect class="fail" x="1240" y="206" width="90" height="324" rx="5"/>
+  <rect class="planned" x="1240" y="180" width="90" height="350" rx="5"/>
+  <text class="value" x="1285" y="169" text-anchor="middle">27,800 / 30,000</text>
+
+  <line class="boundary" x1="1060" y1="205" x2="1060" y2="862"/>
+  <text class="small" x="1068" y="559">오류 발생 경계</text>
+
+  <text class="section" x="70" y="620">오류가 한 번 이상 발생한 사용자 수</text>
+  <line class="grid" x1="150" y1="830" x2="1325" y2="830"/>
+  <line class="grid" x1="150" y1="779" x2="1325" y2="779"/>
+  <line class="grid" x1="150" y1="727" x2="1325" y2="727"/>
+  <line class="grid" x1="150" y1="676" x2="1325" y2="676"/>
+  <line class="axis" x1="150" y1="830" x2="1325" y2="830"/>
+  <text class="tick" x="135" y="835" text-anchor="end">0</text>
+  <text class="tick" x="135" y="784" text-anchor="end">10</text>
+  <text class="tick" x="135" y="732" text-anchor="end">20</text>
+  <text class="tick" x="135" y="681" text-anchor="end">30명</text>
+  <circle class="pass" cx="235" cy="830" r="6"/>
+  <circle class="pass" cx="385" cy="830" r="6"/>
+  <circle class="pass" cx="535" cy="830" r="6"/>
+  <circle class="pass" cx="685" cy="830" r="6"/>
+  <circle class="pass" cx="835" cy="830" r="6"/>
+  <circle class="pass" cx="985" cy="830" r="6"/>
+  <rect class="fail" x="1090" y="671" width="90" height="159" rx="5"/>
+  <text class="value" x="1135" y="660" text-anchor="middle">31명</text>
+  <rect class="fail" x="1240" y="712" width="90" height="118" rx="5"/>
+  <text class="value" x="1285" y="701" text-anchor="middle">23명</text>
+
+  <text class="axis-label" x="235" y="865" text-anchor="middle">40명</text>
+  <text class="axis-label" x="385" y="865" text-anchor="middle">60명</text>
+  <text class="axis-label" x="535" y="865" text-anchor="middle">80명</text>
+  <text class="axis-label" x="685" y="865" text-anchor="middle">100명</text>
+  <text class="axis-label" x="835" y="865" text-anchor="middle">120명</text>
+  <text class="axis-label" x="985" y="865" text-anchor="middle">125명</text>
+  <text class="axis-label" x="1135" y="865" text-anchor="middle">130명</text>
+  <text class="axis-label" x="1285" y="865" text-anchor="middle">150명</text>
+  <text class="small" x="70" y="910">※ 130명·150명 구간의 오류 수가 단조 증가하지 않은 것은 공유 서버에서 각 단계를 1회씩 측정한 결과이기 때문이며, 확정 가능한 결론은 ‘125명 무오류, 130명부터 오류’임.</text>
+</svg>

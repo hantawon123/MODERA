@@ -62,6 +62,24 @@ RESULT_DIR="/home/ubuntu/k6/results/user-flow-60" \
 /home/ubuntu/k6/run-progressive-user-capacity.sh
 ```
 
+## 2분 빠른 점진 테스트
+
+기본 5분·200회 대신 단계별 2분만 확인하려면 사용자당 100회로 실행한다. 시나리오는 `CALLS_PER_SESSION`을 최소 100으로 제한한다.
+
+```bash
+LEVELS="125 130 150 175 200" \
+BASE_URL="http://modera-api:8080" \
+RESULT_DIR="/home/ubuntu/k6/results/user-flow-latest-2m" \
+CALLS_PER_SESSION=100 \
+SESSION_SECONDS=120 \
+STARTUP_SPREAD_SECONDS=10 \
+LIVENESS_DURATION="2m20s" \
+MAX_DURATION="3m" \
+/home/ubuntu/k6/run-progressive-user-capacity.sh
+```
+
+이 조건의 평균 호출 간격은 약 1.2초이므로 기본 5분·200회 조건의 약 1.5초보다 25% 더 강하다.
+
 ## 점진적 용량 탐색
 
 각 단계는 5분 동안 실행된다. HTTP 오류, 실패 사용자 플로우 또는 미완료 사용자가 처음 발생한 단계에서 자동 중단한다.

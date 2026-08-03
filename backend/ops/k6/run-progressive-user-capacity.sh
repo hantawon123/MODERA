@@ -9,27 +9,32 @@ network="${NETWORK:-infra_default}"
 login_id="${LOGIN_ID:-k6tester}"
 password="${PASSWORD:-password123}"
 email="${EMAIL:-k6tester@example.com}"
+calls_per_session="${CALLS_PER_SESSION:-200}"
+session_seconds="${SESSION_SECONDS:-300}"
+startup_spread_seconds="${STARTUP_SPREAD_SECONDS:-10}"
+liveness_duration="${LIVENESS_DURATION:-5m20s}"
+max_duration="${MAX_DURATION:-7m}"
 mkdir -p "$result_dir"
 summary="$result_dir/capacity.tsv"
 printf 'vus\tplanned_calls\tbusiness_requests\terror_requests\tcompleted_flows\tfailed_flows\tbusiness_p95_ms\tlogin_p95_ms\trps\tk6_exit\n' > "$summary"
 
 for vus in "${levels[@]}"; do
-  echo "[progressive] ${vus} users x 200 calls over 5 minutes"
+  echo "[progressive] ${vus} users x ${calls_per_session} calls over ${session_seconds} seconds"
   set +e
   docker run --rm --user 0:0 --network "$network" \
     -v "$script_dir:/scripts:ro" -v "$result_dir:/results" \
     grafana/k6 run --quiet \
-    -e BASE_URL="$base_url" -e VUS="$vus" -e CALLS_PER_SESSION=200 \
+    -e BASE_URL="$base_url" -e VUS="$vus" -e CALLS_PER_SESSION="$calls_per_session" \
     -e LOGIN_ID="$login_id" -e PASSWORD="$password" -e EMAIL="$email" \
-    -e SESSION_SECONDS=300 -e STARTUP_SPREAD_SECONDS=10 -e THINK_TIME=0 \
-    -e LIVENESS_DURATION=5m20s -e MAX_DURATION=7m \
+    -e SESSION_SECONDS="$session_seconds" -e STARTUP_SPREAD_SECONDS="$startup_spread_seconds" -e THINK_TIME=0 \
+    -e LIVENESS_DURATION="$liveness_duration" -e MAX_DURATION="$max_duration" \
     --summary-export="/results/vus-${vus}.json" /scripts/mixed-user-scenarios.js \
     > "$result_dir/vus-${vus}.log" 2>&1
   exit_code=$?
   set -e
 
   json="$result_dir/vus-${vus}.json"
-  planned_calls=$((vus * 200))
+  planned_calls=$((vus * calls_per_session))
   error_requests=$(jq -r '.metrics["http_req_failed{kind:business}"].passes // 0' "$json")
   successful_requests=$(jq -r '.metrics["http_req_failed{kind:business}"].fails // 0' "$json")
   business_requests=$((error_requests + successful_requests))

@@ -193,6 +193,13 @@ app.include_router(doc_selection.router, dependencies=[Depends(require_internal_
 # 카테고리 재분석(결과가 맘에 안 들 때). 판정 코어는 category/stages 를 재사용한다.
 app.include_router(reanalyze.router, dependencies=[Depends(require_internal_token)])
 
+# Prometheus 가 docker 네트워크로 /metrics 를 긁는다(prometheus.yml 의 ai-service job).
+# 다른 서비스(Spring actuator)와 같은 원리로, 요청 수·지연시간을 핸들러별로 노출한다.
+# 토큰 검사는 라우터 단위 의존성이라 이 라우트에는 걸리지 않는다 — 지표뿐이라 무방하다.
+from prometheus_fastapi_instrumentator import Instrumentator
+
+Instrumentator().instrument(app).expose(app)
+
 
 @app.exception_handler(search.InvalidSortError)
 async def _invalid_sort_handler(request: Request, exc: Exception) -> JSONResponse:

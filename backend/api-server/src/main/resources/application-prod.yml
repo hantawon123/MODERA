@@ -6,6 +6,11 @@ server:
 jwt:
   secret: ${JWT_SECRET}
 
+# 운영에서는 허용 Kakao app_id를 배포 환경에서 명시적으로 주입한다.
+oauth:
+  kakao:
+    allowed-app-ids: ${KAKAO_ALLOWED_APP_IDS}
+
 spring:
   config:
     activate:

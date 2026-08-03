@@ -46,7 +46,8 @@ class ImageAnalysisConsumerTest {
             eventPublisher,
             mock(DocumentGenerationService.class),
             mock(CategoryReanalysisService.class),
-            semanticSearchService
+            semanticSearchService,
+            mock(EventPerformanceMetrics.class)
     );
 
     @Test

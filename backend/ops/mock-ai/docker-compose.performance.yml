@@ -1,0 +1,18 @@
+services:
+  mock-ai:
+    build: .
+    container_name: modera-mock-ai
+    environment:
+      INTERNAL_TOKEN: ${INTERNAL_TOKEN}
+      MOCK_AI_DELAY_MS: ${MOCK_AI_DELAY_MS:-10}
+    networks:
+      - infra_default
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:8000/health"]
+      interval: 5s
+      timeout: 2s
+      retries: 10
+
+networks:
+  infra_default:
+    external: true

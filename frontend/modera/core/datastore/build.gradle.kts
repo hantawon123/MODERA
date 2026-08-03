@@ -17,6 +17,7 @@ dependencies {
     api(projects.core.datastoreProto)
 
     implementation(libs.androidx.dataStore)
+    implementation(libs.androidx.dataStore.preferences)
 
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)

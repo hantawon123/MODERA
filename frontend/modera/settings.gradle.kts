@@ -121,6 +121,15 @@ dependencyResolutionManagement {
                 releasesOnly()
             }
         }
+        maven {
+            url = uri("https://devrepo.kakao.com/nexus/content/groups/public/")
+            content {
+                includeGroup("com.kakao.sdk")
+            }
+            mavenContent {
+                releasesOnly()
+            }
+        }
     }
 }
 
@@ -147,3 +156,4 @@ include(":feature:calendar")
 include(":feature:document")
 include(":feature:documentdetail")
 include(":feature:documentcreate")
+include(":feature:login")

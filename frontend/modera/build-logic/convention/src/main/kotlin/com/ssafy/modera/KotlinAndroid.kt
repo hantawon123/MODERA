@@ -64,6 +64,13 @@ internal fun Project.configureKotlinJvm() {
     }
 
     extensions.configure<KotlinJvmProjectExtension> {
+        sourceSets.named("main") {
+            kotlin.srcDir("src/main/kotlin")
+        }
+        sourceSets.named("test") {
+            kotlin.srcDir("src/test/kotlin")
+        }
+
         compilerOptions {
             allWarningsAsErrors.set(
                 providers.gradleProperty("warningsAsErrors")

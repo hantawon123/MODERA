@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="login_tagline">당신만을 위한 AI 스크린샷 매니저</string>
+    <string name="login_brand">MODERA</string>
+    <string name="login_mascot_description">모데라 마스코트</string>
+    <string name="login_kakao_button">카카오로 시작하기</string>
+    <string name="login_kakao_icon_description">카카오</string>
+    <string name="login_in_progress">로그인 중</string>
+    <string name="login_cancelled">카카오 로그인이 취소되었습니다.</string>
+</resources>

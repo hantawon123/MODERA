@@ -18,6 +18,7 @@ import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import java.time.Instant
 import java.time.LocalDate
+import java.time.OffsetDateTime
 import java.time.ZoneId
 
 class DefaultCalendarRepositoryTest {
@@ -57,6 +58,15 @@ class DefaultCalendarRepositoryTest {
                     updatedAt = "2026-08-01T00:00:00.000Z",
                 ),
                 ScheduleResponse(
+                    scheduleId = 3L,
+                    imageId = 12L,
+                    title = "저녁 약속",
+                    startAt = "2026-08-09T19:00:00+09:00",
+                    endAt = "2026-08-09T21:00:00+09:00",
+                    calendared = true,
+                    updatedAt = "2026-08-01T00:00:00+09:00",
+                ),
+                ScheduleResponse(
                     scheduleId = 8L,
                     imageId = 11L,
                     title = "KTX 예매",
@@ -65,10 +75,19 @@ class DefaultCalendarRepositoryTest {
                     calendared = false,
                     updatedAt = "2026-08-01T00:00:00.000Z",
                 ),
+                ScheduleResponse(
+                    scheduleId = 4L,
+                    imageId = 67L,
+                    title = "공모전 마감",
+                    startAt = null,
+                    endAt = "2026-08-09T18:00:00+09:00",
+                    calendared = false,
+                    updatedAt = "2026-08-03T09:07:01.187641+09:00",
+                ),
             ),
             page = 0,
             size = 20,
-            totalElements = 2,
+            totalElements = 4,
             totalPages = 1,
             hasNext = false,
             hasPrevious = false,
@@ -79,9 +98,9 @@ class DefaultCalendarRepositoryTest {
         repository.getSchedules(from = date, to = date).test {
             val schedules = awaitItem()
 
-            assertEquals(2, schedules.size)
+            assertEquals(4, schedules.size)
 
-            val addedSchedule = schedules.first()
+            val addedSchedule = schedules[0]
             assertEquals(2L, addedSchedule.id)
             assertEquals("성심당 케이크 예약", addedSchedule.title)
             assertEquals(CalendarScheduleSource.APP, addedSchedule.source)
@@ -99,12 +118,35 @@ class DefaultCalendarRepositoryTest {
             )
             assertEquals(true, addedSchedule.isAdded)
 
-            val pendingSchedule = schedules.last()
+            val offsetSchedule = schedules[1]
+            assertEquals(3L, offsetSchedule.id)
+            assertEquals(LocalDate.of(2026, 8, 9), offsetSchedule.date)
+            assertEquals(
+                OffsetDateTime.parse("2026-08-09T19:00:00+09:00")
+                    .atZoneSameInstant(zoneId)
+                    .toLocalTime(),
+                offsetSchedule.startTime,
+            )
+            assertEquals(true, offsetSchedule.isAdded)
+
+            val pendingSchedule = schedules[2]
             assertEquals(8L, pendingSchedule.id)
             assertEquals(null, pendingSchedule.date)
             assertEquals(null, pendingSchedule.startTime)
             assertEquals(null, pendingSchedule.endTime)
             assertEquals(false, pendingSchedule.isAdded)
+
+            val endOnlySchedule = schedules[3]
+            assertEquals(4L, endOnlySchedule.id)
+            assertEquals(LocalDate.of(2026, 8, 9), endOnlySchedule.date)
+            assertEquals(null, endOnlySchedule.startTime)
+            assertEquals(
+                OffsetDateTime.parse("2026-08-09T18:00:00+09:00")
+                    .atZoneSameInstant(zoneId)
+                    .toLocalTime(),
+                endOnlySchedule.endTime,
+            )
+            assertEquals(false, endOnlySchedule.isAdded)
 
             awaitComplete()
         }

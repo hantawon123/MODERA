@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ssafy.modera.api.domain.image.dto.response.ImageDetailResponse;
+import com.ssafy.modera.api.domain.image.dto.response.ImageListResponse;
 import com.ssafy.modera.api.domain.image.dto.response.ImageSummaryResponse;
 import com.ssafy.modera.api.domain.image.exception.ImageErrorCode;
 import com.ssafy.modera.api.domain.image.repository.ImageListPage;
@@ -75,7 +76,7 @@ public class ImageQueryService {
         );
     }
 
-    public PageResponse<ImageSummaryResponse> getImages(
+    public ImageListResponse getImages(
             Integer userId,
             Boolean favorite,
             int page,
@@ -103,17 +104,12 @@ public class ImageQueryService {
         List<ImageSummaryResponse> list = result.content().stream()
                 .map(this::toSummary)
                 .toList();
-        int totalPages = result.totalElements() == 0
-                ? 0
-                : (int) ((result.totalElements() + size - 1) / size);
-
-        return new PageResponse<>(
+        return new ImageListResponse(
                 list,
                 page,
                 size,
                 result.totalElements(),
-                totalPages,
-                page + 1 < totalPages,
+                (long) (page + 1) * size < result.totalElements(),
                 page > 0
         );
     }
@@ -159,7 +155,7 @@ public class ImageQueryService {
                 row.title(),
                 row.summary(),
                 Boolean.TRUE.equals(row.favorite()),
-                createThumbnailUrl(row.thumbnailKey()),
+                createListThumbnailUrl(row.thumbnailKey()),
                 row.tagNames(),
                 row.categoryName(),
                 row.uploadedAt(),
@@ -168,10 +164,26 @@ public class ImageQueryService {
         );
     }
 
+    /**
+     * The read model only stores a thumbnail key after the thumbnail pipeline has
+     * produced one. A list request must not issue one remote HEAD request per row;
+     * at size=20 that would turn a single API call into up to twenty MinIO calls.
+     */
+    private String createListThumbnailUrl(String thumbnailKey) {
+        if (thumbnailKey == null || thumbnailKey.isBlank()) {
+            return null;
+        }
+        return presignThumbnail(thumbnailKey);
+    }
+
     private String createThumbnailUrl(String thumbnailKey) {
         if (thumbnailKey == null || thumbnailKey.isBlank() || !thumbnailExists(thumbnailKey)) {
             return null;
         }
+        return presignThumbnail(thumbnailKey);
+    }
+
+    private String presignThumbnail(String thumbnailKey) {
         GetObjectRequest getObjectRequest = GetObjectRequest.builder()
                 .bucket(storageProperties.getBucket().getThumbnails())
                 .key(thumbnailKey)

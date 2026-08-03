@@ -12,6 +12,7 @@ import com.ssafy.modera.worker.domain.analysis.repository.AnalysisJobRepository;
 import com.ssafy.modera.worker.domain.category.service.CategoryReanalysisService;
 import com.ssafy.modera.worker.domain.document.DocumentGenerationService;
 import com.ssafy.modera.worker.domain.search.service.SemanticSearchService;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.data.redis.connection.stream.MapRecord;
@@ -21,12 +22,18 @@ import org.springframework.data.redis.core.StreamOperations;
 
 import java.time.Instant;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.after;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -50,11 +57,74 @@ class ImageAnalysisConsumerTest {
             mock(EventPerformanceMetrics.class)
     );
 
+    @AfterEach
+    void tearDown() {
+        // 시맨틱 검색 전용 executor 스레드를 정리한다(start()를 안 불러도 안전하다).
+        consumer.stop();
+    }
+
     @Test
     void routesSemanticSearchEventToItsService() {
         ImageSemanticSearchRequestedPayload payload =
                 new ImageSemanticSearchRequestedPayload(
                         "correlation-1", 7, "프로그래밍 책", 0, 20);
+        MapRecord<String, String, String> record = semanticRecord(payload);
+        StreamOperations<String, String, String> streamOperations = mock(StreamOperations.class);
+        when(redisTemplate.<String, String>opsForStream()).thenReturn(streamOperations);
+
+        consumer.processRecord(record);
+
+        // 검색은 전용 스레드에서 비동기로 처리되므로 timeout으로 완료를 기다린다.
+        verify(semanticSearchService, timeout(2000)).handle(payload);
+        verify(streamOperations, timeout(2000)).acknowledge(
+                Streams.IMAGE_ANALYSIS,
+                Streams.GROUP_ANALYSIS_WORKERS,
+                record.getId().getValue()
+        );
+    }
+
+    @Test
+    void semanticSearchRunsOnDedicatedThreadSoAnalysisIsNotBlocked() {
+        ImageSemanticSearchRequestedPayload payload =
+                new ImageSemanticSearchRequestedPayload(
+                        "correlation-2", 7, "영수증", 0, 10);
+        MapRecord<String, String, String> record = semanticRecord(payload);
+        StreamOperations<String, String, String> streamOperations = mock(StreamOperations.class);
+        when(redisTemplate.<String, String>opsForStream()).thenReturn(streamOperations);
+        AtomicReference<String> handlerThread = new AtomicReference<>();
+        doAnswer(invocation -> {
+            handlerThread.set(Thread.currentThread().getName());
+            return null;
+        }).when(semanticSearchService).handle(any());
+
+        consumer.processRecord(record);
+
+        verify(streamOperations, timeout(2000)).acknowledge(
+                eq(Streams.IMAGE_ANALYSIS), eq(Streams.GROUP_ANALYSIS_WORKERS), anyString());
+        assertThat(handlerThread.get()).isEqualTo("semantic-search-consumer");
+    }
+
+    @Test
+    void semanticSearchFailureLeavesRecordUnackedForRedelivery() {
+        ImageSemanticSearchRequestedPayload payload =
+                new ImageSemanticSearchRequestedPayload(
+                        "correlation-3", 7, "책", 0, 10);
+        MapRecord<String, String, String> record = semanticRecord(payload);
+        StreamOperations<String, String, String> streamOperations = mock(StreamOperations.class);
+        when(redisTemplate.<String, String>opsForStream()).thenReturn(streamOperations);
+        doThrow(new IllegalStateException("redis publish down"))
+                .when(semanticSearchService).handle(any());
+
+        consumer.processRecord(record);
+
+        verify(semanticSearchService, timeout(2000)).handle(any());
+        // 일시 오류는 XACK하지 않고 PEL에 남긴다(메인 경로와 같은 정책).
+        verify(streamOperations, after(300).never())
+                .acknowledge(anyString(), anyString(), anyString());
+    }
+
+    private MapRecord<String, String, String> semanticRecord(
+            ImageSemanticSearchRequestedPayload payload) {
         EventEnvelope envelope = EventEnvelope.of(
                 EventTypes.IMAGE_SEMANTIC_SEARCH_REQUESTED,
                 1,
@@ -62,21 +132,10 @@ class ImageAnalysisConsumerTest {
                 payload,
                 objectMapper
         );
-        MapRecord<String, String, String> record = StreamRecords
+        return StreamRecords
                 .newRecord()
                 .ofMap(envelope.toFieldMap())
                 .withStreamKey(Streams.IMAGE_ANALYSIS);
-        StreamOperations<String, String, String> streamOperations = mock(StreamOperations.class);
-        when(redisTemplate.<String, String>opsForStream()).thenReturn(streamOperations);
-
-        consumer.processRecord(record);
-
-        verify(semanticSearchService).handle(payload);
-        verify(streamOperations).acknowledge(
-                Streams.IMAGE_ANALYSIS,
-                Streams.GROUP_ANALYSIS_WORKERS,
-                record.getId().getValue()
-        );
     }
 
     @Test

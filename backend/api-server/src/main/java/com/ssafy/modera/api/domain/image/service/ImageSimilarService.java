@@ -5,32 +5,33 @@ import com.ssafy.modera.api.domain.image.client.WorkerSearchClient.WorkerSimilar
 import com.ssafy.modera.api.domain.image.dto.response.ImageSummaryResponse;
 import com.ssafy.modera.api.domain.image.dto.response.SimilarImageItemResponse;
 import com.ssafy.modera.api.domain.image.dto.response.SimilarImagesResponse;
-import com.ssafy.modera.api.domain.image.exception.ImageErrorCode;
-import com.ssafy.modera.api.domain.image.repository.DocumentSourceImage;
-import com.ssafy.modera.api.domain.image.repository.ImageQueryRepository;
-import com.ssafy.modera.api.domain.image.repository.UserImageViewDetail;
 import com.ssafy.modera.api.domain.image.repository.UserImageViewSummary;
-import com.ssafy.modera.api.domain.library.repository.UserImageRepository;
-import com.ssafy.modera.api.global.exception.BusinessException;
-import com.ssafy.modera.api.global.exception.GlobalErrorCode;
 import com.ssafy.modera.api.global.response.PageResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 
+/**
+ * 유사 이미지·문서화 추천 조회. 이 클래스는 트랜잭션을 직접 열지 않는다.
+ *
+ * <p>worker HTTP 호출(연결 1초·읽기 3초)이 트랜잭션 안에 있으면 worker가 느려질 때
+ * 그 대기 시간만큼 DB 커넥션을 점유해서, 무관한 API 전체가 커넥션 고갈로 함께
+ * 무너진다 — 로그인 경로(AuthService)에서 실측으로 확인하고 이미 분리한 것과 같은
+ * 패턴이다. 그래서 DB 조회는 {@link ImageSimilarReader}의 짧은 읽기 트랜잭션으로
+ * 쪼개고, worker 호출과 응답 조립은 트랜잭션 밖에서 한다.
+ *
+ * <p>PostgreSQL 기본 격리 수준(READ COMMITTED)에서는 한 트랜잭션 안의 조회도
+ * 문장마다 최신 커밋을 읽으므로, 트랜잭션을 쪼개도 관측 가능한 동작은 동일하다.
+ */
 @Slf4j
 @Service
 @RequiredArgsConstructor
-@Transactional(readOnly = true)
 public class ImageSimilarService {
 
     private static final int MIN_LIMIT = 1;
@@ -43,10 +44,7 @@ public class ImageSimilarService {
     /** 5-7 추천 개수. 페이지 요청을 받지 않고 고정한다(둘러보는 목록이 아니라 추천 위젯). */
     private static final int DOCUMENTIZE_LIMIT = 10;
 
-    private static final String ANALYSIS_STATUS_COMPLETED = "COMPLETED";
-
-    private final UserImageRepository userImageRepository;
-    private final ImageQueryRepository imageQueryRepository;
+    private final ImageSimilarReader imageSimilarReader;
     private final WorkerSearchClient workerSearchClient;
     private final ThumbnailUrlFactory thumbnailUrlFactory;
     private final ImageQueryService imageQueryService;
@@ -56,11 +54,7 @@ public class ImageSimilarService {
             Integer imageId,
             int limit
     ) {
-        validateImageOwnership(userId, imageId);
-
-        String baseTitle = imageQueryRepository.findDetail(userId, imageId)
-                .map(UserImageViewDetail::title)
-                .orElse(null);
+        String baseTitle = imageSimilarReader.readBaseTitle(userId, imageId);
 
         int effectiveLimit = clampLimit(limit);
 
@@ -84,17 +78,7 @@ public class ImageSimilarService {
                 .toList();
 
         Map<Integer, UserImageViewSummary> summariesByImageId =
-                imageQueryRepository
-                        .findAllByUserIdAndImageIdIn(
-                                userId,
-                                similarImageIds
-                        )
-                        .stream()
-                        .collect(Collectors.toMap(
-                                UserImageViewSummary::imageId,
-                                Function.identity(),
-                                (first, ignored) -> first
-                        ));
+                imageSimilarReader.readSummaries(userId, similarImageIds);
 
         List<SimilarImageItemResponse> items =
                 createResponseItems(
@@ -131,7 +115,7 @@ public class ImageSimilarService {
      */
     public PageResponse<ImageSummaryResponse> findDocumentizeCandidates(
             Integer userId, List<Integer> imageIds) {
-        validateBaseImages(userId, imageIds);
+        imageSimilarReader.validateDocumentizeBase(userId, imageIds);
 
         List<WorkerSimilarImage> hits = workerSearchClient.findSimilarToAll(
                 imageIds, userId, overFetchLimit(DOCUMENTIZE_LIMIT));
@@ -150,6 +134,7 @@ public class ImageSimilarService {
 
         // getImagesInOrder가 활성 이미지 재검증(삭제분 제외) + 순서 유지 + 5-1 DTO 변환을
         // 전부 한다. over-fetch로 넉넉히 조회했으니 잘라서 상한을 맞춘다.
+        // ImageQueryService가 자체 읽기 트랜잭션을 연다(클래스 @Transactional(readOnly)).
         List<ImageSummaryResponse> items = imageQueryService
                 .getImagesInOrder(userId, candidateIds, 0, DOCUMENTIZE_LIMIT, candidateIds.size())
                 .list()
@@ -169,48 +154,8 @@ public class ImageSimilarService {
         );
     }
 
-    /**
-     * 기준 이미지 검증. 중복·비정상 ID는 400, 소유하지 않은 것이 섞이면 404(존재 여부를
-     * 숨기는 5-2와 같은 정책), 분석 미완료가 섞이면 409다 — 이 선택 목록은 그대로 문서
-     * 생성(8-2)으로 가므로 문서 쪽과 같은 기준으로 미리 끊는 것이기도 하다.
-     */
-    private void validateBaseImages(Integer userId, List<Integer> imageIds) {
-        Set<Integer> unique = new HashSet<>(imageIds);
-        if (unique.size() != imageIds.size()
-                || imageIds.stream().anyMatch(id -> id == null || id <= 0)) {
-            throw new BusinessException(GlobalErrorCode.INVALID_PARAMETER);
-        }
-
-        List<DocumentSourceImage> found = imageQueryRepository.findDocumentSources(userId, imageIds);
-        if (found.size() != imageIds.size()) {
-            throw new BusinessException(ImageErrorCode.IMAGE_NOT_FOUND);
-        }
-        boolean hasUnanalyzed = found.stream()
-                .anyMatch(source -> !ANALYSIS_STATUS_COMPLETED.equals(source.analysisStatus()));
-        if (hasUnanalyzed) {
-            throw new BusinessException(ImageErrorCode.IMAGE_ANALYSIS_NOT_COMPLETED);
-        }
-    }
-
     private PageResponse<ImageSummaryResponse> emptyPage() {
         return new PageResponse<>(List.of(), 0, DOCUMENTIZE_LIMIT, 0, 0, false, false);
-    }
-
-    private void validateImageOwnership(
-            Integer userId,
-            Integer imageId
-    ) {
-        userImageRepository
-                .findByUserIdAndImageIdAndDelYn(
-                        userId,
-                        imageId,
-                        "N"
-                )
-                .orElseThrow(() ->
-                        new BusinessException(
-                                ImageErrorCode.IMAGE_NOT_FOUND
-                        )
-                );
     }
 
     private List<SimilarImageItemResponse> createResponseItems(

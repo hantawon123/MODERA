@@ -1,0 +1,157 @@
+{
+  "uid": "modera-local-perf",
+  "title": "Modera 로컬 부하테스트",
+  "tags": ["modera", "local", "k6"],
+  "timezone": "browser",
+  "refresh": "5s",
+  "time": { "from": "now-15m", "to": "now" },
+  "schemaVersion": 39,
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "HikariCP 커넥션 풀 (api-server)",
+      "description": "pending이 0을 넘는 순간이 풀 대기 시작. active가 max에 붙으면 포화.",
+      "gridPos": { "x": 0, "y": 0, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus-local" },
+      "fieldConfig": { "defaults": { "unit": "short", "custom": { "fillOpacity": 8 } }, "overrides": [
+        { "matcher": { "id": "byName", "options": "pending(대기)" }, "properties": [ { "id": "color", "value": { "mode": "fixed", "fixedColor": "red" } } ] },
+        { "matcher": { "id": "byName", "options": "max" }, "properties": [ { "id": "custom.lineStyle", "value": { "fill": "dash", "dash": [10, 10] } } ] }
+      ] },
+      "targets": [
+        { "refId": "A", "expr": "hikaricp_connections_active{application=\"modera-api\"}", "legendFormat": "active" },
+        { "refId": "B", "expr": "hikaricp_connections_idle{application=\"modera-api\"}", "legendFormat": "idle" },
+        { "refId": "C", "expr": "hikaricp_connections_pending{application=\"modera-api\"}", "legendFormat": "pending(대기)" },
+        { "refId": "D", "expr": "hikaricp_connections_max{application=\"modera-api\"}", "legendFormat": "max" }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "커넥션 획득 실패 (CannotCreateTransaction의 원천)",
+      "description": "hikaricp_connections_timeout_total 증가분/분. 130명 벽에서 이 값이 오른다.",
+      "gridPos": { "x": 12, "y": 0, "w": 6, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus-local" },
+      "fieldConfig": { "defaults": { "unit": "short", "custom": { "fillOpacity": 30 }, "color": { "mode": "fixed", "fixedColor": "red" } }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "expr": "increase(hikaricp_connections_timeout_total{application=\"modera-api\"}[1m])", "legendFormat": "획득 실패/분" }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "timeseries",
+      "title": "커넥션 획득 대기시간",
+      "description": "평균이 수십 ms를 넘으면 풀 경합. max가 connection-timeout(3s)에 닿으면 오류 직전.",
+      "gridPos": { "x": 18, "y": 0, "w": 6, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus-local" },
+      "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "expr": "rate(hikaricp_connections_acquire_seconds_sum{application=\"modera-api\"}[30s]) / rate(hikaricp_connections_acquire_seconds_count{application=\"modera-api\"}[30s])", "legendFormat": "avg" },
+        { "refId": "B", "expr": "hikaricp_connections_acquire_seconds_max{application=\"modera-api\"}", "legendFormat": "max" }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "timeseries",
+      "title": "커넥션 점유시간 (usage)",
+      "description": "요청 하나가 커넥션을 물고 있는 시간. 로그인 bcrypt-in-tx, similar의 worker HTTP-in-tx가 여기서 보인다.",
+      "gridPos": { "x": 0, "y": 8, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus-local" },
+      "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "expr": "rate(hikaricp_connections_usage_seconds_sum{application=\"modera-api\"}[30s]) / rate(hikaricp_connections_usage_seconds_count{application=\"modera-api\"}[30s])", "legendFormat": "avg" },
+        { "refId": "B", "expr": "hikaricp_connections_usage_seconds_max{application=\"modera-api\"}", "legendFormat": "max" }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "HTTP RPS (URI별 상위 10)",
+      "gridPos": { "x": 12, "y": 8, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus-local" },
+      "fieldConfig": { "defaults": { "unit": "reqps" }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "expr": "topk(10, sum by (uri) (rate(http_server_requests_seconds_count{application=\"modera-api\"}[30s])))", "legendFormat": "{{uri}}" }
+      ]
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "HTTP 지연 (api-server)",
+      "description": "p95는 percentiles-histogram이 켜진 빌드(8/3 이후)로 재시작해야 나온다. 그 전엔 avg만 표시.",
+      "gridPos": { "x": 0, "y": 16, "w": 8, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus-local" },
+      "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "expr": "sum(rate(http_server_requests_seconds_sum{application=\"modera-api\"}[30s])) / sum(rate(http_server_requests_seconds_count{application=\"modera-api\"}[30s]))", "legendFormat": "avg" },
+        { "refId": "B", "expr": "histogram_quantile(0.95, sum by (le) (rate(http_server_requests_seconds_bucket{application=\"modera-api\"}[1m])))", "legendFormat": "p95" }
+      ]
+    },
+    {
+      "id": 7,
+      "type": "timeseries",
+      "title": "HTTP 오류율 (5xx / 4xx)",
+      "gridPos": { "x": 8, "y": 16, "w": 8, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus-local" },
+      "fieldConfig": { "defaults": { "unit": "reqps", "custom": { "fillOpacity": 20 } }, "overrides": [
+        { "matcher": { "id": "byName", "options": "5xx" }, "properties": [ { "id": "color", "value": { "mode": "fixed", "fixedColor": "red" } } ] }
+      ] },
+      "targets": [
+        { "refId": "A", "expr": "sum(rate(http_server_requests_seconds_count{application=\"modera-api\", status=~\"5..\"}[1m]))", "legendFormat": "5xx" },
+        { "refId": "B", "expr": "sum(rate(http_server_requests_seconds_count{application=\"modera-api\", status=~\"4..\"}[1m]))", "legendFormat": "4xx" }
+      ]
+    },
+    {
+      "id": 8,
+      "type": "timeseries",
+      "title": "처리 중 요청 수 (in-flight)",
+      "description": "가상 스레드라 스레드 수 대신 이 값이 동시성의 실체다. Hikari pending과 같이 보면 'Tomcat 여유 + DB 대기' 구도가 증명된다.",
+      "gridPos": { "x": 16, "y": 16, "w": 8, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus-local" },
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "expr": "sum(http_server_requests_active_seconds_count{application=\"modera-api\"})", "legendFormat": "in-flight" }
+      ]
+    },
+    {
+      "id": 9,
+      "type": "timeseries",
+      "title": "CPU 사용률",
+      "description": "bcrypt 콘보이 가설 검증: 로그인 버스트 순간 process CPU가 치솟는지.",
+      "gridPos": { "x": 0, "y": 24, "w": 8, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus-local" },
+      "fieldConfig": { "defaults": { "unit": "percentunit", "max": 1 }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "expr": "process_cpu_usage{application=\"modera-api\"}", "legendFormat": "api process" },
+        { "refId": "B", "expr": "system_cpu_usage{application=\"modera-api\"}", "legendFormat": "system" }
+      ]
+    },
+    {
+      "id": 10,
+      "type": "timeseries",
+      "title": "JVM 플랫폼 스레드 (api)",
+      "description": "가상 스레드 환경에선 부하가 늘어도 이 값이 거의 평평해야 정상.",
+      "gridPos": { "x": 8, "y": 24, "w": 8, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus-local" },
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "expr": "jvm_threads_live_threads{application=\"modera-api\"}", "legendFormat": "live" },
+        { "refId": "B", "expr": "jvm_threads_peak_threads{application=\"modera-api\"}", "legendFormat": "peak" }
+      ]
+    },
+    {
+      "id": 11,
+      "type": "timeseries",
+      "title": "HikariCP (analysis-worker)",
+      "description": "최신 코드로 재시작해야 8082에서 메트릭이 노출된다.",
+      "gridPos": { "x": 16, "y": 24, "w": 8, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus-local" },
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "expr": "hikaricp_connections_active{application=\"modera-analysis-worker\"}", "legendFormat": "active" },
+        { "refId": "B", "expr": "hikaricp_connections_pending{application=\"modera-analysis-worker\"}", "legendFormat": "pending" },
+        { "refId": "C", "expr": "hikaricp_connections_max{application=\"modera-analysis-worker\"}", "legendFormat": "max" }
+      ]
+    }
+  ]
+}

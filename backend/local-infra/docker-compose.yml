@@ -94,6 +94,7 @@ services:
       # 문자열을 그대로 쓰면(예: 하이픈 포함) 기동이 실패한다 — 로컬 전용 더미값.
       JWT_SECRET: ${JWT_SECRET:-JST22TJeTXAaCo/L6KKPBDYAbKyxmR7DUxJCcQup770=}
       KAKAO_ALLOWED_APP_IDS: ${KAKAO_ALLOWED_APP_IDS:-1525155}
+      KAKAO_API_BASE_URL: ${KAKAO_API_BASE_URL:-https://kapi.kakao.com}
       KAKAO_CONNECT_TIMEOUT: ${KAKAO_CONNECT_TIMEOUT:-3s}
       KAKAO_READ_TIMEOUT: ${KAKAO_READ_TIMEOUT:-5s}
       MINIO_WEBHOOK_TOKEN: local-dev-webhook-token
@@ -123,6 +124,26 @@ services:
       ANALYSIS_CLIENT: mock
     networks:
       - modera-network
+
+  # 실제 Kakao 토큰을 소모하지 않고 Kakao 로그인 이후의 백엔드 파이프라인을
+  # 측정하는 성능 테스트 전용 서버다. 일반 로컬 실행에서는 올라오지 않는다.
+  mock-kakao:
+    build:
+      context: ../ops/k6/mock-kakao
+    container_name: modera-mock-kakao
+    profiles: ["performance"]
+    environment:
+      MOCK_KAKAO_APP_ID: ${MOCK_KAKAO_APP_ID:-1525155}
+      MOCK_KAKAO_TOKEN_PREFIX: ${MOCK_KAKAO_TOKEN_PREFIX:-modera-perf-kakao}
+    ports:
+      - "18080:8080"
+    networks:
+      - modera-network
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8080/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
 
 networks:
   modera-network:

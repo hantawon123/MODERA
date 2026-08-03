@@ -220,6 +220,18 @@ class Settings:
             or "https://gms.ssafy.io/gmsapi/generativelanguage.googleapis.com"
         ).rstrip("/")
 
+        # Gemini thinking(내부 추론) 제어 — thinking 토큰은 **출력 단가로 과금**된다.
+        # 세대별로 파라미터가 다르고(2.5=budget 정수, 3.x=level 문자열), 한 요청에
+        # 둘을 같이 보내면 400 이라 gemini_client 가 모델명을 보고 하나만 고른다.
+        #
+        # GEMINI_THINKING_BUDGET (2.5 계열): 토큰 수. 0=끔, 음수=미전송(모델 기본값).
+        #   2.5-flash 는 기본 ON(dynamic)이라 0 으로 꺼야 절감이 완성된다.
+        #   ⚠️ 2.5-pro 는 끌 수 없다(최소 128) — pro 를 쓰면 음수 또는 128 이상으로.
+        # GEMINI_THINKING_LEVEL (3.x 계열): minimal/low/medium/high. 빈 값=미전송.
+        #   3.5-flash 기본값은 medium — 문서 생성처럼 품질 우선 경로는 빈 값이 안전.
+        self.gemini_thinking_budget = int(os.environ.get("GEMINI_THINKING_BUDGET", "0"))
+        self.gemini_thinking_level = os.environ.get("GEMINI_THINKING_LEVEL", "")
+
         # Gemini 429(rate limit) 재시도. 지수 백오프 + 지터로 재시도한다.
         self.gemini_max_attempts = int(os.environ.get("GEMINI_MAX_ATTEMPTS", "5"))
         self.gemini_backoff_base = float(os.environ.get("GEMINI_BACKOFF_BASE", "1.0"))

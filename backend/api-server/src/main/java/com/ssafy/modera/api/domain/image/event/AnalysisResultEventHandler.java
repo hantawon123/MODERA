@@ -69,6 +69,9 @@ public class AnalysisResultEventHandler {
                 payload.tagNames(),
                 payload.keyInformation(),
                 structuredData(payload),
+                // AI가 정제한 OCR 텍스트. 원문(image_schema.ocr.content)은 앱이 등록 때 보낸
+                // 온디바이스 OCR이라 별개다 — 정제본은 AI 산출물이라 read model에만 둔다.
+                payload.ocrText(),
                 imageAsset.getUploadStatus(),
                 payload.analysisStatus(),
                 false,

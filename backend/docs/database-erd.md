@@ -337,6 +337,7 @@ erDiagram
         JSONB tags
         TEXT_ARRAY key_information
         JSONB structured_data
+        TEXT ocr_refined_text
         VARCHAR upload_status
         VARCHAR analysis_status
         BOOLEAN favorite

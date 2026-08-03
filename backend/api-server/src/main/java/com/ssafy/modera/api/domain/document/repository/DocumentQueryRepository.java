@@ -113,23 +113,14 @@ public class DocumentQueryRepository {
         );
     }
 
-    public long countDocumentImages(Integer userId, Integer documentId) {
-        Long total = jdbcTemplate.queryForObject(
-                """
-                SELECT COUNT(*)
-                  FROM query_schema.document_image_view
-                 WHERE user_id = ?
-                   AND document_id = ?
-                   AND del_yn = 'N'
-                """,
-                Long.class,
-                userId, documentId
-        );
-        return total == null ? 0L : total;
-    }
-
-    public List<DocumentImageRow> findDocumentImages(
-            Integer userId, Integer documentId, String sort, int page, int size) {
+    /**
+     * 문서 구성 이미지 전체. 한 문서의 이미지는 최대 30장
+     * (DocumentCommandService.MAX_IMAGES)이라 페이지를 나누지 않는다.
+     *
+     * <p>업로드 시각이 이 조회 모델에 없어 "문서에 포함된 시각"의 역순으로 준다.
+     * 정렬 키가 같을 때 순서가 흔들리지 않도록 image_document_id를 tie-breaker로 붙인다.
+     */
+    public List<DocumentImageRow> findDocumentImages(Integer userId, Integer documentId) {
         return jdbcTemplate.query(
                 """
                 SELECT image_id, title, summary, thumbnail_key, tags, updated_at
@@ -137,7 +128,8 @@ public class DocumentQueryRepository {
                  WHERE user_id = ?
                    AND document_id = ?
                    AND del_yn = 'N'
-                """ + imageOrderBy(sort) + " LIMIT ? OFFSET ?",
+                 ORDER BY updated_at DESC, image_document_id DESC
+                """,
                 (rs, rowNum) -> new DocumentImageRow(
                         rs.getInt("image_id"),
                         rs.getString("title"),
@@ -146,7 +138,7 @@ public class DocumentQueryRepository {
                         parseTagNames(rs.getString("tags")),
                         rs.getObject("updated_at", OffsetDateTime.class)
                 ),
-                userId, documentId, size, page * size
+                userId, documentId
         );
     }
 
@@ -156,14 +148,6 @@ public class DocumentQueryRepository {
             case "UPDATED_ASC" -> " ORDER BY updated_at ASC, document_id ASC";
             case "NAME_ASC" -> " ORDER BY LOWER(name) ASC, document_id ASC";
             default -> " ORDER BY updated_at DESC, document_id DESC";
-        };
-    }
-
-    private String imageOrderBy(String sort) {
-        return switch (sort) {
-            case "ADDED_ASC" -> " ORDER BY updated_at ASC, image_document_id ASC";
-            case "TITLE_ASC" -> " ORDER BY LOWER(title) ASC, image_document_id ASC";
-            default -> " ORDER BY updated_at DESC, image_document_id DESC";
         };
     }
 

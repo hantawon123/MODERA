@@ -268,42 +268,6 @@ class DocumentCommandServiceTest {
         assertThat(capturedImageIds()).containsExactly(7, 8, 9);
     }
 
-    @Test
-    @DisplayName("이미지 제외는 현재 구성에서 요청 이미지를 뺀 목록으로 다시 만든다")
-    void excludesImagesFromCurrentComposition() {
-        givenDocumentImages(7, 8, 9);
-        givenSources(source(7, "제목", "요약"), source(9, "제목", "요약"));
-        given(ocrRepository.findByImageIdIn(anyList())).willReturn(List.of());
-        given(documentAiClient.generate(any())).willReturn(aiResponse());
-
-        documentCommandService.excludeImages(USER_ID, 101, new DocumentImagesRequest(
-                UUID.randomUUID(), List.of(8)));
-
-        assertThat(capturedImageIds()).containsExactly(7, 9);
-    }
-
-    @Test
-    @DisplayName("문서에 없는 이미지를 제외하려 하면 404다")
-    void rejectsExcludingImageNotInDocument() {
-        givenDocumentImages(7, 8);
-
-        assertThatThrownBy(() -> documentCommandService.excludeImages(USER_ID, 101,
-                new DocumentImagesRequest(UUID.randomUUID(), List.of(99))))
-                .isInstanceOf(BusinessException.class)
-                .hasFieldOrPropertyWithValue("errorCode", DocumentErrorCode.DOCUMENT_IMAGE_NOT_FOUND);
-    }
-
-    @Test
-    @DisplayName("전부 제외하는 요청은 거부한다 — 그건 문서 삭제다")
-    void rejectsExcludingEveryImage() {
-        givenDocumentImages(7, 8);
-
-        assertThatThrownBy(() -> documentCommandService.excludeImages(USER_ID, 101,
-                new DocumentImagesRequest(UUID.randomUUID(), List.of(7, 8))))
-                .isInstanceOf(BusinessException.class)
-                .hasFieldOrPropertyWithValue("errorCode", DocumentErrorCode.INVALID_DOCUMENT_IMAGES);
-    }
-
     private void givenDocumentImages(Integer... imageIds) {
         given(documentQueryRepository.existsDocument(USER_ID, 101)).willReturn(true);
         given(documentQueryRepository.findDocumentImageIds(USER_ID, 101)).willReturn(List.of(imageIds));

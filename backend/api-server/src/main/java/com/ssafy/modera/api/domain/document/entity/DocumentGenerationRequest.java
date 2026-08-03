@@ -35,14 +35,16 @@ public class DocumentGenerationRequest {
     public static final String OPERATION_CREATE = "CREATE";
 
     /**
-     * 대상 문서를 갱신하는 요청들. 셋 다 새 문서를 만들지 않고 source_document_id가
+     * 대상 문서를 갱신하는 요청들. 둘 다 새 문서를 만들지 않고 source_document_id가
      * 가리키는 문서를 갱신하며(upsert), 다른 건 최종 이미지 목록을 어떻게 정했는지뿐이다.
      * 처리는 같지만 이력에는 구분해 남긴다 — "사용자가 무엇을 하려 했는가"가 드러나야
      * 나중에 로그를 읽을 수 있다.
+     *
+     * <p>제외 전용 API(8-7)를 없애면서 EXCLUDE_IMAGES는 더 이상 쓰지 않는다. 이미 쌓인
+     * 이력 행에는 그 값이 남아 있다.
      */
     public static final String OPERATION_REGENERATE = "REGENERATE";
     public static final String OPERATION_ADD_IMAGES = "ADD_IMAGES";
-    public static final String OPERATION_EXCLUDE_IMAGES = "EXCLUDE_IMAGES";
 
     public static final String STATUS_QUEUED = "QUEUED";
     public static final String STATUS_COMPLETED = "COMPLETED";

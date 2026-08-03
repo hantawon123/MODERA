@@ -286,14 +286,14 @@ CANCELED            취소
 
 ```json
 {
-  "authorizationCode": "kakao-authorization-code",
+  "kakaoAccessToken": "kakao-access-token",
   "deviceId": "android-device-uuid"
 }
 ```
 
 | 필드 | 타입 | 필수 | 설명 |
 | --- | --- | --- | --- |
-| authorizationCode | String | 필수 | 카카오 OAuth 인가 코드 |
+| kakaoAccessToken | String | 필수 | Android Kakao SDK가 발급한 Access Token |
 | deviceId | String | 필수 | Refresh Token을 관리할 기기 식별값 |
 
 ### 처리 규칙

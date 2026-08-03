@@ -45,9 +45,9 @@ jwt:
 
 oauth:
   kakao:
-    client-id: ${KAKAO_CLIENT_ID:}
-    client-secret: ${KAKAO_CLIENT_SECRET:}
-    redirect-uri: ${KAKAO_REDIRECT_URI:}
+    allowed-app-ids: ${KAKAO_ALLOWED_APP_IDS:}
+    connect-timeout: ${KAKAO_CONNECT_TIMEOUT:3s}
+    read-timeout: ${KAKAO_READ_TIMEOUT:5s}
 
 # FCM data-only 메시지. 운영에서는 서비스 계정 JSON 파일을 컨테이너에 마운트하고
 # GOOGLE_APPLICATION_CREDENTIALS에 해당 파일 경로를 지정한 뒤 FIREBASE_ENABLED=true로 켠다.

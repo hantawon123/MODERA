@@ -47,7 +47,7 @@ class AuthControllerTest {
         mockMvc.perform(post("/api/v1/auth/kakao/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"authorizationCode":"one-time-code","deviceId":"device-1"}
+                                {"kakaoAccessToken":"kakao-access-token","deviceId":"device-1"}
                                 """))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("A203"));
@@ -77,6 +77,27 @@ class AuthControllerTest {
 
     @Test
     void rejectsMalformedAndBlankAuthenticationBodiesBeforeServiceInvocation() throws Exception {
+        mockMvc.perform(post("/api/v1/auth/kakao/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"authorizationCode":"one-time-code"}
+                                """))
+                .andExpect(status().isBadRequest());
+
+        mockMvc.perform(post("/api/v1/auth/kakao/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"kakaoAccessToken":"kakao-access-token"}
+                                """))
+                .andExpect(status().isBadRequest());
+
+        mockMvc.perform(post("/api/v1/auth/kakao/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"kakaoAccessToken":" ","deviceId":"device-1"}
+                                """))
+                .andExpect(status().isBadRequest());
+
         mockMvc.perform(post("/api/v1/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""

@@ -32,7 +32,7 @@ spring:
 
     hikari:
       pool-name: modera-api-hikari-prod
-      maximum-pool-size: ${DB_POOL_MAX:20}
+      maximum-pool-size: ${DB_POOL_MAX:30}
       minimum-idle: ${DB_POOL_MIN:10}
       connection-timeout: 3000
       max-lifetime: 1800000

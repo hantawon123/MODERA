@@ -1,5 +1,8 @@
 # Modera 백엔드 성능 테스트 분석
 
+> 최신 5분·사용자별 200회 호출 결과와 발표용 차트를 합친 통합 기준선은
+> [개선 전 성능 테스트 종합 보고서](./pre-optimization-performance-test-report.md)에서 확인한다.
+
 > 개선 전 API의 40개 혼합 사용자 흐름 동시성 테스트는
 > [mixed-user-scenario-test.md](./mixed-user-scenario-test.md)에 별도로 기록했다.
 

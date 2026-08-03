@@ -17,7 +17,6 @@ import com.ssafy.modera.api.global.exception.BusinessException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -32,6 +31,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -42,6 +42,12 @@ class AuthServiceTest {
     private UserRepository userRepository;
     @Mock
     private RefreshTokenRepository refreshTokenRepository;
+    @Mock
+    private LoginCredentialReader loginCredentialReader;
+    @Mock
+    private RefreshTokenCommandService refreshTokenCommandService;
+    @Mock
+    private KakaoUserTransactionService kakaoUserTransactionService;
     @Mock
     private PasswordEncoder passwordEncoder;
     @Mock
@@ -60,6 +66,9 @@ class AuthServiceTest {
         authService = new AuthService(
                 userRepository,
                 refreshTokenRepository,
+                loginCredentialReader,
+                refreshTokenCommandService,
+                kakaoUserTransactionService,
                 passwordEncoder,
                 jwtTokenProvider,
                 jwtProperties,
@@ -86,22 +95,13 @@ class AuthServiceTest {
         assertThat(registered.userId()).isEqualTo(1);
         verify(userSettingCommandRepository).createDefaults(1);
 
-        User user = User.builder()
-                .provider("LOCAL")
-                .loginId("tester01")
-                .passwordHash("bcrypt-hash")
-                .email("tester01@example.com")
-                .updatedAt(OffsetDateTime.now())
-                .build();
-        ReflectionTestUtils.setField(user, "userId", 1);
-        when(userRepository.findByLoginId("tester01")).thenReturn(Optional.of(user));
+        when(loginCredentialReader.findByLoginId("tester01"))
+                .thenReturn(new LoginCredentialReader.LoginCredential(1, "LOCAL", "bcrypt-hash"));
         when(passwordEncoder.matches("password123", "bcrypt-hash")).thenReturn(true);
         when(jwtTokenProvider.createAccessToken(1))
                 .thenReturn("access-1", "access-2");
         when(jwtTokenProvider.createRefreshToken(1, "android-device"))
                 .thenReturn("refresh-1", "refresh-2");
-        when(refreshTokenRepository.findByUserIdAndDeviceId(1, "android-device"))
-                .thenReturn(Optional.empty());
         when(jwtProperties.getRefreshTokenValidityInSeconds()).thenReturn(1209600L);
 
         var loggedIn = authService.login(
@@ -110,11 +110,16 @@ class AuthServiceTest {
 
         assertThat(loggedIn.accessToken()).isEqualTo("access-1");
         assertThat(loggedIn.refreshToken()).isEqualTo("refresh-1");
-        ArgumentCaptor<RefreshToken> tokenCaptor =
-                ArgumentCaptor.forClass(RefreshToken.class);
-        verify(refreshTokenRepository).save(tokenCaptor.capture());
-        RefreshToken stored = tokenCaptor.getValue();
-        assertThat(stored.getTokenHash()).isEqualTo(sha256("refresh-1"));
+        verify(refreshTokenCommandService).upsert(
+                eq(1), eq("android-device"), eq(sha256("refresh-1")), any(OffsetDateTime.class));
+
+        RefreshToken stored = RefreshToken.builder()
+                .userId(1)
+                .deviceId("android-device")
+                .tokenHash(sha256("refresh-1"))
+                .expiresAt(OffsetDateTime.now().plusDays(14))
+                .createdAt(OffsetDateTime.now())
+                .build();
 
         when(jwtTokenProvider.isValid("refresh-1")).thenReturn(true);
         when(refreshTokenRepository.findByTokenHash(sha256("refresh-1")))
@@ -144,52 +149,19 @@ class AuthServiceTest {
     void createsKakaoUserWithConsentedEmail() {
         KakaoClient.KakaoUser kakaoUser = kakaoUser(123L, " User@Example.com ");
         when(kakaoClient.getVerifiedUser("kakao-access-token")).thenReturn(kakaoUser);
-        when(userRepository.findByProviderAndProviderId("KAKAO", "123")).thenReturn(Optional.empty());
-        when(userRepository.existsByEmail("user@example.com")).thenReturn(false);
-        when(userRepository.save(any(User.class))).thenAnswer(invocation -> {
-            User saved = invocation.getArgument(0);
-            ReflectionTestUtils.setField(saved, "userId", 2);
-            return saved;
-        });
+        when(kakaoUserTransactionService.resolve("123", "user@example.com"))
+                .thenReturn(new KakaoUserTransactionService.AuthenticatedKakaoUser(2, "KAKAO"));
         when(jwtTokenProvider.createAccessToken(any())).thenReturn("access");
         when(jwtTokenProvider.createRefreshToken(any(), any())).thenReturn("refresh");
-        when(refreshTokenRepository.findByUserIdAndDeviceId(any(), any())).thenReturn(Optional.empty());
         when(jwtProperties.getRefreshTokenValidityInSeconds()).thenReturn(1209600L);
 
         var response = authService.kakaoLogin(
                 new KakaoLoginRequest("kakao-access-token", "device"));
 
-        ArgumentCaptor<User> userCaptor = ArgumentCaptor.forClass(User.class);
-        verify(userRepository).save(userCaptor.capture());
-        assertThat(userCaptor.getValue().getEmail()).isEqualTo("user@example.com");
         assertThat(response.accessToken()).isEqualTo("access");
         assertThat(response.refreshToken()).isEqualTo("refresh");
         assertThat(response.userId()).isEqualTo(2);
-        verify(userSettingCommandRepository).createDefaults(2);
-    }
-
-    @Test
-    void fillsMissingEmailForExistingKakaoUser() {
-        User user = User.builder()
-                .provider("KAKAO")
-                .providerId("123")
-                .updatedAt(OffsetDateTime.now())
-                .build();
-        ReflectionTestUtils.setField(user, "userId", 3);
-        KakaoClient.KakaoUser kakaoUser = kakaoUser(123L, "user@example.com");
-        when(kakaoClient.getVerifiedUser("kakao-access-token")).thenReturn(kakaoUser);
-        when(userRepository.findByProviderAndProviderId("KAKAO", "123")).thenReturn(Optional.of(user));
-        when(userRepository.existsByEmail("user@example.com")).thenReturn(false);
-        when(jwtTokenProvider.createAccessToken(any())).thenReturn("access");
-        when(jwtTokenProvider.createRefreshToken(any(), any())).thenReturn("refresh");
-        when(refreshTokenRepository.findByUserIdAndDeviceId(any(), any())).thenReturn(Optional.empty());
-        when(jwtProperties.getRefreshTokenValidityInSeconds()).thenReturn(1209600L);
-
-        var response = authService.kakaoLogin(
-                new KakaoLoginRequest("kakao-access-token", "device"));
-
-        assertThat(user.getEmail()).isEqualTo("user@example.com");
-        assertThat(response.userId()).isEqualTo(3);
+        verify(kakaoUserTransactionService).resolve("123", "user@example.com");
     }
 
     @Test

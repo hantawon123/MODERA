@@ -85,3 +85,5 @@ databaseChangeLog:
       file: db/changelog/042-add-ocr-refined-text.sql
   - include:
       file: db/changelog/043-align-user-category-visible-image-count.sql
+  - include:
+      file: db/changelog/044-add-refresh-token-hash-index.sql

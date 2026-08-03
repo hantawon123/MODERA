@@ -31,11 +31,16 @@ stamp() { printf '%s\t%s\t%s\n' "$1" "$(date +%s)" "$(date -Iseconds)" | tee -a 
 printf 'phase\tepoch\tiso\n' > "$manifest"
 stamp seed_start
 
+# DOCS_PER_USER 기본 0: 운영 api의 ai.base-url이 실제 AI를 보고 있으면 문서 생성이
+# 실 LLM 토큰을 쓴다. mock으로 전환된 테스트 컨테이너에서만 1 이상으로 올릴 것.
 docker run --rm --user 0:0 --network "$network" \
   -v "$script_dir:/scripts:ro" -v "$result_dir:/results" \
   grafana/k6 run --quiet \
   -e BASE_URL="$base_url" -e USERS="$users" -e USER_OFFSET="$user_offset" \
   -e SEED_VUS="$seed_vus" -e SEED_RATE="$seed_rate" \
+  -e DOCS_PER_USER="${DOCS_PER_USER:-0}" \
+  -e IMAGES_LIGHT="${IMAGES_LIGHT:-50}" -e IMAGES_MEDIUM="${IMAGES_MEDIUM:-200}" \
+  -e IMAGES_HEAVY="${IMAGES_HEAVY:-500}" \
   --summary-export=/results/seed.json /scripts/kakao-user-seed.js \
   > "$result_dir/seed.log" 2>&1 || echo "[seed] k6 exit=$? (seed.log 확인)"
 

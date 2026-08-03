@@ -265,7 +265,107 @@ k6 컨테이너 UID가 summary JSON 파일을 작성하지 못한 실행이 있�
 
 해당 실행은 즉시 중단하고 결과 전체를 폐기했다. 이후 인증된 카테고리 조회를 1초마다 호출하도록 수정했고, 10 RPS 스모크 테스트에서 health 45회, 성공률 100%, 드롭 0을 확인한 후 과부하 테스트를 다시 수행했다.
 
-## 8. 병목 분석 및 개선 후보
+## 8. 전체 백엔드 파이프라인 성능 테스트
+
+### 8.1 테스트 범위
+
+조회 API 중심의 기존 시험과 별도로 다음 비동기 처리 경로 전체를 측정했다.
+
+```text
+k6 이미지 등록
+  → MinIO presigned PUT
+  → MinIO ObjectCreated webhook
+  → API Server의 image-analysis Stream 발행
+  → Worker Server의 Redis Stream 소비
+  → Mock AI HTTP 요청
+  → Mock AI의 Worker callback
+  → Worker DB 결과 저장
+  → analysis-result Stream 발행
+  → API Server 결과 소비 및 DB 반영
+  → k6 이미지 상세 조회 성공
+```
+
+실제 AI 모델과 LLM은 호출하지 않았다. `modera-mock-ai`가 실제 `/internal/v1/analyze` 요청 계약을 받고 202를 반환한 뒤, 10ms 후 실제 Worker callback URL로 결정적인 완료 결과를 전송했다. 따라서 외부 AI 토큰은 사용하지 않으면서 AI HTTP 통신, callback 및 이벤트 버스 후속 처리는 시험 범위에 포함했다.
+
+Worker는 시험 중에만 다음 설정으로 재생성했다.
+
+```text
+ANALYSIS_CLIENT=fastapi
+AI_SERVER_URL=http://modera-mock-ai:8000
+```
+
+시험 종료 후 `AI_SERVER_URL=http://ai-ai-service-1:8000`으로 원복하고 Mock AI 컨테이너를 제거했다.
+
+### 8.2 전체 파이프라인 부하 테스트 기준
+
+- 부하 지속시간: 후보별 30초
+- 이미지 크기: 23,924 bytes
+- Mock AI 지연: 10ms
+- 전체 완료시간: 이미지 등록 시작부터 API 상세 조회가 200을 반환할 때까지
+- 전체 완료시간 p95: 300ms 이하
+- 파이프라인 성공률: 99% 이상
+- timeout: 0건
+- dropped iteration: 0건
+
+### 8.3 전체 파이프라인 부하 테스트 결과
+
+| 제안량 | 완료 건수 | 완료 처리량 | 전체 p95 | 성공률 | 드롭 | 판정 |
+|---:|---:|---:|---:|---:|---:|---|
+| 1 jobs/s | 30 | 0.99 jobs/s | 97.55ms | 100% | 0 | 통과 |
+| 5 jobs/s | 150 | 4.94 jobs/s | 92ms | 100% | 0 | 통과 |
+| 10 jobs/s | 301 | 9.89 jobs/s | 87ms | 100% | 0 | 통과 |
+| 20 jobs/s | 601 | 19.74 jobs/s | 96ms | 100% | 0 | 통과 |
+| 30 jobs/s | 901 | 29.56 jobs/s | 261ms | 100% | 0 | 통과 |
+| 35 jobs/s | 1,051 | 34.50 jobs/s | 279.5ms | 100% | 0 | 통과 |
+| 40 jobs/s | 94 | 2.27 jobs/s | 11.23초 | 10.29% | 288 | 탈락 |
+| 50 jobs/s | 32 | 0.78 jobs/s | 11.15초 | 2.83% | 373 | 탈락 |
+
+0.3초 기준을 만족한 최대 확인 처리량은 **35 jobs/s**다. 35에서 40 jobs/s 사이에 급격한 포화 절벽이 발생했다.
+
+40 jobs/s 시험에서 HTTP 요청 자체의 실패율은 0%였지만 최종 결과 이벤트 반영이 지연되면서 k6 VU가 상태 폴링에 묶였다. 이로 인해 pipeline timeout과 dropped iteration이 함께 증가했다.
+
+시험 직후 Redis 상태는 다음과 같았다.
+
+- `image-analysis`: pending 0, lag 0
+- `analysis-result`: pending 9, lag 12
+- 약 20초 후 `analysis-result`: pending 0, lag 0
+
+Worker가 `image-analysis` 입력을 소비하는 구간보다 API Server가 `analysis-result`를 소비하고 read model DB에 반영하는 구간이 먼저 밀렸다. 40 RPS 이상에서도 컨테이너는 종료되지 않았으며 backlog는 부하 종료 후 해소됐다.
+
+### 8.4 전체 파이프라인 과부하 테스트 기준
+
+- 파이프라인 부하: 각 후보를 30초간 적용
+- 별도 health 검사: 45초간 초당 1회
+- health 대상: 인증된 카테고리 조회
+- health 성공률: 100%
+- 시작된 파이프라인 성공률: 100%
+- dropped iteration: 0건
+- API Server, Worker Server 및 Redis Stream 처리 경로 생존
+
+### 8.5 전체 파이프라인 과부하 테스트 결과
+
+| 제안량 | 완료 건수 | 전체 p95 | 성공률 | health | 드롭 | 판정 |
+|---:|---:|---:|---:|---:|---:|---|
+| 20 jobs/s | 601 | 148ms | 100% | 45/45 | 0 | 통과 |
+| 25 jobs/s | 750 | 270.54ms | 100% | 45/45 | 0 | 통과 |
+| 26 jobs/s | 299 | 10.84초 | 47.61% | 45/45 | 153 | 탈락 |
+| 27 jobs/s | 807 | 1.99초 | 100% | 45/45 | 3 | 탈락 |
+| 30 jobs/s | 348 | 10.70초 | 48.06% | 45/45 | 177 | 탈락 |
+| 35 jobs/s | 77 | 11.22초 | 9.61% | 43/43 | 249 | 탈락 |
+
+30초 과부하 중 서버가 생존하면서 요청을 드롭하지 않고 전체 파이프라인을 끝까지 처리한 최대 확인 처리량은 **25 jobs/s**다.
+
+모든 후보에서 health 성공률은 100%였으므로 서버 프로세스 생존 한계는 35 jobs/s보다 높다. 그러나 26 jobs/s부터 완료율 또는 드롭 조건을 만족하지 못했으므로 “처리 가능한 최대 처리량”은 25 jobs/s로 판정했다.
+
+26과 27 jobs/s의 결과가 단조롭지 않다. 시험이 연속 실행되면서 수천 건의 이미지, 분석 작업 및 결과 데이터가 추가됐고 후보별 시작 시점의 DB와 JVM 상태가 달랐기 때문이다. 최종 기준값으로 확정할 때는 초기화 가능한 전용 데이터셋에서 각 후보를 3회 반복하고 중앙값을 사용해야 한다.
+
+### 8.6 파이프라인 시험 후 상태
+
+시험 종료 전 두 Redis Stream 모두 pending 0, lag 0으로 회복된 것을 확인했다. API Server와 Worker Server는 시험 중 종료되지 않았다. Worker는 실제 AI 주소로 원복하면서 정상적으로 한 차례 재생성됐다.
+
+성능 시험이 생성한 이미지 및 분석 데이터는 자동 삭제하지 않았다. 삭제는 테스트 계정의 기존 데이터까지 포함할 위험이 있으므로 별도 식별 조건과 승인 후 수행해야 한다.
+
+## 9. 병목 분석 및 개선 후보
 
 ### 8.1 이미지 목록 조회
 
@@ -314,7 +414,7 @@ k6 컨테이너 UID가 summary JSON 파일을 작성하지 못한 실행이 있�
 - 분석 실패, timeout, 빈 결과의 상태 분리
 - callback 저장 실패 재처리 또는 DLQ 구성
 
-## 9. 관측성 상태
+## 10. 관측성 상태
 
 성능 분석용 Grafana 대시보드에는 다음 항목을 확인할 수 있도록 패널을 구성했다.
 
@@ -328,7 +428,7 @@ k6 컨테이너 UID가 summary JSON 파일을 작성하지 못한 실행이 있�
 
 현재 AI 서비스의 Prometheus `/metrics`가 404를 반환해 AI 컨테이너 내부 지표는 수집되지 않는다. Worker 분석 성능용 Micrometer 코드도 로컬에만 추가됐으며 원격 서버에는 배포되지 않았다. 따라서 이번 결과에는 해당 신규 Worker 메트릭이 포함되지 않는다.
 
-## 10. 테스트 후 서버 상태
+## 11. 테스트 후 서버 상태
 
 최종 과부하 테스트 종료 후 다음 컨테이너가 실행 상태임을 확인했다.
 
@@ -345,7 +445,7 @@ k6 컨테이너 UID가 summary JSON 파일을 작성하지 못한 실행이 있�
 
 API와 Worker 컨테이너의 재시작은 확인되지 않았다.
 
-## 11. 결과 해석의 제한사항
+## 12. 결과 해석의 제한사항
 
 - k6와 대상 서버가 동일 호스트에서 실행됐다.
 - 각 후보를 1회씩 측정했으며 3회 반복 중앙값이 아니다.
@@ -359,7 +459,7 @@ API와 Worker 컨테이너의 재시작은 확인되지 않았다.
 
 최종 성능 기준을 확정하려면 별도 부하 발생기, 고정된 DB 데이터셋, API별 회복 시간, 3회 이상 반복 측정을 적용해야 한다.
 
-## 12. 관련 스크립트
+## 13. 관련 스크립트
 
 - `ops/k6/endpoint-load.js`: 단일 API 부하 테스트
 - `ops/k6/endpoint-overload.js`: 단일 API 과부하 및 생존 테스트
@@ -369,5 +469,10 @@ API와 Worker 컨테이너의 재시작은 확인되지 않았다.
 - `ops/k6/run-overload-suite.sh`: 과부하 탐색 묶음
 - `ops/k6/user-flow.js`: 이미지 업로드 및 분석 사용자 플로우
 - `ops/k6/summarize-results.sh`: k6 JSON 결과 요약
+- `ops/k6/pipeline-common.js`: 전체 비동기 파이프라인 공통 실행 코드
+- `ops/k6/pipeline-load.js`: 전체 파이프라인 300ms 부하 테스트
+- `ops/k6/pipeline-overload.js`: 전체 파이프라인 30초 과부하 및 health 테스트
 - `ops/grafana/deploy-performance-dashboard.sh`: 성능 분석 대시보드 배포
-
+- `ops/mock-ai/server.py`: 토큰을 사용하지 않는 AI HTTP Stub 및 callback 발송기
+- `ops/mock-ai/deploy-remote.sh`: Mock AI 원격 배포와 Worker 전환
+- `ops/mock-ai/restore-remote.sh`: Worker 실제 AI 복구와 Mock AI 제거

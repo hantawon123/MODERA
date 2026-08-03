@@ -2,6 +2,7 @@ package com.ssafy.modera.worker.domain.analysis.client;
 
 import com.ssafy.modera.contract.payload.ImageUploadedPayload;
 import com.ssafy.modera.worker.domain.analysis.entity.AnalysisJob;
+import com.ssafy.modera.worker.domain.analysis.AnalysisPerformanceMetrics;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -30,11 +31,13 @@ public class FastApiAnalysisClient implements AnalysisClient {
     private final RestClient restClient;
     private final String internalToken;
     private final String callbackUrl;
+    private final AnalysisPerformanceMetrics performanceMetrics;
 
     public FastApiAnalysisClient(
             @Value("${analysis-worker.ai-server-url}") String aiServerUrl,
             @Value("${internal.callback.token}") String internalToken,
-            @Value("${analysis.callback-url}") String callbackUrl
+            @Value("${analysis.callback-url}") String callbackUrl,
+            AnalysisPerformanceMetrics performanceMetrics
     ) {
         // uvicorn이 HTTP/2 upgrade 요청을 거절하면서 본문이 유실된다("Unsupported upgrade request").
         // HTTP/1.1로 고정한다.
@@ -48,6 +51,7 @@ public class FastApiAnalysisClient implements AnalysisClient {
                 .build();
         this.internalToken = internalToken;
         this.callbackUrl = callbackUrl;
+        this.performanceMetrics = performanceMetrics;
     }
 
     @Override
@@ -62,13 +66,21 @@ public class FastApiAnalysisClient implements AnalysisClient {
                 callbackUrl
         );
 
-        AnalyzeAccepted accepted = restClient.post()
-                .uri("/internal/v1/analyze")
-                .header(HEADER_INTERNAL_TOKEN, internalToken)
-                .contentType(MediaType.APPLICATION_JSON)
-                .body(body)
-                .retrieve()
-                .body(AnalyzeAccepted.class);
+        long started = System.nanoTime();
+        AnalyzeAccepted accepted;
+        try {
+            accepted = restClient.post()
+                    .uri("/internal/v1/analyze")
+                    .header(HEADER_INTERNAL_TOKEN, internalToken)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(body)
+                    .retrieve()
+                    .body(AnalyzeAccepted.class);
+            performanceMetrics.recordAiRequest(System.nanoTime() - started, "SUCCESS");
+        } catch (RuntimeException exception) {
+            performanceMetrics.recordAiRequest(System.nanoTime() - started, "FAILED");
+            throw exception;
+        }
 
         // 같은 (jobId, stage)를 다시 보내면 AI가 200 + error=DUPLICATE_JOB으로 돌려준다.
         // 이 경우 이미 처리 중이거나 완료된 작업이므로 정상으로 간주하고 콜백을 기다린다.

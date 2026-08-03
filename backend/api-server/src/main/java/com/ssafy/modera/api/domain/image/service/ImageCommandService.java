@@ -310,7 +310,7 @@ public class ImageCommandService {
     private void upsertInitialView(Integer userId, ImageAsset imageAsset) {
         imageQueryRepository.upsert(new UserImageViewRow(
                 userId, imageAsset.getImageId(), imageAsset.getFileName(), imageAsset.getS3Key(),
-                null, imageAsset.getFileName(), null, null, List.of(), List.of(), null,
+                null, imageAsset.getFileName(), null, null, List.of(), List.of(), null, null,
                 imageAsset.getUploadStatus(), "NONE", false, imageAsset.getUploadedAt()));
     }
 

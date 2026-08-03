@@ -24,7 +24,7 @@ public class ImageQueryRepository {
             INSERT INTO query_schema.user_image_view (
                 user_id, image_id, file_name, s3_key, thumbnail_key,
                 title, summary, category_id, category_name, tags, key_information,
-                structured_data, upload_status, analysis_status, favorite,
+                structured_data, ocr_refined_text, upload_status, analysis_status, favorite,
                 uploaded_at, del_yn
             ) VALUES (
                 ?, ?, ?, ?, ?, ?, ?,
@@ -44,7 +44,7 @@ public class ImageQueryRepository {
                     FROM unnest(CAST(? AS text[]))
                         WITH ORDINALITY AS source_tag(tag_name, tag_order)
                 ),
-                ?, ?, ?, ?, ?, ?, 'N'
+                ?, ?, ?, ?, ?, ?, ?, 'N'
             )
             ON CONFLICT (user_id, image_id) DO UPDATE SET
                 file_name = EXCLUDED.file_name,
@@ -57,6 +57,7 @@ public class ImageQueryRepository {
                 tags = EXCLUDED.tags,
                 key_information = EXCLUDED.key_information,
                 structured_data = EXCLUDED.structured_data,
+                ocr_refined_text = EXCLUDED.ocr_refined_text,
                 upload_status = EXCLUDED.upload_status,
                 analysis_status = EXCLUDED.analysis_status,
                 favorite = EXCLUDED.favorite,
@@ -92,6 +93,7 @@ public class ImageQueryRepository {
             } else {
                 ps.setObject(i++, toJsonb(row.structuredDataJson()));
             }
+            ps.setString(i++, row.ocrRefinedText());
             ps.setString(i++, row.uploadStatus());
             ps.setString(i++, row.analysisStatus());
             if (row.favorite() == null) {
@@ -119,7 +121,7 @@ public class ImageQueryRepository {
                                image_view.tags,
                                image_view.key_information,
                                image_view.structured_data,
-                               ocr.content AS ocr_raw_text,
+                               image_view.ocr_refined_text,
                                image_view.uploaded_at,
                                image_view.is_documented_yn,
                                image_view.is_calendared_yn
@@ -128,8 +130,6 @@ public class ImageQueryRepository {
                           ON user_image.user_id = image_view.user_id
                          AND user_image.image_id = image_view.image_id
                          AND user_image.del_yn = 'N'
-                        LEFT JOIN image_schema.ocr ocr
-                          ON ocr.image_id = image_view.image_id
                         WHERE image_view.user_id = ?
                           AND image_view.image_id = ?
                           AND image_view.del_yn = 'N'
@@ -146,7 +146,7 @@ public class ImageQueryRepository {
                                     parseTagNames(rs.getString("tags")),
                                     toStringList(rs.getArray("key_information")),
                                     rs.getString("structured_data"),
-                                    rs.getString("ocr_raw_text"),
+                                    rs.getString("ocr_refined_text"),
                                     rs.getObject("uploaded_at", java.time.OffsetDateTime.class),
                                     "Y".equals(rs.getString("is_documented_yn")),
                                     "Y".equals(rs.getString("is_calendared_yn"))
@@ -183,15 +183,16 @@ public class ImageQueryRepository {
                 INSERT INTO query_schema.user_image_view (
                     user_id, image_id, file_name, s3_key, thumbnail_key,
                     title, summary, category_id, category_name, tags,
-                    key_information, structured_data, upload_status, analysis_status,
-                    favorite, uploaded_at, del_yn, is_documented_yn, is_calendared_yn
+                    key_information, structured_data, ocr_refined_text, upload_status,
+                    analysis_status, favorite, uploaded_at, del_yn,
+                    is_documented_yn, is_calendared_yn
                 )
                 SELECT ?, source.image_id, source.file_name, source.s3_key,
                        source.thumbnail_key, source.title, source.summary,
                        COALESCE(default_category.category_id, source.category_id),
                        COALESCE(category.name, source.category_name),
                        source.tags, source.key_information, source.structured_data,
-                       source.upload_status, source.analysis_status,
+                       source.ocr_refined_text, source.upload_status, source.analysis_status,
                        false, source.uploaded_at, 'N', 'N', 'N'
                 FROM query_schema.user_image_view source
                 LEFT JOIN library_schema.image_category default_category
@@ -217,6 +218,7 @@ public class ImageQueryRepository {
                     tags = EXCLUDED.tags,
                     key_information = EXCLUDED.key_information,
                     structured_data = EXCLUDED.structured_data,
+                    ocr_refined_text = EXCLUDED.ocr_refined_text,
                     upload_status = EXCLUDED.upload_status,
                     analysis_status = EXCLUDED.analysis_status,
                     favorite = false,

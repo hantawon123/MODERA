@@ -22,7 +22,11 @@ users="${USERS:-200}"
 user_offset="${USER_OFFSET:-3000000}"
 seed_vus="${SEED_VUS:-10}"
 seed_rate="${SEED_RATE:-25}"
-redis_container="${REDIS_CONTAINER:-modera-redis}"
+# Redis 컨테이너 이름은 환경마다 다르다(로컬 modera-redis, 배포 infra-redis-1).
+# 지정이 없으면 실행 중인 컨테이너에서 찾는다 — 이름을 잘못 넣으면 검증 단계가
+# 통째로 죽는다(실제로 첫 실행에서 그렇게 됐다).
+redis_container="${REDIS_CONTAINER:-$(docker ps --format '{{.Names}}' \
+  | grep -i redis | grep -vi exporter | head -1)}"
 
 mkdir -p "$result_dir"
 manifest="$result_dir/manifest.tsv"
@@ -46,8 +50,12 @@ docker run --rm --user 0:0 --network "$network" \
 
 stamp seed_k6_done
 
+# 검증은 정보 제공용이다. 개별 확인이 실패해도(컨테이너 이름 불일치 등) 시딩 자체를
+# 실패로 만들지 않도록 set -e의 영향을 끊는다.
+set +e
 {
   echo "== 스트림 소화 검증 (lag/pending이 0으로 수렴해야 함) =="
+  echo "(redis container: ${redis_container:-미검출})"
   for i in 1 2 3; do
     docker exec "$redis_container" redis-cli XINFO GROUPS image-analysis | paste - - | tr '\n' ' '
     echo
@@ -74,6 +82,7 @@ stamp seed_k6_done
       | sed -n 's/.*"totalElements":\([0-9]*\).*/일정 totalElements=\1/p' || true
   done
 } | tee "$result_dir/verify.log"
+set -e
 
 stamp seed_verified
 echo "[seed] 완료. 결과: $result_dir"

@@ -36,6 +36,9 @@ import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 /**
  * image-analysis 스트림을 analysis-workers 그룹으로 소비한다(XREADGROUP 블로킹 루프).
@@ -68,6 +71,17 @@ public class ImageAnalysisConsumer {
     private volatile boolean running = true;
     private Thread consumerThread;
 
+    /**
+     * 시맨틱 검색 전용 처리 스레드. 검색은 사용자가 응답을 기다리는 왕복(api가 최대
+     * 10초 대기)인데, 메인 컨슈머 스레드에서 이미지 분석과 한 줄로 처리하면 분석이
+     * 밀리는 순간 검색 응답까지 함께 지연된다(head-of-line blocking — 아래
+     * DOCUMENT_REQUESTED 분기 주석의 TODO가 말하는 그 문제). 검색만 분리해 분석
+     * 큐와 독립적으로 응답한다. XACK은 기존과 동일하게 처리 완료 후에만 하므로
+     * at-least-once·PEL 회수(PelReclaimScanner) 의미는 그대로다.
+     */
+    private final ExecutorService semanticSearchExecutor =
+            Executors.newSingleThreadExecutor(task -> new Thread(task, "semantic-search-consumer"));
+
     @PostConstruct
     public void start() {
         ensureConsumerGroup();
@@ -80,6 +94,23 @@ public class ImageAnalysisConsumer {
         running = false;
         if (consumerThread != null) {
             consumerThread.interrupt();
+        }
+        shutdownSemanticSearchExecutor();
+    }
+
+    /**
+     * 진행 중인 검색은 graceful shutdown 유예 안에서 끝내고, 끝내지 못한 것은 XACK
+     * 없이 남긴다 — PEL에 남아 재기동 후 PelReclaimScanner가 회수한다.
+     */
+    private void shutdownSemanticSearchExecutor() {
+        semanticSearchExecutor.shutdown();
+        try {
+            if (!semanticSearchExecutor.awaitTermination(10, TimeUnit.SECONDS)) {
+                semanticSearchExecutor.shutdownNow();
+            }
+        } catch (InterruptedException e) {
+            semanticSearchExecutor.shutdownNow();
+            Thread.currentThread().interrupt();
         }
     }
 
@@ -166,8 +197,13 @@ public class ImageAnalysisConsumer {
                 categoryReanalysisService.handle(
                         readPayload(envelope, CategoryReanalysisRequestedPayload.class));
             } else if (EventTypes.IMAGE_SEMANTIC_SEARCH_REQUESTED.equals(envelope.eventType())) {
-                semanticSearchService.handle(
-                        readPayload(envelope, ImageSemanticSearchRequestedPayload.class));
+                // 파싱은 메인 스레드에서 한다 — 파싱 실패(영구 오류)를 XACK 후 스킵하는
+                // 위 catch의 정책을 그대로 태우기 위해서다. 처리·XACK·지표는 전용
+                // 스레드에서 하므로 여기서는 ack 없이 반환한다(finally의 MDC 정리는 탄다).
+                ImageSemanticSearchRequestedPayload payload =
+                        readPayload(envelope, ImageSemanticSearchRequestedPayload.class);
+                submitSemanticSearch(envelope, payload, record, processingStarted);
+                return;
             } else if (EventTypes.DOCUMENT_REQUESTED.equals(envelope.eventType())) {
                 // 문서 생성도 이 스트림에 실려 온다 — 전용 스트림을 파지 않은 이유는
                 // 이 컨슈머 루프와 PEL 회수(PelReclaimScanner)가 그대로 적용되기
@@ -208,6 +244,39 @@ public class ImageAnalysisConsumer {
 
     private void acknowledge(MapRecord<String, String, String> record) {
         redisTemplate.opsForStream().acknowledge(Streams.IMAGE_ANALYSIS, Streams.GROUP_ANALYSIS_WORKERS, record.getId().getValue());
+    }
+
+    /**
+     * 시맨틱 검색 처리·XACK·지표 기록을 전용 스레드에서 수행한다. XACK 정책은 메인
+     * 경로(processRecord)와 동일하다: 성공(핸들러가 정상 반환)하면 XACK, 일시 오류로
+     * 판단되는 예외는 XACK 없이 PEL에 남겨 재전달을 기다린다. 지연 측정
+     * (processingStarted 기준)에는 executor 큐 대기 시간이 포함된다 — 검색 응답이
+     * 실제로 얼마나 밀렸는지를 보려는 값이므로 의도된 것이다.
+     *
+     * <p>shutdown 이후 제출은 RejectedExecutionException으로 바깥 catch(일시 오류,
+     * XACK 보류)에 잡혀 재기동 후 PEL 회수로 이어진다.
+     */
+    private void submitSemanticSearch(
+            EventEnvelope envelope,
+            ImageSemanticSearchRequestedPayload payload,
+            MapRecord<String, String, String> record,
+            long processingStarted
+    ) {
+        semanticSearchExecutor.execute(() -> {
+            MDC.put(MDC_KEY_EVENT_ID, envelope.eventId());
+            try {
+                semanticSearchService.handle(payload);
+                acknowledge(record);
+                performanceMetrics.recordAck(envelope.eventType());
+                performanceMetrics.record(envelope, System.nanoTime() - processingStarted, "SUCCESS");
+            } catch (Exception e) {
+                performanceMetrics.record(envelope, System.nanoTime() - processingStarted, "FAILED");
+                log.error("시맨틱 검색 이벤트 처리 중 일시 오류로 판단, XACK 보류(재전달 대기): eventId={}",
+                        envelope.eventId(), e);
+            } finally {
+                MDC.remove(MDC_KEY_EVENT_ID);
+            }
+        });
     }
 
     void handleImageUploaded(ImageUploadedPayload payload, boolean reupload) {

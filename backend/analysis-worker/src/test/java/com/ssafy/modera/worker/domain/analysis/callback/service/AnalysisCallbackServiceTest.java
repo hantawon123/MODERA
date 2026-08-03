@@ -7,6 +7,7 @@ import com.ssafy.modera.contract.payload.AnalysisCompletedPayload;
 import com.ssafy.modera.contract.payload.AnalysisFailedPayload;
 import com.ssafy.modera.contract.payload.InitialCategoryResolvedPayload;
 import com.ssafy.modera.worker.domain.analysis.callback.dto.request.AnalysisCallbackRequest;
+import com.ssafy.modera.worker.domain.analysis.AnalysisPerformanceMetrics;
 import com.ssafy.modera.worker.domain.analysis.entity.AnalysisJob;
 import com.ssafy.modera.worker.domain.analysis.repository.AnalysisJobRepository;
 import com.ssafy.modera.worker.domain.analysis.repository.AnalysisResultRepository;
@@ -45,6 +46,7 @@ class AnalysisCallbackServiceTest {
     @Mock ObjectMapper objectMapper;
     @Mock TransactionTemplate transactionTemplate;
     @Mock TransactionStatus transactionStatus;
+    @Mock AnalysisPerformanceMetrics performanceMetrics;
     @InjectMocks AnalysisCallbackService analysisCallbackService;
 
     @BeforeEach

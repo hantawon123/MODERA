@@ -8,6 +8,7 @@ import com.ssafy.modera.contract.payload.AnalysisCompletedPayload;
 import com.ssafy.modera.contract.payload.AnalysisFailedPayload;
 import com.ssafy.modera.contract.payload.InitialCategoryResolvedPayload;
 import com.ssafy.modera.worker.domain.analysis.callback.dto.request.AnalysisCallbackRequest;
+import com.ssafy.modera.worker.domain.analysis.AnalysisPerformanceMetrics;
 import com.ssafy.modera.worker.domain.analysis.entity.AnalysisJob;
 import com.ssafy.modera.worker.domain.analysis.repository.AnalysisJobRepository;
 import com.ssafy.modera.worker.domain.analysis.repository.AnalysisResultRepository;
@@ -39,6 +40,7 @@ public class AnalysisCallbackService {
     // JacksonConfig가 등록한 Jackson 2 ObjectMapper. jsonb 컬럼용 직렬화에 쓴다.
     private final ObjectMapper objectMapper;
     private final TransactionTemplate transactionTemplate;
+    private final AnalysisPerformanceMetrics performanceMetrics;
 
     /**
      * 콜백 처리 진입점.
@@ -56,6 +58,7 @@ public class AnalysisCallbackService {
         try {
             transactionTemplate.executeWithoutResult(status -> apply(request));
         } catch (Exception e) {
+            performanceMetrics.recordCallbackPersistenceFailure();
             markCallbackFailed(request, e);
         }
     }
@@ -116,8 +119,14 @@ public class AnalysisCallbackService {
         }
 
         switch (request.status()) {
-            case "COMPLETED", "EMPTY" -> handleSuccess(analysisJob, request);
-            case "FAILED" -> handleFailure(analysisJob, request);
+            case "COMPLETED", "EMPTY" -> {
+                handleSuccess(analysisJob, request);
+                performanceMetrics.recordCallback(analysisJob, request.status());
+            }
+            case "FAILED" -> {
+                handleFailure(analysisJob, request);
+                performanceMetrics.recordCallback(analysisJob, request.status());
+            }
             default -> log.warn("알 수 없는 콜백 status — 무시: jobId={} status={}", request.jobId(), request.status());
         }
     }

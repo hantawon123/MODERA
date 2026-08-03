@@ -1,19 +1,17 @@
 # 로컬 개발용 compose. 배포용 docker-compose.yml 과 별개다.
 #
-# backend/local-infra 스택(MinIO·Redis·analysis-worker)이 먼저 떠 있어야 한다:
-#   cd backend/local-infra && docker compose up -d
+# 자급자족 스택이다 — MinIO 를 직접 띄우므로 backend/local-infra 가 필요 없다.
+# (local-infra 는 develop/backend 브랜치에만 있다. analysis-worker 콜백까지
+#  왕복시키려면 LOCAL_DEV.md 의 local-infra 절차를 따를 것.)
 #
 # 실행:
 #   cp .env.local.example .env.local
 #   docker compose -f docker-compose.local.yml up -d --build
-#   docker compose -f docker-compose.local.yml --profile search up -d   # OpenSearch 까지
+#   python scripts/seed_minio.py                                       # 버킷·테스트 이미지 시드
+#   docker compose -f docker-compose.local.yml --profile search up -d  # OpenSearch 까지
 #
-# 이 컨테이너는 local-infra 가 만든 네트워크에 함께 들어간다. 그래서
-#   ai-server → MinIO           : http://minio:9000
-#   ai-server → analysis-worker : http://analysis-worker:8081
-#   analysis-worker → ai-server : http://ai-server:8000
-# 처럼 컨테이너 이름으로 서로 닿는다. 호스트 포트 매핑에 의존하지 않으므로
-# local-infra 가 8081 을 노출하지 않아도 콜백이 도착한다.
+# 콜백 테스트는 sink 로 받는다 (worker 없이):
+#   AI_IN_DOCKER=true python scripts/full_stage_test.py --sink --count 4
 services:
   ai-server:
     build:
@@ -28,13 +26,24 @@ services:
       OPENSEARCH_HOST: opensearch
       OPENSEARCH_PORT: "9200"
       OPENSEARCH_USE_SSL: "false"
-      # worker 로 콜백을 보낼 때 쓰는 기본 주소. 요청의 callbackUrl 이 우선한다.
-      SPRING_BASE_URL: http://analysis-worker:8081
     ports:
       - "8000:8000"
-    networks:
-      - modera-network
-      - default
+    depends_on:
+      - minio
+
+  # 원본·썸네일 스토리지. 호스트 포트는 local-infra 관례(9002)를 따른다.
+  minio:
+    image: minio/minio
+    container_name: modera-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports:
+      - "9002:9000"
+      - "19001:9001"
+    volumes:
+      - minio-local-data:/data
 
   # 검색·목록 API(/api/v1/*)까지 볼 때만 띄운다. FULL 파이프라인은 이것 없이도 돈다
   # (색인 실패는 경고만 남기고 통과).
@@ -55,18 +64,10 @@ services:
       nofile: { soft: 65536, hard: 65536 }
     volumes:
       - opensearch-local-data:/usr/share/opensearch/data
+
     ports:
       - "127.0.0.1:9200:9200"
-    networks:
-      - default
-
-networks:
-  # backend/local-infra 가 만든 네트워크. 이 파일이 만들지 않는다.
-  # 이름은 compose 프로젝트명(디렉터리명 local-infra) + 서비스 네트워크명이다.
-  # `docker network ls | grep modera` 로 실제 이름을 확인할 것.
-  modera-network:
-    external: true
-    name: local-infra_modera-network
 
 volumes:
+  minio-local-data:
   opensearch-local-data:

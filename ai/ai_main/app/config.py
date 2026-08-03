@@ -151,6 +151,17 @@ class Settings:
         # 실데이터 누수율 측정 후 INFORMATIVE_MODEL_NAME 로 명시 옵트인할 것.
         self.informative_model_name = (
             os.environ.get("INFORMATIVE_MODEL_NAME") or self.llm_model_name)
+        # 문서 생성(명세 11장) 전용 모델. 사용자 대면 장문이라 품질 우선 —
+        # 대량 분석(AGENT)을 싼 모델로 내려도 문서 품질은 따로 지킨다.
+        # 호출이 희소해 단가가 사실상 무의미한 경로다. 미설정 시 AGENT 를 따른다.
+        self.document_model_name = (
+            os.environ.get("DOCUMENT_MODEL_NAME") or self.llm_model_name)
+        # 자연어 검색 조건 변환(10-3) 전용 모델. 키워드·가격·날짜 추출 수준이라
+        # 최경량이면 충분하고, 검색은 사용자가 기다리는 경로라 지연에 민감하다.
+        # AGENT 모델을 따라가게 두면 검색마다 상위 모델 단가·추론 토큰을 내게 된다
+        # (GMS 실측 계기 — 2026-08-03). 미설정 시 AGENT 를 따른다(기존 동작 호환).
+        self.query_parse_model_name = (
+            os.environ.get("QUERY_PARSE_MODEL_NAME") or self.llm_model_name)
         self.embedding_model_name = os.environ.get("EMBEDDING_MODEL_NAME", "gemini-embedding-2")
         # 임베딩 차원. 팀 합의로 768 고정이며 pgvector 컬럼(vector(768))과 일치해야 한다.
         # gemini-embedding-2 의 기본 출력은 3072 라 호출 시 명시적으로 줄여서 받는다.
@@ -208,6 +219,18 @@ class Settings:
             os.environ.get("GEMINI_BASE_URL")
             or "https://gms.ssafy.io/gmsapi/generativelanguage.googleapis.com"
         ).rstrip("/")
+
+        # Gemini thinking(내부 추론) 제어 — thinking 토큰은 **출력 단가로 과금**된다.
+        # 세대별로 파라미터가 다르고(2.5=budget 정수, 3.x=level 문자열), 한 요청에
+        # 둘을 같이 보내면 400 이라 gemini_client 가 모델명을 보고 하나만 고른다.
+        #
+        # GEMINI_THINKING_BUDGET (2.5 계열): 토큰 수. 0=끔, 음수=미전송(모델 기본값).
+        #   2.5-flash 는 기본 ON(dynamic)이라 0 으로 꺼야 절감이 완성된다.
+        #   ⚠️ 2.5-pro 는 끌 수 없다(최소 128) — pro 를 쓰면 음수 또는 128 이상으로.
+        # GEMINI_THINKING_LEVEL (3.x 계열): minimal/low/medium/high. 빈 값=미전송.
+        #   3.5-flash 기본값은 medium — 문서 생성처럼 품질 우선 경로는 빈 값이 안전.
+        self.gemini_thinking_budget = int(os.environ.get("GEMINI_THINKING_BUDGET", "0"))
+        self.gemini_thinking_level = os.environ.get("GEMINI_THINKING_LEVEL", "")
 
         # Gemini 429(rate limit) 재시도. 지수 백오프 + 지터로 재시도한다.
         self.gemini_max_attempts = int(os.environ.get("GEMINI_MAX_ATTEMPTS", "5"))

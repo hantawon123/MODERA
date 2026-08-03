@@ -324,7 +324,22 @@ def embed(texts: list[str], purpose: str = "DOCUMENT") -> tuple[str, list[list[f
                 model=settings.embedding_model_name, contents=c, config=config,
             ),
         )
-        vectors.extend(list(e.values) for e in response.embeddings)
+        got = [list(e.values) for e in response.embeddings]
+        if len(got) != len(chunk):
+            # GMS 프록시는 batchEmbedContents 를 지원하지 않아 몇 개를 보내든
+            # 첫 항목의 임베딩 1개만 돌려준다(2026-08-03 실측). 구글 직결에서는
+            # 배치가 그대로 동작하므로, 개수가 어긋난 경우에만 단건으로 나눠 다시 받는다.
+            logger.warning("배치 임베딩 응답 %s/%s — 단건 호출로 폴백", len(got), len(chunk))
+            got = []
+            for text in chunk:
+                response = _call_with_retry(
+                    "embed_content",
+                    lambda t=text: client.models.embed_content(
+                        model=settings.embedding_model_name, contents=t, config=config,
+                    ),
+                )
+                got.extend(list(e.values) for e in response.embeddings)
+        vectors.extend(got)
     # 호출자는 입력 순서와 벡터 순서가 같다고 보고 zip 한다
     # (stages.seed_default_category_vectors, 10-2 /internal/v1/embed 의 index).
     # 개수가 어긋나면 이름과 벡터가 밀려 붙으므로 여기서 끊는다.

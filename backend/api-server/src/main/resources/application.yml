@@ -45,7 +45,7 @@ jwt:
 
 oauth:
   kakao:
-    allowed-app-ids: ${KAKAO_ALLOWED_APP_IDS:}
+    allowed-app-ids: ${KAKAO_ALLOWED_APP_IDS:1525155}
     connect-timeout: ${KAKAO_CONNECT_TIMEOUT:3s}
     read-timeout: ${KAKAO_READ_TIMEOUT:5s}
 

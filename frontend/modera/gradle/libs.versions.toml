@@ -48,6 +48,7 @@ protobuf = "4.35.1"
 
 # Image
 coil = "2.7.0"
+lottie = "6.6.7"
 
 # ML Kit OCR (스크립트별 모델, 동일 버전)
 textRecognition = "16.0.1"
@@ -190,6 +191,9 @@ coil-kt = { group = "io.coil-kt", name = "coil", version.ref = "coil" }
 coil-kt-compose = { group = "io.coil-kt", name = "coil-compose", version.ref = "coil" }
 coil-kt-svg = { group = "io.coil-kt", name = "coil-svg", version.ref = "coil" }
 coil-kt-gif = { group = "io.coil-kt", name = "coil-gif", version.ref = "coil" }
+
+# Lottie
+lottie-compose = { group = "com.airbnb.android", name = "lottie-compose", version.ref = "lottie" }
 
 # Dependencies of the included build-logic
 android-gradlePlugin = { group = "com.android.tools.build", name = "gradle", version.ref = "agp" }

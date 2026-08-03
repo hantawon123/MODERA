@@ -13,12 +13,13 @@
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@style/Theme.Modera"
+        android:theme="@style/Theme.Modera.Splash"
         android:usesCleartextTraffic="true">
 
         <activity
             android:name=".MainActivity"
             android:exported="true"
+            android:theme="@style/Theme.Modera.Splash"
             android:windowSoftInputMode="adjustResize">
 
             <intent-filter>

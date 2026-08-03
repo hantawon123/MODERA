@@ -140,9 +140,9 @@ docker compose --profile app down   # 앱 포함 전부 정지
 | 변수 | 필요 서버 | 설명 | fallback |
 |---|---|---|---|
 | `JWT_SECRET` | api-server | JWT 서명 키 | 없음 (전 프로필 필수) |
-| `KAKAO_CLIENT_ID` | api-server | 카카오 REST API 키 | 없음 |
-| `KAKAO_CLIENT_SECRET` | api-server | 카카오 Client Secret(활성화한 경우) | 빈 값 |
-| `KAKAO_REDIRECT_URI` | api-server | 카카오 개발자 콘솔에 등록한 로그인 Redirect URI | 없음 |
+| `KAKAO_ALLOWED_APP_IDS` | api-server | 허용할 숫자형 카카오 앱 ID 목록(쉼표 구분, 비어 있으면 로그인 거부) | 없음 |
+| `KAKAO_CONNECT_TIMEOUT` | api-server | 카카오 API 연결 제한 시간 | `3s` |
+| `KAKAO_READ_TIMEOUT` | api-server | 카카오 API 응답 제한 시간 | `5s` |
 | `DB_HOST` / `DB_PORT` / `DB_NAME` / `DB_USERNAME` / `DB_PASSWORD` | 둘 다 | PostgreSQL 접속 정보(각자 자기 DB만) | local/docker는 기본값 있음, prod는 없음 |
 | `DB_POOL_MAX` / `DB_POOL_MIN` | 둘 다 (prod) | HikariCP 풀 크기 | 20 / 10 |
 | `REDIS_HOST` / `REDIS_PORT` / `REDIS_PASSWORD` | 둘 다 | Redis Streams 접속 정보 | local/docker는 기본값 있음 |

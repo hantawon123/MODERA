@@ -54,9 +54,12 @@ import com.ssafy.modera.feature.category.navigation.CategoryNavKey
 import com.ssafy.modera.feature.category.navigation.categoryEntry
 import com.ssafy.modera.feature.category.navigation.navigateToCategorySearch
 import com.ssafy.modera.feature.category.navigation.navigateToCategoryTab
+import com.ssafy.modera.feature.document.navigation.DocumentNavKey
 import com.ssafy.modera.feature.document.navigation.documentEntry
 import com.ssafy.modera.feature.documentcreate.navigation.documentCreateEntry
 import com.ssafy.modera.feature.documentcreate.navigation.navigateToDocumentCreate
+import com.ssafy.modera.feature.documentdetail.navigation.DocumentDetailNavKey
+import com.ssafy.modera.feature.documentdetail.navigation.documentDetailEntry
 import com.ssafy.modera.feature.favorite.navigation.favoritesEntry
 import com.ssafy.modera.feature.home.HomeAnalysisState
 import com.ssafy.modera.feature.home.LocalHomeAnalysisState
@@ -308,13 +311,6 @@ internal fun ModeraApp(
                                 calendarEntry(
                                     onBackClick = handleBack,
                                 )
-
-                                documentEntry(
-                                    onDocumentClick = { documentId ->
-                                        // TODO: 문서 상세 화면으로 이동
-                                    },
-                                )
-
                                 analyzedImageDetailEntry(
                                     navigator = navigator,
                                     sharedTransitionScope =
@@ -337,12 +333,21 @@ internal fun ModeraApp(
                                     onBackClick = handleBack,
                                 )
 
+                                documentEntry(
+                                    onDocumentClick = navigator::navigateToDocumentDetail,
+                                )
+
+                                documentDetailEntry(
+                                    onBackClick = handleBack,
+                                    onManageImagesClick = { documentId ->
+                                        // Todo: 자료 관리 화면 연결
+                                    },
+                                )
+
                                 documentCreateEntry(
                                     navigator = navigator,
                                     onBackClick = handleBack,
-                                    onDocumentCreated = { documentId ->
-                                        // TODO: 문서 상세 화면으로 이동
-                                    },
+                                    onDocumentCreated = navigator::navigateToDocumentDetail,
                                 )
                             }
 
@@ -360,4 +365,19 @@ internal fun ModeraApp(
             }
         }
     }
+}
+
+private fun Navigator.navigateToDocumentDetail(
+    documentId: Long,
+) {
+    navigateToTopLevelTab(
+        topLevelKey = DocumentNavKey,
+        rootKey = DocumentNavKey,
+    )
+
+    navigate(
+        DocumentDetailNavKey(
+            documentId = documentId,
+        ),
+    )
 }

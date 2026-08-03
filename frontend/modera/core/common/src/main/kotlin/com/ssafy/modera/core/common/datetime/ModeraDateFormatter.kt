@@ -3,6 +3,9 @@ package com.ssafy.modera.core.common.datetime
 import java.time.Clock
 import java.time.Duration
 import java.time.Instant
+import java.time.LocalDate
+import java.time.LocalDateTime
+import java.time.OffsetDateTime
 import java.time.ZoneId
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
@@ -86,6 +89,29 @@ object ModeraDateFormatter {
             zoneId = zoneId,
             clock = clock,
         )
+    }
+
+    /**
+     * API ISO-8601 시각 문자열을 [ZonedDateTime]으로 변환합니다.
+     *
+     * Instant(`Z`), OffsetDateTime(`+09:00`), ZonedDateTime, LocalDateTime, LocalDate
+     * 순으로 파싱을 시도합니다. 빈 값이나 파싱 실패 시 null을 반환합니다.
+     *
+     * 예:
+     * - `2026-08-09T00:00:00.000Z`
+     * - `2026-08-09T19:00:00+09:00`
+     */
+    fun parseToZonedDateTimeOrNull(
+        value: String?,
+        zoneId: ZoneId = ZoneId.systemDefault(),
+    ): ZonedDateTime? {
+        if (value.isNullOrBlank()) return null
+
+        return runCatching { Instant.parse(value).atZone(zoneId) }.getOrNull()
+            ?: runCatching { OffsetDateTime.parse(value).atZoneSameInstant(zoneId) }.getOrNull()
+            ?: runCatching { ZonedDateTime.parse(value).withZoneSameInstant(zoneId) }.getOrNull()
+            ?: runCatching { LocalDateTime.parse(value).atZone(zoneId) }.getOrNull()
+            ?: runCatching { LocalDate.parse(value).atStartOfDay(zoneId) }.getOrNull()
     }
 
     /**

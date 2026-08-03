@@ -13,7 +13,7 @@ import com.ssafy.modera.feature.documentedit.R
 @Composable
 internal fun DocumentEditTopBar(
     isEditing: Boolean,
-    actionVisible: Boolean,
+    contentVisible: Boolean,
     onBackClick: () -> Unit,
     onEditClick: () -> Unit,
     onApplyClick: () -> Unit,
@@ -23,17 +23,19 @@ internal fun DocumentEditTopBar(
         onBackClick = onBackClick,
         modifier = modifier,
         centerContent = {
-            Text(
-                text = stringResource(
-                    R.string.document_edit_title,
-                ),
-                style = ModeraTheme.typography.bodySB16,
-                color = ModeraTheme.colors.gray900,
-                maxLines = 1,
-            )
+            if (contentVisible) {
+                Text(
+                    text = stringResource(
+                        R.string.document_edit_title,
+                    ),
+                    style = ModeraTheme.typography.bodySB16,
+                    color = ModeraTheme.colors.gray900,
+                    maxLines = 1,
+                )
+            }
         },
         rightContent = {
-            if (actionVisible) {
+            if (contentVisible) {
                 Text(
                     text = stringResource(
                         if (isEditing) {
@@ -63,7 +65,7 @@ private fun DocumentEditTopBarPreview() {
     ModeraTheme {
         DocumentEditTopBar(
             isEditing = false,
-            actionVisible = true,
+            contentVisible = true,
             onBackClick = {},
             onEditClick = {},
             onApplyClick = {},
@@ -77,7 +79,7 @@ private fun DocumentEditTopBarEditingPreview() {
     ModeraTheme {
         DocumentEditTopBar(
             isEditing = true,
-            actionVisible = true,
+            contentVisible = true,
             onBackClick = {},
             onEditClick = {},
             onApplyClick = {},
@@ -91,7 +93,7 @@ private fun DocumentEditTopBarActionHiddenPreview() {
     ModeraTheme {
         DocumentEditTopBar(
             isEditing = false,
-            actionVisible = false,
+            contentVisible = false,
             onBackClick = {},
             onEditClick = {},
             onApplyClick = {},

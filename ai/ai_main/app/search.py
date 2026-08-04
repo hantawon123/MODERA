@@ -557,9 +557,12 @@ def keyword_search(
     bm25_hits, bm25_total = _bm25_search(
         settings, user_id, query, fields, category, tag, size, page, sort
     )
-    if bm25_total > 0:
+    # F4b: "잡았다"가 곧 "맞게 잡았다"는 아니다. 최고점이 문턱 이상일 때만 BM25 로 확정하고,
+    # 미만이면(오탐 흔적) 결과가 있어도 하이브리드로 보강한다. 문턱 0.0 = 기존 동작.
+    top_score = bm25_hits[0]["score"] if bm25_hits else 0.0
+    if bm25_total > 0 and top_score >= settings.search_cascade_min_top_score:
         return bm25_hits, bm25_total   # 키워드로 충분 — 임베딩 생략
-    # BM25 빈 결과 → 시맨틱으로 승격. 승격이 불가하면 이미 받은 빈 결과를 그대로 돌려준다.
+    # BM25 빈 결과(또는 약한 결과) → 시맨틱으로 승격. 승격 불가 시 BM25 결과를 그대로 쓴다.
     return _run_hybrid_or_bm25(
         settings, user_id, query, fields, category, tag, size, page, sort,
         bm25_fallback=(bm25_hits, bm25_total),

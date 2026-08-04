@@ -8,6 +8,7 @@ data class AnalyzedImagesResponse(
     val page: Int,
     val size: Int,
     val totalElements: Long,
-    val totalPages: Int,
+    val totalPages: Int = 0,
     val hasNext: Boolean,
+    val hasPrevious: Boolean = false,
 )

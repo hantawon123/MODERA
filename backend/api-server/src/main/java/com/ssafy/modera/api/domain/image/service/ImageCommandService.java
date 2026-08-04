@@ -50,6 +50,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -158,6 +159,17 @@ public class ImageCommandService {
             }
         }
 
+        if (!deletedImageIds.isEmpty()) {
+            String deletedIdsPayload = deletedImageIds.stream()
+                    .map(String::valueOf)
+                    .collect(Collectors.joining(",", "[", "]"));
+            userDataChangeOutboxService.record(
+                    userId,
+                    UserDataChangeResource.IMAGE_DELETE_BATCH,
+                    deletedIdsPayload
+            );
+        }
+
         return new ImageDeleteResponse(
                 List.copyOf(deletedImageIds),
                 List.copyOf(alreadyDeletedImageIds),
@@ -202,14 +214,8 @@ public class ImageCommandService {
     private ImageDeleteStatus deleteInIndependentTransaction(Integer userId, Integer imageId) {
         TransactionTemplate transaction = new TransactionTemplate(transactionManager);
         transaction.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
-        return transaction.execute(status -> {
-            ImageDeleteStatus result = imageCommandRepository.deleteImage(userId, imageId);
-            if (result == ImageDeleteStatus.DELETED) {
-                userDataChangeOutboxService.record(
-                        userId, UserDataChangeResource.IMAGE, String.valueOf(imageId));
-            }
-            return result;
-        });
+        return transaction.execute(
+                status -> imageCommandRepository.deleteImage(userId, imageId));
     }
 
     private RegistrationResult registerOne(Integer userId, ImageRegisterItemRequest request) {

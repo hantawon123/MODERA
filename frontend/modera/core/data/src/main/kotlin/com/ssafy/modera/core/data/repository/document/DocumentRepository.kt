@@ -1,12 +1,13 @@
 package com.ssafy.modera.core.data.repository.document
 
+import com.ssafy.modera.core.data.sync.Syncable
 import com.ssafy.modera.core.model.DocumentDetail
 import com.ssafy.modera.core.model.analyzedimage.AnalyzedImage
 import com.ssafy.modera.core.model.document.Document
 import com.ssafy.modera.core.model.document.DocumentSortType
 import kotlinx.coroutines.flow.Flow
 
-interface DocumentRepository {
+interface DocumentRepository : Syncable {
 
     fun getDocumentDetail(
         documentId: Long,
@@ -17,9 +18,7 @@ interface DocumentRepository {
     ): Flow<List<AnalyzedImage>>
 
     fun getDocuments(
-        page: Int = 0,
         sortType: DocumentSortType = DocumentSortType.LATEST,
-        onLastPageReached: () -> Unit,
     ): Flow<List<Document>>
 
     fun regenerateDocument(

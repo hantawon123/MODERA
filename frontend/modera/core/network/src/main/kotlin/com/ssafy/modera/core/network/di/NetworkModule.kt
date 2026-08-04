@@ -1,8 +1,8 @@
-﻿package com.ssafy.modera.core.network.di
+package com.ssafy.modera.core.network.di
 
 import com.skydoves.sandwich.retrofit.adapters.ApiResponseCallAdapterFactory
-import com.ssafy.modera.core.network.AccessTokenInterceptor
 import com.ssafy.modera.core.network.AccessTokenAuthenticator
+import com.ssafy.modera.core.network.AccessTokenInterceptor
 import com.ssafy.modera.core.network.AuthHttpClient
 import com.ssafy.modera.core.network.AuthRetrofit
 import com.ssafy.modera.core.network.BuildConfig
@@ -14,12 +14,12 @@ import com.ssafy.modera.core.network.service.CategoryClient
 import com.ssafy.modera.core.network.service.CategoryService
 import com.ssafy.modera.core.network.service.ImageClient
 import com.ssafy.modera.core.network.service.ImageService
+import com.ssafy.modera.core.network.service.auth.AuthClient
+import com.ssafy.modera.core.network.service.auth.AuthService
 import com.ssafy.modera.core.network.service.document.DocumentClient
 import com.ssafy.modera.core.network.service.document.DocumentService
 import com.ssafy.modera.core.network.service.search.SearchClient
 import com.ssafy.modera.core.network.service.search.SearchService
-import com.ssafy.modera.core.network.service.auth.AuthClient
-import com.ssafy.modera.core.network.service.auth.AuthService
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -79,7 +79,8 @@ internal object NetworkModule {
                 if (BuildConfig.DEBUG) {
                     addNetworkInterceptor(
                         HttpLoggingInterceptor().apply {
-                            level = HttpLoggingInterceptor.Level.BASIC
+                            level = HttpLoggingInterceptor.Level.BODY
+                            redactHeader("Authorization")
                         },
                     )
                 }

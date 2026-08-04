@@ -56,13 +56,13 @@ def icon_key(category_id: int) -> str:
 # 카테고리마다 화풍이 달라진다. 글자 금지를 명시하는 이유: 생성 모델은 한국어
 # 글자를 자주 깨진 형태로 그려 넣는다.
 _PROMPT = (
-    'A single flat vector pictogram icon representing the concept "{name}" '
-    "(a Korean word) for a mobile app category list. "
-    "One centered symbol, thick rounded strokes, two or three flat colors, "
-    "transparent background, generous even margin around the symbol. "
-    "No text, no letters, no numbers, no words, no shadow, no gradient, "
-    "no frame, no border, no background scene, not photorealistic."
+    "A single centered 3D rendered miniature icon representing the concept '{name}' for a app category. "
+    "Handcrafted felt and fabric toy texture with visible stitching details, "
+    "clay-like soft volume, warm pastel tones, matte finish. "
+    "Clean studio lighting, soft subtle shadows, isolated on a solid white background. "
+    "No text, no letters, no words, simple isolated object, high quality."
 )
+
 
 
 def _mock_png(name: str) -> bytes:

@@ -41,6 +41,12 @@ internal fun startKakaoLogin(
     }
 }
 
+fun logoutFromKakao(onComplete: () -> Unit = {}) {
+    UserApiClient.instance.logout { _ ->
+        onComplete()
+    }
+}
+
 private fun logKakaoDevelopersConfig(context: Context) {
     val nativeAppKey = runCatching { KakaoSdk.appKey }.getOrNull().orEmpty()
     val keyHash = Utility.getKeyHash(context)

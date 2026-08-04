@@ -3,6 +3,7 @@ package com.ssafy.modera.session
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ssafy.modera.core.data.repository.auth.AuthRepository
+import com.ssafy.modera.feature.login.logoutFromKakao
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -10,7 +11,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.suspendCancellableCoroutine
 import javax.inject.Inject
+import kotlin.coroutines.resume
 
 @HiltViewModel
 class AppSessionViewModel @Inject constructor(
@@ -45,6 +48,11 @@ class AppSessionViewModel @Inject constructor(
 
     fun logout() {
         viewModelScope.launch {
+            suspendCancellableCoroutine { continuation ->
+                logoutFromKakao {
+                    continuation.resume(Unit)
+                }
+            }
             authRepository.logout()
         }
     }

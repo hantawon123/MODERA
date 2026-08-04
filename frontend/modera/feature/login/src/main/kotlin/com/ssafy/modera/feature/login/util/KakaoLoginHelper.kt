@@ -1,4 +1,4 @@
-package com.ssafy.modera.feature.login
+package com.ssafy.modera.feature.login.util
 
 import android.content.Context
 import android.util.Log

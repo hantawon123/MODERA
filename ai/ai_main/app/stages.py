@@ -12,7 +12,7 @@ from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
-from . import category_store, gemini_client, search, spring_client, storage
+from . import category_icon, category_store, gemini_client, search, spring_client, storage
 from .category import CategoryResolution, normalize_name, resolve_category
 from .config import get_settings
 from .jobs import job_registry, job_store
@@ -653,6 +653,15 @@ async def run_agent_core(
         image_id, proposed, resolution.name,
         resolution.similarity, resolution.matched_by, resolution.created,
     )
+
+    # 신규 카테고리면 아이콘을 만들어 둔다. 백그라운드라 분석 응답을 붙잡지 않고,
+    # 실패해도 삼킨다(첫 조회가 재시도를 겸한다 — category_icon.py).
+    # id 는 아래 콜백의 categoryId 와 반드시 같은 식으로 계산한다.
+    if resolution.created:
+        category_icon.schedule_icon(
+            resolution.category_id or search.stable_id(resolution.name),
+            resolution.name,
+        )
 
     # 판정된 카테고리의 대표 벡터를 이 요약 임베딩으로 갱신한다(없으면 생성).
     # 이 저장이 있어야 카테고리와 그 벡터가 서버 재기동 뒤에도 남고, 이미지가

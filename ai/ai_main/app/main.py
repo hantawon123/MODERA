@@ -15,8 +15,8 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse, Response
 
 from . import (
-    app_images, app_library, doc_selection, document, gemini_client, internal_api,
-    reanalyze, related, responses, search, storage,
+    app_images, app_library, category_icon, doc_selection, document, gemini_client,
+    internal_api, reanalyze, related, responses, search, storage,
 )
 from .config import get_settings
 from .deps import (
@@ -264,3 +264,6 @@ app.include_router(internal_api.router)
 # 5·7·8 장은 app_library.py 에 있다. 규약 배너도 app_images.py 로 함께 옮겼다.
 app.include_router(app_images.router)
 app.include_router(app_library.router)
+# 카테고리 아이콘(생성·보관·조회). 기능 전체가 category_icon.py 안에 있다.
+# 라우트가 /api/v1 이라 토큰 검사는 라우트 데코레이터에 있다(app_library 와 같은 방식).
+app.include_router(category_icon.router)

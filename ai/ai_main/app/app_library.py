@@ -186,6 +186,9 @@ async def app_category_list(
         CategoryCard(
             category_id=search.stable_id(i["name"]),
             name=i["name"],
+            # 카테고리 아이콘. key 가 categoryId 라 주소를 문자열로 조립하면 끝이고
+            # (매핑 조회 없음), 없으면 그 주소를 처음 열 때 생성된다(category_icon.py).
+            icon_url=f"/api/v1/categories/{search.stable_id(i['name'])}/icon",
             # 이 카테고리에 가장 최근 분류된 사진의 썸네일을 그대로 가리킨다.
             # 카테고리 전용 이미지를 따로 만들지 않는다(사진마다 썸네일 1장).
             thumbnail_url=(_thumbnail_url(i["thumbnail_image_id"],

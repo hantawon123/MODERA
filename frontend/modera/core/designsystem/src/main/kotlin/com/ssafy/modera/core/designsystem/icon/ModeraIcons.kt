@@ -108,4 +108,7 @@ object ModeraIcons {
 
     @DrawableRes
     val UserProfile = R.drawable.ic_user_profile_24
+
+    @DrawableRes
+    val Logout = R.drawable.ic_logout_24
 }

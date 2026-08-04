@@ -19,6 +19,7 @@ import com.ssafy.modera.api.domain.library.repository.UserImageRepository;
 import com.ssafy.modera.api.global.config.StorageProperties;
 import com.ssafy.modera.api.global.exception.BusinessException;
 import com.ssafy.modera.api.domain.notification.outbox.UserDataChangeOutboxService;
+import com.ssafy.modera.api.domain.notification.outbox.UserDataChangeResource;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -350,13 +351,14 @@ class ImageCommandServiceTest {
         when(imageCommandRepository.deleteImage(1, 11)).thenReturn(ImageDeleteStatus.ALREADY_DELETED);
         when(imageCommandRepository.deleteImage(1, 12)).thenReturn(ImageDeleteStatus.NOT_FOUND);
         when(imageCommandRepository.deleteImage(1, 13)).thenThrow(new RuntimeException("database error"));
+        when(imageCommandRepository.deleteImage(1, 14)).thenReturn(ImageDeleteStatus.DELETED);
 
         var response = imageCommandService.deleteImages(
                 1,
-                new ImageDeleteRequest(List.of(10, 11, 12, 13, 10))
+                new ImageDeleteRequest(List.of(10, 11, 12, 13, 14, 10))
         );
 
-        assertThat(response.deletedImageIds()).containsExactly(10);
+        assertThat(response.deletedImageIds()).containsExactly(10, 14);
         assertThat(response.alreadyDeletedImageIds()).containsExactly(11);
         assertThat(response.failed()).extracting(
                 item -> item.imageId() + ":" + item.reason()
@@ -364,8 +366,10 @@ class ImageCommandServiceTest {
                 "12:IMAGE_NOT_FOUND",
                 "13:INTERNAL_ERROR"
         );
-        assertThat(response.deletedCount()).isEqualTo(1);
+        assertThat(response.deletedCount()).isEqualTo(2);
         assertThat(response.failedCount()).isEqualTo(2);
         verify(imageCommandRepository, times(1)).deleteImage(1, 10);
+        verify(userDataChangeOutboxService).record(
+                1, UserDataChangeResource.IMAGE_DELETE_BATCH, "[10,14]");
     }
 }

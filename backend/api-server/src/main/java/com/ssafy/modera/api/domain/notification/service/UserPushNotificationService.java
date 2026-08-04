@@ -1,6 +1,7 @@
 package com.ssafy.modera.api.domain.notification.service;
 
 import com.ssafy.modera.api.domain.notification.dto.PushSendResult;
+import com.ssafy.modera.api.domain.notification.outbox.UserDataChangeResource;
 import com.ssafy.modera.api.domain.user.repository.UserPushTokenQueryRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -36,9 +37,15 @@ public class UserPushNotificationService {
         Map<String, String> data = new LinkedHashMap<>();
         data.put("type", "DATA_CHANGED");
         data.put("eventId", eventId.toString());
-        data.put("resource", resource);
-        if (resourceId != null && !resourceId.isBlank()) {
-            data.put("resourceId", resourceId);
+        if (UserDataChangeResource.IMAGE_DELETE_BATCH.equals(resource)) {
+            data.put("resource", UserDataChangeResource.IMAGE);
+            data.put("changeType", "DELETED");
+            data.put("resourceIds", resourceId);
+        } else {
+            data.put("resource", resource);
+            if (resourceId != null && !resourceId.isBlank()) {
+                data.put("resourceId", resourceId);
+            }
         }
         data.put("occurredAt", occurredAt.toString());
         return pushMessageSender.send(

@@ -1,6 +1,7 @@
 package com.ssafy.modera
 
 import android.app.Application
+import com.kakao.sdk.common.KakaoSdk
 import com.ssafy.modera.fcm.FcmNotificationChannel
 import dagger.hilt.android.HiltAndroidApp
 
@@ -9,5 +10,12 @@ class ModeraApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         FcmNotificationChannel.create(this)
+
+        if (BuildConfig.KAKAO_NATIVE_APP_KEY.isNotBlank()) {
+            KakaoSdk.init(
+                context = this,
+                appKey = BuildConfig.KAKAO_NATIVE_APP_KEY,
+            )
+        }
     }
 }

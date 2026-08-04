@@ -18,11 +18,18 @@ class Navigator(val state: NavigationState) {
     }
 
     fun navigateToHome() {
-        val homeKey = state.startKey
-        goToTopLevel(homeKey)
-        state.subStacks[homeKey]?.apply {
+        resetToStart()
+    }
+
+    fun resetToStart() {
+        val startKey = state.startKey
+        state.topLevelStack.apply {
             clear()
-            add(homeKey)
+            add(startKey)
+        }
+        state.subStacks.forEach { (key, stack) ->
+            stack.clear()
+            stack.add(key)
         }
     }
 

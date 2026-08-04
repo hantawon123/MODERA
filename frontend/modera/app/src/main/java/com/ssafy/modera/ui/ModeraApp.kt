@@ -87,6 +87,9 @@ fun ModeraApp(
     val snackbarHostState = rememberModeraSnackbarHostState()
     val logoutMessage = stringResource(R.string.logout_success)
     val sessionUiState by sessionViewModel.uiState.collectAsStateWithLifecycle()
+    val navigator = remember(appState.navigationState) {
+        Navigator(appState.navigationState)
+    }
 
     ModeraSnackbarProvider(
         snackbarHostState = snackbarHostState,
@@ -109,6 +112,7 @@ fun ModeraApp(
                     viewModel = viewModel,
                     windowAdaptiveInfo = windowAdaptiveInfo,
                     onLogoutClick = {
+                        navigator.resetToStart()
                         sessionViewModel.logout(
                             ModeraSnackbarMessage(
                                 message = logoutMessage,

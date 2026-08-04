@@ -68,6 +68,7 @@ dependencies {
     implementation(projects.feature.imageviewer)
     implementation(projects.feature.document)
     implementation(projects.feature.documentdetail)
+    implementation(projects.feature.documentedit)
     implementation(projects.feature.documentcreate)
 
     implementation(libs.androidx.activity.compose)

@@ -13,6 +13,7 @@ public record ImageDetailResponse(
         @Schema(description = "제목") String title,
         @Schema(description = "즐겨찾기 여부") Boolean favorite,
         @Schema(description = "분석 요약") String summary,
+        @Schema(description = "카테고리 아이디") Integer categoryId,
         @Schema(description = "카테고리 이름") String category,
         @Schema(description = "태그 이름 목록") List<String> tags,
         @Schema(description = "핵심 정보 목록") List<String> keyInformation,

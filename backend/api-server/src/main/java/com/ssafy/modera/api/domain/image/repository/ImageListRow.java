@@ -10,6 +10,7 @@ public record ImageListRow(
         Boolean favorite,
         String thumbnailKey,
         List<String> tagNames,
+        Integer categoryId,
         String categoryName,
         OffsetDateTime uploadedAt,
         Boolean isDocumented,

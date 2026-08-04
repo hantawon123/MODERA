@@ -54,7 +54,7 @@ class ImageQueryServiceTest {
                 .thenReturn(new ImageListPage(
                         List.of(new ImageListRow(
                                 10, "C++", "summary", false, null,
-                                List.of("C++", "공부"), "공부", uploadedAt,
+                                List.of("C++", "공부"), 3, "공부", uploadedAt,
                                 true, false)),
                         1
                 ));
@@ -67,6 +67,7 @@ class ImageQueryServiceTest {
         assertThat(response.hasPrevious()).isFalse();
         assertThat(response.list().getFirst().thumbnailUrl()).isNull();
         assertThat(response.list().getFirst().tags()).containsExactly("C++", "공부");
+        assertThat(response.list().getFirst().categoryId()).isEqualTo(3);
         assertThat(response.list().getFirst().isDocumented()).isTrue();
         assertThat(response.list().getFirst().isCalendared()).isFalse();
         assertThat(Arrays.stream(response.getClass().getRecordComponents())
@@ -82,7 +83,7 @@ class ImageQueryServiceTest {
                 1, null, 3, null, "UPLOADED_DESC", 0, 20))
                 .thenReturn(new ImageListPage(List.of(new ImageListRow(
                         10, "title", "summary", false, "thumb/10.jpg",
-                        List.of(), "category", uploadedAt, false, false)), 1));
+                        List.of(), 3, "category", uploadedAt, false, false)), 1));
         StorageProperties.Bucket bucket = new StorageProperties.Bucket();
         bucket.setThumbnails("thumbnails");
         when(storageProperties.getBucket()).thenReturn(bucket);
@@ -114,6 +115,7 @@ class ImageQueryServiceTest {
                         false,
                         null,
                         null,
+                        null,
                         List.of(),
                         List.of(),
                         null,
@@ -141,6 +143,7 @@ class ImageQueryServiceTest {
                         "image.jpg",
                         true,
                         "summary",
+                        3,
                         "공부",
                         List.of("C++"),
                         List.of("가격: 32000원"),
@@ -167,6 +170,7 @@ class ImageQueryServiceTest {
         assertThat(response.imageId()).isEqualTo(10);
         assertThat(response.imageUrl()).isEqualTo("https://storage.example/image");
         assertThat(response.favorite()).isTrue();
+        assertThat(response.categoryId()).isEqualTo(3);
         assertThat(response.tags()).containsExactly("C++");
         assertThat(response.ocrRefinedText()).isEqualTo("삼성전자 제품 안내(정제본)");
         assertThat(response.uploadedAt())

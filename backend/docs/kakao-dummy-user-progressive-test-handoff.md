@@ -372,3 +372,124 @@ AI/Worker/MinIO: 제외
   - `/home/ubuntu/k6/results/compare-kakao-previous-132-binary-20260804`
 
 테스트 종료 후 `modera-api-old`, 임시 현재 API, mock Kakao, k6 컨테이너를 모두 제거했다. 원본 `modera-api:latest`가 SHA `d246a06fdc20...`으로 실행 중이며 mock Kakao 환경 변수는 남아 있지 않다. 관리 포트 9080의 DB, Redis, liveness, readiness를 포함한 health 응답은 모두 `UP`으로 확인했다.
+
+## 13. 로그인 트랜잭션·로그 최적화 후 재측정
+
+### 13.1 대상 버전과 사전 검증
+
+2026-08-04에 `develop/backend`에 푸시된 다음 버전을 대상으로 재측정했다.
+
+| 항목 | 값 |
+|---|---|
+| Git commit | `8bc972700edc55b8c1f5ae94349520bce2570b53` |
+| Docker 이미지 | `modera-api:latest` |
+| 이미지 SHA | `ceecaecc8c602839b1051236731f526fd1f4dcd4daf106920b801354ca0b9eba` |
+| API Hikari max/min idle | 30 / 10 |
+
+로컬 브랜치와 `origin/develop/backend`가 모두 위 commit을 가리키는지 확인했다. 배포 JAR 안에 `KakaoUserTransactionService`, `RefreshTokenHash`, 변경된 `RequestIdFilter` 클래스가 들어 있는 것도 직접 확인했다.
+
+본 부하 테스트 전에 mock Kakao 계정 하나로 실제 MODERA 로그인·회원가입 경로를 실행했다. HTTP 200, Access Token 발급을 확인했으며 최초 가입 응답시간은 672ms였다. 300ms 이상 요청이므로 `RequestIdFilter`의 WARN 한 줄만 남았고, 정상 로그인 성공 INFO 로그는 남지 않아 로그 축소 정책도 의도대로 적용된 것을 확인했다.
+
+### 13.2 테스트 조건
+
+12절의 AI 제외 사용자 시나리오와 판정 기준을 그대로 사용했다.
+
+- 모든 VU가 서로 다른 기존 mock Kakao 회원으로 한 번 로그인한다.
+- 사용자마다 120초 동안 Spring 앱 API를 정확히 100회 호출한다.
+- 10초 분산 진입과 호출 간 ±30% jitter를 적용한다.
+- 홈, 갤러리, 검색, 일정, 문서의 다섯 흐름을 균등하게 사용한다.
+- AI, Worker, MinIO, 이미지 업로드와 실제 시맨틱 검색은 제외한다.
+- 앱 p95 300ms 이하, 인증 p95 1초 이하를 만족해야 한다.
+- 앱 오류, 인증 오류, 실패 사용자, 미완주 사용자가 한 명이라도 있으면 실패다.
+- 별도 liveness VU가 전체 실행 중 카테고리 API를 1초마다 호출한다.
+- 최초 실패 상한을 찾은 뒤 25명 단위까지 이분 탐색한다.
+
+이번 재측정부터 각 후보 사이에 단순 고정 cooldown만 두지 않았다. Prometheus에서 다음 상태가 연속으로 확인된 뒤에만 다음 후보를 시작했다.
+
+```text
+hikaricp_connections_active = 0
+hikaricp_connections_pending = 0
+hikaricp_connections_timeout_total 증가 없음
+```
+
+API 풀의 `minimum-idle`은 10이므로 부하 종료 후 idle 연결이 30보다 작아지는 것은 정상적인 동적 축소다. 따라서 idle=30은 회복 조건으로 사용하지 않았다.
+
+### 13.3 bootstrap 직후 실행 결과 제외
+
+최초 실행은 4,000개 계정을 bootstrap한 직후 2,775명 본 테스트를 바로 시작했다. 이 실행은 로그인 오류 920건, 앱 오류 1,518건, 앱 p95 1.30초, 인증 p95 10초로 실패했다. 서버 로그에는 다음 상태가 남았다.
+
+```text
+Hikari total=30, active=30, idle=0, waiting=약 1,600
+Connection is not available, request timed out after 약 3초
+```
+
+사용자 요청에 따라 이 결과는 성능 경계에서 제외했다. 계정 준비 부하가 회복되지 않은 상태에서 본 측정을 연속 실행했기 때문이다. Hikari의 active/pending이 0으로 회복된 것을 두 번 확인한 뒤 동일한 2,775명을 다시 실행했고, 재실행은 277,500건 전부 성공했다.
+
+이 결과는 이후 테스트 실행 절차에 다음 규칙이 반드시 필요함을 보여준다.
+
+```text
+bootstrap 완료
+-> Hikari active=0, pending=0 및 timeout 누계 정지 확인
+-> 본 사용자 시나리오 시작
+```
+
+### 13.4 유효 측정 결과
+
+| 사용자 | 계획 앱 요청 | 실제 앱 요청 | 앱 오류 | 인증 오류 | 완주 사용자 | 실패 흐름 | 앱 p95 | 인증 p95 | 전체 RPS | 판정 |
+|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|
+| 2,775 | 277,500 | 277,500 | 0 | 0 | 2,775 | 0 | 31.76ms | 381.99ms | 1,990.83 | PASS |
+| 3,000 | 300,000 | 300,000 | 0 | 0 | 3,000 | 0 | 83.72ms | 496.53ms | 2,152.71 | PASS |
+| 3,250 | 325,000 | 324,800 | 34,573 | 2 | 3,248 | 3,250 | 3,449.11ms | 712.65ms | 1,795.48 | FAIL |
+| 3,125 | 312,500 | 286,400 | 19,333 | 261 | 2,864 | 3,124 | 3,220.91ms | 4,264.31ms | 1,760.55 | FAIL |
+| 3,050 | 305,000 | 305,000 | 0 | 0 | 3,050 | 0 | 144.60ms | 213.24ms | 2,189.30 | PASS |
+| 3,075 | 307,500 | 307,500 | 0 | 0 | 3,075 | 0 | 86.91ms | 103.05ms | 2,215.95 | PASS |
+| 3,100 | 310,000 | 310,000 | 0 | 0 | 3,100 | 0 | 142.61ms | 374.30ms | 2,229.06 | PASS |
+
+25명 해상도의 최종 경계는 다음과 같다.
+
+| 최대 성공 사용자 | 최초 실패 사용자 | 최대 성공 앱 요청 | 최대 성공 전체 RPS | 앱 p95 | 인증 p95 |
+|---:|---:|---:|---:|---:|---:|
+| **3,100명** | **3,125명** | **310,000건** | **2,229.06 req/s** | **142.61ms** | **374.30ms** |
+
+### 13.5 이전 현재 버전과 비교
+
+| 버전 | 최대 성공 사용자 | 최초 실패 사용자 | 최대 성공 전체 RPS | 최대 성공 앱 p95 | 최대 성공 인증 p95 |
+|---|---:|---:|---:|---:|---:|
+| 최적화 전 `d246` | 2,775 | 2,800 | 1,988.62 | 246.31ms | 635.08ms |
+| 최적화 후 `8bc97270` | 3,100 | 3,125 | 2,229.06 | 142.61ms | 374.30ms |
+
+- 최대 성공 동시 사용자는 325명, 약 11.71% 증가했다.
+- 최대 성공 지점의 전체 처리율은 약 240.44 req/s, 12.09% 증가했다.
+- 같은 2,775명에서 앱 p95는 246.31ms에서 31.76ms로 약 87.11% 감소했다.
+- 같은 2,775명에서 인증 p95는 635.08ms에서 381.99ms로 약 39.85% 감소했다.
+- 앱·인증 오류가 0건인 상태에서 앱 p95 300ms 목표를 3,100명까지 만족했다.
+
+각 실행은 한 번씩 수행했으므로 경계 부근의 절대 수치는 시스템 잡음에 따라 달라질 수 있다. 특히 3,075명과 3,100명의 p95가 단조 증가하지 않은 것은 실행 편차를 보여준다. 발표나 용량 계획에서는 `3,100명이 영구 보장된다`가 아니라 `동일 조건 단일 실행에서 3,100명까지 통과했고 3,125명에서 최초 실패했다`고 표현해야 한다.
+
+### 13.6 최초 실패 병목
+
+3,125명 실행 50초 시점에 다음 Hikari 상태를 관측했다.
+
+```text
+active = 30 / max 30
+pending = 2,783
+```
+
+이후 DB 연결 획득 3초 timeout이 발생하면서 로그인과 일반 앱 API가 함께 실패했다. 앱 p95는 3.22초, 인증 p95는 4.26초로 증가했다. 따라서 이번 조건의 최초 실패 병목은 CPU나 메모리 고갈보다 API Hikari 풀 포화와 DB 연결 대기 큐의 급증이다. 풀 크기를 30보다 더 늘리지 않는다는 현재 제약에서는 로그인 트랜잭션의 연결 점유시간 단축, 로그인 유입 완화, DB 쿼리·인덱스 최적화가 다음 개선 방향이다.
+
+3,250명에서도 `active=30`, `pending=3,016`을 관측했고 앱 오류 34,573건이 발생해 같은 병목이 재현됐다.
+
+### 13.7 원시 결과와 운영 복구
+
+- 원시 결과 표: `docs/performance-results/kakao-capacity-current-8bc97270-20260804.tsv`
+- 서버 결과 디렉터리:
+  - `/home/ubuntu/k6/results/compare-kakao-current-8bc97270-progressive-20260804` (bootstrap 직후 실행, 제외)
+  - `/home/ubuntu/k6/results/compare-kakao-current-8bc97270-retry-2775-recovered-20260804`
+  - `/home/ubuntu/k6/results/compare-kakao-current-8bc97270-probe-3000-recovered-20260804`
+  - `/home/ubuntu/k6/results/compare-kakao-current-8bc97270-probe-3250-recovered-20260804`
+  - `/home/ubuntu/k6/results/compare-kakao-current-8bc97270-binary-3125-recovered-20260804`
+  - `/home/ubuntu/k6/results/compare-kakao-current-8bc97270-binary-3050-recovered-20260804`
+  - `/home/ubuntu/k6/results/compare-kakao-current-8bc97270-binary-3075-recovered-20260804`
+  - `/home/ubuntu/k6/results/compare-kakao-current-8bc97270-binary-3100-recovered-20260804`
+
+테스트 종료 후 임시 API, mock Kakao, k6 컨테이너를 모두 제거했다. 원본 `modera-api:latest`는 테스트 대상과 동일한 SHA `ceecaecc8c60...`으로 복구됐고 mock Kakao 환경 변수는 남아 있지 않다. Docker 내부 관리 포트의 readiness 응답은 `UP`으로 확인했다.

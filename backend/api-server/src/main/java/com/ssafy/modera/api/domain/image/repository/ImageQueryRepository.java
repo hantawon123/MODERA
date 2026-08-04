@@ -117,6 +117,7 @@ public class ImageQueryRepository {
                                image_view.title,
                                image_view.favorite,
                                image_view.summary,
+                               image_view.category_id,
                                image_view.category_name,
                                image_view.tags,
                                image_view.key_information,
@@ -142,6 +143,7 @@ public class ImageQueryRepository {
                                     rs.getString("title"),
                                     rs.getObject("favorite", Boolean.class),
                                     rs.getString("summary"),
+                                    rs.getObject("category_id", Integer.class),
                                     rs.getString("category_name"),
                                     parseTagNames(rs.getString("tags")),
                                     toStringList(rs.getArray("key_information")),
@@ -428,7 +430,7 @@ public class ImageQueryRepository {
                 """
                 SELECT image_view.image_id, image_view.title, image_view.summary,
                        image_view.favorite, image_view.thumbnail_key, image_view.tags,
-                       image_view.category_name, image_view.uploaded_at,
+                       image_view.category_id, image_view.category_name, image_view.uploaded_at,
                        image_view.is_documented_yn, image_view.is_calendared_yn
                 """ + where + orderBy(sort) + " LIMIT ? OFFSET ?",
                 (rs, rowNum) -> new ImageListRow(
@@ -438,6 +440,7 @@ public class ImageQueryRepository {
                         rs.getObject("favorite", Boolean.class),
                         rs.getString("thumbnail_key"),
                         parseTagNames(rs.getString("tags")),
+                        rs.getObject("category_id", Integer.class),
                         rs.getString("category_name"),
                         rs.getObject("uploaded_at", java.time.OffsetDateTime.class),
                         "Y".equals(rs.getString("is_documented_yn")),
@@ -628,6 +631,7 @@ public class ImageQueryRepository {
                        image_view.favorite,
                        image_view.thumbnail_key,
                        image_view.tags,
+                       image_view.category_id,
                        image_view.category_name,
                        image_view.uploaded_at,
                        image_view.is_documented_yn,
@@ -656,6 +660,7 @@ public class ImageQueryRepository {
                         rs.getObject("favorite", Boolean.class),
                         rs.getString("thumbnail_key"),
                         parseTagNames(rs.getString("tags")),
+                        rs.getObject("category_id", Integer.class),
                         rs.getString("category_name"),
                         rs.getObject("uploaded_at", java.time.OffsetDateTime.class),
                         "Y".equals(rs.getString("is_documented_yn")),

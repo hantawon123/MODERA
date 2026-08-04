@@ -11,6 +11,7 @@ public record UserImageViewDetail(
         String title,
         Boolean favorite,
         String summary,
+        Integer categoryId,
         String categoryName,
         List<String> tagNames,
         List<String> keyInformation,

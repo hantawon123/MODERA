@@ -25,10 +25,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -46,6 +43,7 @@ import com.ssafy.modera.core.designsystem.component.ModeraNavigationSuiteScaffol
 import com.ssafy.modera.core.designsystem.component.Scaffold
 import com.ssafy.modera.core.navigation.Navigator
 import com.ssafy.modera.core.navigation.toEntries
+import com.ssafy.modera.core.ui.LoadingScreen
 import com.ssafy.modera.feature.analyzedimagedetail.navigation.analyzedImageDetailEntry
 import com.ssafy.modera.feature.analyzedimagedetail.navigation.navigateToImageDetail
 import com.ssafy.modera.feature.calendar.navigation.calendarEntry
@@ -67,14 +65,15 @@ import com.ssafy.modera.feature.home.navigation.HomeNavKey
 import com.ssafy.modera.feature.home.navigation.homeEntry
 import com.ssafy.modera.feature.imageviewer.navigation.imageViewerEntry
 import com.ssafy.modera.feature.imageviewer.navigation.navigateToImageViewer
-import com.ssafy.modera.feature.relatedimages.navigation.relatedImagesEntry
-import com.ssafy.modera.media.rememberGalleryPickerLauncher
 import com.ssafy.modera.feature.login.LoginRoute
-import com.ssafy.modera.core.ui.LoadingScreen
-import com.ssafy.modera.session.AppSessionUiState
-import com.ssafy.modera.session.AppSessionViewModel
+import com.ssafy.modera.feature.relatedimages.navigation.relatedImagesEntry
+import com.ssafy.modera.feature.settings.navigation.navigateToSettings
+import com.ssafy.modera.feature.settings.navigation.settingsEntry
+import com.ssafy.modera.media.rememberGalleryPickerLauncher
 import com.ssafy.modera.navigation.BOTTOM_NAV_ITEMS
 import com.ssafy.modera.navigation.TOP_LEVEL_NAV_ITEMS
+import com.ssafy.modera.session.AppSessionUiState
+import com.ssafy.modera.session.AppSessionViewModel
 
 @Composable
 fun ModeraApp(
@@ -100,10 +99,6 @@ fun ModeraApp(
         AppSessionUiState.Authenticated -> Unit
     }
 
-    var showSettingsDialog by rememberSaveable {
-        mutableStateOf(false)
-    }
-
     val snackbarHostState = remember {
         SnackbarHostState()
     }
@@ -120,6 +115,7 @@ fun ModeraApp(
             viewModel = viewModel,
             snackbarHostState = snackbarHostState,
             windowAdaptiveInfo = windowAdaptiveInfo,
+            onLogoutClick = sessionViewModel::logout,
             modifier = modifier,
         )
     }
@@ -134,6 +130,7 @@ internal fun ModeraApp(
     appState: ModeraAppState,
     viewModel: MainViewModel,
     snackbarHostState: SnackbarHostState,
+    onLogoutClick: () -> Unit,
     modifier: Modifier = Modifier,
     windowAdaptiveInfo: WindowAdaptiveInfo = currentWindowAdaptiveInfo(),
 ) {
@@ -311,8 +308,15 @@ internal fun ModeraApp(
                                         navigator::navigateToCategoryTab,
                                     onCalendarClick =
                                         navigator::navigateToCalendar,
+                                    onSettingsClick =
+                                        navigator::navigateToSettings,
                                     onSearchResultClick =
                                         navigator::navigateToImageDetail,
+                                )
+
+                                settingsEntry(
+                                    onBackClick = handleBack,
+                                    onLogoutClick = onLogoutClick,
                                 )
 
                                 categoryEntry(

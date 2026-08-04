@@ -93,6 +93,7 @@ dependencies {
     implementation(projects.feature.document.documentcreate)
     implementation(projects.feature.login)
     implementation(projects.feature.settings)
+    implementation(projects.sync.work)
 
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.navigation3.ui)
@@ -108,6 +109,9 @@ dependencies {
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.okhttp)
     implementation(libs.kakao.user)
+    implementation(libs.androidx.work.ktx)
+    implementation(libs.hilt.ext.work)
+
 
     // material3
     implementation(libs.androidx.compose.material3)

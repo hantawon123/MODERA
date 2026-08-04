@@ -4,10 +4,10 @@ import android.content.Context
 import android.util.Log
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -15,11 +15,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -30,9 +28,11 @@ import com.kakao.sdk.common.model.ClientErrorCause
 import com.kakao.sdk.common.util.Utility
 import com.kakao.sdk.user.UserApiClient
 import com.ssafy.modera.core.component.ModeraIconTextButton
+import com.ssafy.modera.core.designsystem.R.drawable.img_modera_logo
 import com.ssafy.modera.core.designsystem.component.Text
 import com.ssafy.modera.core.designsystem.icon.ModeraIcons
 import com.ssafy.modera.core.designsystem.theme.ModeraTheme
+import com.ssafy.modera.core.ui.LoadingScreen
 
 private const val KAKAO_DEVELOPERS_LOG_TAG = "KakaoDevelopers"
 
@@ -44,24 +44,29 @@ fun LoginRoute(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
-    LoginScreen(
-        onKakaoLoginClick = {
-            startKakaoLogin(
-                context = context,
-                onSuccess = viewModel::loginWithKakao,
-                onFailure = viewModel::showKakaoLoginError,
+    when (uiState) {
+        LoginUiState.Loading -> LoadingScreen()
+        LoginUiState.Idle -> {
+            LoginScreen(
+                onKakaoLoginClick = {
+                    startKakaoLogin(
+                        context = context,
+                        onSuccess = viewModel::loginWithKakao,
+                        onFailure = viewModel::showKakaoLoginError,
+                    )
+                },
+                errorMessage = (uiState as? LoginUiState.Error)?.message,
+                modifier = modifier,
             )
-        },
-        isLoading = uiState == LoginUiState.Loading,
-        errorMessage = (uiState as? LoginUiState.Error)?.message,
-        modifier = modifier,
-    )
+        }
+
+        else -> {}
+    }
 }
 
 @Composable
 fun LoginScreen(
     onKakaoLoginClick: () -> Unit,
-    isLoading: Boolean,
     errorMessage: String? = null,
     modifier: Modifier = Modifier,
 ) {
@@ -76,18 +81,14 @@ fun LoginScreen(
 
         Text(
             text = stringResource(R.string.login_tagline),
-            style = ModeraTheme.typography.bodyR16,
+            style = ModeraTheme.typography.bodyR14,
             color = ModeraTheme.colors.gray400,
         )
 
-        Spacer(modifier = Modifier.height(26.dp))
-
         Image(
-            painter = painterResource(com.ssafy.modera.core.designsystem.R.drawable.img_modera_logo
-
-            ),
-            contentDescription = stringResource(R.string.login_mascot_description),
-            modifier = Modifier.size(LoginScreenDefaults.MascotSize),
+            painter = painterResource(img_modera_logo),
+            contentDescription = stringResource(R.string.login_brand),
+            modifier = Modifier.fillMaxWidth(),
         )
 
         Spacer(modifier = Modifier.weight(LoginScreenDefaults.MiddleWeight))
@@ -98,53 +99,16 @@ fun LoginScreen(
             modifier = Modifier.size(LoginScreenDefaults.MascotSize),
         )
 
-        Spacer(modifier = Modifier.height(32.dp))
+        Spacer(modifier = Modifier.height(20.dp))
 
         ModeraIconTextButton(
             text = stringResource(R.string.login_kakao_button),
             icon = painterResource(ModeraIcons.Kakao),
             onClick = onKakaoLoginClick,
             buttonColor = ModeraTheme.colors.kakaoYellow,
-            contentColor = ModeraTheme.colors.brown,
+            contentColor = ModeraTheme.colors.black,
             borderColor = ModeraTheme.colors.kakaoYellow,
         )
-//        Button(
-//            onClick = onKakaoLoginClick,
-//            enabled = !isLoading,
-//            modifier = Modifier
-//                .fillMaxWidth()
-//                .height(LoginScreenDefaults.ButtonHeight),
-//            shape = RoundedCornerShape(LoginScreenDefaults.ButtonCornerRadius),
-//            colors = ModeraButtonDefaults.buttonColors(
-//                containerColor = ModeraTheme.colors.kakaoYellow,
-//                contentColor = ModeraTheme.colors.black,
-//                disabledContainerColor = ModeraTheme.colors.yellow500,
-//                disabledContentColor = ModeraTheme.colors.gray700,
-//            ),
-//        ) {
-//            if (isLoading) {
-//                LoadingWheel(
-//                    contentDescription = stringResource(R.string.login_in_progress),
-//                    modifier = Modifier.size(24.dp),
-//                )
-//            } else {
-//                Row(
-//                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-//                    verticalAlignment = Alignment.CenterVertically,
-//                ) {
-//                    Icon(
-//                        painter = painterResource(ModeraIcons.Kakao),
-//                        contentDescription = stringResource(R.string.login_kakao_icon_description),
-//                        modifier = Modifier.size(24.dp),
-//                        tint = ModeraTheme.colors.black,
-//                    )
-//                    Text(
-//                        text = stringResource(R.string.login_kakao_button),
-//                        style = ModeraTheme.typography.titleSB18,
-//                    )
-//                }
-//            }
-//        }
 
         if (errorMessage != null) {
             Spacer(modifier = Modifier.height(12.dp))
@@ -212,32 +176,10 @@ private fun logKakaoDevelopersConfig(context: Context) {
     Log.d(KAKAO_DEVELOPERS_LOG_TAG, "==============================================")
 }
 
-@Composable
-private fun LoginBrand() {
-    Box(
-        modifier = Modifier
-            .rotate(-3f)
-            .background(ModeraTheme.colors.yellow500)
-            .padding(horizontal = 28.dp, vertical = 2.dp),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(
-            text = stringResource(R.string.login_brand),
-            style = ModeraTheme.typography.titleB22.copy(
-                fontStyle = FontStyle.Italic,
-            ),
-            color = ModeraTheme.colors.yellow700,
-            modifier = Modifier.rotate(3f),
-        )
-    }
-}
-
 private object LoginScreenDefaults {
     val HorizontalPadding = 32.dp
     val MascotSize = 140.dp
-    val ButtonHeight = 56.dp
-    val ButtonCornerRadius = 18.dp
-    const val TopWeight = 0.8f
+    const val TopWeight = 1f
     const val MiddleWeight = 1.7f
     const val BottomWeight = 0.55f
 }
@@ -248,7 +190,6 @@ private fun LoginScreenPreview() {
     ModeraTheme {
         LoginScreen(
             onKakaoLoginClick = {},
-            isLoading = false,
         )
     }
 }

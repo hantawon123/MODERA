@@ -1,4 +1,4 @@
-package com.ssafy.modera.core.network.di
+﻿package com.ssafy.modera.core.network.di
 
 import com.skydoves.sandwich.retrofit.adapters.ApiResponseCallAdapterFactory
 import com.ssafy.modera.core.network.AccessTokenAuthenticator
@@ -79,7 +79,7 @@ internal object NetworkModule {
                 if (BuildConfig.DEBUG) {
                     addNetworkInterceptor(
                         HttpLoggingInterceptor().apply {
-                            level = HttpLoggingInterceptor.Level.BODY
+                            level = HttpLoggingInterceptor.Level.BASIC
                             redactHeader("Authorization")
                         },
                     )

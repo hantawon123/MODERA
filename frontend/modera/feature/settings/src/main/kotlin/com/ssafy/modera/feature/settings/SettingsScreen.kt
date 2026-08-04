@@ -80,7 +80,8 @@ fun SettingsScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(ModeraTheme.colors.white),
+            .background(ModeraTheme.colors.white)
+            .padding(bottom = 30.dp),
     ) {
         ModeraTopBar(
             onBackClick = onBackClick,

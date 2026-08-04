@@ -7,12 +7,13 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class DocumentCreateNavKey(
-    val imageId: Long,
-    val title: String,
-    val summary: String,
-    val thumbnailUrl: String,
-    val hashtags: List<String>,
-    val favorite: Boolean,
+    val image: DocumentCreateImageArg,
+) : NavKey
+
+@Serializable
+data class DocumentRecreateNavKey(
+    val documentId: Long,
+    val images: List<DocumentCreateImageArg>,
 ) : NavKey
 
 fun Navigator.navigateToDocumentCreate(
@@ -20,19 +21,42 @@ fun Navigator.navigateToDocumentCreate(
 ) {
     navigate(
         DocumentCreateNavKey(
-            imageId = analyzedImage.id,
-            title = analyzedImage.title,
-            summary = analyzedImage.summary,
-            thumbnailUrl = analyzedImage.thumbnailUrl,
-            hashtags = analyzedImage.hashtags,
-            favorite = analyzedImage.favorite,
+            image = analyzedImage.asNavArg(),
         ),
     )
 }
 
-internal fun DocumentCreateNavKey.asInitialImage(): AnalyzedImage =
+fun Navigator.navigateToDocumentRecreate(
+    documentId: Long,
+    analyzedImages: List<AnalyzedImage>,
+) {
+    require(analyzedImages.isNotEmpty()) {
+        "문서를 재구성하려면 이미지가 한 장 이상 필요합니다."
+    }
+
+    navigate(
+        DocumentRecreateNavKey(
+            documentId = documentId,
+            images = analyzedImages
+                .distinctBy(AnalyzedImage::id)
+                .map(AnalyzedImage::asNavArg),
+        ),
+    )
+}
+
+private fun AnalyzedImage.asNavArg(): DocumentCreateImageArg =
+    DocumentCreateImageArg(
+        id = id,
+        title = title,
+        summary = summary,
+        thumbnailUrl = thumbnailUrl,
+        hashtags = hashtags,
+        favorite = favorite,
+    )
+
+internal fun DocumentCreateImageArg.asAnalyzedImage(): AnalyzedImage =
     AnalyzedImage(
-        id = imageId,
+        id = id,
         title = title,
         summary = summary,
         thumbnailUrl = thumbnailUrl,

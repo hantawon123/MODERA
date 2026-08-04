@@ -65,7 +65,7 @@ internal fun DocumentCreateScreen(
         onSelectedImageRemoveClick = viewModel::removeSelectedImage,
         onRecommendedImageClick = viewModel::addSelectedImage,
         onCreateDocumentClick = {
-            viewModel.createDocument { documentId ->
+            viewModel.submitDocument { documentId ->
                 onDocumentCreated(documentId)
             }
         },

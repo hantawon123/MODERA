@@ -25,16 +25,12 @@ class LoginViewModel @Inject constructor(
             runCatching {
                 authRepository.loginWithKakao(kakaoAccessToken)
             }.onFailure {
-                _uiState.value = LoginUiState.Error(
-                    message = "로그인에 실패했습니다. 잠시 후 다시 시도해 주세요.",
-                )
+                _uiState.value = LoginUiState.Error(LoginError.ServerLoginFailed)
             }
         }
     }
 
     fun showKakaoLoginError() {
-        _uiState.value = LoginUiState.Error(
-            message = "카카오 로그인을 완료하지 못했습니다.",
-        )
+        _uiState.value = LoginUiState.Error(LoginError.KakaoLoginFailed)
     }
 }

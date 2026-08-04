@@ -1,7 +1,5 @@
 package com.ssafy.modera.feature.login
 
-import android.content.Context
-import android.util.Log
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
@@ -22,19 +20,12 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.kakao.sdk.common.KakaoSdk
-import com.kakao.sdk.common.model.ClientError
-import com.kakao.sdk.common.model.ClientErrorCause
-import com.kakao.sdk.common.util.Utility
-import com.kakao.sdk.user.UserApiClient
 import com.ssafy.modera.core.component.ModeraIconTextButton
 import com.ssafy.modera.core.designsystem.R.drawable.img_modera_logo
 import com.ssafy.modera.core.designsystem.component.Text
 import com.ssafy.modera.core.designsystem.icon.ModeraIcons
 import com.ssafy.modera.core.designsystem.theme.ModeraTheme
 import com.ssafy.modera.core.ui.LoadingScreen
-
-private const val KAKAO_DEVELOPERS_LOG_TAG = "KakaoDevelopers"
 
 @Composable
 fun LoginRoute(
@@ -44,9 +35,14 @@ fun LoginRoute(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
-    when (uiState) {
-        LoginUiState.Loading -> LoadingScreen()
-        LoginUiState.Idle -> {
+    when (val state = uiState) {
+        LoginUiState.Loading -> {
+            LoadingScreen(modifier = modifier)
+        }
+
+        LoginUiState.Idle,
+        is LoginUiState.Error,
+        -> {
             LoginScreen(
                 onKakaoLoginClick = {
                     startKakaoLogin(
@@ -55,12 +51,10 @@ fun LoginRoute(
                         onFailure = viewModel::showKakaoLoginError,
                     )
                 },
-                errorMessage = (uiState as? LoginUiState.Error)?.message,
+                errorMessage = (state as? LoginUiState.Error)?.type?.toMessage(),
                 modifier = modifier,
             )
         }
-
-        else -> {}
     }
 }
 
@@ -79,27 +73,57 @@ fun LoginScreen(
     ) {
         Spacer(modifier = Modifier.weight(LoginScreenDefaults.TopWeight))
 
+        LoginBrandSection()
+
+        Spacer(modifier = Modifier.weight(LoginScreenDefaults.MiddleWeight))
+
+        LoginActionSection(
+            onKakaoLoginClick = onKakaoLoginClick,
+            errorMessage = errorMessage,
+        )
+
+        Spacer(modifier = Modifier.weight(LoginScreenDefaults.BottomWeight))
+    }
+}
+
+@Composable
+private fun LoginBrandSection(
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
         Text(
             text = stringResource(R.string.login_tagline),
             style = ModeraTheme.typography.bodyR14,
             color = ModeraTheme.colors.gray400,
         )
-
         Image(
             painter = painterResource(img_modera_logo),
             contentDescription = stringResource(R.string.login_brand),
             modifier = Modifier.fillMaxWidth(),
         )
+    }
+}
 
-        Spacer(modifier = Modifier.weight(LoginScreenDefaults.MiddleWeight))
-
+@Composable
+private fun LoginActionSection(
+    onKakaoLoginClick: () -> Unit,
+    errorMessage: String?,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
         Image(
             painter = painterResource(R.drawable.img_login_mascot),
             contentDescription = stringResource(R.string.login_mascot_description),
             modifier = Modifier.size(LoginScreenDefaults.MascotSize),
         )
 
-        Spacer(modifier = Modifier.height(20.dp))
+        Spacer(modifier = Modifier.height(LoginScreenDefaults.MascotButtonSpacing))
 
         ModeraIconTextButton(
             text = stringResource(R.string.login_kakao_button),
@@ -111,74 +135,21 @@ fun LoginScreen(
         )
 
         if (errorMessage != null) {
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(LoginScreenDefaults.ErrorSpacing))
             Text(
                 text = errorMessage,
                 style = ModeraTheme.typography.captionR12,
                 color = ModeraTheme.colors.red,
             )
         }
-
-        Spacer(modifier = Modifier.weight(LoginScreenDefaults.BottomWeight))
     }
-}
-
-private fun startKakaoLogin(
-    context: Context,
-    onSuccess: (String) -> Unit,
-    onFailure: () -> Unit,
-) {
-    logKakaoDevelopersConfig(context)
-
-    val accountLogin: () -> Unit = {
-        UserApiClient.instance.loginWithKakaoAccount(context) { token, error ->
-            if (error != null || token == null) {
-                onFailure()
-            } else {
-                onSuccess(token.accessToken)
-            }
-        }
-    }
-
-    if (!UserApiClient.instance.isKakaoTalkLoginAvailable(context)) {
-        accountLogin()
-        return
-    }
-
-    UserApiClient.instance.loginWithKakaoTalk(context) { token, error ->
-        when {
-            token != null -> onSuccess(token.accessToken)
-            error is ClientError && error.reason == ClientErrorCause.Cancelled -> onFailure()
-            else -> accountLogin()
-        }
-    }
-}
-
-/**
- * 카카오 디벨로퍼스(앱 설정)에 등록해야 하는 값을 Logcat에 출력한다.
- * 필터 태그: [KakaoDevelopers]
- */
-private fun logKakaoDevelopersConfig(context: Context) {
-    val nativeAppKey = runCatching { KakaoSdk.appKey }.getOrNull().orEmpty()
-    val keyHash = Utility.getKeyHash(context)
-    val packageName = context.packageName
-    val redirectUri = if (nativeAppKey.isNotBlank()) {
-        "kakao$nativeAppKey://oauth"
-    } else {
-        "kakao{NATIVE_APP_KEY}://oauth"
-    }
-
-    Log.d(KAKAO_DEVELOPERS_LOG_TAG, "========== Kakao Developers 등록 정보 ==========")
-    Log.d(KAKAO_DEVELOPERS_LOG_TAG, "패키지명: $packageName")
-    Log.d(KAKAO_DEVELOPERS_LOG_TAG, "네이티브 앱 키: $nativeAppKey")
-    Log.d(KAKAO_DEVELOPERS_LOG_TAG, "키 해시: $keyHash")
-    Log.d(KAKAO_DEVELOPERS_LOG_TAG, "Redirect URI: $redirectUri")
-    Log.d(KAKAO_DEVELOPERS_LOG_TAG, "==============================================")
 }
 
 private object LoginScreenDefaults {
     val HorizontalPadding = 32.dp
     val MascotSize = 140.dp
+    val MascotButtonSpacing = 20.dp
+    val ErrorSpacing = 12.dp
     const val TopWeight = 1f
     const val MiddleWeight = 1.7f
     const val BottomWeight = 0.55f
@@ -188,8 +159,23 @@ private object LoginScreenDefaults {
 @Composable
 private fun LoginScreenPreview() {
     ModeraTheme {
+        LoginScreen(onKakaoLoginClick = {})
+    }
+}
+
+@Preview(showBackground = true, widthDp = 360, heightDp = 780)
+@Composable
+private fun LoginScreenErrorPreview() {
+    ModeraTheme {
         LoginScreen(
             onKakaoLoginClick = {},
+            errorMessage = LoginError.ServerLoginFailed.toMessage(),
         )
     }
+}
+
+@Composable
+private fun LoginError.toMessage(): String = when (this) {
+    LoginError.KakaoLoginFailed -> stringResource(R.string.login_kakao_incomplete)
+    LoginError.ServerLoginFailed -> stringResource(R.string.login_failed)
 }

@@ -7,4 +7,6 @@
     <string name="login_kakao_icon_description">카카오</string>
     <string name="login_in_progress">로그인 중</string>
     <string name="login_cancelled">카카오 로그인이 취소되었습니다.</string>
+    <string name="login_failed">로그인에 실패했습니다. 잠시 후 다시 시도해 주세요.</string>
+    <string name="login_kakao_incomplete">카카오 로그인을 완료하지 못했습니다.</string>
 </resources>

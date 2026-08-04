@@ -76,6 +76,9 @@ import com.ssafy.modera.feature.settings.navigation.settingsEntry
 import com.ssafy.modera.media.rememberGalleryPickerLauncher
 import com.ssafy.modera.navigation.BOTTOM_NAV_ITEMS
 import com.ssafy.modera.navigation.TOP_LEVEL_NAV_ITEMS
+import com.ssafy.modera.navigation.moderaPopTransition
+import com.ssafy.modera.navigation.moderaPredictivePopTransition
+import com.ssafy.modera.navigation.moderaPushTransition
 import com.ssafy.modera.session.AppSessionUiState
 import com.ssafy.modera.session.AppSessionViewModel
 
@@ -375,11 +378,18 @@ internal fun ModeraApp(
                             }
 
                             NavDisplay(
-                                entries =
-                                    appState.navigationState.toEntries(
-                                        entryProvider,
-                                    ),
-                                // sceneStrategy = listDetailStrategy,
+                                entries = appState.navigationState.toEntries(
+                                    entryProvider,
+                                ),
+                                transitionSpec = {
+                                    moderaPushTransition()
+                                },
+                                popTransitionSpec = {
+                                    moderaPopTransition()
+                                },
+                                predictivePopTransitionSpec = {
+                                    moderaPredictivePopTransition()
+                                },
                                 onBack = handleBack,
                             )
                         }

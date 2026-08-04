@@ -5,146 +5,50 @@ import androidx.lifecycle.viewModelScope
 import com.ssafy.modera.core.common.result.Result
 import com.ssafy.modera.core.common.result.asResult
 import com.ssafy.modera.core.data.repository.document.DocumentRepository
-import com.ssafy.modera.core.model.analyzedimage.AnalyzedImage
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.launch
-import java.util.UUID
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 
 @HiltViewModel(
     assistedFactory = DocumentEditViewModel.Factory::class,
 )
 class DocumentEditViewModel @AssistedInject constructor(
-    private val documentRepository: DocumentRepository,
-    @Assisted private val documentId: Long,
+    documentRepository: DocumentRepository,
+    @Assisted documentId: Long,
 ) : ViewModel() {
 
-    private var clientRequestId: String =
-        UUID.randomUUID().toString()
+    val uiState: StateFlow<DocumentEditUiState> =
+        documentRepository
+            .getDocumentImages(documentId)
+            .asResult()
+            .map { result ->
+                when (result) {
+                    Result.Loading -> {
+                        DocumentEditUiState.Loading
+                    }
 
-    val uiState: StateFlow<DocumentEditUiState>
-        field = MutableStateFlow<DocumentEditUiState>(
-            DocumentEditUiState.Loading,
-        )
+                    is Result.Success -> {
+                        DocumentEditUiState.Success(
+                            images = result.data,
+                        )
+                    }
 
-    init {
-        loadDocumentImages()
-    }
-
-    private fun loadDocumentImages() {
-        viewModelScope.launch {
-            documentRepository
-                .getDocumentImages(documentId)
-                .asResult()
-                .collect { result ->
-                    uiState.value = when (result) {
-                        Result.Loading -> {
-                            DocumentEditUiState.Loading
-                        }
-
-                        is Result.Success -> {
-                            DocumentEditUiState.Success(
-                                images = result.data,
-                                selectedImageIds = result.data
-                                    .map(AnalyzedImage::id)
-                                    .toSet(),
-                            )
-                        }
-
-                        is Result.Error -> {
-                            DocumentEditUiState.Error(
-                                exception = result.exception,
-                            )
-                        }
+                    is Result.Error -> {
+                        DocumentEditUiState.Error(
+                            exception = result.exception,
+                        )
                     }
                 }
-        }
-    }
-
-    fun startEditing() {
-        val currentState =
-            uiState.value as? DocumentEditUiState.Success
-                ?: return
-
-        uiState.value = currentState.copy(
-            isEditing = true,
-        )
-    }
-
-    fun toggleImageSelection(imageId: Long) {
-        val currentState =
-            uiState.value as? DocumentEditUiState.Success
-                ?: return
-
-        if (!currentState.isEditing) {
-            return
-        }
-
-        val selectedImageIds =
-            currentState.selectedImageIds.toMutableSet().apply {
-                if (!add(imageId)) {
-                    remove(imageId)
-                }
-            }
-
-        uiState.value = currentState.copy(
-            selectedImageIds = selectedImageIds,
-        )
-    }
-
-    fun createDocument(
-        onCreated: (Long) -> Unit,
-    ) {
-        val currentState =
-            uiState.value as? DocumentEditUiState.Success
-                ?: return
-
-        val selectedImages = currentState.images.filter { image ->
-            image.id in currentState.selectedImageIds
-        }
-
-        if (selectedImages.isEmpty()) {
-            return
-        }
-
-        val imageIds = selectedImages.map(AnalyzedImage::id)
-
-        uiState.value = DocumentEditUiState.Applying(
-            selectedImages = selectedImages,
-        )
-
-        viewModelScope.launch {
-            documentRepository
-                .createDocument(
-                    clientRequestId = clientRequestId,
-                    imageIds = imageIds,
-                )
-                .asResult()
-                .collect { result ->
-                    when (result) {
-                        Result.Loading -> Unit
-
-                        is Result.Success -> {
-                            clientRequestId =
-                                UUID.randomUUID().toString()
-
-                            onCreated(result.data.id)
-                        }
-
-                        is Result.Error -> {
-                            uiState.value =
-                                DocumentEditUiState.Error(
-                                    exception = result.exception,
-                                )
-                        }
-                    }
-                }
-        }
-    }
+            }.stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(5_000),
+                initialValue = DocumentEditUiState.Loading,
+            )
 
     @AssistedFactory
     interface Factory {

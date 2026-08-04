@@ -8,12 +8,6 @@ sealed interface DocumentEditUiState {
 
     data class Success(
         val images: List<AnalyzedImage>,
-        val selectedImageIds: Set<Long>,
-        val isEditing: Boolean = false,
-    ) : DocumentEditUiState
-
-    data class Applying(
-        val selectedImages: List<AnalyzedImage>,
     ) : DocumentEditUiState
 
     data class Error(

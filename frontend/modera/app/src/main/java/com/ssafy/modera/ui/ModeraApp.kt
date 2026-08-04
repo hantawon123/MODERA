@@ -6,15 +6,11 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.consumeWindowInsets
-import androidx.compose.foundation.layout.exclude
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
 import androidx.compose.material3.adaptive.WindowAdaptiveInfo
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
@@ -23,12 +19,8 @@ import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteType
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -39,13 +31,20 @@ import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.ui.NavDisplay
 import com.ssafy.modera.MainViewModel
+import com.ssafy.modera.R
 import com.ssafy.modera.core.designsystem.component.ModeraBottomNavigation
 import com.ssafy.modera.core.designsystem.component.ModeraBottomNavigationAction
 import com.ssafy.modera.core.designsystem.component.ModeraBottomNavigationItem
 import com.ssafy.modera.core.designsystem.component.ModeraNavigationSuiteScaffold
 import com.ssafy.modera.core.designsystem.component.Scaffold
+import com.ssafy.modera.core.designsystem.icon.ModeraIcons
 import com.ssafy.modera.core.navigation.Navigator
 import com.ssafy.modera.core.navigation.toEntries
+import com.ssafy.modera.core.ui.LoadingScreen
+import com.ssafy.modera.core.ui.snackbar.ModeraSnackbarEffect
+import com.ssafy.modera.core.ui.snackbar.ModeraSnackbarMessage
+import com.ssafy.modera.core.ui.snackbar.ModeraSnackbarProvider
+import com.ssafy.modera.core.ui.snackbar.rememberModeraSnackbarHostState
 import com.ssafy.modera.feature.analyzedimagedetail.navigation.analyzedImageDetailEntry
 import com.ssafy.modera.feature.analyzedimagedetail.navigation.navigateToImageDetail
 import com.ssafy.modera.feature.calendar.navigation.calendarEntry
@@ -70,10 +69,15 @@ import com.ssafy.modera.feature.home.navigation.HomeNavKey
 import com.ssafy.modera.feature.home.navigation.homeEntry
 import com.ssafy.modera.feature.imageviewer.navigation.imageViewerEntry
 import com.ssafy.modera.feature.imageviewer.navigation.navigateToImageViewer
+import com.ssafy.modera.feature.login.LoginRoute
 import com.ssafy.modera.feature.relatedimages.navigation.relatedImagesEntry
+import com.ssafy.modera.feature.settings.navigation.navigateToSettings
+import com.ssafy.modera.feature.settings.navigation.settingsEntry
 import com.ssafy.modera.media.rememberGalleryPickerLauncher
 import com.ssafy.modera.navigation.BOTTOM_NAV_ITEMS
 import com.ssafy.modera.navigation.TOP_LEVEL_NAV_ITEMS
+import com.ssafy.modera.session.AppSessionUiState
+import com.ssafy.modera.session.AppSessionViewModel
 
 @Composable
 fun ModeraApp(
@@ -81,29 +85,48 @@ fun ModeraApp(
     modifier: Modifier = Modifier,
     windowAdaptiveInfo: WindowAdaptiveInfo = currentWindowAdaptiveInfo(),
     viewModel: MainViewModel = hiltViewModel(),
+    sessionViewModel: AppSessionViewModel = hiltViewModel(),
 ) {
-    var showSettingsDialog by rememberSaveable {
-        mutableStateOf(false)
+    val snackbarHostState = rememberModeraSnackbarHostState()
+    val logoutMessage = stringResource(R.string.logout_success)
+    val sessionUiState by sessionViewModel.uiState.collectAsStateWithLifecycle()
+    val navigator = remember(appState.navigationState) {
+        Navigator(appState.navigationState)
     }
 
-    val snackbarHostState = remember {
-        SnackbarHostState()
-    }
-
-    val localSnackbarHostState = compositionLocalOf<SnackbarHostState> {
-        error("SnackbarHostState state should be initialized at runtime")
-    }
-
-    CompositionLocalProvider(
-        localSnackbarHostState provides snackbarHostState,
+    ModeraSnackbarProvider(
+        snackbarHostState = snackbarHostState,
+        modifier = modifier,
     ) {
-        ModeraApp(
-            appState = appState,
-            viewModel = viewModel,
-            snackbarHostState = snackbarHostState,
-            windowAdaptiveInfo = windowAdaptiveInfo,
-            modifier = modifier,
-        )
+        ModeraSnackbarEffect(sessionViewModel)
+
+        when (sessionUiState) {
+            AppSessionUiState.Loading -> {
+                LoadingScreen(modifier = Modifier.fillMaxSize())
+            }
+
+            AppSessionUiState.Unauthenticated -> {
+                LoginRoute(modifier = Modifier.fillMaxSize())
+            }
+
+            AppSessionUiState.Authenticated -> {
+                ModeraApp(
+                    appState = appState,
+                    viewModel = viewModel,
+                    windowAdaptiveInfo = windowAdaptiveInfo,
+                    onLogoutClick = {
+                        navigator.resetToStart()
+                        sessionViewModel.logout(
+                            ModeraSnackbarMessage(
+                                message = logoutMessage,
+                                iconRes = ModeraIcons.Check,
+                            ),
+                        )
+                    },
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
+        }
     }
 }
 
@@ -115,10 +138,12 @@ fun ModeraApp(
 internal fun ModeraApp(
     appState: ModeraAppState,
     viewModel: MainViewModel,
-    snackbarHostState: SnackbarHostState,
+    onLogoutClick: () -> Unit,
     modifier: Modifier = Modifier,
     windowAdaptiveInfo: WindowAdaptiveInfo = currentWindowAdaptiveInfo(),
 ) {
+    ModeraSnackbarEffect(viewModel)
+
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
     val navigator = remember {
@@ -131,17 +156,6 @@ internal fun ModeraApp(
         HomeAnalysisState(
             onDismissRequest = viewModel::dismissAnalysisBanner,
         )
-    }
-
-    LaunchedEffect(
-        viewModel,
-        snackbarHostState,
-    ) {
-        viewModel.snackBarMessage.collect { message ->
-            snackbarHostState.showSnackbar(
-                message = message,
-            )
-        }
     }
 
     LaunchedEffect(
@@ -226,16 +240,6 @@ internal fun ModeraApp(
                         }
                     }
                 },
-                snackbarHost = {
-                    SnackbarHost(
-                        hostState = snackbarHostState,
-                        modifier = Modifier.windowInsetsPadding(
-                            WindowInsets.safeDrawing.exclude(
-                                WindowInsets.ime,
-                            ),
-                        ),
-                    )
-                },
             ) { padding ->
                 Column(
                     modifier = Modifier
@@ -293,8 +297,15 @@ internal fun ModeraApp(
                                         navigator::navigateToCategoryTab,
                                     onCalendarClick =
                                         navigator::navigateToCalendar,
+                                    onSettingsClick =
+                                        navigator::navigateToSettings,
                                     onSearchResultClick =
                                         navigator::navigateToImageDetail,
+                                )
+
+                                settingsEntry(
+                                    onBackClick = handleBack,
+                                    onLogoutClick = onLogoutClick,
                                 )
 
                                 categoryEntry(

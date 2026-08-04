@@ -8,13 +8,14 @@ import com.ssafy.modera.feature.home.HomeRoute
 fun EntryProviderScope<NavKey>.homeEntry(
     onCategoryClick: (Category) -> Unit,
     onCalendarClick: () -> Unit,
+    onSettingsClick: () -> Unit,
     onSearchResultClick: (Long) -> Unit,
 ) {
     entry<HomeNavKey> {
         HomeRoute(
             onCategoryClick = onCategoryClick,
             onCalendarClick = onCalendarClick,
-            onSettingsClick = { /* TODO: 추후 네비게이션 연결 */ },
+            onSettingsClick = onSettingsClick,
             onSearchResultClick = onSearchResultClick,
         )
     }

@@ -80,6 +80,7 @@ navigationUiKtx = "2.9.8"
 material3AdaptiveNavigationSuite = "1.4.0"
 foundationLayout = "1.11.4"
 markwon = "4.6.2"
+kakao = "2.24.0"
 
 
 [libraries]
@@ -162,6 +163,10 @@ room-testing = { group = "androidx.room", name = "room-testing", version.ref = "
 
 # DataStore
 androidx-dataStore = { group = "androidx.datastore", name = "datastore", version.ref = "androidxDataStore" }
+androidx-dataStore-preferences = { group = "androidx.datastore", name = "datastore-preferences", version.ref = "androidxDataStore" }
+
+# Kakao
+kakao-user = { group = "com.kakao.sdk", name = "v2-user", version.ref = "kakao" }
 
 # Protobuf
 protobuf-protoc = { group = "com.google.protobuf", name = "protoc", version.ref = "protobuf" }

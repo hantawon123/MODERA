@@ -3,7 +3,11 @@ package com.ssafy.modera
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ssafy.modera.core.data.repository.CategoryRepository
+import com.ssafy.modera.core.designsystem.icon.ModeraIcons
 import com.ssafy.modera.core.model.image.SelectedImage
+import com.ssafy.modera.core.ui.snackbar.ModeraSnackbarMessage
+import com.ssafy.modera.core.ui.snackbar.ModeraSnackbarMessagesProvider
+import com.ssafy.modera.core.ui.snackbar.ModeraSnackbarMessenger
 import com.ssafy.modera.media.ImageTextRecognizer
 import com.ssafy.modera.registration.ImageRegisterLogger
 import com.ssafy.modera.registration.ImageRegistrationHandler
@@ -13,11 +17,8 @@ import com.ssafy.modera.registration.startRegistration
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -28,13 +29,13 @@ import kotlin.time.Duration.Companion.seconds
 class MainViewModel @Inject constructor(
     private val imageRegistrationHandler: ImageRegistrationHandler,
     private val categoryRepository: CategoryRepository,
-) : ViewModel() {
+) : ViewModel(), ModeraSnackbarMessagesProvider {
+    private val snackbarMessenger = ModeraSnackbarMessenger()
+
+    override val snackbarMessages = snackbarMessenger.snackbarMessages
 
     private val _uiState = MutableStateFlow(MainUiState())
     val uiState: StateFlow<MainUiState> = _uiState.asStateFlow()
-
-    private val _snackBarMessage = MutableSharedFlow<String>(extraBufferCapacity = 1)
-    val snackBarMessage: SharedFlow<String> = _snackBarMessage.asSharedFlow()
 
     private var registerJob: Job? = null
 
@@ -93,6 +94,11 @@ class MainViewModel @Inject constructor(
 
         if (totalCount <= 0) return
 
-        _snackBarMessage.emit(state.registerSummaryMessage())
+        snackbarMessenger.send(
+            ModeraSnackbarMessage(
+                message = state.registerSummaryMessage(),
+                iconRes = ModeraIcons.Images,
+            ),
+        )
     }
 }

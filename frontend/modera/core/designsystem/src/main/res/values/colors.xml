@@ -21,6 +21,7 @@
     <color name="yellow_800">#FF8200</color>
     <color name="yellow_700_bg">#FFE2B3</color>
     <color name="yellow_900_bg">#FFCD7C</color>
+    <color name="kakao_yellow">#FEE500</color>
 
     <!-- Semantic -->
     <color name="red">#FF5B32</color>

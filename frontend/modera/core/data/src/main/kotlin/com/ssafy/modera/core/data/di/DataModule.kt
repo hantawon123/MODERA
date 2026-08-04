@@ -18,6 +18,8 @@ import com.ssafy.modera.core.data.repository.search.DefaultRecentSearchRepositor
 import com.ssafy.modera.core.data.repository.search.DefaultSearchRepository
 import com.ssafy.modera.core.data.repository.search.RecentSearchRepository
 import com.ssafy.modera.core.data.repository.search.SearchRepository
+import com.ssafy.modera.core.data.repository.auth.AuthRepository
+import com.ssafy.modera.core.data.repository.auth.DefaultAuthRepository
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
@@ -26,6 +28,11 @@ import dagger.hilt.components.SingletonComponent
 @Module
 @InstallIn(SingletonComponent::class)
 abstract class DataModule {
+
+    @Binds
+    abstract fun bindsAuthRepository(
+        impl: DefaultAuthRepository,
+    ): AuthRepository
 
     @Binds
     abstract fun bindsCategoryRepository(

@@ -20,6 +20,7 @@ mock 서버가 대체하는 것은 Kakao의 두 HTTP 응답뿐이다. MODERA API
 - `kakao-user-bootstrap.js`: 서로 다른 Kakao 사용자를 미리 가입시키는 k6 스크립트
 - `kakao-user-capacity.js`: VU별 고유 사용자로 로그인하고 앱 API를 호출하는 스크립트
 - `run-kakao-user-capacity.sh`: 사용자 사전 생성과 점진 테스트 실행기
+- `run-kakao-user-capacity-binary.sh`: 실패 상한 탐색 후 최대 성공 사용자를 이분 탐색하는 실행기
 
 ## 사용자 식별 규칙
 
@@ -108,3 +109,31 @@ docker run --rm --network infra_default \
 - `capacity.tsv`: 단계별 핵심 지표
 
 기능 오류, 로그인 오류 또는 미완료 사용자가 처음 발생한 단계에서 자동 중단한다. 일반 앱 API는 p95 300ms, mock Kakao를 포함한 인증은 p95 1초를 기본 threshold로 사용한다.
+
+## 이분 탐색
+
+선형 증가로 이미 성공한 하한이 있으면 `KNOWN_PASS`에 지정한다. `INITIAL_UPPER`가 성공하면 후보를 두 배로 늘려 최초 실패 상한을 찾고, 이후 두 경계 사이를 `RESOLUTION` 단위로 이분 탐색한다.
+
+```bash
+RESULT_DIR=/home/ubuntu/k6/results/kakao-binary-current \
+BASE_URL=http://modera-api:8080 \
+USER_OFFSET=7100000 \
+KNOWN_PASS=700 \
+INITIAL_UPPER=1400 \
+MAX_USERS=4000 \
+RESOLUTION=25 \
+CALLS_PER_SESSION=100 \
+SESSION_SECONDS=120 \
+/home/ubuntu/k6/run-kakao-user-capacity-binary.sh
+```
+
+이 실행기는 `capacity.tsv`와 함께 다음 경계 파일을 생성한다.
+
+```text
+status      BOUNDED
+max_pass   2775
+first_fail 2800
+resolution 25
+```
+
+`MAX_USERS`까지 모두 성공하면 `status`는 `LOWER_BOUND_ONLY`가 되며, 이는 최대값을 찾았다는 뜻이 아니라 해당 수까지 실패하지 않았다는 뜻이다.

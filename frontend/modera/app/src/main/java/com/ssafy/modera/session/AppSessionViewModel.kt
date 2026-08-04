@@ -3,6 +3,9 @@ package com.ssafy.modera.session
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ssafy.modera.core.data.repository.auth.AuthRepository
+import com.ssafy.modera.core.ui.snackbar.ModeraSnackbarMessage
+import com.ssafy.modera.core.ui.snackbar.ModeraSnackbarMessagesProvider
+import com.ssafy.modera.core.ui.snackbar.ModeraSnackbarMessenger
 import com.ssafy.modera.feature.login.util.logoutFromKakao
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -16,8 +19,11 @@ import javax.inject.Inject
 @HiltViewModel
 class AppSessionViewModel @Inject constructor(
     private val authRepository: AuthRepository,
-) : ViewModel() {
+) : ViewModel(), ModeraSnackbarMessagesProvider {
     private val isRestoring = MutableStateFlow(true)
+    private val snackbarMessenger = ModeraSnackbarMessenger()
+
+    override val snackbarMessages = snackbarMessenger.snackbarMessages
 
     val uiState: StateFlow<AppSessionUiState> = combine(
         authRepository.session,
@@ -44,10 +50,11 @@ class AppSessionViewModel @Inject constructor(
         }
     }
 
-    fun logout() {
+    fun logout(snackbarMessage: ModeraSnackbarMessage) {
         logoutFromKakao()
         viewModelScope.launch {
             authRepository.logout()
+            snackbarMessenger.send(snackbarMessage)
         }
     }
 }

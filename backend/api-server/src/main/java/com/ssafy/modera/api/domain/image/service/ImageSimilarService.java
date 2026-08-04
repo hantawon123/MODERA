@@ -34,9 +34,6 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class ImageSimilarService {
 
-    private static final int MIN_LIMIT = 1;
-    private static final int MAX_LIMIT = 50;
-
     private static final int OVER_FETCH_MULTIPLIER = 2;
     private static final int OVER_FETCH_MARGIN = 5;
     private static final int WORKER_MAX_LIMIT = 100;
@@ -49,21 +46,18 @@ public class ImageSimilarService {
     private final ThumbnailUrlFactory thumbnailUrlFactory;
     private final ImageQueryService imageQueryService;
 
-    public SimilarImagesResponse getSimilarImages(
-            Integer userId,
-            Integer imageId,
-            int limit
-    ) {
+    /**
+     * 기준 이미지와 연관된 본인 이미지를 유사도 내림차순으로 돌려준다.
+     *
+     * <p><b>개수 상한이 없다.</b> worker의 유사도 하한(MIN_SCORE)을 넘는 것을 전부 받아,
+     * 삭제·미소유분만 걸러 그대로 내보낸다. 결과가 너무 많아지면 여기에 LIMIT을 다시
+     * 붙이는 게 아니라 worker의 하한을 올려야 한다 — 관련도가 낮은 쪽부터 잘려야 하고,
+     * 개수로 자르면 그 경계가 임의가 된다.
+     */
+    public SimilarImagesResponse getSimilarImages(Integer userId, Integer imageId) {
         String baseTitle = imageSimilarReader.readBaseTitle(userId, imageId);
 
-        int effectiveLimit = clampLimit(limit);
-
-        List<WorkerSimilarImage> similarImages =
-                workerSearchClient.findSimilar(
-                        imageId,
-                        userId,
-                        overFetchLimit(effectiveLimit)
-                );
+        List<WorkerSimilarImage> similarImages = workerSearchClient.findSimilar(imageId, userId);
 
         if (similarImages.isEmpty()) {
             return SimilarImagesResponse.of(
@@ -81,20 +75,15 @@ public class ImageSimilarService {
                 imageSimilarReader.readSummaries(userId, similarImageIds);
 
         List<SimilarImageItemResponse> items =
-                createResponseItems(
-                        similarImages,
-                        summariesByImageId,
-                        effectiveLimit
-                );
+                createResponseItems(similarImages, summariesByImageId);
 
-        if (items.size() < effectiveLimit) {
+        if (items.size() < similarImages.size()) {
             log.debug(
-                    "유사 이미지 개수가 요청 limit보다 적습니다. "
-                            + "imageId={}, workerCount={}, responseCount={}, limit={}",
+                    "삭제됐거나 read model이 없는 이미지를 제외했습니다. "
+                            + "imageId={}, workerCount={}, responseCount={}",
                     imageId,
                     similarImages.size(),
-                    items.size(),
-                    effectiveLimit
+                    items.size()
             );
         }
 
@@ -160,17 +149,12 @@ public class ImageSimilarService {
 
     private List<SimilarImageItemResponse> createResponseItems(
             List<WorkerSimilarImage> similarImages,
-            Map<Integer, UserImageViewSummary> summariesByImageId,
-            int limit
+            Map<Integer, UserImageViewSummary> summariesByImageId
     ) {
         List<SimilarImageItemResponse> items =
-                new ArrayList<>(limit);
+                new ArrayList<>(similarImages.size());
 
         for (WorkerSimilarImage similarImage : similarImages) {
-            if (items.size() >= limit) {
-                break;
-            }
-
             UserImageViewSummary summary =
                     summariesByImageId.get(similarImage.imageId());
 
@@ -196,13 +180,7 @@ public class ImageSimilarService {
         return items;
     }
 
-    private int clampLimit(int limit) {
-        return Math.min(
-                Math.max(limit, MIN_LIMIT),
-                MAX_LIMIT
-        );
-    }
-
+    /** 5-7 추천 위젯 전용. 재검증에서 빠지는 분을 감안해 넉넉히 받아 자른다. */
     private int overFetchLimit(int effectiveLimit) {
         return Math.min(
                 effectiveLimit * OVER_FETCH_MULTIPLIER

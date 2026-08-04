@@ -368,12 +368,18 @@ def run_agent_generation(
             # 프론트 상세화면이 "분석 근거"로 보여주는 값이다(2026-08-03 프론트 요청).
             # 그래서 요약·선별이 아니라 **OCR 원문 교정**으로 범위를 좁힌다 — 없던
             # 내용을 채우거나 UI 잡음을 지우면 원문과 대응되지 않아 근거로 못 쓴다.
-            "[정제텍스트] refined_text 에 OCR 텍스트를 그대로 살리면서 깨진 글자만 "
-            "바로잡아 담아라. 이미지를 보고 오인식을 교정하고(예: '동으1서' → '동의서'), "
-            "줄바꿈·공백만 읽기 좋게 정돈하라. OCR 에 없는 내용을 새로 채우지 말고, "
-            "있는 줄을 지우거나 요약하지도 마라 — 버튼·탭 같은 UI 문구도 OCR 에 있으면 "
-            "그대로 남긴다. 손글씨·서명처럼 확신할 수 없는 글자는 추측해 바꾸지 마라. "
-            "OCR 이 비어 있으면 빈 문자열.\n\n"
+            #
+            # diff 출력(2026-08-04): 교정 전문 재출력이 출력 토큰의 태반($9/M)이라,
+            # 고친 줄만 받아 서버가 원문에 병합한다(_merge_refined). 장당 57→~43크레딧.
+            # 싼 모델(gpt-5-nano)에 교정을 떼어주는 안은 실측 기각 — 10장 중 URL 삭제
+            # 1건 + 손글씨 교정 능력 0. 교정 주체는 융합 모델을 유지한다.
+            "[정제텍스트] OCR 은 아래에 '번호| 내용' 줄로 온다. 이미지와 대조해 "
+            "**오인식이 있는 줄만** refined_lines 에 {\"n\":줄번호,\"t\":\"그 줄의 교정된 "
+            "전체 내용\"} 으로 담아라(예: '3| 동으1서' 가 오독이면 {\"n\":3,\"t\":\"동의서\"}). "
+            "고칠 줄이 없으면 빈 배열. 줄을 지우거나 요약하지 마라 — 번호 줄의 내용을 "
+            "통째로 바꾸는 교정만 허용된다. 손글씨·서명처럼 확신할 수 없는 글자는 추측해 "
+            "바꾸지 마라. 단, 오독이 전체의 절반을 넘어 줄 단위 교정이 무의미하면 "
+            "refined_lines 는 빈 배열로 두고 refined_full 에 교정 전문을 담아라.\n\n"
         )
     else:
         header = "OCR 텍스트와 이미지 분석 결과를 종합해 개인 지식 DB용 메타데이터를 생성하라.\n\n"
@@ -391,11 +397,17 @@ def run_agent_generation(
         + schedule_rule
         + language_rule
         + "반드시 아래 JSON만 출력. 마크다운·설명 금지.\n"
-        + ('{"informative":true,"thumbnail_focus":0.5,"refined_text":"...",' if image_bytes is not None else "{")
+        + ('{"informative":true,"thumbnail_focus":0.5,'
+           '"refined_lines":[{"n":1,"t":"..."}],"refined_full":null,'
+           if image_bytes is not None else "{")
         + '"title":"...","summary":"...","tags":["..."],"categories":["..."],'
         '"key_information":["..."],"analysis_confidence":0.0,'
         '"schedule":{"startAt":null,"endAt":null}}\n\n'
-        f"OCR: {ocr_text}\n"
+        # 융합 경로는 OCR 에 줄번호를 붙인다 — refined_lines 의 n 이 이 번호를 가리킨다.
+        # 모델이 줄을 세지 않고 읽게 해 병합(줄 단위 대체)을 결정적으로 만든다.
+        + (("OCR:\n" + "\n".join(
+                f"{i+1}| {line}" for i, line in enumerate(ocr_text.split("\n"))) + "\n")
+           if image_bytes is not None else f"OCR: {ocr_text}\n")
         + ("" if image_bytes is not None
            else f"이미지 분석: {image_analysis}")
     )
@@ -529,6 +541,35 @@ def _existing_tag_names(
     return names[:limit]
 
 
+def _merge_refined(raw_text: str, generated: dict[str, Any]) -> str:
+    """diff 출력(refined_lines)을 OCR 원문에 병합해 교정 전문을 복원한다.
+
+    우선순위: refined_full(전면 재구성 탈출구) > refined_lines 병합 > 구형 refined_text.
+    범위 밖 줄번호·형식 오류는 그 항목만 무시하고 원문 줄을 유지한다 — 병합 실패의
+    기본값이 '무교정 원문'이라 최악이어도 rawText 와 같다(근거 필드로 안전).
+    3000자 초과로 프롬프트에서 잘린 꼬리 줄들도 여기서 무교정 보존된다(구형
+    전문 방식은 꼬리가 유실됐다).
+    """
+    full = (generated.get("refined_full") or "").strip() if isinstance(
+        generated.get("refined_full"), str) else ""
+    if full:
+        return full
+    edits = generated.get("refined_lines")
+    if not isinstance(edits, list):
+        return (generated.get("refined_text") or "").strip()
+    lines = (raw_text or "").split("\n")
+    for e in edits:
+        if not isinstance(e, dict):
+            continue
+        try:
+            i = int(e.get("n")) - 1
+        except (TypeError, ValueError):
+            continue
+        if 0 <= i < len(lines) and isinstance(e.get("t"), str):
+            lines[i] = e["t"]
+    return "\n".join(lines).strip()
+
+
 async def run_agent(request: AnalyzeRequest) -> dict[str, Any]:
     ocr = request.input.ocr
     image_analysis = request.input.image_analysis
@@ -573,6 +614,10 @@ async def run_agent_core(
         ocr_text, analysis_dict, [c.name for c in candidates], max_tags, language,
         existing_tags, image_bytes,
     )
+
+    if image_bytes is not None:
+        # diff 출력 → 전문 복원. 이후 경로(콜백 ocrRefinedText)는 기존 그대로다.
+        generated["refined_text"] = _merge_refined(ocr_text, generated)
 
     if image_bytes is not None and not generated.get("informative", True):
         # 융합 경로의 비정보성 판정 — 임베딩·카테고리 판정·저장을 모두 생략한다.

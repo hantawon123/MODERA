@@ -18,6 +18,8 @@ import com.ssafy.modera.core.network.service.auth.AuthClient
 import com.ssafy.modera.core.network.service.auth.AuthService
 import com.ssafy.modera.core.network.service.document.DocumentClient
 import com.ssafy.modera.core.network.service.document.DocumentService
+import com.ssafy.modera.core.network.service.notification.NotificationClient
+import com.ssafy.modera.core.network.service.notification.NotificationService
 import com.ssafy.modera.core.network.service.search.SearchClient
 import com.ssafy.modera.core.network.service.search.SearchService
 import dagger.Module
@@ -217,4 +219,18 @@ internal object NetworkModule {
         DocumentClient(
             documentService = documentService,
         )
+
+    @Provides
+    @Singleton
+    fun provideNotificationService(
+        retrofit: Retrofit,
+    ): NotificationService =
+        retrofit.create(NotificationService::class.java)
+
+    @Provides
+    @Singleton
+    fun provideNotificationClient(
+        notificationService: NotificationService,
+    ): NotificationClient =
+        NotificationClient(notificationService)
 }

@@ -6,7 +6,7 @@ import androidx.navigation3.runtime.NavKey
 import com.ssafy.modera.R
 import com.ssafy.modera.core.designsystem.icon.ModeraIcons
 import com.ssafy.modera.feature.category.navigation.CategoryNavKey
-import com.ssafy.modera.feature.document.navigation.DocumentNavKey
+import com.ssafy.modera.feature.document.documents.navigation.DocumentNavKey
 import com.ssafy.modera.feature.favorite.navigation.FavoritesNavKey
 import com.ssafy.modera.feature.home.navigation.HomeNavKey
 import kotlinx.serialization.Serializable

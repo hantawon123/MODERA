@@ -134,6 +134,13 @@ class Settings:
         self.search_knn_min_cosine = float(os.environ.get("SEARCH_KNN_MIN_COSINE", "0.45"))
         # 임베딩이 없는 레거시 문서(빈 OCR·F2 이전)에만 적용하는 어휘 컷. 기본 off(하위호환).
         self.search_bm25_min_score = float(os.environ.get("SEARCH_BM25_MIN_SCORE", "0.0"))
+        # cascade 승격 보강(F4b). 기존 "BM25 빈결과일 때만 승격"은 BM25 가 오탐을 잡아도
+        # 승격을 막는다 — 실측(8/04, 24질의): "시험 신청한 내역"에 BM25 9건 전부 오탐,
+        # 정답은 kNN 에 있는데 기회가 없었다. BM25 최고 _score 가 이 값 미만이면 결과가
+        # 있어도 하이브리드로 보강한다. 0.0 = 기존 동작(빈결과만 승격, 하위호환 기본).
+        self.search_cascade_min_top_score = float(
+            os.environ.get("SEARCH_CASCADE_MIN_TOP_SCORE", "0.0")
+        )
 
         # 모델
         # GMS 프록시가 모델을 화이트리스트로 막는다. 허용 확인된 값:

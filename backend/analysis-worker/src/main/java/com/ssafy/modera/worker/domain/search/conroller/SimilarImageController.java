@@ -32,16 +32,16 @@ public class SimilarImageController {
     @Value("${internal.callback.token}")
     private String expectedToken;
 
+    /** 개수 상한이 없다 — 유사도 하한을 넘는 것을 전부 돌려준다(limit 파라미터 없음). */
     @GetMapping("/images/{imageId}/similar")
     public SimilarImagesResponse findSimilar(
             @RequestHeader(value = "X-Internal-Token", required = false) String token,
             @PathVariable(name = "imageId") int imageId,
-            @RequestParam int userId,
-            @RequestParam(defaultValue = "10") int limit
+            @RequestParam int userId
     ) {
         verifyToken(token);
 
-        List<SimilarImageRow> rows = similarImageService.findSimilar(imageId, userId, limit);
+        List<SimilarImageRow> rows = similarImageService.findSimilar(imageId, userId);
         log.info("연관 이미지 조회: imageId={} userId={} -> {}건", imageId, userId, rows.size());
 
         return new SimilarImagesResponse(

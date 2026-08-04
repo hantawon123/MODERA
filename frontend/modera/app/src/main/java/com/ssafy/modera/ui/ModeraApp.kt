@@ -53,12 +53,15 @@ import com.ssafy.modera.feature.category.navigation.CategoryNavKey
 import com.ssafy.modera.feature.category.navigation.categoryEntry
 import com.ssafy.modera.feature.category.navigation.navigateToCategorySearch
 import com.ssafy.modera.feature.category.navigation.navigateToCategoryTab
-import com.ssafy.modera.feature.document.navigation.DocumentNavKey
-import com.ssafy.modera.feature.document.navigation.documentEntry
-import com.ssafy.modera.feature.documentcreate.navigation.documentCreateEntry
-import com.ssafy.modera.feature.documentcreate.navigation.navigateToDocumentCreate
-import com.ssafy.modera.feature.documentdetail.navigation.DocumentDetailNavKey
-import com.ssafy.modera.feature.documentdetail.navigation.documentDetailEntry
+import com.ssafy.modera.feature.document.documentcreate.navigation.documentCreateEntry
+import com.ssafy.modera.feature.document.documentcreate.navigation.navigateToDocumentCreate
+import com.ssafy.modera.feature.document.documentcreate.navigation.navigateToDocumentRecreate
+import com.ssafy.modera.feature.document.documentdetail.navigation.DocumentDetailNavKey
+import com.ssafy.modera.feature.document.documentdetail.navigation.documentDetailEntry
+import com.ssafy.modera.feature.document.documentedit.navigation.documentEditEntry
+import com.ssafy.modera.feature.document.documentedit.navigation.navigateToDocumentEdit
+import com.ssafy.modera.feature.document.documents.navigation.DocumentNavKey
+import com.ssafy.modera.feature.document.documents.navigation.documentEntry
 import com.ssafy.modera.feature.favorite.navigation.favoritesEntry
 import com.ssafy.modera.feature.home.HomeAnalysisState
 import com.ssafy.modera.feature.home.LocalHomeAnalysisState
@@ -350,9 +353,18 @@ internal fun ModeraApp(
 
                                 documentDetailEntry(
                                     onBackClick = handleBack,
-                                    onManageImagesClick = { documentId ->
-                                        // Todo: 자료 관리 화면 연결
+                                    onManageImagesClick = navigator::navigateToDocumentEdit,
+                                )
+
+                                documentEditEntry(
+                                    onBackClick = handleBack,
+                                    onEditClick = { documentId, analyzedImages ->
+                                        navigator.navigateToDocumentRecreate(
+                                            documentId = documentId,
+                                            analyzedImages = analyzedImages,
+                                        )
                                     },
+                                    onImageClick = navigator::navigateToImageDetail,
                                 )
 
                                 documentCreateEntry(

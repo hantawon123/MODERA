@@ -2,6 +2,7 @@ package com.ssafy.modera.core.network.service.document
 
 import com.skydoves.sandwich.ApiResponse
 import com.ssafy.modera.core.network.model.BaseResponse
+import com.ssafy.modera.core.network.model.analyzedimage.AnalyzedImageResponse
 import com.ssafy.modera.core.network.model.document.CreateDocumentRequest
 import com.ssafy.modera.core.network.model.document.DocumentDetailResponse
 import com.ssafy.modera.core.network.model.document.DocumentsResponse
@@ -26,6 +27,11 @@ interface DocumentService {
         @Query("size") size: Int,
         @Query("sort") sort: String,
     ): ApiResponse<BaseResponse<DocumentsResponse>>
+
+    @GET("api/v1/documents/{documentId}/images")
+    suspend fun fetchDocumentImages(
+        @Path("documentId") documentId: Long,
+    ): ApiResponse<BaseResponse<List<AnalyzedImageResponse>>>
 
     @POST("api/v1/documents/{documentId}/regenerate")
     suspend fun regenerateDocument(

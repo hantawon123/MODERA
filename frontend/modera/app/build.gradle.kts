@@ -87,9 +87,10 @@ dependencies {
     implementation(projects.feature.calendar)
     implementation(projects.feature.analyzedimagedetail)
     implementation(projects.feature.imageviewer)
-    implementation(projects.feature.document)
-    implementation(projects.feature.documentdetail)
-    implementation(projects.feature.documentcreate)
+    implementation(projects.feature.document.documents)
+    implementation(projects.feature.document.documentdetail)
+    implementation(projects.feature.document.documentedit)
+    implementation(projects.feature.document.documentcreate)
     implementation(projects.feature.login)
     implementation(projects.feature.settings)
 

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="document_edit_title">스크린샷 관리</string>
+    <string name="document_edit_edit">편집</string>
+    <string name="document_edit_apply">적용하기</string>
+    <string name="document_edit_add_image">자료 추가하기</string>
+    <string name="document_edit_description">
+        스크린샷을 추가하거나 제거하면 문서 내용이 다시 생성돼요\n원하는 내용을 자유롭게 적용해보세요!
+    </string>
+    <string name="document_edit_load_error">스크린샷 목록을 불러오지 못했어요.</string>
+</resources>

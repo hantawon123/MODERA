@@ -60,6 +60,8 @@ import com.ssafy.modera.feature.documentcreate.navigation.documentCreateEntry
 import com.ssafy.modera.feature.documentcreate.navigation.navigateToDocumentCreate
 import com.ssafy.modera.feature.documentdetail.navigation.DocumentDetailNavKey
 import com.ssafy.modera.feature.documentdetail.navigation.documentDetailEntry
+import com.ssafy.modera.feature.documentedit.navigation.documentEditEntry
+import com.ssafy.modera.feature.documentedit.navigation.navigateToDocumentEdit
 import com.ssafy.modera.feature.favorite.navigation.favoritesEntry
 import com.ssafy.modera.feature.home.HomeAnalysisState
 import com.ssafy.modera.feature.home.LocalHomeAnalysisState
@@ -339,9 +341,15 @@ internal fun ModeraApp(
 
                                 documentDetailEntry(
                                     onBackClick = handleBack,
-                                    onManageImagesClick = { documentId ->
-                                        // Todo: 자료 관리 화면 연결
-                                    },
+                                    onManageImagesClick = navigator::navigateToDocumentEdit,
+                                )
+
+                                documentEditEntry(
+                                    onBackClick = handleBack,
+                                    onDocumentCreated = navigator::navigateToDocumentDetail,
+                                    onAddImagesClick = {
+                                        // Todo: 이미지 추가 화면 연결
+                                    }
                                 )
 
                                 documentCreateEntry(

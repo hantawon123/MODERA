@@ -159,25 +159,28 @@ def _is_not_found(e: Exception) -> bool:
     return status == 404 or code in ("404", "NoSuchKey", "NotFound", "NoSuchBucket")
 
 
-def object_exists(key: str) -> bool:
-    """원본이 실제로 올라왔는지 확인한다(명세 4-2 UPLOAD_NOT_FOUND 판정용).
+def object_exists(key: str, bucket: str | None = None) -> bool:
+    """객체가 실제로 있는지 확인한다(명세 4-2 UPLOAD_NOT_FOUND 판정용).
+
+    bucket 을 주면 그 버킷을, 비우면 원본 버킷을 본다.
 
     응답(False)은 그대로 두되, '객체 없음'과 스토리지 장애를 로그에서 구분한다.
     둘 다 False 로 삼키면 MinIO 가 죽은 것과 사용자가 업로드를 안 한 것이 똑같이
     UPLOAD_NOT_FOUND 로 보여서 원인을 못 찾는다.
     """
     settings = get_settings()
+    target = bucket or settings.s3_bucket
     try:
-        _client().head_object(Bucket=settings.s3_bucket, Key=key)
+        _client().head_object(Bucket=target, Key=key)
         return True
     except Exception as e:
         if _is_not_found(e):
-            logger.info("업로드 미완료 key=%s (객체 없음)", key)
+            logger.info("객체 없음 bucket=%s key=%s", target, key)
         else:
             # ponytail: 응답은 여전히 409 UPLOAD_NOT_FOUND 다. 장애를 별도 코드로
             # 구분해 주려면 여기서 예외를 올리고 4-2 에서 503 으로 매핑할 것.
-            logger.warning("업로드 확인 실패(스토리지 장애) key=%s: %s: %s",
-                           key, e.__class__.__name__, e)
+            logger.warning("객체 확인 실패(스토리지 장애) bucket=%s key=%s: %s: %s",
+                           target, key, e.__class__.__name__, e)
         return False
 
 
@@ -307,6 +310,40 @@ def fetch_thumbnail(key: str) -> bytes:
         return obj["Body"].read()
     except Exception as e:
         raise ImageFetchError(_why("썸네일 객체를 읽지 못했습니다", key, e)) from e
+
+
+# ── 카테고리 아이콘 버킷 ──────────────────────────────────────────────────
+# key 는 "{categoryId}.png" 하나뿐이다(app/category_icon.py). 사진 썸네일과
+# 섞지 않는 이유: 수명(카테고리가 살아 있는 동안)과 개수(카테고리 수)가 달라
+# 라이프사이클 정책·용량 산정을 따로 걸어야 한다. 내용은 항상 PNG(알파 보존).
+
+
+def put_category_icon(key: str, data: bytes) -> None:
+    settings = get_settings()
+    if not settings.s3_category_icon_bucket:
+        raise ImageFetchError("환경변수 S3_CATEGORY_ICON_BUCKET 이 설정되지 않았습니다.")
+    try:
+        _client().put_object(
+            Bucket=settings.s3_category_icon_bucket,
+            Key=key,
+            Body=data,
+            ContentType="image/png",
+            # 카테고리당 1장이고 내용이 바뀌지 않는다 — 길게 캐시해도 안전하다.
+            CacheControl="public, max-age=604800",
+        )
+    except Exception as e:
+        raise ImageFetchError(_why("카테고리 아이콘을 저장하지 못했습니다", key, e)) from e
+
+
+def fetch_category_icon(key: str) -> bytes:
+    settings = get_settings()
+    if not settings.s3_category_icon_bucket:
+        raise ImageFetchError("환경변수 S3_CATEGORY_ICON_BUCKET 이 설정되지 않았습니다.")
+    try:
+        obj = _client().get_object(Bucket=settings.s3_category_icon_bucket, Key=key)
+        return obj["Body"].read()
+    except Exception as e:
+        raise ImageFetchError(_why("카테고리 아이콘을 읽지 못했습니다", key, e)) from e
 
 
 def store_thumbnail(image_ref: str, image_bytes: bytes | None = None,

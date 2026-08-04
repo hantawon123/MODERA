@@ -199,6 +199,30 @@ class Settings:
         # (동의서→금융 오염 실측). 0 이면 가드 끔.
         self.category_guard_min_cosine = float(os.environ.get("CATEGORY_GUARD_MIN_COSINE", "0.45"))
 
+        # ── 카테고리 아이콘 생성 (OpenAI Images) ──────────────────────────
+        # Gemini 경로와 완전히 분리한다. SSAFY GMS 프록시는 이미지 생성 모델을
+        # 중계하지 않으므로 OpenAI 공식 엔드포인트로 직접 붙는다(팀 결정).
+        # 키를 필수로 두지 않는다 — 아이콘은 부가 기능이라 미설정이 기동 실패가
+        # 되면 안 된다. 실제 생성 시점에만 에러로 알린다(app/category_icon.py).
+        self.openai_api_key = os.environ.get("OPENAI_API_KEY", "")
+        self.openai_base_url = os.environ.get(
+            "OPENAI_BASE_URL", "https://api.openai.com/v1")
+        self.image_model_name = os.environ.get("IMAGE_MODEL_NAME", "gpt-image-1-mini")
+        # 생성 요청 크기. gpt-image-1 계열은 size 를 네 값만 받는다 —
+        # 1024x1024 / 1024x1536 / 1536x1024 / auto. 216 을 보내면 400 이라
+        # 받아서 줄이는 것 말고 방법이 없다(임의 크기는 dall-e-2 까지였다).
+        # 정사각으로 둬야 216 정사각으로 줄일 때 크롭 손실이 없다.
+        self.image_gen_size = os.environ.get("IMAGE_GEN_SIZE", "1024x1024")
+        # low 로 시작한다. 아이콘은 단순 픽토그램이라 품질 단가를 올릴 이유가 없다.
+        self.image_gen_quality = os.environ.get("IMAGE_GEN_QUALITY", "low")
+        # 이미지 생성은 수십 초가 걸린다. Gemini 타임아웃과 분리한다.
+        self.openai_timeout = float(os.environ.get("OPENAI_TIMEOUT", "120"))
+        # 아이콘 한 변(px). 앱 카테고리 아이콘 규격.
+        self.category_icon_size = int(os.environ.get("CATEGORY_ICON_SIZE", "216"))
+        # 아이콘 전용 버킷. key 는 "{categoryId}.png" 하나뿐이라 매핑 테이블이 없다.
+        self.s3_category_icon_bucket = os.environ.get(
+            "S3_CATEGORY_ICON_BUCKET", "category-thumbnails")
+
         # AGENT 태그 최대 개수 (10-1 options.maxTags 로 요청별 덮어쓰기 가능)
         self.default_max_tags = int(os.environ.get("DEFAULT_MAX_TAGS", "5"))
 

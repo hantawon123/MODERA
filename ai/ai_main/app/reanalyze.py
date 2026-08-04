@@ -27,7 +27,7 @@ from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 from pydantic import Field
 
-from . import category_store, gemini_client, search, spring_client, stages
+from . import category_icon, category_store, gemini_client, search, spring_client, stages
 from .category import normalize_name, resolve_category
 from .config import get_settings
 from .deps import _error
@@ -221,4 +221,8 @@ async def reanalyze_category(request: ReanalyzeRequest):
         category_id=category_id or search.stable_id(name),
         category_name=name,
     )
+    # 분석 경로와 같은 규칙 — 신규 카테고리면 아이콘을 백그라운드로 만들어 둔다.
+    # 폴백으로 기존 후보에 떨어진 경우(name != resolution.name)는 신규가 아니다.
+    if resolution.created and name == resolution.name:
+        category_icon.schedule_icon(body.category_id, name)
     return JSONResponse(status_code=200, content=body.model_dump(by_alias=True))

@@ -76,6 +76,9 @@ def main() -> int:
     parser.add_argument("--bucket", default=os.environ.get("S3_BUCKET", "pictures"))
     parser.add_argument("--thumbnail-bucket",
                         default=os.environ.get("S3_THUMBNAIL_BUCKET", "thumbnails"))
+    parser.add_argument("--icon-bucket",
+                        default=os.environ.get("S3_CATEGORY_ICON_BUCKET",
+                                               "category-thumbnails"))
     parser.add_argument("--user-id", type=int, default=1)
     parser.add_argument("--count", type=int, default=3)
     args = parser.parse_args()
@@ -85,6 +88,9 @@ def main() -> int:
     # 로그가 지저분해지고 6-6 썸네일 조회가 원본에서 매번 다시 만든다).
     _ensure_bucket(client, args.bucket)
     _ensure_bucket(client, args.thumbnail_bucket)
+    # 카테고리 아이콘 버킷. 없으면 신규 카테고리마다 업로드가 실패해 매번
+    # 다시 생성한다(생성 요금이 계속 나간다).
+    _ensure_bucket(client, args.icon_bucket)
 
     keys = []
     for i in range(1, args.count + 1):

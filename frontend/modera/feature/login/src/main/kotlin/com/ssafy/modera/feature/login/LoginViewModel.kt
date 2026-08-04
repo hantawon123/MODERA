@@ -24,6 +24,8 @@ class LoginViewModel @Inject constructor(
             _uiState.value = LoginUiState.Loading
             runCatching {
                 authRepository.loginWithKakao(kakaoAccessToken)
+            }.onSuccess {
+                _uiState.value = LoginUiState.Idle
             }.onFailure {
                 _uiState.value = LoginUiState.Error(LoginError.ServerLoginFailed)
             }
@@ -32,5 +34,11 @@ class LoginViewModel @Inject constructor(
 
     fun showKakaoLoginError() {
         _uiState.value = LoginUiState.Error(LoginError.KakaoLoginFailed)
+    }
+
+    fun resetUiState() {
+        if (_uiState.value == LoginUiState.Loading) {
+            _uiState.value = LoginUiState.Idle
+        }
     }
 }

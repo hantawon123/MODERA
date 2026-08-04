@@ -32,9 +32,9 @@ pluginManagement {
                 // 예: com.google.android.libraries.maps 등
                 includeGroupByRegex("com\\.google\\.android\\..*")
 
-                // Google Play Services 계열 허용
-                // 예: com.google.gms.google-services, play-services-maps 등
-//                includeGroupByRegex("com\\.google\\.gms(\\..*|)")
+                // Google Play Services / Firebase Gradle Plugin 허용
+                // 예: com.google.gms.google-services
+                includeGroupByRegex("com\\.google\\.gms(\\..*|)")
             }
 
             // snapshot 버전은 받지 않고 release 버전만 사용

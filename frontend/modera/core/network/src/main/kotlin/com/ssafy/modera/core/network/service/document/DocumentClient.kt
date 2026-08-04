@@ -1,6 +1,7 @@
 package com.ssafy.modera.core.network.service.document
 
 import com.skydoves.sandwich.getOrThrow
+import com.ssafy.modera.core.network.model.analyzedimage.AnalyzedImageResponse
 import com.ssafy.modera.core.network.model.document.CreateDocumentRequest
 import com.ssafy.modera.core.network.model.document.DocumentDetailResponse
 import com.ssafy.modera.core.network.model.document.DocumentSortOption
@@ -30,6 +31,14 @@ class DocumentClient @Inject constructor(
                 size = PAGE_SIZE,
                 sort = sort.value,
             )
+            .getOrThrow()
+            .data
+
+    suspend fun fetchDocumentImages(
+        documentId: Long,
+    ): List<AnalyzedImageResponse> =
+        documentService
+            .fetchDocumentImages(documentId = documentId)
             .getOrThrow()
             .data
 

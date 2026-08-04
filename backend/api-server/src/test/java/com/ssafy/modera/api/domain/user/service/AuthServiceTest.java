@@ -5,6 +5,7 @@ import com.ssafy.modera.api.domain.user.dto.request.LoginRequest;
 import com.ssafy.modera.api.domain.user.dto.request.LogoutRequest;
 import com.ssafy.modera.api.domain.user.dto.request.RefreshRequest;
 import com.ssafy.modera.api.domain.user.dto.request.RegisterRequest;
+import com.ssafy.modera.api.domain.user.dto.response.TokenResponse;
 import com.ssafy.modera.api.domain.user.entity.RefreshToken;
 import com.ssafy.modera.api.domain.user.entity.User;
 import com.ssafy.modera.api.domain.user.exception.UserErrorCode;
@@ -33,6 +34,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -149,11 +151,8 @@ class AuthServiceTest {
     void createsKakaoUserWithConsentedEmail() {
         KakaoClient.KakaoUser kakaoUser = kakaoUser(123L, " User@Example.com ");
         when(kakaoClient.getVerifiedUser("kakao-access-token")).thenReturn(kakaoUser);
-        when(kakaoUserTransactionService.resolve("123", "user@example.com"))
-                .thenReturn(new KakaoUserTransactionService.AuthenticatedKakaoUser(2, "KAKAO"));
-        when(jwtTokenProvider.createAccessToken(any())).thenReturn("access");
-        when(jwtTokenProvider.createRefreshToken(any(), any())).thenReturn("refresh");
-        when(jwtProperties.getRefreshTokenValidityInSeconds()).thenReturn(1209600L);
+        when(kakaoUserTransactionService.login("123", "user@example.com", "device"))
+                .thenReturn(new TokenResponse("access", "refresh", 2));
 
         var response = authService.kakaoLogin(
                 new KakaoLoginRequest("kakao-access-token", "device"));
@@ -161,7 +160,7 @@ class AuthServiceTest {
         assertThat(response.accessToken()).isEqualTo("access");
         assertThat(response.refreshToken()).isEqualTo("refresh");
         assertThat(response.userId()).isEqualTo(2);
-        verify(kakaoUserTransactionService).resolve("123", "user@example.com");
+        verify(kakaoUserTransactionService).login("123", "user@example.com", "device");
     }
 
     @Test
@@ -175,6 +174,7 @@ class AuthServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .extracting(exception -> ((BusinessException) exception).getErrorCode())
                 .isEqualTo(UserErrorCode.KAKAO_EMAIL_REQUIRED);
+        verifyNoInteractions(kakaoUserTransactionService);
     }
 
     @Test
@@ -188,6 +188,7 @@ class AuthServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .extracting(exception -> ((BusinessException) exception).getErrorCode())
                 .isEqualTo(UserErrorCode.KAKAO_EMAIL_NOT_VERIFIED);
+        verifyNoInteractions(kakaoUserTransactionService);
     }
 
     @Test
@@ -201,6 +202,7 @@ class AuthServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .extracting(exception -> ((BusinessException) exception).getErrorCode())
                 .isEqualTo(UserErrorCode.KAKAO_EMAIL_NOT_VERIFIED);
+        verifyNoInteractions(kakaoUserTransactionService);
     }
 
     private KakaoClient.KakaoUser kakaoUser(Long id, String email) {

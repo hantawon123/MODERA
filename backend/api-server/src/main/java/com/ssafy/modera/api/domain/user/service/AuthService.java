@@ -23,11 +23,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.time.OffsetDateTime;
-import java.util.HexFormat;
 import java.util.Locale;
 
 /**
@@ -40,8 +36,6 @@ import java.util.Locale;
 public class AuthService {
 
     private static final String PROVIDER_LOCAL = "LOCAL";
-    private static final String HASH_ALGORITHM = "SHA-256";
-
     private final UserRepository userRepository;
     private final RefreshTokenRepository refreshTokenRepository;
     private final LoginCredentialReader loginCredentialReader;
@@ -96,10 +90,7 @@ public class AuthService {
         String providerId = kakaoUser.id().toString();
         String email = normalizeEmail(kakaoUser.email());
 
-        KakaoUserTransactionService.AuthenticatedKakaoUser user =
-                kakaoUserTransactionService.resolve(providerId, email);
-
-        return issueTokens(user.userId(), user.provider(), request.deviceId());
+        return kakaoUserTransactionService.login(providerId, email, request.deviceId());
     }
 
     /**
@@ -113,7 +104,7 @@ public class AuthService {
             throw new BusinessException(UserErrorCode.INVALID_REFRESH_TOKEN);
         }
 
-        RefreshToken stored = refreshTokenRepository.findByTokenHash(hash(request.refreshToken()))
+        RefreshToken stored = refreshTokenRepository.findByTokenHash(RefreshTokenHash.sha256(request.refreshToken()))
                 .orElseThrow(() -> new BusinessException(UserErrorCode.INVALID_REFRESH_TOKEN));
 
         if (!stored.getDeviceId().equals(request.deviceId())) {
@@ -129,7 +120,7 @@ public class AuthService {
         String accessToken = jwtTokenProvider.createAccessToken(userId);
         String rotatedRefreshToken = jwtTokenProvider.createRefreshToken(userId, stored.getDeviceId());
 
-        stored.rotate(hash(rotatedRefreshToken), refreshTokenExpiry());
+        stored.rotate(RefreshTokenHash.sha256(rotatedRefreshToken), refreshTokenExpiry());
 
         log.info("토큰 재발급 완료: userId={}, deviceId={}", userId, stored.getDeviceId());
         return new TokenResponse(accessToken, rotatedRefreshToken, userId);
@@ -141,7 +132,7 @@ public class AuthService {
         RefreshToken stored = refreshTokenRepository.findByUserIdAndDeviceId(userId, request.deviceId())
                 .orElseThrow(() -> new BusinessException(UserErrorCode.INVALID_REFRESH_TOKEN));
 
-        if (!stored.matches(hash(request.refreshToken()))) {
+        if (!stored.matches(RefreshTokenHash.sha256(request.refreshToken()))) {
             throw new BusinessException(UserErrorCode.INVALID_REFRESH_TOKEN);
         }
 
@@ -171,9 +162,9 @@ public class AuthService {
         String accessToken = jwtTokenProvider.createAccessToken(userId);
         String refreshToken = jwtTokenProvider.createRefreshToken(userId, deviceId);
         refreshTokenCommandService.upsert(
-                userId, deviceId, hash(refreshToken), refreshTokenExpiry());
+                userId, deviceId, RefreshTokenHash.sha256(refreshToken), refreshTokenExpiry());
 
-        log.info("로그인 성공: provider={}, userId={}, deviceId={}",
+        log.debug("로그인 성공: provider={}, userId={}, deviceId={}",
                 provider, userId, deviceId);
         return new TokenResponse(accessToken, refreshToken, userId);
     }
@@ -182,13 +173,4 @@ public class AuthService {
         return OffsetDateTime.now().plusSeconds(jwtProperties.getRefreshTokenValidityInSeconds());
     }
 
-    /** refresh_token.token_hash는 원문이 아닌 SHA-256 hex(64자)로 저장한다(원문 저장 금지). */
-    private String hash(String token) {
-        try {
-            MessageDigest digest = MessageDigest.getInstance(HASH_ALGORITHM);
-            return HexFormat.of().formatHex(digest.digest(token.getBytes(StandardCharsets.UTF_8)));
-        } catch (NoSuchAlgorithmException e) {
-            throw new IllegalStateException("SHA-256 알고리즘을 사용할 수 없습니다.", e);
-        }
-    }
 }

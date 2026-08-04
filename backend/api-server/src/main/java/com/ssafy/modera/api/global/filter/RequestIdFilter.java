@@ -30,6 +30,7 @@ public class RequestIdFilter extends OncePerRequestFilter {
     private static final String MDC_KEY_REQUEST_ID = "requestId";
     private static final String ACTUATOR_PATH_PREFIX = "/actuator";
     private static final int GENERATED_ID_LENGTH = 8;
+    private static final long SLOW_REQUEST_MILLIS = 300L;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
@@ -55,10 +56,23 @@ public class RequestIdFilter extends OncePerRequestFilter {
         return UUID.randomUUID().toString().substring(0, GENERATED_ID_LENGTH);
     }
 
-    private void logAccess(HttpServletRequest request, HttpServletResponse response, long elapsedMs) {
+    void logAccess(HttpServletRequest request, HttpServletResponse response, long elapsedMs) {
         if (request.getRequestURI().startsWith(ACTUATOR_PATH_PREFIX)) {
             return;
         }
-        log.info("{} {} {} {}ms", request.getMethod(), request.getRequestURI(), response.getStatus(), elapsedMs);
+
+        String method = request.getMethod();
+        String requestUri = request.getRequestURI();
+        int status = response.getStatus();
+
+        if (status >= 500) {
+            log.error("{} {} {} {}ms", method, requestUri, status, elapsedMs);
+            return;
+        }
+        if (status >= 400 || elapsedMs >= SLOW_REQUEST_MILLIS) {
+            log.warn("{} {} {} {}ms", method, requestUri, status, elapsedMs);
+            return;
+        }
+        log.debug("{} {} {} {}ms", method, requestUri, status, elapsedMs);
     }
 }

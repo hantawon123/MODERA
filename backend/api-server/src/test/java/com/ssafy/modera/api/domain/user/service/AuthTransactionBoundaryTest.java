@@ -26,7 +26,7 @@ class AuthTransactionBoundaryTest {
                 .getMethod("findByLoginId", String.class)
                 .getAnnotation(Transactional.class);
         Transactional kakaoUserTransaction = KakaoUserTransactionService.class
-                .getMethod("resolve", String.class, String.class)
+                .getMethod("login", String.class, String.class, String.class)
                 .getAnnotation(Transactional.class);
         Transactional refreshTokenTransaction = RefreshTokenCommandService.class
                 .getMethod("upsert", Integer.class, String.class, String.class,

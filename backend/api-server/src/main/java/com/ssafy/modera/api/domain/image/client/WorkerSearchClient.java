@@ -27,13 +27,13 @@ public class WorkerSearchClient {
 
     private final RestClient workerRestClient;
 
-    public List<WorkerSimilarImage> findSimilar(Integer imageId, Integer userId, int limit) {
+    /** 개수 상한 없이 유사도 하한을 넘는 것을 전부 받는다(worker가 limit을 받지 않는다). */
+    public List<WorkerSimilarImage> findSimilar(Integer imageId, Integer userId) {
         try {
             WorkerSimilarResponse response = workerRestClient.get()
                     .uri(uriBuilder -> uriBuilder
                             .path("/internal/v1/images/{imageId}/similar")
                             .queryParam("userId", userId)
-                            .queryParam("limit", limit)
                             .build(imageId))
                     .retrieve()
                     .body(WorkerSimilarResponse.class);

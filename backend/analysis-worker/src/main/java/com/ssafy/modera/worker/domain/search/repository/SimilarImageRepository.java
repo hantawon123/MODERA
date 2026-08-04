@@ -16,12 +16,11 @@ public class SimilarImageRepository {
     /**
      * 결과에 포함할 최소 코사인 유사도.
      *
-     * <p>임계값이 없으면 LIMIT을 채우기 위해 관련 없는 이미지까지 순위만 매겨 내려간다 —
-     * 사용자의 이미지가 몇 장 없을수록 "연관 자료"에 전혀 상관없는 것이 뜬다. 관련이
-     * 애매한 것을 보여주는 것보다 비우는 편이 낫다는 판단으로 0.6을 기준으로 한다.
+     * <p>단일 검색은 개수 상한이 없어서 이 값이 결과 크기를 정하는 유일한 장치다 —
+     * 관련이 애매한 것을 보여주는 것보다 비우는 편이 낫다는 판단으로 0.65를 기준으로 한다.
      * 스키마 변경이 아니라 조회 시점 필터라 값 조정에 마이그레이션이 필요 없다.
      */
-    private static final double MIN_SCORE = 0.6;
+    private static final double MIN_SCORE = 0.65;
 
     private final JdbcTemplate jdbcTemplate;
 
@@ -32,8 +31,12 @@ public class SimilarImageRepository {
      * - 기준 이미지 자신은 제외
      * - 유사도(1 - 코사인 거리)가 MIN_SCORE 미만이면 제외
      * - 기준 이미지에 벡터가 없으면(비정보성) 서브쿼리가 NULL이 되어 결과가 0건이다.
+     *
+     * <p><b>개수 상한이 없다.</b> MIN_SCORE를 넘는 행을 전부 돌려준다. 유사한 이미지를
+     * 많이 가진 사용자일수록 결과가 커지므로, 응답 크기가 문제가 되면 LIMIT이 아니라
+     * MIN_SCORE를 올려서 조인다(관련도가 낮은 쪽부터 잘려야 한다).
      */
-    public List<SimilarImageRow> findSimilar(int imageId, int userId, int limit) {
+    public List<SimilarImageRow> findSimilar(int imageId, int userId) {
         String sql = """
                 WITH base AS (
                     SELECT embedding
@@ -58,13 +61,12 @@ public class SimilarImageRepository {
                 FROM candidates c, base b
                 WHERE 1 - (c.embedding <=> b.embedding) >= ?
                 ORDER BY c.embedding <=> b.embedding
-                LIMIT ?
                 """;
         return jdbcTemplate.query(sql,
                 (rs, rowNum) -> new SimilarImageRow(
                         rs.getInt("image_id"),
                         rs.getFloat("score")),
-                imageId, userId, imageId, MIN_SCORE, limit);
+                imageId, userId, imageId, MIN_SCORE);
     }
 
     /**

@@ -211,9 +211,9 @@ public class ImageController {
                     빈 list(count=0)로 응답한다 — 상세 화면 전체가 실패하지 않게 하는 쪽을 택했다.
                     분석이 안 된 이미지, 임베딩이 없는 이미지도 같은 이유로 빈 list다.
 
-                    limit은 1~50 범위로 조정되며(범위를 벗어나면 400이 아니라 경계값으로 당긴다),
-                    삭제되었거나 read model이 아직 없는 이미지는 결과에서 빠지므로
-                    count가 limit보다 작을 수 있다.
+                    **개수 상한이 없다.** 유사도 하한(0.65)을 넘는 연관 이미지를 전부 반환하므로
+                    비슷한 이미지를 많이 가진 사용자일수록 list가 길어진다. 삭제되었거나
+                    read model이 아직 없는 이미지는 결과에서 빠진다.
                     """
     )
     @ApiResponses({
@@ -225,11 +225,9 @@ public class ImageController {
     public ResponseEntity<ApiResponse<SimilarImagesResponse>> getSimilarImages(
             @AuthenticationPrincipal Integer userId,
             @Parameter(description = "기준 이미지 ID")
-            @PathVariable(name = "imageId") Integer imageId,
-            @Parameter(description = "최대 개수(1~50)")
-            @RequestParam(name = "limit", defaultValue = "10") int limit
+            @PathVariable(name = "imageId") Integer imageId
     ) {
-        SimilarImagesResponse response = imageSimilarService.getSimilarImages(userId, imageId, limit);
+        SimilarImagesResponse response = imageSimilarService.getSimilarImages(userId, imageId);
         return ResponseEntity.ok(ApiResponse.success("I210", response));
     }
 

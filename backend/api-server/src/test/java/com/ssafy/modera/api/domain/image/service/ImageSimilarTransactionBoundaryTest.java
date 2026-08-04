@@ -20,7 +20,7 @@ class ImageSimilarTransactionBoundaryTest {
         assertThat(ImageSimilarService.class.getAnnotation(Transactional.class)).isNull();
 
         Method similar = ImageSimilarService.class
-                .getMethod("getSimilarImages", Integer.class, Integer.class, int.class);
+                .getMethod("getSimilarImages", Integer.class, Integer.class);
         Method documentize = ImageSimilarService.class
                 .getMethod("findDocumentizeCandidates", Integer.class, List.class);
 

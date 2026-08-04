@@ -11,11 +11,13 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ssafy.modera.core.component.item.ModeraSelectableMaterialItem
 import com.ssafy.modera.core.designsystem.theme.ModeraTheme
 import com.ssafy.modera.core.model.analyzedimage.AnalyzedImage
@@ -27,6 +29,29 @@ import com.ssafy.modera.feature.documentedit.component.DocumentEditTopBar
 
 @Composable
 internal fun DocumentEditScreen(
+    viewModel: DocumentEditViewModel,
+    onBackClick: () -> Unit,
+    onDocumentCreated: (Long) -> Unit,
+    onAddImagesClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
+    DocumentEditScreen(
+        uiState = uiState,
+        onBackClick = onBackClick,
+        onEditClick = viewModel::startEditing,
+        onApplyClick = {
+            viewModel.createDocument(onCreated = onDocumentCreated)
+        },
+        onAddImagesClick = onAddImagesClick,
+        onImageClick = viewModel::toggleImageSelection,
+        modifier = modifier,
+    )
+}
+
+@Composable
+private fun DocumentEditScreen(
     uiState: DocumentEditUiState,
     onBackClick: () -> Unit,
     onEditClick: () -> Unit,
@@ -115,7 +140,7 @@ private fun DocumentEditContent(
             ModeraSelectableMaterialItem(
                 title = image.title,
                 description = image.summary,
-                tags = image.hashtags,
+                tags = image.hashtags.take(3),
                 imageUrl = image.thumbnailUrl,
                 isEditing = state.isEditing,
                 isSelected = image.id in state.selectedImageIds,

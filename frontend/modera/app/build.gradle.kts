@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.modera.android.application)
     alias(libs.plugins.modera.android.application.compose)
@@ -5,6 +7,16 @@ plugins {
     alias(libs.plugins.kotlinx.serialization)
     alias(libs.plugins.google.services)
 }
+
+val localProperties = Properties().apply {
+    val localFile = rootProject.file("local.properties")
+    if (localFile.exists()) {
+        localFile.inputStream().use(::load)
+    }
+}
+
+val kakaoNativeAppKeyDebug = localProperties.getProperty("kakaoNativeAppKeyDebug", "")
+val kakaoNativeAppKeyRelease = localProperties.getProperty("kakaoNativeAppKeyRelease", "")
 
 android {
     namespace = "com.ssafy.modera"
@@ -22,10 +34,16 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    buildFeatures {
+        buildConfig = true
+    }
+
     buildTypes {
         debug {
 //            applicationIdSuffix = ".debug"
             versionNameSuffix = "-debug"
+            buildConfigField("String", "KAKAO_NATIVE_APP_KEY", "\"$kakaoNativeAppKeyDebug\"")
+            manifestPlaceholders["kakaoScheme"] = "kakao$kakaoNativeAppKeyDebug"
         }
 
         release {
@@ -35,6 +53,8 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
             )
+            buildConfigField("String", "KAKAO_NATIVE_APP_KEY", "\"$kakaoNativeAppKeyRelease\"")
+            manifestPlaceholders["kakaoScheme"] = "kakao$kakaoNativeAppKeyRelease"
         }
     }
 
@@ -58,6 +78,7 @@ dependencies {
     implementation(projects.core.data)
     implementation(projects.core.model)
     implementation(projects.core.navigation)
+    implementation(projects.core.ui)
 
     implementation(projects.feature.splash)
     implementation(projects.feature.home)
@@ -70,6 +91,8 @@ dependencies {
     implementation(projects.feature.document.documentdetail)
     implementation(projects.feature.document.documentedit)
     implementation(projects.feature.document.documentcreate)
+    implementation(projects.feature.login)
+    implementation(projects.feature.settings)
 
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.navigation3.ui)
@@ -84,6 +107,7 @@ dependencies {
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.okhttp)
+    implementation(libs.kakao.user)
 
     // material3
     implementation(libs.androidx.compose.material3)

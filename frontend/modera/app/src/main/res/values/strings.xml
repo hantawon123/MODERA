@@ -10,4 +10,5 @@
     <string name="fcm_default_notification_channel_name">일반 알림</string>
     <string name="fcm_default_notification_channel_description">Modera 앱의 일반 푸시 알림</string>
     <string name="fcm_default_toast_message">새 알림이 도착했습니다</string>
+    <string name="logout_success">로그아웃 되었습니다</string>
 </resources>

@@ -58,7 +58,6 @@ import com.ssafy.modera.feature.document.documentcreate.navigation.documentCreat
 import com.ssafy.modera.feature.document.documentcreate.navigation.navigateToDocumentCreate
 import com.ssafy.modera.feature.document.documentdetail.navigation.DocumentDetailNavKey
 import com.ssafy.modera.feature.document.documentdetail.navigation.documentDetailEntry
-import com.ssafy.modera.feature.document.documentedit.navigation.documentEditEntry
 import com.ssafy.modera.feature.document.documentedit.navigation.navigateToDocumentEdit
 import com.ssafy.modera.feature.document.documents.navigation.DocumentNavKey
 import com.ssafy.modera.feature.document.documents.navigation.documentEntry
@@ -344,13 +343,13 @@ internal fun ModeraApp(
                                     onManageImagesClick = navigator::navigateToDocumentEdit,
                                 )
 
-                                documentEditEntry(
-                                    onBackClick = handleBack,
-                                    onDocumentCreated = navigator::navigateToDocumentDetail,
-                                    onAddImagesClick = {
-                                        // Todo: 이미지 추가 화면 연결
-                                    }
-                                )
+//                                documentEditEntry(
+//                                    onBackClick = handleBack,
+//                                    onDocumentCreated = navigator::navigateToDocumentDetail,
+//                                    onAddImagesClick = {
+//                                        // Todo: 이미지 추가 화면 연결
+//                                    }
+//                                )
 
                                 documentCreateEntry(
                                     navigator = navigator,

@@ -19,32 +19,11 @@ internal class DocumentEditScreenPreviewParameterProvider :
                 name = "Success",
                 uiState = DocumentEditUiState.Success(
                     images = previewDocumentEditImages.take(5),
-                    selectedImageIds = previewDocumentEditImages
-                        .take(5)
-                        .map(AnalyzedImage::id)
-                        .toSet(),
-                ),
-            ),
-            DocumentEditScreenPreviewData(
-                name = "Editing",
-                uiState = DocumentEditUiState.Success(
-                    images = previewDocumentEditImages.take(5),
-                    selectedImageIds = previewDocumentEditImages
-                        .take(3)
-                        .map(AnalyzedImage::id)
-                        .toSet(),
-                    isEditing = true,
                 ),
             ),
             DocumentEditScreenPreviewData(
                 name = "Loading",
                 uiState = DocumentEditUiState.Loading,
-            ),
-            DocumentEditScreenPreviewData(
-                name = "Applying",
-                uiState = DocumentEditUiState.Applying(
-                    selectedImages = previewDocumentEditImages.take(3),
-                ),
             ),
             DocumentEditScreenPreviewData(
                 name = "Error",

@@ -12,6 +12,8 @@ import com.ssafy.modera.core.data.repository.calendar.DefaultDeviceCalendarRepos
 import com.ssafy.modera.core.data.repository.calendar.DeviceCalendarRepository
 import com.ssafy.modera.core.data.repository.document.DefaultDocumentRepository
 import com.ssafy.modera.core.data.repository.document.DocumentRepository
+import com.ssafy.modera.core.data.repository.notification.DefaultPushTokenRepository
+import com.ssafy.modera.core.data.repository.notification.PushTokenRepository
 import com.ssafy.modera.core.data.repository.search.DefaultRecentSearchRepository
 import com.ssafy.modera.core.data.repository.search.DefaultSearchRepository
 import com.ssafy.modera.core.data.repository.search.RecentSearchRepository
@@ -71,4 +73,9 @@ abstract class DataModule {
     abstract fun bindsCalendarRepository(
         impl: DefaultCalendarRepository,
     ): CalendarRepository
+
+    @Binds
+    abstract fun bindsPushTokenRepository(
+        impl: DefaultPushTokenRepository,
+    ): PushTokenRepository
 }

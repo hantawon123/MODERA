@@ -65,6 +65,10 @@ robolectric = "4.16.1"
 mockito = "5.11.0"
 mockito-kotlin = "6.1.0"
 
+# Firebase
+firebaseBom = "34.17.0"
+googleServices = "4.4.2"
+
 # View / Adaptive
 adaptive = "1.2.0"
 material = "1.10.0"
@@ -172,6 +176,10 @@ protobuf-kotlin-lite = { group = "com.google.protobuf", name = "protobuf-kotlin-
 text-recognition = { module = "com.google.mlkit:text-recognition", version.ref = "textRecognition" }
 text-recognition-korean = { module = "com.google.mlkit:text-recognition-korean", version.ref = "textRecognition" }
 
+# Firebase
+firebase-bom = { group = "com.google.firebase", name = "firebase-bom", version.ref = "firebaseBom" }
+firebase-messaging = { group = "com.google.firebase", name = "firebase-messaging" }
+
 # Unit Test
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 turbine = { group = "app.cash.turbine", name = "turbine", version.ref = "turbine" }
@@ -235,6 +243,9 @@ ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 # Room / Protobuf
 androidx-room = { id = "androidx.room", version.ref = "room" }
 protobuf = { id = "com.google.protobuf", version.ref = "protobufPlugin" }
+
+# Firebase
+google-services = { id = "com.google.gms.google-services", version.ref = "googleServices" }
 
 # Plugins defined by this project
 modera-android-application = { id = "modera.android.application" }

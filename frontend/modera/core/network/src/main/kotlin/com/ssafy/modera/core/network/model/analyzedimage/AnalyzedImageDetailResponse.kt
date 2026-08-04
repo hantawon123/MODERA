@@ -12,6 +12,7 @@ data class AnalyzedImageDetailResponse(
     val title: String,
     val favorite: Boolean,
     val summary: String,
+    val categoryId:Long,
     val category: String,
     val tags: List<String>,
     val keyInformation: List<String>,

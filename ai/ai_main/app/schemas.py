@@ -531,6 +531,10 @@ class CategoryCard(CamelModel):
     category_id: int
     name: str
     thumbnail_url: str | None = None
+    # 카테고리 전용 아이콘(216x216 PNG). thumbnailUrl 은 이 카테고리에 속한 최신
+    # 사진이고, 이쪽은 카테고리 자체를 나타내는 생성 아이콘이라 별개 필드다.
+    # 값은 항상 있다 — 아직 안 만들어졌으면 이 주소를 처음 열 때 생성된다.
+    icon_url: str | None = None
     image_count: int
     tags: list[TagCount] = []
     updated_at: str | None = None

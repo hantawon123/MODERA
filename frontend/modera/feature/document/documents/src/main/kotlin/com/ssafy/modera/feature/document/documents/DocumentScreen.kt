@@ -10,16 +10,12 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ssafy.modera.core.designsystem.component.HorizontalDivider
 import com.ssafy.modera.core.designsystem.theme.ModeraTheme
@@ -34,8 +30,6 @@ import com.ssafy.modera.feature.document.documents.component.DocumentEmptyScreen
 import com.ssafy.modera.feature.document.documents.component.DocumentItem
 import com.ssafy.modera.feature.document.documents.component.DocumentListHeader
 import com.ssafy.modera.feature.document.documents.component.DocumentTopBar
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.filter
 
 @Composable
 internal fun DocumentScreen(
@@ -45,17 +39,16 @@ internal fun DocumentScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
-    LifecycleEventEffect(
-        event = Lifecycle.Event.ON_RESUME,
-    ) {
-        viewModel.onScreenResumed()
-    }
+//    LifecycleEventEffect(
+//        event = Lifecycle.Event.ON_RESUME,
+//    ) {
+//        viewModel.onScreenResumed()
+//    }
 
     DocumentScreen(
         uiState = uiState,
         onDocumentClick = onDocumentClick,
         onSortTypeChange = viewModel::updateSortType,
-        onLoadMore = viewModel::loadNextPage,
         modifier = modifier,
     )
 }
@@ -65,7 +58,6 @@ private fun DocumentScreen(
     uiState: DocumentUiState,
     onDocumentClick: (Long) -> Unit,
     onSortTypeChange: (DocumentSortType) -> Unit,
-    onLoadMore: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -88,7 +80,6 @@ private fun DocumentScreen(
                     sortType = uiState.sortType,
                     onDocumentClick = onDocumentClick,
                     onSortTypeChange = onSortTypeChange,
-                    onLoadMore = onLoadMore,
                     modifier = Modifier
                         .weight(1f)
                         .padding(horizontal = 24.dp),
@@ -117,32 +108,31 @@ private fun DocumentContent(
     sortType: DocumentSortType,
     onDocumentClick: (Long) -> Unit,
     onSortTypeChange: (DocumentSortType) -> Unit,
-    onLoadMore: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val listState = rememberLazyListState()
 
-    LaunchedEffect(
-        listState,
-        documents.size,
-    ) {
-        snapshotFlow {
-            val layoutInfo = listState.layoutInfo
-            val totalItemCount = layoutInfo.totalItemsCount
-            val lastVisibleItemIndex =
-                layoutInfo.visibleItemsInfo.lastOrNull()?.index
-
-            totalItemCount > 0 &&
-                    lastVisibleItemIndex != null &&
-                    lastVisibleItemIndex >=
-                    totalItemCount - LOAD_MORE_THRESHOLD
-        }
-            .distinctUntilChanged()
-            .filter { shouldLoadMore -> shouldLoadMore }
-            .collect {
-                onLoadMore()
-            }
-    }
+//    LaunchedEffect(
+//        listState,
+//        documents.size,
+//    ) {
+//        snapshotFlow {
+//            val layoutInfo = listState.layoutInfo
+//            val totalItemCount = layoutInfo.totalItemsCount
+//            val lastVisibleItemIndex =
+//                layoutInfo.visibleItemsInfo.lastOrNull()?.index
+//
+//            totalItemCount > 0 &&
+//                    lastVisibleItemIndex != null &&
+//                    lastVisibleItemIndex >=
+//                    totalItemCount - LOAD_MORE_THRESHOLD
+//        }
+//            .distinctUntilChanged()
+//            .filter { shouldLoadMore -> shouldLoadMore }
+//            .collect {
+//                onLoadMore()
+//            }
+//    }
 
     Column(
         modifier = modifier.fillMaxSize(),
@@ -195,7 +185,6 @@ private fun DocumentScreenPreview(
             uiState = previewData.uiState,
             onDocumentClick = {},
             onSortTypeChange = {},
-            onLoadMore = {},
         )
     }
 }

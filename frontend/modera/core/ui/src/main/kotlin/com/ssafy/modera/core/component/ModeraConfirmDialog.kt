@@ -49,9 +49,9 @@ import com.ssafy.modera.core.designsystem.theme.ModeraTheme
 @Composable
 fun ModeraConfirmDialog(
     icon: Painter,
-    targetTitle: String,
     title: String,
-    description: String,
+    targetTitle: String = "",
+    description: String = "",
     confirmText: String,
     dismissText: String,
     onConfirm: () -> Unit,
@@ -93,12 +93,14 @@ fun ModeraConfirmDialog(
 
             Spacer(modifier = Modifier.height(ConfirmDialogDefaults.IconTextSpacing))
 
-            Text(
-                text = "\"$targetTitle\"",
-                style = ModeraTheme.typography.bodySB16,
-                color = ModeraTheme.colors.gray900,
-                textAlign = TextAlign.Center,
-            )
+            if (targetTitle.isNotBlank()) {
+                Text(
+                    text = "\"$targetTitle\"",
+                    style = ModeraTheme.typography.bodySB16,
+                    color = ModeraTheme.colors.gray900,
+                    textAlign = TextAlign.Center,
+                )
+            }
 
             Spacer(modifier = Modifier.height(ConfirmDialogDefaults.TitleSpacing))
 
@@ -109,14 +111,16 @@ fun ModeraConfirmDialog(
                 textAlign = TextAlign.Center,
             )
 
-            Spacer(modifier = Modifier.height(ConfirmDialogDefaults.DescriptionSpacing))
+            if (description.isNotBlank()) {
+                Spacer(modifier = Modifier.height(ConfirmDialogDefaults.DescriptionSpacing))
 
-            Text(
-                text = description,
-                style = ModeraTheme.typography.bodyR14,
-                color = ModeraTheme.colors.gray500,
-                textAlign = TextAlign.Center,
-            )
+                Text(
+                    text = description,
+                    style = ModeraTheme.typography.bodyR14,
+                    color = ModeraTheme.colors.gray500,
+                    textAlign = TextAlign.Center,
+                )
+            }
 
             Spacer(modifier = Modifier.height(ConfirmDialogDefaults.ButtonTopSpacing))
 

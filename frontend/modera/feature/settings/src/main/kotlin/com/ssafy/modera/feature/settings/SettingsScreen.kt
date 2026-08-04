@@ -15,9 +15,13 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.style.TextDecoration
@@ -25,6 +29,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.ssafy.modera.core.component.ModeraConfirmDialog
 import com.ssafy.modera.core.component.ModeraTopBar
 import com.ssafy.modera.core.designsystem.component.Icon
 import com.ssafy.modera.core.designsystem.component.Text
@@ -70,6 +75,8 @@ fun SettingsScreen(
     onOpenSourceLicenseClick: () -> Unit = {},
     onTermsAndPoliciesClick: () -> Unit = {},
 ) {
+    var showLogoutDialog by remember { mutableStateOf(false) }
+
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -133,11 +140,26 @@ fun SettingsScreen(
             text = stringResource(R.string.settings_logout),
             modifier = Modifier
                 .align(Alignment.CenterHorizontally)
-                .clickable(onClick = onLogoutClick)
+                .clickable(onClick = { showLogoutDialog = true })
                 .padding(vertical = 24.dp),
             style = ModeraTheme.typography.bodyR14,
             color = ModeraTheme.colors.gray700,
             textDecoration = TextDecoration.Underline,
+        )
+    }
+
+    if (showLogoutDialog) {
+        ModeraConfirmDialog(
+            icon = painterResource(ModeraIcons.Logout),
+            title = stringResource(R.string.settings_logout_dialog_title),
+            confirmText = stringResource(R.string.settings_logout_dialog_confirm),
+            dismissText = stringResource(R.string.settings_logout_dialog_cancel),
+            confirmButtonColor = ModeraTheme.colors.gray900,
+            onConfirm = {
+                showLogoutDialog = false
+                onLogoutClick()
+            },
+            onDismiss = { showLogoutDialog = false },
         )
     }
 }

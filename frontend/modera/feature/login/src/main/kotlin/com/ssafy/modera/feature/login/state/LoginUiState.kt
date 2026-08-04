@@ -1,4 +1,4 @@
-package com.ssafy.modera.feature.login
+package com.ssafy.modera.feature.login.state
 
 sealed interface LoginUiState {
     data object Idle : LoginUiState

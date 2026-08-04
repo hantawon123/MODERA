@@ -3,7 +3,7 @@ package com.ssafy.modera.session
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ssafy.modera.core.data.repository.auth.AuthRepository
-import com.ssafy.modera.feature.login.logoutFromKakao
+import com.ssafy.modera.feature.login.util.logoutFromKakao
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted

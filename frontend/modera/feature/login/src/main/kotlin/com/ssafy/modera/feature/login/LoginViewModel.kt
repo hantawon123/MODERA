@@ -3,6 +3,8 @@ package com.ssafy.modera.feature.login
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ssafy.modera.core.data.repository.auth.AuthRepository
+import com.ssafy.modera.feature.login.state.LoginError
+import com.ssafy.modera.feature.login.state.LoginUiState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow

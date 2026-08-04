@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="document_create_title">문서화 자료 선택</string>
+    <string name="document_create_selected_images">선택된 자료</string>
+    <string name="document_create_recommendation_guide">선택 내용 기반 AI 추천 자료입니다</string>
+    <string name="document_create_button_label">문서만들기</string>
+    <string name="document_create_button_icon_description">문서 생성</string>
+    <string name="document_create_selected_image_description">%1$s 선택된 자료 이미지</string>
+    <string name="document_create_remove_selected_image">%1$s 선택 해제</string>
+    <string name="document_create_load_error">문서화할 자료를 불러오지 못했습니다.</string>
+</resources>

@@ -15,7 +15,7 @@ data class AnalyzedImageDetailResponse(
     val category: String,
     val tags: List<String>,
     val keyInformation: List<String>,
-    val ocrRawText: String,
+    val ocrRefinedText: String? = null,
     val isDocumented: Boolean,
     val isCalendared: Boolean,
     val updatedAt: String? = null,
@@ -31,7 +31,7 @@ fun AnalyzedImageDetailResponse.asExternalModel(): AnalyzedImageDetail =
         summary = summary,
         category = category,
         tags = tags,
-        extractedTexts = ocrRawText
+        extractedTexts = ocrRefinedText.orEmpty()
             .split(Regex("\\s+"))
             .map(String::trim)
             .filter(String::isNotBlank)

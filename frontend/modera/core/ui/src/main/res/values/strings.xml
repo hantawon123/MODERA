@@ -10,4 +10,9 @@
 
     <string name="document_source_image_count">원본 %1$d개</string>
     <string name="document_updated_at">%1$s 업데이트</string>
+
+    <string name="document_creating_title">해당 자료를 바탕으로 문서화를 진행합니다</string>
+    <string name="document_creating_description">아래 내용들로 문서를 만들고 있어요</string>
+    <string name="document_creating_image_title">“%1$s”</string>
+    <string name="document_creating_progress">자료를 정리하고 있어요</string>
 </resources>

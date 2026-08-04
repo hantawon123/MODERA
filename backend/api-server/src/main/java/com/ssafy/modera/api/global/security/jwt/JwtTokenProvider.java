@@ -16,7 +16,7 @@ import java.util.UUID;
 /**
  * 발급·검증을 한 클래스에서 담당한다(액세스/리프레시 둘 다 JWT). 리프레시 토큰은
  * jti(UUID)를 추가로 넣어 128비트 이상 엔트로피를 보장한다 — SHA-256으로 해시해
- * DB에 저장할 때 salt 없이도 안전한 이유다(AuthService.hash 참고).
+ * DB에 저장할 때 salt 없이도 안전한 이유다(RefreshTokenHash 참고).
  */
 @Component
 @RequiredArgsConstructor

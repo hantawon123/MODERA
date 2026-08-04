@@ -15,6 +15,7 @@ public record UserImageViewRow(
         String thumbnailKey,
         String title,
         String summary,
+        Integer categoryId,
         String categoryName,
         List<String> tagNames,
         List<String> keyInformation,

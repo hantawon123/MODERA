@@ -10,6 +10,7 @@ public record ImageSummaryResponse(
         Boolean favorite,
         String thumbnailUrl,
         List<String> tags,
+        Integer categoryId,
         String category,
         OffsetDateTime uploadedAt,
         Boolean isDocumented,

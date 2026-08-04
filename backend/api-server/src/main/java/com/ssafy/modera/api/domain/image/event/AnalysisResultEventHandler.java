@@ -65,6 +65,7 @@ public class AnalysisResultEventHandler {
                 resolveThumbnailKey(payload, imageId),
                 resolvedTitle,
                 payload.summary(),
+                null,
                 payload.categoryName(),
                 payload.tagNames(),
                 payload.keyInformation(),

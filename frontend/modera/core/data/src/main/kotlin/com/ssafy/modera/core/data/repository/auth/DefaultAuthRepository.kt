@@ -59,16 +59,16 @@ class DefaultAuthRepository @Inject constructor(
 
     override suspend fun logout() = withContext(ioDispatcher) {
         val currentSession = session.first()
-        try {
-            if (currentSession.isAuthenticated) {
+        authSessionStore.clearSession()
+
+        if (currentSession.isAuthenticated) {
+            runCatching {
                 authClient.logout(
                     accessToken = currentSession.accessToken,
                     refreshToken = currentSession.refreshToken,
                     deviceId = currentSession.deviceId,
                 )
             }
-        } finally {
-            authSessionStore.clearSession()
         }
     }
 

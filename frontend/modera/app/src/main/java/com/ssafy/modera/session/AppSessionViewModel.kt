@@ -11,9 +11,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.suspendCancellableCoroutine
 import javax.inject.Inject
-import kotlin.coroutines.resume
 
 @HiltViewModel
 class AppSessionViewModel @Inject constructor(
@@ -47,12 +45,8 @@ class AppSessionViewModel @Inject constructor(
     }
 
     fun logout() {
+        logoutFromKakao()
         viewModelScope.launch {
-            suspendCancellableCoroutine { continuation ->
-                logoutFromKakao {
-                    continuation.resume(Unit)
-                }
-            }
             authRepository.logout()
         }
     }

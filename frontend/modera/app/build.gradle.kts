@@ -90,6 +90,7 @@ dependencies {
     implementation(projects.feature.documentdetail)
     implementation(projects.feature.documentcreate)
     implementation(projects.feature.login)
+    implementation(projects.feature.settings)
 
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.navigation3.ui)

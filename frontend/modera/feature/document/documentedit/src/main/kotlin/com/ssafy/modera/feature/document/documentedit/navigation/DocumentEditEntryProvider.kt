@@ -10,7 +10,7 @@ import com.ssafy.modera.feature.document.documentedit.DocumentEditViewModel.Fact
 
 fun EntryProviderScope<NavKey>.documentEditEntry(
     onBackClick: () -> Unit,
-    onEditClick: (List<AnalyzedImage>) -> Unit,
+    onEditClick: (Long, List<AnalyzedImage>) -> Unit,
     onImageClick: (Long) -> Unit,
 ) {
     entry<DocumentEditNavKey> { key ->
@@ -26,7 +26,9 @@ fun EntryProviderScope<NavKey>.documentEditEntry(
         DocumentEditScreen(
             viewModel = viewModel,
             onBackClick = onBackClick,
-            onEditClick = onEditClick,
+            onEditClick = { analyzedImages ->
+                onEditClick(documentId, analyzedImages)
+            },
             onImageClick = onImageClick,
         )
     }

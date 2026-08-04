@@ -17,7 +17,6 @@ import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ssafy.modera.core.component.item.ModeraMaterialCard
-import com.ssafy.modera.core.component.item.ModeraMaterialItem
 import com.ssafy.modera.core.designsystem.theme.ModeraTheme
 import com.ssafy.modera.core.model.analyzedimage.AnalyzedImage
 import com.ssafy.modera.core.ui.ErrorScreen

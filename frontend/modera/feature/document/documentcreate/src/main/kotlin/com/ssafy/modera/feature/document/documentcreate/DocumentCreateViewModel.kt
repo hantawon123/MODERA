@@ -23,7 +23,7 @@ import java.util.UUID
 class DocumentCreateViewModel @AssistedInject constructor(
     private val analyzedImageRepository: AnalyzedImageRepository,
     private val documentRepository: DocumentRepository,
-    @Assisted private val initialImage: AnalyzedImage,
+    @Assisted private val mode: DocumentCreateMode,
 ) : ViewModel() {
 
     private var clientRequestId: String =
@@ -37,7 +37,7 @@ class DocumentCreateViewModel @AssistedInject constructor(
 
     val selectedImages: StateFlow<List<AnalyzedImage>>
         field = MutableStateFlow(
-            listOf(initialImage),
+            mode.initialImages.distinctBy(AnalyzedImage::id),
         )
 
     val uiState: StateFlow<DocumentCreateUiState>
@@ -144,43 +144,61 @@ class DocumentCreateViewModel @AssistedInject constructor(
         }
     }
 
-    fun createDocument(onCreated: (Long) -> Unit) {
-        if (isCreatingDocument.value) return
-
-        val imageIds = selectedImages.value.map {
-            it.id
+    fun submitDocument(
+        onCompleted: (Long) -> Unit,
+    ) {
+        if (isCreatingDocument.value) {
+            return
         }
 
-        if (imageIds.isEmpty()) return
+        val imageIds =
+            selectedImages.value.map(AnalyzedImage::id)
+
+        if (imageIds.size < MIN_DOCUMENT_IMAGE_COUNT) {
+            return
+        }
 
         isCreatingDocument.value = true
 
-        viewModelScope.launch {
-            documentRepository
-                .createDocument(
+        val documentFlow = when (val currentMode = mode) {
+            is DocumentCreateMode.Create -> {
+                documentRepository.createDocument(
                     clientRequestId = clientRequestId,
                     imageIds = imageIds,
                 )
+            }
+
+            is DocumentCreateMode.Recreate -> {
+                documentRepository.reconstructDocument(
+                    documentId = currentMode.documentId,
+                    clientRequestId = clientRequestId,
+                    imageIds = imageIds,
+                )
+            }
+        }
+
+        viewModelScope.launch {
+            documentFlow
                 .asResult()
                 .collect { result ->
                     when (result) {
                         Result.Loading -> {
-                            uiState.value = DocumentCreateUiState.Creating
+                            uiState.value =
+                                DocumentCreateUiState.Creating
                         }
 
                         is Result.Success -> {
                             isCreatingDocument.value = false
 
-                            val createdDocument = result.data
-
                             clientRequestId =
                                 UUID.randomUUID().toString()
 
-                            onCreated(createdDocument.id)
+                            onCompleted(result.data.id)
                         }
 
                         is Result.Error -> {
                             isCreatingDocument.value = false
+
                             uiState.value =
                                 DocumentCreateUiState.Error(
                                     exception = result.exception,
@@ -195,7 +213,12 @@ class DocumentCreateViewModel @AssistedInject constructor(
     interface Factory {
 
         fun create(
-            initialImage: AnalyzedImage,
+            mode: DocumentCreateMode,
         ): DocumentCreateViewModel
+    }
+
+    private companion object {
+
+        const val MIN_DOCUMENT_IMAGE_COUNT = 2
     }
 }

@@ -28,5 +28,7 @@ public class StorageProperties {
     public static class Bucket {
         private String pictures;
         private String thumbnails;
+        /** AI 서버가 생성한 카테고리 아이콘({categoryId}.png)이 올라가는 버킷 */
+        private String categoryThumbnails;
     }
 }

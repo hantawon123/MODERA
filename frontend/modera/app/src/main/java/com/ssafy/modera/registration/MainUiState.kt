@@ -10,8 +10,6 @@ data class MainUiState(
     val registeredImages: List<RegisteredImage> = emptyList(),
     val duplicatedImages: List<DuplicatedImage> = emptyList(),
     val failedImages: List<FailedImage> = emptyList(),
-    val showAnalysisBanner: Boolean = false,
-    val analysisImageCount: Int = 0,
 ) {
     fun registerSummaryMessage(): String =
         "성공 ${registeredImages.size}장, " +
@@ -25,8 +23,6 @@ fun MainUiState.startRegistration(imageCount: Int): MainUiState =
         registeredImages = emptyList(),
         duplicatedImages = emptyList(),
         failedImages = emptyList(),
-        showAnalysisBanner = true,
-        analysisImageCount = imageCount,
     )
 
 fun MainUiState.applyRegistrationOutcome(

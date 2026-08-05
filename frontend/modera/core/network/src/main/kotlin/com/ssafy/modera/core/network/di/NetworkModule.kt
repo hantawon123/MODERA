@@ -10,12 +10,12 @@ import com.ssafy.modera.core.network.service.AnalyzedImageClient
 import com.ssafy.modera.core.network.service.AnalyzedImageService
 import com.ssafy.modera.core.network.service.CalendarClient
 import com.ssafy.modera.core.network.service.CalendarService
-import com.ssafy.modera.core.network.service.CategoryClient
-import com.ssafy.modera.core.network.service.CategoryService
 import com.ssafy.modera.core.network.service.ImageClient
 import com.ssafy.modera.core.network.service.ImageService
 import com.ssafy.modera.core.network.service.auth.AuthClient
 import com.ssafy.modera.core.network.service.auth.AuthService
+import com.ssafy.modera.core.network.service.category.CategoryClient
+import com.ssafy.modera.core.network.service.category.CategoryService
 import com.ssafy.modera.core.network.service.document.DocumentClient
 import com.ssafy.modera.core.network.service.document.DocumentService
 import com.ssafy.modera.core.network.service.notification.NotificationClient

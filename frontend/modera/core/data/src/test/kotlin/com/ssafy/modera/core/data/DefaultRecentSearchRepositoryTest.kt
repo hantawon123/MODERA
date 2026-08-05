@@ -7,7 +7,6 @@ import com.ssafy.modera.core.data.repository.search.DefaultRecentSearchRepositor
 import com.ssafy.modera.core.data.repository.search.RecentSearchRepository
 import com.ssafy.modera.core.datastore.RecentSearchesSerializer
 import com.ssafy.modera.core.datastore.proto.RecentSearches
-import java.io.File
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -16,6 +15,7 @@ import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Test
+import java.io.File
 
 class DefaultRecentSearchRepositoryTest {
 
@@ -84,6 +84,19 @@ class DefaultRecentSearchRepositoryTest {
 
         repository.recentSearchQueries.test {
             assertEquals(listOf("KTX"), awaitItem())
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun clearRecentSearchQueries_removesAllQueries() = runTest(testDispatcher) {
+        repository.addRecentSearchQuery("케이크")
+        repository.addRecentSearchQuery("KTX")
+
+        repository.clearRecentSearchQueries()
+
+        repository.recentSearchQueries.test {
+            assertEquals(emptyList<String>(), awaitItem())
             cancelAndIgnoreRemainingEvents()
         }
     }

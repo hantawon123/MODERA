@@ -6,7 +6,8 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
@@ -27,13 +28,15 @@ import com.ssafy.modera.feature.home.R
 internal fun SearchAnalyzingScreen(
     modifier: Modifier = Modifier,
 ) {
-    Box(
+    Column(
         modifier = modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center,
+        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
+        Spacer(Modifier.weight(1f))
         SearchAnalyzingGradientText(
             text = stringResource(R.string.home_search_analyzing),
         )
+        Spacer(Modifier.weight(3f))
     }
 }
 

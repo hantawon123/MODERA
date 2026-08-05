@@ -1,4 +1,4 @@
-package com.ssafy.modera.core.network.service
+package com.ssafy.modera.core.network.service.category
 
 import com.skydoves.sandwich.ApiResponse
 import com.ssafy.modera.core.network.model.BaseResponse

@@ -21,7 +21,7 @@ import com.ssafy.modera.core.designsystem.theme.ModeraTheme
 fun ErrorScreen(
     message: String,
     modifier: Modifier = Modifier,
-    @DrawableRes imageRes: Int = R.drawable.img_chracter_error,
+    @DrawableRes imageRes: Int = R.drawable.img_character_error,
 ) {
     Column(
         modifier = modifier

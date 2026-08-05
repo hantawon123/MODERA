@@ -1,4 +1,4 @@
-package com.ssafy.modera.core.network.service
+package com.ssafy.modera.core.network.service.category
 
 import com.skydoves.sandwich.getOrThrow
 import com.ssafy.modera.core.model.category.CategorySortType

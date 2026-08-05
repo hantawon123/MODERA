@@ -9,7 +9,7 @@ import com.ssafy.modera.core.datastore.proto.CategoriesCache
 import com.ssafy.modera.core.model.category.Category
 import com.ssafy.modera.core.model.category.CategorySortType
 import com.ssafy.modera.core.network.model.category.asExternalModel
-import com.ssafy.modera.core.network.service.CategoryClient
+import com.ssafy.modera.core.network.service.category.CategoryClient
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first

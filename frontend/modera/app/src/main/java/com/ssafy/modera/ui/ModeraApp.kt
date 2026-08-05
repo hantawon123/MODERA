@@ -18,7 +18,6 @@ import androidx.compose.material3.adaptive.navigation3.rememberListDetailSceneSt
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteType
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.ExperimentalComposeUiApi
@@ -49,7 +48,6 @@ import com.ssafy.modera.feature.analyzedimagedetail.navigation.analyzedImageDeta
 import com.ssafy.modera.feature.analyzedimagedetail.navigation.navigateToImageDetail
 import com.ssafy.modera.feature.calendar.navigation.calendarEntry
 import com.ssafy.modera.feature.calendar.navigation.navigateToCalendar
-import com.ssafy.modera.feature.category.navigation.CategoryNavKey
 import com.ssafy.modera.feature.category.navigation.categoryEntry
 import com.ssafy.modera.feature.category.navigation.navigateToCategorySearch
 import com.ssafy.modera.feature.category.navigation.navigateToCategoryTab
@@ -63,10 +61,9 @@ import com.ssafy.modera.feature.document.documentedit.navigation.navigateToDocum
 import com.ssafy.modera.feature.document.documents.navigation.DocumentNavKey
 import com.ssafy.modera.feature.document.documents.navigation.documentEntry
 import com.ssafy.modera.feature.favorite.navigation.favoritesEntry
-import com.ssafy.modera.feature.home.HomeAnalysisState
-import com.ssafy.modera.feature.home.LocalHomeAnalysisState
 import com.ssafy.modera.feature.home.navigation.HomeNavKey
 import com.ssafy.modera.feature.home.navigation.homeEntry
+import com.ssafy.modera.feature.home.navigation.navigateToHomeTab
 import com.ssafy.modera.feature.imageviewer.navigation.imageViewerEntry
 import com.ssafy.modera.feature.imageviewer.navigation.navigateToImageViewer
 import com.ssafy.modera.feature.login.LoginRoute
@@ -155,22 +152,6 @@ internal fun ModeraApp(
 
     val handleBack = rememberModeraBackHandler(navigator)
 
-    val homeAnalysisState = remember(viewModel) {
-        HomeAnalysisState(
-            onDismissRequest = viewModel::dismissAnalysisBanner,
-        )
-    }
-
-    LaunchedEffect(
-        uiState.showAnalysisBanner,
-        uiState.analysisImageCount,
-    ) {
-        homeAnalysisState.sync(
-            showBanner = uiState.showAnalysisBanner,
-            imageCount = uiState.analysisImageCount,
-        )
-    }
-
     val launchGalleryPicker = rememberGalleryPickerLauncher(
         onImagesPicked = { images ->
             if (images.isEmpty()) {
@@ -185,9 +166,7 @@ internal fun ModeraApp(
     val isTopLevelDestination =
         appState.navigationState.currentSubStack.size == 1
 
-    CompositionLocalProvider(
-        LocalHomeAnalysisState provides homeAnalysisState,
-    ) {
+    CompositionLocalProvider {
         ModeraNavigationSuiteScaffold(
             layoutType = NavigationSuiteType.None,
             navigationSuiteItems = {},
@@ -227,12 +206,16 @@ internal fun ModeraApp(
                                                     appState.navigationState
                                                         .currentTopLevelKey,
                                         onClick = {
-                                            if (navKey == CategoryNavKey()) {
-                                                navigator.navigateToCategoryTab(
-                                                    selectedCategoryId = null,
-                                                )
-                                            } else {
-                                                navigator.navigate(navKey)
+                                            when (navKey) {
+                                                HomeNavKey -> {
+                                                    navigator.navigateToHomeTab(
+                                                        appState.homeTabController,
+                                                    )
+                                                }
+
+                                                else -> {
+                                                    navigator.navigate(navKey)
+                                                }
                                             }
                                         },
                                         iconRes = navItem.icon,

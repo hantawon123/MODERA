@@ -51,7 +51,8 @@ cp .env.local.example .env.local
 | --- | --- | --- |
 | `INTERNAL_TOKEN` | `local-dev-internal-token` | worker 의 `internal.callback.token` 기본값과 **같아야** 한다. 양방향 공유 토큰이라 요청·콜백 양쪽에 쓰인다 |
 | `MOCK_AI` | `true` | Gemini 없이 띄우기. 아래 "Gemini 키" 참고 |
-| `GEMINI_API_KEY` | 비워 둠 | `MOCK_AI=true` 면 필요 없다 |
+| `GMS_KEY` | 비워 둠 | `MOCK_AI=true` 면 필요 없다. 구 `GEMINI_API_KEY` |
+| `GEMINI_API_KEY` | 비워 둠 | Agent Platform 전환용. 아직 코드가 쓰지 않는다 |
 | `S3_ENDPOINT` | `http://localhost:9002` (호스트) / `http://minio:9000` (컨테이너) | local-infra MinIO |
 | `S3_ACCESS_KEY` / `S3_SECRET_KEY` | `minioadmin` / `minioadmin` | local-infra 기본 계정 |
 | `S3_BUCKET` / `S3_THUMBNAIL_BUCKET` | `pictures` / `thumbnails` | api-server 의 버킷명과 동일 |
@@ -77,7 +78,7 @@ cp .env.local.example .env.local
 원래는 mock 모드가 없었다. 이번에 `MOCK_AI` 를 추가했다.
 
 ```bash
-MOCK_AI=true      # GEMINI_API_KEY 없이 기동
+MOCK_AI=true      # GMS_KEY 없이 기동
 ```
 
 - `gemini_client.generate_json` / `embed` 가 Gemini 를 부르지 않고 가짜 응답을 준다.

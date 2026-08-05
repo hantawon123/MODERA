@@ -6,6 +6,11 @@
 세 갈래다 — (A) 문서 생성 호출 비용, (B) 인프라 경로(GMS→Vertex), (C) OCR 중복.
 C가 가장 값이 크고, A는 C를 고치면 상당 부분 같이 해결된다.
 
+> **2026-08-05 검증 추가.** C의 상류 판정을 배포 서버 실데이터로 확정했다 —
+> 중복은 **안드로이드에서 들어온다**. 근거는 C 항목 "검증 결과". 남은 일 1·2 해소.
+> 결론 한 줄: **비용 문제가 아니라 품질 문제다.** 뭉개진 절반이 프롬프트 앞자리를
+> 차지해 절단이 정상 텍스트를 버린다. 돈은 부산물.
+
 ---
 
 ## A. 문서 생성 호출이 비쌌던 이유
@@ -104,8 +109,33 @@ _client_instance = genai.Client(
 - `_client()` → Vertex: `gemini_client.py:228` generate_content
 - `_embed_client()` → GMS(api_key + base_url): `gemini_client.py:311` embed_content
 
-15줄 안쪽. `GEMINI_API_KEY`·`GEMINI_BASE_URL`은 **지우지 말 것** — 임베딩
-전용으로 살아남는다. `GCP_PROJECT`·`GCP_LOCATION`·`GOOGLE_APPLICATION_CREDENTIALS`가 추가된다.
+15줄 안쪽. `GMS_KEY`·`GEMINI_BASE_URL`은 **지우지 말 것** — 임베딩
+전용으로 살아남는다. `GCP_PROJECT`·`GCP_LOCATION`이 추가된다.
+
+> **2026-08-05 정정 — 위 코드 블록은 낡았다.** 세 가지가 바뀌었다.
+> 1. **제품명**: Vertex AI → **Gemini Enterprise Agent Platform** (2026-05-21 완료).
+>    엔드포인트 호스트 `aiplatform.googleapis.com`은 호환성 유지로 그대로다.
+> 2. **파라미터**: `vertexai=True` → **`enterprise=True`**. 구 이름은 SDK 소스에
+>    "Legacy flag for `enterprise`"로 남아 아직 동작한다(google-genai 2.16.0 실측).
+> 3. **인증**: ADC/서비스 계정이 아니라 **API 키**로 간다(결정). 따라서
+>    `GOOGLE_APPLICATION_CREDENTIALS`·서비스 계정 JSON·compose 볼륨 마운트가
+>    **전부 필요 없다**. 표준 모드는 `enterprise=True` + `api_key` +
+>    `project` + `location`을 주면 되고, SDK가
+>    `https://{loc}-aiplatform.googleapis.com/v1beta1/projects/{p}/locations/{l}/publishers/google/models/{m}:generateContent`
+>    + `x-goog-api-key` 헤더로 조립한다(실측 확인). `project`/`location`을 빼면
+>    express mode(경로에 `projects/` 없음)가 된다.
+>
+> **키 이름 개명 (2026-08-05, 적용 완료).** `GEMINI_API_KEY`는 이제 Agent
+> Platform 키 자리다. GMS 프록시 키는 **`GMS_KEY`**로 옮겼다. 이유: SDK
+> `get_env_api_key()`가 환경의 `GEMINI_API_KEY`·`GOOGLE_API_KEY`를 자동으로
+> 집어서, 이름이 겹치면 GMS 키가 `aiplatform.googleapis.com`으로 날아가 401이
+> 난다. 코드에서는 `settings.gms_key`(임베딩)와 `settings.gemini_api_key`
+> (Agent Platform, **아직 미사용**)로 갈라져 있다.
+>
+> **미확인**: Google이 표준 모드 project-scoped 경로에서 API 키를 수락하는지.
+> SDK는 헤더를 확실히 실어 보내지만 수락 여부는 서버 ACL이다. 키 발급 후
+> `curl` 1회로 판정하고, 401/403이면 ① `?key=` 쿼리 파라미터 ② express 경로
+> 순으로 내려간다. 둘 다 실패하면 ADC로 복귀 — 그때 위 코드 블록이 되살아난다.
 
 ### 얻는 것
 - **GMS 화이트리스트 소멸.** `config.py:146-148`이 기록한 `gemini-3.5-flash-lite`
@@ -136,6 +166,7 @@ _client_instance = genai.Client(
 ### 증상
 `rawText`(→ 프롬프트의 `OCR 원문`)에 **같은 한글이 뭉개진 형태 + 정상 형태로
 두 번** 들어 있다. 11장 전부 동일 구조 — 뭉개진 짧은 블록이 앞, 정상 한글이 뒤.
+샘플 11장에 국한된 현상이 아니다: 운영 데이터 41건 중 30건(아래 "검증 결과").
 
 이미지 #35 예:
 | 뭉개진 쪽 | 정상 쪽 |
@@ -144,6 +175,58 @@ _client_instance = genai.Client(
 | `A5 (ncome)` | `소득정보 (ncome)` |
 | `x aeaKCB) Bx` | `부산광역시 코리아크레딧뷰로 (KCB) 공동 발제` |
 | `o\|E\| 4}o\|E (KCB N )` | `제공 데이터 속성 가이드 (KCB 신용 정보)` |
+
+### 검증 결과 (2026-08-05, 배포 서버 실데이터) — 안드로이드 확정
+
+**컨테이너 로그로는 판정 불가.** `ai-ai-service-1` 로그 1554줄에 `raw_text`·`ocr_text`
+출력 0건 — 남은 일 #1이 지적한 로그가 아직 없다. 부수 확인: usage 6건 전부
+`thoughts=None`(A항목 thinking 누수 없음 재확인), `model=gemini-3.5-flash`.
+
+그래서 **저장된 값 두 곳을 직접 비교**했다.
+
+| 저장소 | 경로 | 결과 |
+|---|---|---|
+| OpenSearch `screenshot_kb` | AI 파이프라인 통과 후 | 46건, 80자 이상 41건 중 **30건**이 중복 서명 |
+| Postgres `modera_api.image_schema.ocr.content` | Spring 저장분 = **AI 진입 전** | 41건 문자 길이가 위와 **전부 동일**. 뭉개진 토큰 `CHIPEEA`가 39번째 문자에 존재 |
+
+측정법: 텍스트를 반으로 갈라 전반/후반 한글 비율 비교. 뒤가 앞보다 15%p 이상
+높으면 중복 서명(뭉개진 앞 + 정상 뒤). 실측 분포는 앞 0~30% / 뒤 45~90%.
+쿼리는 `scripts/` 아님 — 임시 SQL로 돌렸고 재현하려면 아래를 쓴다:
+
+```sql
+-- 전반/후반 한글 비율로 중복 서명 판정
+with d as (select image_id, content, length(content) n
+           from image_schema.ocr where length(content) >= 80),
+     m as (select image_id, n,
+             length(regexp_replace(substr(content,1,n/2),  '[^가-힣]','','g'))::numeric h_front,
+             length(regexp_replace(substr(content,n/2+1),  '[^가-힣]','','g'))::numeric h_back,
+             n/2 len_front, n - n/2 len_back
+           from d)
+select image_id, n chars,
+       round(100*h_front/len_front) pct_front, round(100*h_back/len_back) pct_back,
+       case when 100*h_back/len_back - 100*h_front/len_front > 15
+            then 'DUP-SIG' else 'flat' end verdict
+from m order by chars desc;
+```
+
+**두 가지가 동시에 확정된다:**
+1. 길이가 41건 전부 일치 → AI 파이프라인이 텍스트 길이를 안 건드린다. 교정
+   단계가 중복의 원인이 **아니다**(아래 코드 감사와 독립적인 증거).
+2. 중복이 Spring DB에 이미 있다 → Spring도 AI도 아니고 **안드로이드 ML Kit
+   직렬화 산물**. `rawText` 계약 위반으로 올릴 근거 확보.
+
+image_id 20 실물 대조(위 #35 표와 같은 구조가 운영 데이터에서도 반복):
+
+| 뭉개진 쪽 | 정상 쪽 |
+|---|---|
+| `2026CHIPEEA·XIgsg` | `2026 대합민국도시.지역혁신 산업박람회` |
+| `A 2026. 6.29() - 8. 28(3)` | `서류 제출: 2026.6. 29(월) ~ 8. 28(금)` |
+| `26.8.28()` / `18:00 7}\|` | `26.8.28(금)` / `18:00 까지` |
+| `264 9W ► 26.9.30(4)` | `26년 9월 중 ▶` / `26.9.30(수)` |
+
+접속 경로 메모: OpenSearch는 인증이 걸려 있어 컨테이너 안에서 앱 자체
+클라이언트로 조회했다 — `docker exec -i ai-ai-service-1 python -` 에
+`from app.search import _client`. 자격증명을 따로 캐낼 필요 없다.
 
 ### 원인 판정 — 상류다 (확실)
 `ocr_text` 생성 경로 전부 확인. **이어붙이는 코드가 서비스에 없다.**
@@ -172,6 +255,11 @@ _client_instance = genai.Client(
 
 ML Kit `Text`는 `text`(전체) → `textBlocks` → `lines` 계층이다. 전체 문자열과
 블록 순회 결과를 **둘 다** 이어붙이면 이 모양이 나온다.
+
+발생 지점이 안드로이드라는 건 확정됐지만(위 검증 결과), **이 메커니즘 자체는
+여전히 추정**이다. 순회 순서 차이가 근거일 뿐 안드 코드는 안 봤다. 보고할 때
+확정 사실("rawText에 같은 내용이 두 번, 41건 중 30건")과 추정(직렬화 방식)을
+분리해서 쓸 것.
 
 ### 왜 교정 단계가 못 고치는가 (구조적)
 `stages.py:379` 프롬프트가 명시적으로 금지한다:
@@ -219,35 +307,43 @@ ML Kit `Text`는 `text`(전체) → `textBlocks` → `lines` 계층이다. 전�
 
 ## 남은 일 (우선순위)
 
-1. **[C] 상류/내부 확정 — 임시 로그 1줄.** 요청 진입점에서 `raw_text`와
-   `refined_text`의 길이 + 앞 200자를 찍는다. `raw_text`에 이미 중복이면 상류
-   확정, 안드로이드에 올릴 근거가 된다. 대안: OpenSearch에서
-   `GET /{index}/_doc/{image_id}?_source=raw_text` — 빠르지만 `refined_text or
-   raw_text`라 원본 구분이 안 된다.
-2. **[C] 안드로이드/Spring 어느 쪽인지.** Spring이 `rawText`를 가공 없이
-   전달하는지 확인해야 갈린다. 이 repo에서는 안 보인다.
+- ~~**[C] 상류/내부 확정 — 임시 로그 1줄.**~~ **완료 (2026-08-05).** 로그 추가
+  없이 저장된 값 비교로 확정. 임시 로그는 불필요해졌다.
+- ~~**[C] 안드로이드/Spring 어느 쪽인지.**~~ **완료 — 안드로이드.** Spring DB
+  `image_schema.ocr.content`에 이미 중복 존재.
+
+1. **[C] 안드로이드에 보고.** `rawText` 계약 위반으로 프레이밍
+   (`schemas.py:65` 단일 패스 평문 계약). 근거는 "검증 결과" 표 + image_20 대조표.
    ⚠️ **안드로이드 이슈는 직접 수정하지 않는다** — 별도 보고 경로.
-3. **[A] `.env` 한 줄** — `LLM_MODEL_NAME=gemini-2.5-flash`. 회수 제일 큼.
+2. **[A] `.env` 한 줄** — `LLM_MODEL_NAME=gemini-2.5-flash`. 중복과 **무관하게**
+   비싸다. 중복을 고쳐도 단가는 그대로. 회수 제일 큼.
+3. **[C] AI 측 완화** (안드 수정이 늦거나 안 되면). 중복 제거를 **파이프라인
+   입구**에서. `document.py`가 아니다 — 분석·검색·문서가 전부 혜택을 본다.
+   휴리스틱이니 `ponytail:` 주석으로 천장·상향 경로 명시. 필터 설계는 아래
+   "오탐 정정" 기준 준수(이중언어 슬라이드 보호).
 4. **[B] Vertex 크레딧 적용 범위 확인** (B 항목 3단계).
 5. **[B] Vertex 전환** — 클라이언트 2개 분리 + config. 4번 통과 후.
-6. **[C] AI 측 완화** (상류가 안 되면). 중복 제거를 **파이프라인 입구**에서.
-   `document.py`가 아니다 — 분석·검색·문서가 전부 혜택을 본다. 휴리스틱이니
-   `ponytail:` 주석으로 천장·상향 경로 명시.
-7. **[A] 문서 경로 국소 수정** — title/summary 제거, 워터마크 필터,
+6. **[A] 문서 경로 국소 수정** — title/summary 제거, 워터마크 필터,
    `maxOutputTokens`, `responseSchema`.
+7. **[C] BM25 오염 인과 확인** (선택). `config.py:138-140` 오탐 9건이 이 중복
+   **때문**인지는 아직 상관관계뿐이다. 중복 제거 후 같은 질의를 재실행하면 갈린다.
 
 ### 측정 원칙
-1번 로그로 상류를 확정한 뒤, 중복 제거 전/후로 usage 로그
+상류는 확정됐다. 남은 건 절감폭 — 중복 제거 전/후로 usage 로그
 (`gemini_client.py:133`)의 `prompt=` 값을 비교한다. 추정치 대신 숫자로.
-이 문서의 호출당 추정은 전부 추정이다.
+이 문서의 호출당 추정은 전부 추정이다. 현재 기준선: 장당 `prompt=2871~3526`
+(2026-08-05 실측 6건).
 
 ---
 
 ## 다른 장비에서 이어받을 때
 
-- **`.env`는 git 추적 안 됨.** `GEMINI_API_KEY`·`OPENAI_API_KEY` 등이 이 파일에만
+- **`.env`는 git 추적 안 됨.** `GMS_KEY`·`OPENAI_API_KEY` 등이 이 파일에만
   있다. 안전한 경로로 별도 전달하고 **커밋하지 말 것**. `.env.example`이 필요한
   키 목록이다.
 - 코드 변경 없음 — 이 문서가 전부다.
+- 배포 서버 검증을 재현하려면 C 항목 "검증 결과"의 SQL과 `docker exec` 메모를
+  쓴다. OpenSearch·Postgres 자격증명을 따로 구할 필요 없다 — 컨테이너 안의
+  앱 클라이언트와 `$POSTGRES_USER` 환경변수를 그대로 쓴다.
 - 선행 문서 `MODEL_COST_OPTIMIZATION_2026-08-03.md`를 같이 읽을 것. 단가표,
   thinking 제어 설계, 1차 모델 배치가 거기 있다.

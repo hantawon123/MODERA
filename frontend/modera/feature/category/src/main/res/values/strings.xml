@@ -1,7 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="icon_search_description">검색버튼</string>
-    <string name="category_back_description">뒤로가기</string>
     <string name="category_title_picker_description">카테고리 선택</string>
     <string name="category_all">전체</string>
     <string name="category_item_count">%,d개</string>
@@ -10,9 +8,5 @@
     <string name="category_new_badge">new</string>
 
     <string name="category_search_placeholder">키워드나 태그로 검색해보세요</string>
-    <string name="category_search_recent_analyzed_images">최근 본 자료</string>
-    <string name="category_search_recent_empty">최근에 검색하신 기록이 없네요!</string>
-    <string name="category_search_result_prefix">검색 결과 </string>
     <string name="category_search_result_empty">검색 결과가 없어요.</string>
-    <string name="category_search_load_error">자료를 불러오지 못했어요.</string>
 </resources>

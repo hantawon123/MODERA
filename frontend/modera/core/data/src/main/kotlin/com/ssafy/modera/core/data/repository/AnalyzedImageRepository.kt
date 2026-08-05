@@ -1,11 +1,12 @@
 package com.ssafy.modera.core.data.repository
 
+import com.ssafy.modera.core.data.sync.Syncable
 import com.ssafy.modera.core.model.analyzedimage.AnalyzedImage
 import com.ssafy.modera.core.model.analyzedimage.AnalyzedImageDetail
 import com.ssafy.modera.core.model.analyzedimage.AnalyzedImageQuery
 import kotlinx.coroutines.flow.Flow
 
-interface AnalyzedImageRepository {
+interface AnalyzedImageRepository : Syncable {
 
     fun getAnalyzedImages(
         page: Int,

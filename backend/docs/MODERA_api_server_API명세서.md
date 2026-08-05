@@ -1098,14 +1098,14 @@ centroid 방식이라 개별 이미지가 아니라 공통 주제에 가까운 �
       {
         "categoryId": 1744084819,
         "name": "공부",
-        "categoryImageUrl": "/api/v1/categories/1744084819/thumbnail",
+        "categoryImageUrl": "https://i15d207.p.ssafy.io/category-thumbnails/1744084819.png",
         "imageCount": 42,
         "latestUpdatedAt": "2026-07-17T06:00:00.000Z"
       },
       {
         "categoryId": 1735462011,
         "name": "음식",
-        "categoryImageUrl": "/api/v1/categories/1735462011/thumbnail",
+        "categoryImageUrl": "https://i15d207.p.ssafy.io/category-thumbnails/1735462011.png",
         "imageCount": 52,
         "latestUpdatedAt": "2026-07-18T06:00:00.000Z"
       }
@@ -1117,12 +1117,14 @@ centroid 방식이라 개별 이미지가 아니라 공통 주제에 가까운 �
 
 ### categoryImageUrl 규칙
 
-- presigned URL이 아니라 **만료 없는 고정 경로**다(6-2 아이콘 리다이렉트). 앱이 Room에
-  영구 저장해도 되고, 이미지 캐시 키로 그대로 쓰면 된다.
-- 실제 이미지는 이 경로를 호출하면 6-2가 presigned URL로 302 리다이렉트해 준다 —
-  presign의 1시간 만료는 매 호출 새로 발급하는 것으로 흡수된다.
+- **만료·서명·인증이 전부 없는 공개 절대 URL이다.** 앱은 baseUrl 조립도 Authorization
+  헤더도 없이 이미지 로더에 그대로 넘기면 되고, Room에 영구 저장해도 된다.
+  (category-thumbnails 버킷만 익명 GetObject를 허용한다 — 목록 조회·업로드 불가,
+  원본·썸네일 버킷은 무관. 아이콘은 AI 생성 범용 픽토그램이라 사용자 데이터가 아니다.)
 - 아이콘은 categoryId당 **불변**이다(재생성 경로 없음, 이름이 바뀌면 id 자체가 바뀜).
-  따라서 버전 필드 없이 캐시를 무기한 유지해도 된다.
+  버전 필드 없이 캐시를 무기한 유지해도 된다.
+- 아이콘 생성은 AI 쪽 백그라운드(수십 초)라 **카테고리 생성 직후에는 URL이 404일 수
+  있다.** 플레이스홀더를 보여주면 다음 로드에서 자연 복구된다.
 
 ---
 
@@ -1132,7 +1134,7 @@ centroid 방식이라 개별 이미지가 아니라 공통 주제에 가까운 �
 | --- | --- |
 | API | `GET /api/v1/categories/{categoryId}/thumbnail` |
 | 인증 | Bearer |
-| 설명 | 카테고리 아이콘(AI 생성, 216×216 PNG, 투명 배경)의 presigned GET URL로 302 리다이렉트한다. 이미지 로더(Coil 등)가 리다이렉트를 따라가 스토리지에서 직접 받는다. |
+| 설명 | 카테고리 아이콘(AI 생성, 216×216 PNG, 투명 배경)의 presigned GET URL로 302 리다이렉트한다. **6-1이 공개 URL을 직접 내려주므로 앱은 보통 이 API를 쓸 필요가 없다** — 인증이 필요한 접근 경로가 따로 필요할 때를 위한 보조 수단으로 유지한다. |
 
 ### Response
 

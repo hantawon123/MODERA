@@ -1,6 +1,8 @@
 ﻿package com.ssafy.modera.core.database.di
 
 import com.ssafy.modera.core.database.ModeraDatabase
+import com.ssafy.modera.core.database.dao.AnalyzedImageDao
+import com.ssafy.modera.core.database.dao.CategoryDao
 import com.ssafy.modera.core.database.dao.DocumentDao
 import dagger.Module
 import dagger.Provides
@@ -16,4 +18,16 @@ internal object DaosModule {
         database: ModeraDatabase,
     ): DocumentDao =
         database.documentDao()
+
+    @Provides
+    fun providesAnalyzedImageDao(
+        database: ModeraDatabase,
+    ): AnalyzedImageDao =
+        database.analyzedImageDao()
+
+    @Provides
+    fun providesCategoryDao(
+        database: ModeraDatabase,
+    ): CategoryDao =
+        database.categoryDao()
 }

@@ -33,22 +33,9 @@ class ModeraFirebaseMessagingService : FirebaseMessagingService() {
 
         applicationScope.launch {
             try {
-                val synced =
-                    pushTokenRepository.registerPushToken(
-                        installationId = installationId,
-                    )
-
-                if (synced) {
-                    Log.d(
-                        TAG,
-                        "Push installation registered: $installationId",
-                    )
-                } else {
-                    Log.d(
-                        TAG,
-                        "Push installation saved until authentication: $installationId",
-                    )
-                }
+                pushTokenRepository.registerPushToken(
+                    installationId = installationId,
+                )
             } catch (exception: CancellationException) {
                 throw exception
             } catch (exception: Exception) {
@@ -72,25 +59,22 @@ class ModeraFirebaseMessagingService : FirebaseMessagingService() {
             ?: return
 
         when (event.resource) {
+            SyncResourceType.CALENDAR,
+            SyncResourceType.IMAGE,
             SyncResourceType.DOCUMENT -> {
                 syncWorkEnqueuer.enqueue(
                     resource = event.resource,
                     resourceId = event.resourceId,
                 )
             }
-
-            SyncResourceType.IMAGE,
-            SyncResourceType.CALENDAR,
-                -> Unit
         }
     }
 
+    @Deprecated("Deprecated in Java")
     override fun onNewToken(
         token: String,
     ) {
         super.onNewToken(token)
-
-        // TODO FCM 토큰을 서버에 등록하는 API 호출
     }
 
     private companion object {

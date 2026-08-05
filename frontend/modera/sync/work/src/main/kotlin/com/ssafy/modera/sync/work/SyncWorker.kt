@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
+import com.ssafy.modera.core.data.repository.AnalyzedImageRepository
 import com.ssafy.modera.core.data.repository.document.DocumentRepository
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
@@ -14,6 +15,7 @@ import java.io.IOException
 class SyncWorker @AssistedInject constructor(
     @Assisted appContext: Context,
     @Assisted workerParameters: WorkerParameters,
+    private val analyzedImageRepository: AnalyzedImageRepository,
     private val documentRepository: DocumentRepository,
 ) : CoroutineWorker(
     appContext = appContext,
@@ -36,15 +38,19 @@ class SyncWorker @AssistedInject constructor(
 
         return try {
             val synced = when (resource) {
+                SyncResourceType.IMAGE -> {
+                    analyzedImageRepository.syncWith(
+                        resourceId = resourceId,
+                    )
+                }
+
                 SyncResourceType.DOCUMENT -> {
                     documentRepository.syncWith(
                         resourceId = resourceId,
                     )
                 }
 
-                SyncResourceType.IMAGE,
-                SyncResourceType.CALENDAR,
-                    -> {
+                SyncResourceType.CALENDAR -> {
                     return Result.failure()
                 }
             }

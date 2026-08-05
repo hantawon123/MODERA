@@ -31,14 +31,16 @@ class CategoryQueryServiceTest {
                 1, "category_name ASC, category_id ASC"))
                 .thenReturn(List.of(new CategoryListRow(
                         3, "공부", 42, latestUploadedAt)));
+        // 만료·인증 없는 공개 URL — 앱이 Room에 저장하고 헤더 없이 바로 로드한다.
+        when(categoryImageUrlFactory.createPublicUrl(3))
+                .thenReturn("https://storage.example/category-thumbnails/3.png");
 
         var result = categoryQueryService.getCategories(1, " name_asc ");
 
         assertThat(result.list().getFirst().categoryId()).isEqualTo(3);
         assertThat(result.list().getFirst().name()).isEqualTo("공부");
-        // 목록에는 presigned URL이 아니라 불변 경로가 나간다(앱 Room 저장·캐시 키용).
         assertThat(result.list().getFirst().categoryImageUrl())
-                .isEqualTo("/api/v1/categories/3/thumbnail");
+                .isEqualTo("https://storage.example/category-thumbnails/3.png");
         assertThat(result.list().getFirst().imageCount()).isEqualTo(42);
         assertThat(result.list().getFirst().latestUpdatedAt()).isEqualTo(latestUploadedAt);
     }

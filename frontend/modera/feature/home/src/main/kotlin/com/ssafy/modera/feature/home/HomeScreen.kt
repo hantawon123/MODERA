@@ -63,6 +63,7 @@ fun HomeRoute(
                 onSearchSubmit = viewModel::submitSearch,
                 onRecentSearchClick = viewModel::selectRecentSearchQuery,
                 onRecentSearchDelete = viewModel::removeRecentSearchQuery,
+                onRecentSearchClearAll = viewModel::clearRecentSearchQueries,
                 onSearchDeactivate = viewModel::deactivateSearch,
                 onSearchResultClick = onSearchResultClick,
                 modifier = modifier,
@@ -88,6 +89,7 @@ private fun HomeSuccessScreen(
     onSearchSubmit: () -> Unit,
     onRecentSearchClick: (String) -> Unit,
     onRecentSearchDelete: (String) -> Unit,
+    onRecentSearchClearAll: () -> Unit,
     onSearchDeactivate: () -> Unit,
     onSearchResultClick: (Long) -> Unit,
     modifier: Modifier = Modifier,
@@ -161,6 +163,7 @@ private fun HomeSuccessScreen(
                 onCategoryClick = onCategoryClick,
                 onRecentSearchClick = onRecentSearchClick,
                 onRecentSearchDelete = onRecentSearchDelete,
+                onRecentSearchClearAll = onRecentSearchClearAll,
                 onSearchResultClick = onSearchResultClick,
                 modifier = Modifier
                     .weight(1f)
@@ -222,6 +225,7 @@ private fun HomeScreenPreview(
             onSearchSubmit = {},
             onRecentSearchClick = {},
             onRecentSearchDelete = {},
+            onRecentSearchClearAll = {},
             onSearchDeactivate = {},
             onSearchResultClick = {},
         )

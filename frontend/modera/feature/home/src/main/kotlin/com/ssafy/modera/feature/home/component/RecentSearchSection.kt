@@ -33,6 +33,7 @@ internal fun RecentSearchSection(
     recentSearchQueries: List<String>,
     onRecentSearchClick: (String) -> Unit,
     onRecentSearchDelete: (String) -> Unit,
+    onRecentSearchClearAll: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -41,21 +42,45 @@ internal fun RecentSearchSection(
             .verticalScroll(rememberScrollState())
             .padding(top = 24.dp, bottom = 24.dp),
     ) {
-        Text(
-            text = stringResource(R.string.home_recent_search_title),
-            style = ModeraTheme.typography.captionSB12,
-            color = ModeraTheme.colors.gray400,
-            modifier = Modifier.padding(bottom = 12.dp),
-        )
-
-        recentSearchQueries.forEach { query ->
-            RecentSearchQueryItem(
-                text = query,
-                onDeleteClick = { onRecentSearchDelete(query) },
-                onItemClick = { onRecentSearchClick(query) },
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = stringResource(R.string.home_recent_search_title),
+                style = ModeraTheme.typography.captionSB12,
+                color = ModeraTheme.colors.gray700,
             )
 
-            Spacer(Modifier.height(10.dp))
+            if (recentSearchQueries.isNotEmpty()) {
+                Text(
+                    text = stringResource(R.string.home_recent_search_clear_all),
+                    modifier = Modifier.clickable(onClick = onRecentSearchClearAll),
+                    style = ModeraTheme.typography.captionR12,
+                    color = ModeraTheme.colors.gray400,
+                )
+            }
+        }
+
+        if (recentSearchQueries.isEmpty()) {
+            Text(
+                text = stringResource(R.string.home_recent_search_empty),
+                style = ModeraTheme.typography.bodyR14,
+                color = ModeraTheme.colors.gray400,
+            )
+        } else {
+            recentSearchQueries.forEach { query ->
+                RecentSearchQueryItem(
+                    text = query,
+                    onDeleteClick = { onRecentSearchDelete(query) },
+                    onItemClick = { onRecentSearchClick(query) },
+                )
+
+                Spacer(Modifier.height(10.dp))
+            }
         }
     }
 }
@@ -100,6 +125,18 @@ private fun RecentSearchQueryItem(
 
 @Preview(showBackground = true, widthDp = 360, heightDp = 240)
 @Composable
+private fun RecentSearchSectionEmptyPreview() {
+    ModeraTheme {
+        RecentSearchSection(
+            recentSearchQueries = emptyList(),
+            onRecentSearchClick = {},
+            onRecentSearchDelete = {},
+            onRecentSearchClearAll = {},
+        )
+    }
+}
+@Preview(showBackground = true, widthDp = 360, heightDp = 240)
+@Composable
 private fun RecentSearchSectionPreview() {
     ModeraTheme {
         RecentSearchSection(
@@ -110,6 +147,7 @@ private fun RecentSearchSectionPreview() {
             ),
             onRecentSearchClick = {},
             onRecentSearchDelete = {},
+            onRecentSearchClearAll = {},
         )
     }
 }

@@ -179,6 +179,12 @@ class HomeViewModel @Inject constructor(
         }
     }
 
+    fun clearRecentSearchQueries() {
+        viewModelScope.launch {
+            recentSearchRepository.clearRecentSearchQueries()
+        }
+    }
+
     fun deactivateSearch() {
         searchState.update { state ->
             state.copy(

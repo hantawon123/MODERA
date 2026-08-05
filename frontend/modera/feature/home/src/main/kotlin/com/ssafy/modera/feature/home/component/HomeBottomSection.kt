@@ -18,6 +18,7 @@ internal fun HomeBottomSection(
     onCategoryClick: (Category) -> Unit,
     onRecentSearchClick: (String) -> Unit,
     onRecentSearchDelete: (String) -> Unit,
+    onRecentSearchClearAll: () -> Unit,
     onSearchResultClick: (Long) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -40,6 +41,7 @@ internal fun HomeBottomSection(
                 uiState = uiState,
                 onRecentSearchClick = onRecentSearchClick,
                 onRecentSearchDelete = onRecentSearchDelete,
+                onRecentSearchClearAll = onRecentSearchClearAll,
                 onSearchResultClick = onSearchResultClick,
             )
         }
@@ -51,6 +53,7 @@ private fun HomeSearchContent(
     uiState: HomeUiState.Success,
     onRecentSearchClick: (String) -> Unit,
     onRecentSearchDelete: (String) -> Unit,
+    onRecentSearchClearAll: () -> Unit,
     onSearchResultClick: (Long) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -64,11 +67,12 @@ private fun HomeSearchContent(
             )
         }
 
-        uiState.recentSearchQueries.isNotEmpty() -> {
+        else -> {
             RecentSearchSection(
                 recentSearchQueries = uiState.recentSearchQueries,
                 onRecentSearchClick = onRecentSearchClick,
                 onRecentSearchDelete = onRecentSearchDelete,
+                onRecentSearchClearAll = onRecentSearchClearAll,
                 modifier = modifier.fillMaxSize(),
             )
         }

@@ -51,6 +51,18 @@ class DefaultRecentSearchRepository @Inject constructor(
         }
     }
 
+    override suspend fun clearRecentSearchQueries() {
+        recentSearchesDataStore.updateData { current ->
+            if (current.queriesList.isEmpty()) {
+                return@updateData current
+            }
+
+            current.toBuilder()
+                .clearQueries()
+                .build()
+        }
+    }
+
     private companion object {
         const val MaxRecentSearchQueryCount = 10
     }

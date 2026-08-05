@@ -17,6 +17,7 @@ sealed interface CategoryUiState {
         val analyzedImages: List<AnalyzedImage>,
         val totalImageCount: Long,
         val selectedSortType: AnalyzedImageSortType,
+        val searchQuery: String = "",
         val showCategorySheet: Boolean = false,
         val showSortPopup: Boolean = false,
         val isAllCategorySelected: Boolean = false,

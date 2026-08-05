@@ -55,7 +55,7 @@ internal fun RecentSearchSection(
                 onItemClick = { onRecentSearchClick(query) },
             )
 
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(10.dp))
         }
     }
 }
@@ -74,25 +74,25 @@ private fun RecentSearchQueryItem(
                 color = ModeraTheme.colors.gray200,
                 shape = RoundedCornerShape(16.dp),
             )
-            .padding(start = 10.dp, top = 4.dp, end = 4.dp, bottom = 4.dp)
+            .padding(start = 14.dp, top = 6.dp, end = 6.dp, bottom = 6.dp)
             .clickable(enabled = true, onClick = onItemClick),
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
             text = text,
-            style = ModeraTheme.typography.captionR12,
+            style = ModeraTheme.typography.bodyR14,
             color = ModeraTheme.colors.gray700,
         )
 
-        Spacer(Modifier.width(2.dp))
+        Spacer(Modifier.width(4.dp))
 
         Icon(
             imageVector = ImageVector.vectorResource(ModeraIcons.Close),
             contentDescription = stringResource(R.string.home_search_term_item_close_button),
             tint = ModeraTheme.colors.gray500,
             modifier = Modifier
-                .size(20.dp)
+                .size(22.dp)
                 .clickable(enabled = true, onClick = onDeleteClick),
         )
     }

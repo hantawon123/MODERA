@@ -44,9 +44,15 @@ Android 도 AI 도 같은 값을 계산하므로, 저장 구조만으로 카테�
 ```
 GET /api/v1/categories/{categoryId}/icon
 → 200 image/png (216x216), Cache-Control: public, max-age=604800
-→ 404 CATEGORY_NOT_FOUND  이 사용자에게 그 categoryId 의 카테고리가 없다
+→ 404 CATEGORY_NOT_FOUND  그 categoryId 의 카테고리가 색인에 없다
 → 404 ICON_NOT_FOUND      생성까지 실패했다(사유는 detail·서버 로그)
 ```
+
+**파라미터는 categoryId 하나뿐이다.** 다른 앱 API 와 달리 `userId` 를 받지 않는다 —
+아이콘은 전 사용자 공유(key 에 user_id 가 없다)라 소유자 개념이 없다. 즉석 생성에
+필요한 이름을 되찾을 때도 사용자 필터 없이 색인 전체를 훑는다
+(`resolve_name_by_id(None, ...)`). 받아 봐야 `FIXED_USER_ID=0` 인 환경에서
+400 INVALID_PARAMETER 만 만든다.
 
 이 응답만 공통 envelope 를 쓰지 않는다(바이너리). 썸네일 `/thumbnail/raw` 와 같은 모양.
 

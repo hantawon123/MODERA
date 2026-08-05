@@ -35,7 +35,7 @@ from fastapi.responses import Response
 
 from . import responses, search, storage
 from .config import get_settings
-from .deps import CurrentUserId, require_internal_token
+from .deps import require_internal_token
 
 logger = logging.getLogger(__name__)
 
@@ -188,21 +188,14 @@ def schedule_icon(category_id: int, name: str) -> None:
     task.add_done_callback(lambda _: _pending.pop(category_id, None))
 
 
-def _name_of(category_id: int, categories: list[dict]) -> str | None:
-    """categoryId 로 카테고리 이름을 되찾는다. id 는 이름의 해시라 역산이 안 된다."""
-    return next((c["name"] for c in categories
-                 if search.stable_id(c["name"]) == category_id), None)
-
-
 @router.get("/api/v1/categories/{category_id}/icon",
             dependencies=[Depends(require_internal_token)],
             response_class=Response,
             responses={200: {"content": {"image/png": {}},
                              "description": "카테고리 아이콘 PNG (216x216)"},
                        404: {"description": "CATEGORY_NOT_FOUND / ICON_NOT_FOUND"}})
-async def category_icon(category_id: int, user_id: CurrentUserId):
+async def category_icon(category_id: int):
     """카테고리 아이콘 바이너리. Spring 이 이 주소를 앱에 중계한다.
-
     presigned URL 로 주지 않는다. (1) 만료가 있어 앱 캐시가 매번 깨지고,
     (2) 아직 만들어지지 않은 아이콘을 즉석 생성하는 경로가 이쪽에만 있다
     (썸네일 `/thumbnail/raw` 와 같은 이유·같은 모양).
@@ -219,16 +212,18 @@ async def category_icon(category_id: int, user_id: CurrentUserId):
     except Exception as e:
         logger.info("카테고리 아이콘 없음 categoryId=%s: %s — 즉석 생성", category_id, e)
 
-    # 생성하려면 이름이 있어야 한다. id 는 이름 해시라 사용자의 카테고리 목록에서
-    # 되찾는다(사진이 1장이라도 있으면 집계에 잡힌다).
+    # 생성하려면 이름이 있어야 한다. id 는 이름 해시라 역산이 안 되므로 색인의
+    # 카테고리 이름들을 훑어 같은 해시를 찾는다(사진이 1장이라도 있으면 잡힌다).
+    # 사용자 필터를 걸지 않는다 — 아이콘은 전 사용자 공유라 '누구의 카테고리인지'
+    # 가 의미가 없고, 여기서 필터를 걸면 userId 를 다시 받아야 한다.
     try:
-        categories = await asyncio.to_thread(search.aggregate_categories, user_id, 500)
+        name = await asyncio.to_thread(
+            search.resolve_name_by_id, None, "category_name", category_id)
     except Exception as e:
         logger.exception("카테고리 조회 실패 categoryId=%s", category_id)
         return responses.failure("INTERNAL_ERROR", "카테고리를 조회하지 못했습니다.",
                                  str(e)[:300], http_status=500)
 
-    name = _name_of(category_id, categories)
     if name is None:
         return responses.failure("CATEGORY_NOT_FOUND", "카테고리를 찾을 수 없습니다.",
                                  f"categoryId: {category_id}", http_status=404)

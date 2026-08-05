@@ -48,4 +48,21 @@ public class CategoryImageUrlFactory {
                 .url()
                 .toString();
     }
+
+    /**
+     * 목록(6-1)에 싣는 만료 없는 공개 URL. category-thumbnails 버킷은 익명 GetObject만
+     * 허용돼 있어(목록 조회·업로드 불가, 다른 버킷 무관) 서명 없이 바로 열린다 —
+     * 앱이 Room에 영구 저장하고 인증 헤더 없이 이미지 로더에 그대로 넘길 수 있다.
+     */
+    public String createPublicUrl(Integer categoryId) {
+        if (categoryId == null) {
+            return null;
+        }
+        String endpoint = storageProperties.getPublicEndpoint();
+        if (endpoint.endsWith("/")) {
+            endpoint = endpoint.substring(0, endpoint.length() - 1);
+        }
+        return endpoint + "/" + storageProperties.getBucket().getCategoryThumbnails()
+                + "/" + categoryId + ".png";
+    }
 }

@@ -19,9 +19,6 @@ import java.util.Map;
 @Transactional(readOnly = true)
 public class CategoryQueryService {
 
-    /** 목록 응답에 싣는 아이콘 고정 경로. 실제 이미지는 이 경로의 302 리다이렉트가 준다. */
-    private static final String THUMBNAIL_PATH_FORMAT = "/api/v1/categories/%d/thumbnail";
-
     // 다른 목록 API(5-1 TITLE_ASC, 8-1 UPDATED_DESC, 9-1 START_ASC)와 같은 enum 방식.
     private static final Map<String, String> SORT_SQL = Map.of(
             "NAME_ASC", "category_name ASC, category_id ASC",
@@ -51,9 +48,9 @@ public class CategoryQueryService {
         return new CategorySummaryResponse(
                 row.categoryId(),
                 row.name(),
-                // presigned URL이 아니라 불변 경로다. 앱이 Room에 영구 저장하고 이미지
-                // 캐시 키로도 쓴다 — presign은 이 경로의 6-2 리다이렉트가 그때그때 한다.
-                THUMBNAIL_PATH_FORMAT.formatted(row.categoryId()),
+                // 만료·서명·인증이 전부 없는 공개 URL — 앱이 Room에 영구 저장하고
+                // 헤더 없이 이미지 로더에 그대로 넘긴다(버킷이 익명 GetObject 허용).
+                categoryImageUrlFactory.createPublicUrl(row.categoryId()),
                 row.imageCount(),
                 row.latestUploadedAt()
         );

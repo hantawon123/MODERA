@@ -20,6 +20,8 @@ public enum ImageErrorCode implements ErrorCode {
     ANALYSIS_IN_PROGRESS(HttpStatus.CONFLICT, "ANALYSIS_IN_PROGRESS", "이미지 분석이 이미 시작되었습니다."),
     AI_SEARCH_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "AI_SEARCH_FAILED", "AI 이미지 검색에 실패했습니다."),
     AI_SEARCH_TIMEOUT(HttpStatus.GATEWAY_TIMEOUT, "AI_SEARCH_TIMEOUT", "AI 이미지 검색 응답 시간이 초과되었습니다."),
+    /** 본인 소유가 아니거나 존재하지 않는 카테고리. 존재 여부를 숨기려 둘을 구분하지 않는다(5-2와 같은 정책). */
+    CATEGORY_NOT_FOUND(HttpStatus.NOT_FOUND, "CATEGORY_NOT_FOUND", "카테고리를 찾을 수 없습니다."),
     CATEGORY_REANALYSIS_UNAVAILABLE(
             HttpStatus.CONFLICT,
             "CATEGORY_REANALYSIS_UNAVAILABLE",

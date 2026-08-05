@@ -54,6 +54,7 @@ storage:
     bucket:
       pictures: ${S3_BUCKET_PICTURES:pictures}
       thumbnails: ${S3_BUCKET_THUMBNAILS:thumbnails}
+      category-thumbnails: ${S3_BUCKET_CATEGORY_THUMBNAILS:category-thumbnails}
     access-key: ${S3_ACCESS_KEY:minioadmin}
     secret-key: ${S3_SECRET_KEY:minioadmin}
     path-style-access: true

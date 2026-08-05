@@ -29,8 +29,9 @@ class CategoryQueryServiceTest {
         when(categoryQueryRepository.findCategories(
                 1, "category_name ASC, category_id ASC"))
                 .thenReturn(List.of(new CategoryListRow(
-                        3, "공부", "categories/study.jpg", 42, latestUploadedAt)));
-        when(categoryImageUrlFactory.createViewUrl("categories/study.jpg"))
+                        3, "공부", 42, latestUploadedAt)));
+        // 아이콘 URL은 categoryId({id}.png 결정적 키)로 서명한다 — s3 키를 넘기지 않는다.
+        when(categoryImageUrlFactory.createViewUrl(3))
                 .thenReturn("http://localhost/category-image");
 
         var result = categoryQueryService.getCategories(1, " name_asc ");

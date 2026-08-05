@@ -3,54 +3,100 @@ package com.ssafy.modera.core.data.repository.notification
 import android.content.Context
 import com.ssafy.modera.core.common.network.Dispatcher
 import com.ssafy.modera.core.common.network.ModeraDispatcher
+import com.ssafy.modera.core.datastore.AuthSessionStore
 import com.ssafy.modera.core.network.service.notification.NotificationClient
 import dagger.hilt.android.qualifiers.ApplicationContext
-import java.util.UUID
-import javax.inject.Inject
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
+import javax.inject.Inject
+import javax.inject.Singleton
 
+@Singleton
 class DefaultPushTokenRepository @Inject constructor(
     private val notificationClient: NotificationClient,
+    private val authSessionStore: AuthSessionStore,
     @ApplicationContext private val context: Context,
-    @Dispatcher(ModeraDispatcher.IO) private val ioDispatcher: CoroutineDispatcher,
+    @param:Dispatcher(ModeraDispatcher.IO)
+    private val ioDispatcher: CoroutineDispatcher,
 ) : PushTokenRepository {
 
-    override suspend fun registerPushToken(fcmToken: String) {
-        withContext(ioDispatcher) {
-            notificationClient.updatePushToken(
-                deviceId = getOrCreateDeviceId(),
-                fcmToken = fcmToken,
-            )
-        }
+    override suspend fun registerPushToken(
+        installationId: String,
+    ): Boolean = withContext(ioDispatcher) {
+        saveInstallationId(
+            installationId = installationId,
+        )
+
+        syncPushTokenInternal()
     }
+
+    override suspend fun syncPushToken(): Boolean =
+        withContext(ioDispatcher) {
+            syncPushTokenInternal()
+        }
 
     override suspend fun deletePushToken() {
         withContext(ioDispatcher) {
+            val session = authSessionStore.session.first()
+
+            if (!session.isAuthenticated) {
+                return@withContext
+            }
+
             notificationClient.deletePushToken(
-                deviceId = requireDeviceId(),
+                deviceId = session.deviceId,
             )
         }
     }
 
-    private fun getOrCreateDeviceId(): String {
-        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        return prefs.getString(KEY_DEVICE_ID, null)
-            ?: UUID.randomUUID().toString().also { deviceId ->
-                prefs.edit()
-                    .putString(KEY_DEVICE_ID, deviceId)
-                    .apply()
-            }
+    private suspend fun syncPushTokenInternal(): Boolean {
+        val installationId =
+            getInstallationId() ?: return false
+
+        val session = authSessionStore.session.first()
+
+        if (!session.isAuthenticated) {
+            return false
+        }
+
+        notificationClient.updatePushToken(
+            deviceId = session.deviceId,
+            fcmToken = installationId,
+        )
+
+        return true
     }
 
-    private fun requireDeviceId(): String {
-        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        return prefs.getString(KEY_DEVICE_ID, null)
-            ?: error("Device ID not found")
+    private fun saveInstallationId(
+        installationId: String,
+    ) {
+        context
+            .getSharedPreferences(
+                PREFS_NAME,
+                Context.MODE_PRIVATE,
+            )
+            .edit()
+            .putString(
+                KEY_INSTALLATION_ID,
+                installationId,
+            )
+            .apply()
     }
+
+    private fun getInstallationId(): String? =
+        context
+            .getSharedPreferences(
+                PREFS_NAME,
+                Context.MODE_PRIVATE,
+            )
+            .getString(
+                KEY_INSTALLATION_ID,
+                null,
+            )
 
     private companion object {
-        const val PREFS_NAME = "modera_device"
-        const val KEY_DEVICE_ID = "device_id"
+        const val PREFS_NAME = "modera_push"
+        const val KEY_INSTALLATION_ID = "installation_id"
     }
 }

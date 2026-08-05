@@ -48,7 +48,6 @@ import com.ssafy.modera.feature.analyzedimagedetail.navigation.analyzedImageDeta
 import com.ssafy.modera.feature.analyzedimagedetail.navigation.navigateToImageDetail
 import com.ssafy.modera.feature.calendar.navigation.calendarEntry
 import com.ssafy.modera.feature.calendar.navigation.navigateToCalendar
-import com.ssafy.modera.feature.category.navigation.CategoryNavKey
 import com.ssafy.modera.feature.category.navigation.categoryEntry
 import com.ssafy.modera.feature.category.navigation.navigateToCategorySearch
 import com.ssafy.modera.feature.category.navigation.navigateToCategoryTab
@@ -64,6 +63,7 @@ import com.ssafy.modera.feature.document.documents.navigation.documentEntry
 import com.ssafy.modera.feature.favorite.navigation.favoritesEntry
 import com.ssafy.modera.feature.home.navigation.HomeNavKey
 import com.ssafy.modera.feature.home.navigation.homeEntry
+import com.ssafy.modera.feature.home.navigation.navigateToHomeTab
 import com.ssafy.modera.feature.imageviewer.navigation.imageViewerEntry
 import com.ssafy.modera.feature.imageviewer.navigation.navigateToImageViewer
 import com.ssafy.modera.feature.login.LoginRoute
@@ -206,12 +206,16 @@ internal fun ModeraApp(
                                                     appState.navigationState
                                                         .currentTopLevelKey,
                                         onClick = {
-                                            if (navKey == CategoryNavKey()) {
-                                                navigator.navigateToCategoryTab(
-                                                    selectedCategoryId = null,
-                                                )
-                                            } else {
-                                                navigator.navigate(navKey)
+                                            when (navKey) {
+                                                HomeNavKey -> {
+                                                    navigator.navigateToHomeTab(
+                                                        appState.homeTabController,
+                                                    )
+                                                }
+
+                                                else -> {
+                                                    navigator.navigate(navKey)
+                                                }
                                             }
                                         },
                                         iconRes = navItem.icon,

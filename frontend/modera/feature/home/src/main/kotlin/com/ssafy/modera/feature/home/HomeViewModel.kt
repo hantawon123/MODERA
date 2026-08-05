@@ -8,7 +8,6 @@ import com.ssafy.modera.core.data.repository.CategoryRepository
 import com.ssafy.modera.core.data.repository.search.RecentSearchRepository
 import com.ssafy.modera.core.data.repository.search.SearchRepository
 import com.ssafy.modera.core.model.analyzedimage.AnalyzedImage
-import com.ssafy.modera.feature.home.HomeScreenDefaults
 import com.ssafy.modera.feature.home.state.HomeSearchState
 import com.ssafy.modera.feature.home.state.HomeUiState
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -29,6 +28,7 @@ class HomeViewModel @Inject constructor(
     private val categoryRepository: CategoryRepository,
     private val searchRepository: SearchRepository,
     private val recentSearchRepository: RecentSearchRepository,
+    private val homeTabController: HomeTabController,
 ) : ViewModel() {
     private val searchState = MutableStateFlow(HomeSearchState())
 
@@ -36,6 +36,8 @@ class HomeViewModel @Inject constructor(
         viewModelScope.launch {
             categoryRepository.refreshCategoriesIfEmpty()
         }
+
+        homeTabController.observeReset(viewModelScope, ::deactivateSearch)
     }
 
     val uiState: StateFlow<HomeUiState> =

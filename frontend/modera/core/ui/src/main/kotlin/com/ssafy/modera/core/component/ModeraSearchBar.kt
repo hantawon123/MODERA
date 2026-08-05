@@ -25,9 +25,12 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -39,7 +42,9 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.vectorResource
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -80,8 +85,18 @@ fun ModeraSearchBar(
     val shape = SearchBarDefaults.Shape
     val resolvedFocusRequester = focusRequester ?: remember { FocusRequester() }
     val coroutineScope = rememberCoroutineScope()
+    var textFieldValue by remember { mutableStateOf(TextFieldValue(query)) }
     val trailingIconsWidth =
         SearchBarDefaults.IconSize * 2 + SearchBarDefaults.IconTextSpacing
+
+    LaunchedEffect(query) {
+        if (query != textFieldValue.text) {
+            textFieldValue = TextFieldValue(
+                text = query,
+                selection = TextRange(query.length),
+            )
+        }
+    }
 
     Box(
         modifier = modifier
@@ -100,8 +115,11 @@ fun ModeraSearchBar(
         contentAlignment = Alignment.CenterStart,
     ) {
         BasicTextField(
-            value = query,
-            onValueChange = onQueryChange,
+            value = textFieldValue,
+            onValueChange = { newValue ->
+                textFieldValue = newValue
+                onQueryChange(newValue.text)
+            },
             modifier = Modifier
                 .focusRequester(resolvedFocusRequester)
                 .fillMaxWidth()
@@ -149,6 +167,7 @@ fun ModeraSearchBar(
                             indication = null,
                             interactionSource = remember { MutableInteractionSource() },
                             onClick = {
+                                textFieldValue = TextFieldValue("")
                                 onQueryChange("")
                                 coroutineScope.launch {
                                     resolvedFocusRequester.requestFocus()

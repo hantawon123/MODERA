@@ -21,7 +21,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.graphicsLayer
@@ -70,7 +69,7 @@ fun LoadingWheel(
     )
 
     // Todo: 디자인 나오면 수정
-    val baseLineColor = Color(0xFF0065F4)
+    val baseLineColor = ModeraTheme.colors.yellow700
     val progressLineColor = ModeraTheme.colors.white
 
     val colorAnimValues = (0 until NUM_OF_LINES).map { index ->

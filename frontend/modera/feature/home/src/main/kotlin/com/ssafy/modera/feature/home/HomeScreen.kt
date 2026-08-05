@@ -1,6 +1,7 @@
 package com.ssafy.modera.feature.home
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -12,6 +13,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
@@ -118,11 +120,21 @@ private fun HomeSuccessScreen(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .weight(searchLayoutState.upperWeight),
+                    .weight(searchLayoutState.upperWeight)
+                    .then(
+                        if (uiState.isSearchActive) {
+                            Modifier.pointerInput(Unit) {
+                                detectTapGestures {
+                                    focusManager.clearFocus()
+                                }
+                            }
+                        } else {
+                            Modifier
+                        },
+                    ),
             ) {
                 HomeUpperSection(
                     upperContentAlpha = searchLayoutState.upperContentAlpha,
-                    isSearchActive = uiState.isSearchActive,
                     onCalendarClick = onCalendarClick,
                     onSettingsClick = onSettingsClick,
                 )
@@ -149,9 +161,20 @@ private fun HomeSuccessScreen(
                 onCategoryClick = onCategoryClick,
                 onRecentSearchClick = onRecentSearchClick,
                 onRecentSearchDelete = onRecentSearchDelete,
-                onSearchDeactivate = onSearchDeactivate,
                 onSearchResultClick = onSearchResultClick,
-                modifier = Modifier.weight(1f),
+                modifier = Modifier
+                    .weight(1f)
+                    .then(
+                        if (uiState.isSearchActive) {
+                            Modifier.pointerInput(Unit) {
+                                detectTapGestures {
+                                    focusManager.clearFocus()
+                                }
+                            }
+                        } else {
+                            Modifier
+                        },
+                    ),
             )
         }
     }

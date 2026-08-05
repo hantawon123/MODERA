@@ -154,7 +154,7 @@ CANCELED            취소
 | 5-3 | DELETE | /images | 선택 이미지 삭제(단건·다건) |
 | 5-4 | PUT | /images/{imageId}/favorite | 즐겨찾기 설정·해제 |
 | 5-5 | POST | /images/search/semantic | 자연어 기반 AI 이미지 검색 |
-| 5-6 | POST | /images/{imageId}/related | 이미지 상세 기반 관련 자료 검색 |
+| 5-6 | GET | /images/{imageId}/similar | 연관 이미지 조회 |
 | 5-7 | POST | /images/documentize | 다중 이미지 문서화 기반 관련 자료 검색 |
 | 6-1 | GET | /categories | 카테고리 목록 |
 | 7-1 | GET | /user | 내 정보 |
@@ -605,8 +605,11 @@ GET /api/v1/images?keyword=C%2B%2B&page=0&size=20
         "favorite": false,
         "thumbnailUrl": "https://.../thumb.jpg",
         "tags": ["C++", "쇼핑"],
+        "categoryId": 3,
         "category": "공부",
-        "uploadedAt" : "2026-07-16T06:00:00.000Z"
+        "uploadedAt" : "2026-07-16T06:00:00.000Z",
+        "isDocumented": true,
+        "isCalendared": false
       }
     ],
     "page": 0,
@@ -663,26 +666,31 @@ GET /api/v1/images?keyword=C%2B%2B&page=0&size=20
   "data": {
     "imageId": 1024,
     "imageUrl": "https://...presigned-get...",
-	  "thumbnailUrl": "https://...presigned-get...",
+    "thumbnailUrl": "https://...presigned-get...",
     "title": "C++ 프로그래밍 입문",
     "favorite": false,
-    "summary" : "집에가고 싶다...",
-    "category" : "집",
-    "tags" : [ "C++", "쇼핑"],
-    "keyInformation" : ["가격: 32,000원", "판매처: 교보문고"],
-      "scheduledData": {"type": "schedule", "fields": {
-         "startYear": "2026",
-         "startMonth": "8",
-         "startDay": "3",
-         "startTime": "14:30",
-         "endYear": "2026",
-         "endMonth": "8",
-         "endDay": "3",
-         "endTime": "16:00"
-         }
-    }, 
-    "isDocumented" : true,
-    "isCalendared" : true
+    "summary": "집에가고 싶다...",
+    "categoryId": 3,
+    "category": "집",
+    "tags": ["C++", "쇼핑"],
+    "keyInformation": ["가격: 32,000원", "판매처: 교보문고"],
+    "scheduledData": {
+      "type": "schedule",
+      "fields": {
+        "startYear": "2026",
+        "startMonth": "8",
+        "startDay": "3",
+        "startTime": "14:30",
+        "endYear": "2026",
+        "endMonth": "8",
+        "endDay": "3",
+        "endTime": "16:00"
+      }
+    },
+    "ocrRefinedText": "C++ 프로그래밍 입문\n교보문고 32,000원 ...",
+    "uploadedAt": "2026-07-28T05:00:00.000Z",
+    "isDocumented": true,
+    "isCalendared": true
   },
   "timestamp": "2026-07-28T06:00:00.000Z"
 }
@@ -693,6 +701,8 @@ GET /api/v1/images?keyword=C%2B%2B&page=0&size=20
 - `query_schema.user_image_view.analysis_status`가 `COMPLETED` 또는 `EMPTY`인 이미지만 상세 조회한다.
 - `EMPTY`는 OCR·분석 결과가 비어 있는 정상 처리 상태이므로 이미지와 존재하는 메타데이터를 반환한다.
 - 분석 상태가 `QUEUED`, `PROCESSING`, `FAILED` 또는 그 밖의 미완료 상태이면 `IMAGE_ANALYSIS_NOT_COMPLETED`(409)로 응답한다.
+- `ocrRefinedText`는 AI가 정제한 OCR 텍스트다. 앱이 등록 때 보낸 OCR 원문과 별개이며, 정제본이 없으면 `null`이다.
+- `scheduledData`는 구조화 데이터(일정·상품 등 type별 fields)이며 없으면 `null`이다.
 
 ### 에러
 
@@ -902,61 +912,23 @@ GET /api/v1/images?keyword=C%2B%2B&page=0&size=20
 
 ---
 
-## 5-6 이미지 상세 기반 관련 자료 검색
+## 5-6 연관 이미지 조회
 
 | 항목 | 내용 |
 | --- | --- |
-| API | `POST /api/v1/images/{imageId}/related` |
+| API | `GET /api/v1/images/{imageId}/similar` |
 | 인증 | Bearer |
-| 설명 | 클라이언트가 전달한 `imageId`를 Analysis Worker에 보내 관련 이미지를 검색하고, 반환된 `imageId`를 기준으로 5-1과 동일한 이미지 목록 응답 DTO를 반환한다. |
+| 설명 | 기준 이미지와 내용이 비슷한 본인 이미지를 유사도 내림차순으로 반환한다. 유사도는 analysis-worker가 임베딩(pgvector 코사인)으로 계산하고, 화면에 뿌릴 메타데이터는 API 서버가 붙인다. Redis Streams가 아니라 worker 내부 HTTP API를 동기 호출한다. |
 
 ### Path Parameter
 
 | 필드 | 타입 | 필수 | 설명 |
 | --- | --- | --- | --- |
-| imageId | Integer | 필수 | 관련 자료 검색의 기준이 되는 본인 소유 이미지 ID |
+| imageId | Integer | 필수 | 연관 이미지 검색의 기준이 되는 본인 소유 이미지 ID |
 
-### Request Body
+### Query Parameters
 
-없음
-
-### API 서버 → Analysis Worker 이벤트
-
-```json
-{
-  "eventType": "RELATED_IMAGE_SEARCH_REQUESTED",
-  "version": 1,
-  "payload": {
-    "correlationId": "2207708f-2f55-42b5-940c-10aeea0ea239",
-    "userId": 1,
-    "imageId": 1024,
-    "limit": 10
-  }
-}
-```
-
-- Worker에는 이미지 관련 정보로 `imageId`만 전달한다. 이미지 상세 정보와 표시용 URL은 이벤트에 포함하지 않는다.
-
-### Analysis Worker → API 서버 검색 결과 이벤트
-
-Worker는 5-5와 동일한 `IMAGE_SEARCH_COMPLETED` 이벤트를 반환한다.
-
-```json
-{
-  "eventType": "IMAGE_SEARCH_COMPLETED",
-  "version": 1,
-  "payload": {
-    "correlationId": "2207708f-2f55-42b5-940c-10aeea0ea239",
-    "total": 2,
-    "page": 0,
-    "size": 10,
-    "hits": [
-      { "imageId": 101, "score": 3.9987202 },
-      { "imageId": 102, "score": 1.8765116 }
-    ]
-  }
-}
-```
+없다. **개수 상한도 없다** — 유사도 하한(0.65)을 넘는 연관 이미지를 전부 반환하므로, 비슷한 이미지를 많이 가진 사용자일수록 `list`가 길어진다.
 
 ### Response `data`
 
@@ -966,48 +938,52 @@ Worker는 5-5와 동일한 `IMAGE_SEARCH_COMPLETED` 이벤트를 반환한다.
   "code": "I210",
   "message": "요청이 성공했습니다.",
   "data": {
+    "baseImageId": 1024,
+    "baseTitle": "C++ 프로그래밍 입문",
+    "count": 2,
     "list": [
       {
         "imageId": 101,
-        "title": "C++ 프로그래밍 입문",
-        "summary": "C++ 입문서 정보",
+        "title": "C++ 완전정복",
+        "summary": "C++ 심화서 정보",
         "favorite": false,
         "thumbnailUrl": "https://.../thumb.jpg",
         "tags": ["도서", "프로그래밍"],
         "category": "공부",
-        "uploadedAt": "2026-07-16T06:00:00.000Z"
+        "score": 0.9312
+      },
+      {
+        "imageId": 102,
+        "title": "알고리즘 강의 캡처",
+        "summary": "정렬 알고리즘 강의 화면",
+        "favorite": true,
+        "thumbnailUrl": "https://.../thumb2.jpg",
+        "tags": ["강의"],
+        "category": "공부",
+        "score": 0.7104
       }
-    ],
-    "page": 0,
-    "size": 10,
-    "totalElements": 1,
-    "totalPages": 1,
-    "hasNext": false,
-    "hasPrevious": false
+    ]
   },
   "timestamp": "2026-07-29T14:00:00.000Z"
 }
 ```
 
-- 응답 envelope, 페이지 정보 및 `list[]` 항목은 5-1 이미지 목록 조회와 동일한 DTO를 사용한다.
-- 클라이언트 페이지 요청은 받지 않고 `page=0`, `size=10`으로 고정한다.
-- Worker의 `hits[].imageId` 순서를 유지하여 5-1 DTO로 변환하고, 기준 이미지 자체와 접근 불가능하거나 soft delete된 이미지는 제외한다.
-- `totalElements`는 필터링을 마친 최종 `list` 개수로 계산한다.
+- 페이지네이션이 없으므로 `PageResponse`가 아니다. `count`는 `list`의 길이다.
+- `list[]` 항목의 필드명은 5-1 목록 항목과 맞추되, 유사도 `score`(0~1, 1에 가까울수록 유사)가 추가되고 `uploadedAt`은 없다(유사도순 정렬이라 의미가 없다).
+- `baseTitle`은 기준 이미지의 제목이며 분석 전이면 `null`이다.
 
 ### 처리 규칙
 
-1. API 서버는 5-2와 동일하게 이미지 소유권, soft delete 여부, 분석 완료 상태를 검증한다.
-2. API 서버는 `correlationId`, 사용자 ID, 기준 `imageId`, 최대 결과 수를 포함한 Redis Streams 이벤트를 발행한다.
-3. Worker는 최대 10개의 `total`, `hits`를 반환하고, API 서버는 해당 `imageId`를 로그인 사용자의 활성 이미지로 다시 검증한다.
-4. 기준 이미지 자체를 제외하고 유효한 결과를 Worker 순서대로 5-1 DTO로 변환한 뒤 고정 페이지 메타데이터를 채워 반환한다.
-5. 지정된 대기 시간 안에 결과가 오지 않으면 `AI_SEARCH_TIMEOUT`으로 처리한다.
+1. 기준 이미지가 본인 소유가 아니거나 존재하지 않으면 `IMAGE_NOT_FOUND`(404)다. 리소스 존재 여부는 숨긴다.
+2. API 서버가 worker 내부 API(`GET /internal/v1/images/{imageId}/similar`)를 동기 호출한다(연결 1초·읽기 3초 타임아웃).
+3. 유사도(코사인) **0.65 미만은 결과에서 제외**한다. 하한을 넘는 결과는 개수 제한 없이 전부 반환한다.
+4. 연관 자료는 상세 화면의 부가 정보이므로 **worker 호출 실패·타임아웃 시 500이 아니라 빈 `list`(count=0)로 응답**한다. 분석이 안 된 기준 이미지, 임베딩이 없는 이미지(EMPTY)도 같은 이유로 빈 `list`다.
+5. worker가 돌려준 이미지 중 삭제되었거나 read model이 아직 없는 것은 결과에서 제외한다.
 
 ### 에러
 
+- `UNAUTHORIZED` (401)
 - `IMAGE_NOT_FOUND` (404)
-- `IMAGE_ANALYSIS_NOT_COMPLETED` (409)
-- `AI_SEARCH_FAILED` (500)
-- `AI_SEARCH_TIMEOUT` (504)
 
 ---
 
@@ -1017,7 +993,7 @@ Worker는 5-5와 동일한 `IMAGE_SEARCH_COMPLETED` 이벤트를 반환한다.
 | --- | --- |
 | API | `POST /api/v1/images/documentize` |
 | 인증 | Bearer |
-| 설명 | 클라이언트가 전달한 여러 `imageIds`를 Analysis Worker에 보내 문서화에 사용할 관련 이미지를 검색하고, 반환된 `imageId`를 기준으로 5-1과 동일한 이미지 목록 응답 DTO를 반환한다. |
+| 설명 | 문서로 만들려고 고른 기준 이미지들과 내용이 비슷한 다른 이미지를 추천한다. 기준 이미지들의 임베딩 평균(centroid)으로 worker가 검색하고, 반환된 `imageId`를 기준으로 5-1과 동일한 이미지 목록 응답 DTO를 반환한다. 5-6과 같은 worker 내부 HTTP API를 동기 호출한다(Redis Streams 미사용). |
 
 ### Request Body
 
@@ -1031,43 +1007,12 @@ Worker는 5-5와 동일한 `IMAGE_SEARCH_COMPLETED` 이벤트를 반환한다.
 | --- | --- | --- | --- |
 | imageIds | Integer[] | 필수 | 문서화 관련 자료 검색의 기준이 되는 본인 소유 이미지 ID 목록. 빈 배열과 중복 ID는 허용하지 않는다. |
 
-### API 서버 → Analysis Worker 이벤트
+### API 서버 → Worker 내부 호출
 
-```json
-{
-  "eventType": "DOCUMENT_RELATED_IMAGE_SEARCH_REQUESTED",
-  "version": 1,
-  "payload": {
-    "correlationId": "8aeec696-b173-4e91-9cba-7d179fc9da38",
-    "userId": 1,
-    "imageIds": [1024, 1025, 1026],
-    "limit": 10
-  }
-}
-```
-
-- Worker에는 이미지 관련 정보로 `imageIds`만 전달한다. 이미지 상세 정보와 표시용 URL은 이벤트에 포함하지 않는다.
-
-### Analysis Worker → API 서버 검색 결과 이벤트
-
-Worker는 5-5와 동일한 `IMAGE_SEARCH_COMPLETED` 이벤트를 반환한다.
-
-```json
-{
-  "eventType": "IMAGE_SEARCH_COMPLETED",
-  "version": 1,
-  "payload": {
-    "correlationId": "8aeec696-b173-4e91-9cba-7d179fc9da38",
-    "total": 2,
-    "page": 0,
-    "size": 10,
-    "hits": [
-      { "imageId": 101, "score": 3.9987202 },
-      { "imageId": 102, "score": 1.8765116 }
-    ]
-  }
-}
-```
+API 서버가 worker 내부 API `GET /internal/v1/images/similar?imageIds=...&userId=...`를
+동기 호출한다(연결 1초·읽기 3초). worker는 기준 이미지들의 임베딩 평균(centroid)과
+가까운 순으로 `{imageId, score}` 목록을 돌려주고, 화면 데이터는 API 서버가 붙인다.
+centroid 방식이라 개별 이미지가 아니라 공통 주제에 가까운 것이 잡힌다.
 
 ### Response `data`
 
@@ -1085,8 +1030,11 @@ Worker는 5-5와 동일한 `IMAGE_SEARCH_COMPLETED` 이벤트를 반환한다.
         "favorite": false,
         "thumbnailUrl": "https://.../thumb.jpg",
         "tags": ["도서", "프로그래밍"],
+        "categoryId": 3,
         "category": "공부",
-        "uploadedAt": "2026-07-16T06:00:00.000Z"
+        "uploadedAt": "2026-07-16T06:00:00.000Z",
+        "isDocumented": false,
+        "isCalendared": false
       }
     ],
     "page": 0,
@@ -1102,25 +1050,22 @@ Worker는 5-5와 동일한 `IMAGE_SEARCH_COMPLETED` 이벤트를 반환한다.
 
 - 응답 envelope, 페이지 정보 및 `list[]` 항목은 5-1 이미지 목록 조회와 동일한 DTO를 사용한다.
 - 클라이언트 페이지 요청은 받지 않고 `page=0`, `size=10`으로 고정한다.
-- Worker의 `hits[].imageId` 순서를 유지하여 5-1 DTO로 변환하고, 요청의 `imageIds` 전체와 접근 불가능하거나 soft delete된 이미지는 제외한다.
+- worker가 돌려준 `imageId` 순서(유사도 내림차순)를 유지하여 5-1 DTO로 변환하고, 요청의 `imageIds` 전체와 접근 불가능하거나 soft delete된 이미지는 제외한다.
 - `totalElements`는 필터링을 마친 최종 `list` 개수로 계산한다.
 
 ### 처리 규칙
 
-1. `imageIds`가 비어 있지 않고 중복이 없는지 검증한다.
+1. `imageIds`가 비어 있지 않고 중복이 없는지 검증한다. 위반 시 `INVALID_PARAMETER`(400)다.
 2. API 서버는 모든 기준 이미지에 5-2와 동일한 소유권, soft delete 여부, 분석 완료 상태 검증을 적용한다.
-3. API 서버는 `correlationId`, 사용자 ID, 기준 `imageIds`, 최대 결과 수를 포함한 Redis Streams 이벤트를 발행한다.
-4. Worker는 최대 10개의 `total`, `hits`를 반환하고, API 서버는 해당 `imageId`를 로그인 사용자의 활성 이미지로 다시 검증한다.
-5. 요청의 기준 이미지 전체를 결과에서 제외한 뒤 유효한 결과를 Worker 순서대로 5-1 DTO로 변환하고 고정 페이지 메타데이터를 채워 반환한다.
-6. 지정된 대기 시간 안에 결과가 오지 않으면 `AI_SEARCH_TIMEOUT`으로 처리한다.
+3. worker 내부 API를 동기 호출해 centroid 기준 유사 이미지를 받는다. 유사도(코사인) 0.65 미만은 제외되므로 결과가 10개보다 적거나 빈 배열일 수 있다.
+4. 반환된 `imageId`를 로그인 사용자의 활성 이미지로 다시 검증하고, 요청의 기준 이미지 전체를 결과에서 제외한 뒤 worker 순서대로 5-1 DTO로 변환한다. 최대 10개까지만 반환한다.
+5. **worker 호출 실패·타임아웃 시 에러 대신 빈 목록을 반환한다** — 추천이 안 떠도 이미지 선택 화면은 동작해야 한다.
 
 ### 에러
 
 - `INVALID_PARAMETER` (400)
 - `IMAGE_NOT_FOUND` (404)
 - `IMAGE_ANALYSIS_NOT_COMPLETED` (409)
-- `AI_SEARCH_FAILED` (500)
-- `AI_SEARCH_TIMEOUT` (504)
 
 ---
 
@@ -1395,12 +1340,47 @@ REST API는 아니지만 API 서버가 클라이언트에 전달하는 푸시 �
 }
 ```
 
+### 데이터 변경 알림 (DATA_CHANGED)
+
+분석 완료·실패 외에, 사용자 데이터가 변경됐을 때 화면 갱신을 유도하는 data 메시지를
+보낸다. outbox 기반이라 같은 `eventId`가 중복 수신될 수 있으며, 클라이언트는
+`eventId` 기준으로 멱등 처리한다.
+
+단건 변경(이미지 분석 반영, 즐겨찾기, 카테고리, 문서, 일정 등):
+
+```json
+{
+  "type": "DATA_CHANGED",
+  "eventId": "d95db8b7-897e-412c-8924-eef3c7bca039",
+  "resource": "IMAGE",
+  "resourceId": "1024",
+  "occurredAt": "2026-08-05T06:00:00.000Z"
+}
+```
+
+이미지 일괄 삭제(5-3 다건 삭제 1회당 알림 1건):
+
+```json
+{
+  "type": "DATA_CHANGED",
+  "eventId": "472b64ba-b6ef-4af3-a31c-73064a7ea8bc",
+  "resource": "IMAGE",
+  "changeType": "DELETED",
+  "resourceIds": "[1024,1025,1026]",
+  "occurredAt": "2026-08-05T06:00:00.000Z"
+}
+```
+
+- 일괄 삭제는 이미지 건별로 알림을 보내지 않고 `resourceIds`(JSON 배열 문자열)에 삭제된 ID를 모아 1건으로 보낸다.
+- `changeType`이 없는 메시지는 "해당 resource를 다시 조회하라"는 신호이며, 변경 내용은 payload에 싣지 않는다.
+
 ### 클라이언트 처리 규칙
 
 1. `ANALYSIS_COMPLETED` 수신 시 `GET /api/v1/images/{imageId}`를 호출해 최종 분석 결과를 갱신한다.
 2. `ANALYSIS_FAILED` 수신 시 `errorCode`, `retryable`에 따라 실패 상태와 재시도 가능 여부를 표시한다.
-3. FCM data payload의 값은 문자열로 전달한다.
-4. FCM은 전달이 보장되지 않으므로 앱이 포그라운드로 진입하거나 새로고침할 때 이미지 목록 또는 상세 정보를 다시 조회한다.
+3. `DATA_CHANGED` 수신 시 `resource`에 해당하는 목록·상세를 다시 조회한다. `changeType=DELETED`면 `resourceIds`의 항목을 로컬 캐시에서 제거한다.
+4. FCM data payload의 값은 문자열로 전달한다.
+5. FCM은 전달이 보장되지 않으므로 앱이 포그라운드로 진입하거나 새로고침할 때 이미지 목록 또는 상세 정보를 다시 조회한다.
 
 ---
 
@@ -1946,6 +1926,7 @@ DB 저장 중 하나라도 실패하면 전체 트랜잭션을 롤백하고 성�
 # 10. API 서버 내부 통신 범위
 
 - API 서버와 analysis-worker의 분석 요청·결과 전달은 HTTP 내부 API가 아니라 Redis Streams 이벤트 버스를 사용한다.
+- 예외적으로 연관 이미지 조회(5-6)와 문서화 관련 자료 검색(5-7)은 사용자가 응답을 기다리는 동기 조회라서 worker의 내부 HTTP API(`/internal/v1/images/**`, `X-Internal-Token` 인증)를 직접 호출한다.
 - analysis-worker가 FastAPI와 통신하는 HTTP API는 파트너 명세서에서 별도로 관리한다.
 - 따라서 이 프론트엔드용 명세서에는 기존 10-1~10-5 내부 HTTP API를 두지 않는다.
 
@@ -1971,12 +1952,12 @@ DB 저장 중 하나라도 실패하면 전체 트랜잭션을 롤백하고 성�
 | ANALYSIS_FAILED | FCM | 7-7 | 이미지 분석 비동기 처리 실패 알림 코드 |
 | INVALID_DOCUMENT_IMAGES | 400 | 8-2, 8-6 | 문서 생성 이미지 목록이 비어 있거나 중복이거나 개수 상한을 넘음 |
 | DOCUMENT_IMAGE_NOT_OWNED | 403 | 8-2, 8-6 | 문서 생성에 사용할 이미지가 요청 사용자 소유가 아님 |
-| IMAGE_ANALYSIS_NOT_COMPLETED | 409 | 5-2, 5-6, 5-7, 8-2, 8-6 | 대상 이미지의 분석이 완료되지 않음 |
+| IMAGE_ANALYSIS_NOT_COMPLETED | 409 | 5-2, 5-7, 8-2, 8-6 | 대상 이미지의 분석이 완료되지 않음 |
 | DUPLICATE_CLIENT_REQUEST | 409 | 8-2, 8-6 | 동일 사용자의 동일한 clientRequestId 재요청을 중복 실행으로 인한 오류 방지를 위해 차단 |
 | DOCUMENT_GENERATION_FAILED | Redis 이벤트·FCM | 8-2, 8-6 | AI 문서 생성 비동기 처리 실패 |
 | DOCUMENT_NOT_FOUND | 404 | 8-3, 8-4, 8-5, 8-6 | 문서가 없거나 요청 사용자가 소유하지 않음 |
 | SCHEDULE_NOT_FOUND | 404 | 9-2, 9-3 | 일정이 없거나 요청 사용자가 소유하지 않음 |
-| AI_SEARCH_FAILED | 500 / Redis 결과 이벤트 | 5-5, 5-6, 5-7 | Analysis Worker의 이미지 검색 처리 실패 |
-| AI_SEARCH_TIMEOUT | 504 | 5-5, 5-6, 5-7 | 지정된 대기 시간 안에 검색 결과 이벤트를 받지 못함 |
+| AI_SEARCH_FAILED | 500 / Redis 결과 이벤트 | 5-5 | Analysis Worker의 이미지 검색 처리 실패 |
+| AI_SEARCH_TIMEOUT | 504 | 5-5 | 지정된 대기 시간 안에 검색 결과 이벤트를 받지 못함 |
 
 ---

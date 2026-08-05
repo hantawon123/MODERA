@@ -79,21 +79,40 @@ def _sdk():
 
 # Client 는 내부에 httpx 커넥션 풀을 들고 있어 호출마다 만들면 낭비다.
 # 설정은 기동 시 고정(get_settings lru_cache)이라 싱글턴으로 충분하다.
+#
+# 클라이언트가 둘인 이유: 생성은 Agent Platform, 임베딩은 GMS 로 간다.
+# 엔드포인트·인증·API 버전이 전부 달라 하나로 못 묶는다. 임베딩을 GMS 에
+# 남기는 건 결정 사항이다 — 적재된 768차원 벡터와 다른 벡터 공간이 섞이면
+# 검색이 조용히 망가진다(config.py 의 embedding_dim 주석 참고).
 _client_instance: Any = None
+_embed_client_instance: Any = None
 
 
 def _client():
+    """생성 호출용 — Gemini Enterprise Agent Platform(구 Vertex AI) 표준 모드.
+
+    project/location 을 주면 경로에 projects/{p}/locations/{l}/ 가 붙어 표준
+    모드가 된다(생략하면 express mode). 인증은 ADC 가 아니라 API 키다 —
+    x-goog-api-key 헤더로 실려 나가고 서비스 계정 JSON 이 필요 없다.
+
+    ⚠️ base_url 을 주지 않는다. SDK 가 location 을 보고 호스트를 조립한다
+    (global → aiplatform.googleapis.com, 그 외 → {loc}-aiplatform.googleapis.com).
+    여기에 값을 넣으면 custom_base_url 분기로 새어 호스트가 덮인다.
+    ⚠️ enterprise 는 인자로만 켠다. GOOGLE_GENAI_USE_ENTERPRISE 환경변수로
+    켜면 프로세스 전역이라 아래 _embed_client 까지 끌려간다.
+    """
     global _client_instance
     if _client_instance is None:
         genai, types = _sdk()
         settings = get_settings()
         _client_instance = genai.Client(
-            # GMS 프록시용 키. Agent Platform 전환 시 생성 경로만 갈라지고
-            # 임베딩은 이 키로 남는다.
-            api_key=settings.gms_key,
+            # 구 SDK 의 vertexai=True. 신 이름이 enterprise 이고 구 이름도
+            # "Legacy flag for enterprise" 로 아직 동작한다.
+            enterprise=True,
+            api_key=settings.gemini_api_key,
+            project=settings.gcp_project,
+            location=settings.gcp_location,
             http_options=types.HttpOptions(
-                # GMS 프록시 경유 — SDK 가 이 값 뒤에 /v1beta/... 를 붙인다.
-                base_url=settings.gemini_base_url,
                 # ⚠️ 신 SDK 의 timeout 은 **밀리초**다(구 SDK 는 초).
                 # 무제한이면 응답 없는 요청 하나가 asyncio.to_thread 스레드를
                 # 영구 점유하고, max_concurrent_stages(4)만큼 쌓이면 파이프라인이 멈춘다.
@@ -101,6 +120,27 @@ def _client():
             ),
         )
     return _client_instance
+
+
+def _embed_client():
+    """임베딩 전용 — GMS 프록시 유지. 768차원 pgvector 계약을 건드리지 않는다.
+
+    enterprise 를 켜지 않아 generativelanguage.googleapis.com(+GMS 접두사)
+    으로 간다. 키도 생성 경로와 다르다(GMS_KEY).
+    """
+    global _embed_client_instance
+    if _embed_client_instance is None:
+        genai, types = _sdk()
+        settings = get_settings()
+        _embed_client_instance = genai.Client(
+            api_key=settings.gms_key,
+            http_options=types.HttpOptions(
+                # GMS 프록시 경유 — SDK 가 이 값 뒤에 /v1beta/... 를 붙인다.
+                base_url=settings.gemini_base_url,
+                timeout=int(settings.gemini_timeout * 1000),
+            ),
+        )
+    return _embed_client_instance
 
 
 def _thinking_config(model_name: str, types: Any) -> Any:
@@ -310,7 +350,7 @@ def embed(texts: list[str], purpose: str = "DOCUMENT") -> tuple[str, list[list[f
     if not texts:
         return settings.embedding_model_name, []
     _, types = _sdk()
-    client = _client()
+    client = _embed_client()   # 임베딩만 GMS — 생성 경로(_client)와 다르다
     task_type = "RETRIEVAL_QUERY" if purpose == "QUERY" else "RETRIEVAL_DOCUMENT"
     config = types.EmbedContentConfig(
         task_type=task_type,

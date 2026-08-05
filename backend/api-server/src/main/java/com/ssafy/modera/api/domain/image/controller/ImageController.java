@@ -12,6 +12,7 @@ import com.ssafy.modera.api.domain.image.dto.response.ImageRegisterResponse;
 import com.ssafy.modera.api.domain.image.dto.response.ImageSummaryResponse;
 import com.ssafy.modera.api.domain.image.dto.response.ImageListResponse;
 import com.ssafy.modera.api.domain.image.dto.response.ImageUploadUrlResponse;
+import com.ssafy.modera.api.domain.image.service.ImageFileRedirectService;
 import com.ssafy.modera.api.domain.image.service.ImageQueryService;
 import com.ssafy.modera.api.domain.image.service.ImageCommandService;
 import com.ssafy.modera.api.domain.image.dto.response.SimilarImagesResponse;
@@ -27,6 +28,8 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.CacheControl;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -38,6 +41,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.net.URI;
 
 
 @Tag(name = "이미지", description = "이미지 등록·업로드 URL 재발급·목록·단건 조회")
@@ -52,6 +57,7 @@ public class ImageController {
     private final ImageQueryService imageQueryService;
     private final ImageSimilarService imageSimilarService;
     private final ImageSemanticSearchService imageSemanticSearchService;
+    private final ImageFileRedirectService imageFileRedirectService;
 
     @Operation(
             summary = "이미지 등록",
@@ -133,6 +139,68 @@ public class ImageController {
     ) {
         ImageDetailResponse response = imageQueryService.getImage(userId, imageId);
         return ResponseEntity.ok(ApiResponse.success("I206", response));
+    }
+
+    @Operation(
+            summary = "원본 이미지 리다이렉트",
+            description = """
+                    **이 API는 JSON이 아니라 리다이렉트로 응답한다.** 공통 응답 래퍼로 감싸지 않는다.
+
+                    앱은 이 불변 경로만 저장하면 된다(Room 영구 저장·이미지 캐시 키로 사용 가능).
+                    서버가 매 요청 소유권을 검증한 뒤 그 순간의 presigned GET URL을 Location으로
+                    안내한다 — 같은 imageId라도 호출할 때마다 Location 값은 달라진다.
+
+                    Cache-Control은 no-store다. Location에 실리는 presigned URL이 만료되는 값이라
+                    중간 캐시에 저장되면 안 되기 때문이다(이미지 자체의 캐시는 앱이 이 불변 경로를
+                    키로 직접 관리한다).
+
+                    없거나·삭제됐거나·본인 소유가 아니거나·업로드가 끝나지 않은 imageId는 모두
+                    404다. 존재 여부가 새어 나가면 imageId를 순회해 리소스를 열거할 수 있으므로
+                    403으로 구분하지 않는다.
+                    """
+    )
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "302", description = "Location에 원본 presigned GET URL(1시간 유효)"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "accessToken 없음/무효(UNAUTHORIZED)"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "없거나 접근할 수 없는 imageId(IMAGE_NOT_FOUND)")
+    })
+    @GetMapping("/{imageId}/file")
+    public ResponseEntity<Void> getImageFile(
+            @AuthenticationPrincipal Integer userId,
+            @Parameter(description = "이미지 ID") @PathVariable(name = "imageId") Integer imageId
+    ) {
+        String presignedUrl = imageFileRedirectService.getOriginalRedirectUrl(userId, imageId);
+        return ResponseEntity.status(HttpStatus.FOUND)
+                .location(URI.create(presignedUrl))
+                .cacheControl(CacheControl.noStore())
+                .build();
+    }
+
+    @Operation(
+            summary = "썸네일 이미지 리다이렉트",
+            description = """
+                    **이 API는 JSON이 아니라 리다이렉트로 응답한다.** 동작 규칙은 원본
+                    리다이렉트(`/file`)와 같다.
+
+                    썸네일이 아직 만들어지지 않은 이미지(분석 전 등)는 404가 아니라 **원본 키로
+                    폴백해 302**한다 — 화면이 자연스럽고 클라이언트에서 분기할 필요가 없다.
+                    """
+    )
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "302", description = "Location에 썸네일 presigned GET URL(없으면 원본으로 폴백, 1시간 유효)"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "accessToken 없음/무효(UNAUTHORIZED)"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "없거나 접근할 수 없는 imageId(IMAGE_NOT_FOUND)")
+    })
+    @GetMapping("/{imageId}/thumbnail")
+    public ResponseEntity<Void> getImageThumbnail(
+            @AuthenticationPrincipal Integer userId,
+            @Parameter(description = "이미지 ID") @PathVariable(name = "imageId") Integer imageId
+    ) {
+        String presignedUrl = imageFileRedirectService.getThumbnailRedirectUrl(userId, imageId);
+        return ResponseEntity.status(HttpStatus.FOUND)
+                .location(URI.create(presignedUrl))
+                .cacheControl(CacheControl.noStore())
+                .build();
     }
 
     @Operation(

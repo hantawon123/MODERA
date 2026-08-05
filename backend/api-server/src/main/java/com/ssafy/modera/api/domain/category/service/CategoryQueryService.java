@@ -47,7 +47,9 @@ public class CategoryQueryService {
         return new CategorySummaryResponse(
                 row.categoryId(),
                 row.name(),
-                categoryImageUrlFactory.createViewUrl(row.imageS3Key()),
+                // AI가 생성해 올려둔 카테고리 아이콘. 키가 {categoryId}.png로 결정적이라
+                // DB의 image_s3_key를 쓰지 않는다(그 컬럼은 채우는 곳이 없어 항상 null이었다).
+                categoryImageUrlFactory.createViewUrl(row.categoryId()),
                 row.imageCount(),
                 row.latestUploadedAt()
         );

@@ -1095,16 +1095,16 @@ centroid 방식이라 개별 이미지가 아니라 공통 주제에 가까운 �
   "data": {
     "list": [
       {
-        "categoryId": 3,
+        "categoryId": 1744084819,
         "name": "공부",
-        "categoryImageUrl" : "http://asdasd", 
+        "categoryImageUrl": "https://.../category-thumbnails/1744084819.png?X-Amz-...",
         "imageCount": 42,
         "latestUpdatedAt": "2026-07-17T06:00:00.000Z"
       },
       {
-        "categoryId": 4,
+        "categoryId": 1735462011,
         "name": "음식",
-        "categoryImageUrl" : "http://asdasd",
+        "categoryImageUrl": "https://.../category-thumbnails/1735462011.png?X-Amz-...",
         "imageCount": 52,
         "latestUpdatedAt": "2026-07-18T06:00:00.000Z"
       }
@@ -1113,6 +1113,16 @@ centroid 방식이라 개별 이미지가 아니라 공통 주제에 가까운 �
   "timestamp": "2026-07-16T06:00:00.000Z"
 }
 ```
+
+### categoryImageUrl 규칙
+
+- AI 서버가 카테고리 판정 시 생성해 스토리지(`category-thumbnails/{categoryId}.png`)에
+  올려둔 **카테고리 아이콘**(216×216 PNG, 투명 배경)의 presigned GET URL이다. 유효시간 1시간.
+- 아이콘 생성은 백그라운드(수십 초)라 **카테고리가 막 생긴 직후에는 URL이 404일 수
+  있다.** 앱은 이미지 로드 실패 시 플레이스홀더를 보여주고, 다음 목록 조회에서 자연히
+  복구된다.
+- URL의 서명 파라미터가 조회마다 바뀌므로 앱 이미지 캐시 키는 URL 전체가 아니라
+  `categoryId` 기준으로 잡는 것을 권장한다.
 
 ---
 

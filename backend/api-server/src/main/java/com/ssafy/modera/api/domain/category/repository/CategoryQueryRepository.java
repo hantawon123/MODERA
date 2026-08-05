@@ -17,7 +17,6 @@ public class CategoryQueryRepository {
                 """
                 SELECT category_id,
                        category_name,
-                       image_s3_key,
                        image_count,
                        latest_uploaded_at
                 FROM query_schema.user_category_view
@@ -28,7 +27,6 @@ public class CategoryQueryRepository {
                 (rs, rowNum) -> new CategoryListRow(
                         rs.getObject("category_id", Integer.class),
                         rs.getString("category_name"),
-                        rs.getString("image_s3_key"),
                         rs.getObject("image_count", Integer.class),
                         rs.getObject("latest_uploaded_at", java.time.OffsetDateTime.class)
                 ),

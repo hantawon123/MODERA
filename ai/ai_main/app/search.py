@@ -939,15 +939,20 @@ def get_image(image_id: int) -> dict[str, Any] | None:
     return detail
 
 
-def _aggregate(user_id: int, field: str, limit: int) -> list[dict[str, Any]]:
-    """사용자 문서를 대상으로 term 집계를 돌려 (이름, 개수) 목록을 만든다."""
+def _aggregate(user_id: int | None, field: str, limit: int) -> list[dict[str, Any]]:
+    """사용자 문서를 대상으로 term 집계를 돌려 (이름, 개수) 목록을 만든다.
+
+    user_id 가 None 이면 사용자 필터 없이 전체를 집계한다 — 카테고리 아이콘처럼
+    소유자 개념이 없는(전 사용자 공유) 경로만 이렇게 부른다.
+    """
     ensure_index()
     settings = get_settings()
     resp = _client().search(
         index=settings.opensearch_index,
         body={
             "size": 0,
-            "query": {"bool": {"filter": [{"term": {"user_id": user_id}}]}},
+            "query": {"bool": {"filter": [{"term": {"user_id": user_id}}]
+                               if user_id is not None else []}},
             "aggs": {"grouped": {"terms": {"field": field, "size": limit}}},
         },
     )
@@ -1054,7 +1059,7 @@ def to_tag_refs(names: list[str]) -> list[dict[str, Any]]:
     return [{"tag_id": stable_id(n), "name": n} for n in names or []]
 
 
-def resolve_name_by_id(user_id: int, field: str, target_id: int) -> str | None:
+def resolve_name_by_id(user_id: int | None, field: str, target_id: int) -> str | None:
     """ID 로 필터가 들어왔을 때, 집계 결과를 훑어 원래 이름을 되찾는다.
 
     해시는 되돌릴 수 없으므로 후보 이름들을 모아 같은 해시를 찾는 방식이다.

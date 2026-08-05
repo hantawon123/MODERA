@@ -18,8 +18,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.input.pointer.PointerEventPass
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -35,7 +33,6 @@ import com.ssafy.modera.feature.home.R
 @Composable
 internal fun HomeUpperSection(
     upperContentAlpha: Float,
-    isSearchActive: Boolean,
     onCalendarClick: () -> Unit,
     onSettingsClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -43,21 +40,7 @@ internal fun HomeUpperSection(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .graphicsLayer { alpha = upperContentAlpha }
-            .then(
-                if (isSearchActive) {
-                    Modifier.pointerInput(Unit) {
-                        awaitPointerEventScope {
-                            while (true) {
-                                val event = awaitPointerEvent(PointerEventPass.Initial)
-                                event.changes.forEach { it.consume() }
-                            }
-                        }
-                    }
-                } else {
-                    Modifier
-                },
-            ),
+            .graphicsLayer { alpha = upperContentAlpha },
     ) {
         Row(
             modifier = modifier
@@ -136,7 +119,6 @@ private fun HomeUpperSectionPreview() {
     ModeraTheme {
         HomeUpperSection(
             upperContentAlpha = 1f,
-            isSearchActive = false,
             onCalendarClick = {},
             onSettingsClick = {},
             modifier = Modifier
@@ -158,7 +140,6 @@ private fun HomeUpperSectionSearchActivePreview() {
     ModeraTheme {
         HomeUpperSection(
             upperContentAlpha = 0f,
-            isSearchActive = true,
             onCalendarClick = {},
             onSettingsClick = {},
             modifier = Modifier

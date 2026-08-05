@@ -49,8 +49,8 @@ class DefaultCategoryRepositoryTest {
 
         repository = DefaultCategoryRepository(
             categoryClient = categoryClient,
-            categoriesDataStore = dataStore,
             ioDispatcher = testDispatcher,
+            categoryDao = mock(),
         )
     }
 

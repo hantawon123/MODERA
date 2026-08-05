@@ -6,7 +6,7 @@ import kotlinx.coroutines.flow.Flow
 interface AuthRepository {
     val session: Flow<AuthSession>
 
-    suspend fun loginWithKakao(kakaoAccessToken: String)
+    suspend fun loginWithKakao(kakaoAccessToken: String): Result<Boolean>
 
     suspend fun restoreSession()
 

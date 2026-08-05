@@ -156,6 +156,8 @@ CANCELED            취소
 | 5-5 | POST | /images/search/semantic | 자연어 기반 AI 이미지 검색 |
 | 5-6 | GET | /images/{imageId}/similar | 연관 이미지 조회 |
 | 5-7 | POST | /images/documentize | 다중 이미지 문서화 기반 관련 자료 검색 |
+| 5-8 | GET | /images/{imageId}/file | 원본 이미지 조회(302 리다이렉트) |
+| 5-9 | GET | /images/{imageId}/thumbnail | 썸네일 이미지 조회(302 리다이렉트) |
 | 6-1 | GET | /categories | 카테고리 목록 |
 | 6-2 | GET | /categories/{categoryId}/thumbnail | 카테고리 아이콘 조회(302 리다이렉트) |
 | 7-1 | GET | /user | 내 정보 |
@@ -1071,6 +1073,58 @@ centroid 방식이라 개별 이미지가 아니라 공통 주제에 가까운 �
 ---
 
 # 6. 태그·카테고리·홈 API
+
+## 5-8 원본 이미지 조회(302 리다이렉트)
+
+`GET /api/v1/images/{imageId}/file`
+
+**이 API는 공통 JSON envelope가 아니라 302 리다이렉트로 응답한다.**
+
+앱이 저장하는 주소는 이 불변 경로이고, 서버는 매 요청 소유권을 검증한 뒤 그 순간의
+presigned GET URL을 `Location`으로 안내한다. 앱 코드에 만료되는 URL이 등장하지 않으므로
+Room에 영구 저장할 수 있고, 이미지 캐시 키도 이 경로로 안정된다.
+
+기존 5-2(상세 조회)의 `imageUrl`은 그대로 유지된다 — 이 항목은 추가다.
+
+### 요청
+
+| 구분 | 이름 | 타입 | 필수 | 설명 |
+|---|---|---|---|---|
+| Header | Authorization | String | O | `Bearer {accessToken}` |
+| Path | imageId | Integer | O | 이미지 ID |
+
+### 응답
+
+```http
+HTTP/1.1 302 Found
+Location: https://.../pictures/7/101-a.jpg?X-Amz-Algorithm=...&X-Amz-Signature=...
+Cache-Control: no-store
+```
+
+- 본문 없음
+- `Location`의 presigned URL 유효시간은 1시간(조회용 GET presign 기존 설정과 동일)
+- 같은 `imageId`라도 호출할 때마다 `Location` 값은 달라진다(매 요청 신규 서명)
+- `Cache-Control: no-store`는 만료되는 `Location`이 중간 캐시에 남지 않게 하기 위한 것이다.
+  이미지 자체의 캐시는 클라이언트가 이 불변 경로를 키로 직접 관리한다
+
+### 에러
+
+| 상태 | code | 설명 |
+|---|---|---|
+| 401 | UNAUTHORIZED | accessToken 없음·무효 |
+| 404 | IMAGE_NOT_FOUND | 없거나 접근할 수 없는 imageId |
+
+존재하지 않음·삭제됨·타인 소유·업로드 미완료를 구분하지 않고 모두 404다. 구분해서 알리면
+`imageId`를 순회해 리소스를 열거할 수 있으므로 403을 따로 두지 않는다(5-2·5-6·6-2와 같은 정책).
+
+## 5-9 썸네일 이미지 조회(302 리다이렉트)
+
+`GET /api/v1/images/{imageId}/thumbnail`
+
+요청·응답·에러 규칙은 5-8과 같고, 대상만 썸네일이다.
+
+**썸네일이 아직 생성되지 않은 이미지(분석 전 등)는 404가 아니라 원본 키로 302한다.**
+클라이언트에서 분기할 필요가 없도록 한 폴백이다.
 
 ## 6-1 카테고리 목록
 
@@ -1991,7 +2045,7 @@ DB 저장 중 하나라도 실패하면 전체 트랜잭션을 롤백하고 성�
 | KAKAO_LOGIN_FAILED | 401 | 3-3 | 카카오 인가 코드 교환 또는 사용자 정보 조회 실패 |
 | INVALID_REFRESH_TOKEN | 401 | 3-4, 3-5 | 유효하지 않거나 만료·폐기된 Refresh Token |
 | UNSUPPORTED_FORMAT | 200 응답의 `failed[]` | 4-1 | 배치 항목의 이미지 형식을 지원하지 않음 |
-| IMAGE_NOT_FOUND | 404 | 4-2, 5-2, 5-6, 5-7, 8-2, 8-6 | 대상 이미지가 없거나 요청 사용자가 접근할 수 없음 |
+| IMAGE_NOT_FOUND | 404 | 4-2, 5-2, 5-6, 5-7, 5-8, 5-9, 8-2, 8-6 | 대상 이미지가 없거나 요청 사용자가 접근할 수 없음 |
 | CATEGORY_NOT_FOUND | 404 | 6-2 | 카테고리가 없거나 요청 사용자가 접근할 수 없음 |
 | UPLOAD_ALREADY_COMPLETED | 409 | 4-2 | 스토리지 업로드가 이미 완료되어 URL을 재발급할 수 없음 |
 | ANALYSIS_IN_PROGRESS | 409 | 4-2 | 이미지 분석이 이미 시작되어 업로드 URL을 재발급할 수 없음 |

@@ -11,7 +11,7 @@ import com.ssafy.modera.core.datastore.proto.CategoryProto
 import com.ssafy.modera.core.model.category.CategorySortType
 import com.ssafy.modera.core.network.model.category.CategoriesResponse
 import com.ssafy.modera.core.network.model.category.CategoryResponse
-import com.ssafy.modera.core.network.service.CategoryClient
+import com.ssafy.modera.core.network.service.category.CategoryClient
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals

@@ -1,9 +1,8 @@
-package com.ssafy.modera.core.network.service
+package com.ssafy.modera.core.network.service.category
 
 import com.skydoves.sandwich.getOrThrow
 import com.ssafy.modera.core.model.category.CategorySortType
 import com.ssafy.modera.core.network.model.category.CategoriesResponse
-import javax.inject.Inject
 
 class CategoryClient @Inject constructor(
     private val categoryService: CategoryService,

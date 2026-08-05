@@ -74,7 +74,7 @@ private fun RecentSearchQueryItem(
                 color = ModeraTheme.colors.gray200,
                 shape = RoundedCornerShape(16.dp),
             )
-            .padding(start = 14.dp, top = 6.dp, end = 6.dp, bottom = 6.dp)
+            .padding(start = 14.dp, top = 4.dp, end = 4.dp, bottom = 4.dp)
             .clickable(enabled = true, onClick = onItemClick),
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically,

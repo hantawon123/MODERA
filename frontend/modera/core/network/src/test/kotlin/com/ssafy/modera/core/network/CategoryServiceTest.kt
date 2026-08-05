@@ -1,7 +1,7 @@
 package com.ssafy.modera.core.network
 
 import com.skydoves.sandwich.getOrThrow
-import com.ssafy.modera.core.network.service.CategoryService
+import com.ssafy.modera.core.network.service.category.CategoryService
 import kotlinx.coroutines.test.runTest
 import org.hamcrest.CoreMatchers.`is`
 import org.hamcrest.MatcherAssert.assertThat

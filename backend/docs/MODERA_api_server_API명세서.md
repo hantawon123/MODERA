@@ -157,6 +157,7 @@ CANCELED            취소
 | 5-6 | GET | /images/{imageId}/similar | 연관 이미지 조회 |
 | 5-7 | POST | /images/documentize | 다중 이미지 문서화 기반 관련 자료 검색 |
 | 6-1 | GET | /categories | 카테고리 목록 |
+| 6-2 | GET | /categories/{categoryId}/thumbnail | 카테고리 아이콘 조회(302 리다이렉트) |
 | 7-1 | GET | /user | 내 정보 |
 | 7-2 | DELETE | /user/delete | 저장 데이터 초기화 |
 | 7-3 | PATCH | /user/settings | 설정 변경 |
@@ -1097,14 +1098,14 @@ centroid 방식이라 개별 이미지가 아니라 공통 주제에 가까운 �
       {
         "categoryId": 1744084819,
         "name": "공부",
-        "categoryImageUrl": "https://.../category-thumbnails/1744084819.png?X-Amz-...",
+        "categoryImageUrl": "/api/v1/categories/1744084819/thumbnail",
         "imageCount": 42,
         "latestUpdatedAt": "2026-07-17T06:00:00.000Z"
       },
       {
         "categoryId": 1735462011,
         "name": "음식",
-        "categoryImageUrl": "https://.../category-thumbnails/1735462011.png?X-Amz-...",
+        "categoryImageUrl": "/api/v1/categories/1735462011/thumbnail",
         "imageCount": 52,
         "latestUpdatedAt": "2026-07-18T06:00:00.000Z"
       }
@@ -1116,13 +1117,47 @@ centroid 방식이라 개별 이미지가 아니라 공통 주제에 가까운 �
 
 ### categoryImageUrl 규칙
 
-- AI 서버가 카테고리 판정 시 생성해 스토리지(`category-thumbnails/{categoryId}.png`)에
-  올려둔 **카테고리 아이콘**(216×216 PNG, 투명 배경)의 presigned GET URL이다. 유효시간 1시간.
-- 아이콘 생성은 백그라운드(수십 초)라 **카테고리가 막 생긴 직후에는 URL이 404일 수
-  있다.** 앱은 이미지 로드 실패 시 플레이스홀더를 보여주고, 다음 목록 조회에서 자연히
-  복구된다.
-- URL의 서명 파라미터가 조회마다 바뀌므로 앱 이미지 캐시 키는 URL 전체가 아니라
-  `categoryId` 기준으로 잡는 것을 권장한다.
+- presigned URL이 아니라 **만료 없는 고정 경로**다(6-2 아이콘 리다이렉트). 앱이 Room에
+  영구 저장해도 되고, 이미지 캐시 키로 그대로 쓰면 된다.
+- 실제 이미지는 이 경로를 호출하면 6-2가 presigned URL로 302 리다이렉트해 준다 —
+  presign의 1시간 만료는 매 호출 새로 발급하는 것으로 흡수된다.
+- 아이콘은 categoryId당 **불변**이다(재생성 경로 없음, 이름이 바뀌면 id 자체가 바뀜).
+  따라서 버전 필드 없이 캐시를 무기한 유지해도 된다.
+
+---
+
+## 6-2 카테고리 아이콘 조회 (리다이렉트)
+
+| 항목 | 내용 |
+| --- | --- |
+| API | `GET /api/v1/categories/{categoryId}/thumbnail` |
+| 인증 | Bearer |
+| 설명 | 카테고리 아이콘(AI 생성, 216×216 PNG, 투명 배경)의 presigned GET URL로 302 리다이렉트한다. 이미지 로더(Coil 등)가 리다이렉트를 따라가 스토리지에서 직접 받는다. |
+
+### Response
+
+```
+HTTP 302 Found
+Location: {presigned GET URL, 1시간 유효}
+Cache-Control: no-store
+```
+
+- **302 응답은 본문이 없어 공통 envelope의 예외다.** 에러(401·404)는 평소처럼 envelope JSON으로 나간다.
+- `Cache-Control: no-store`는 리다이렉트 응답 자체의 캐시 금지다 — 캐시하면 만료된
+  presigned URL이 재사용된다. 이미지 자체의 캐시는 앱이 고정 경로를 키로 관리한다.
+
+### 처리 규칙
+
+- 본인 카테고리가 아니거나 존재하지 않으면 `CATEGORY_NOT_FOUND`(404)다. 존재 여부를
+  숨기기 위해 403을 따로 두지 않는다(5-2와 같은 정책).
+- 아이콘 파일은 AI 서버가 카테고리 판정 시 백그라운드로 생성한다(수십 초). 카테고리
+  생성 직후에는 리다이렉트된 곳이 404일 수 있다 — 앱은 플레이스홀더를 보여주고 다음
+  로드에서 자연 복구된다. 서버는 존재 확인을 하지 않는다.
+
+### 에러
+
+- `UNAUTHORIZED` (401)
+- `CATEGORY_NOT_FOUND` (404)
 
 ---
 
@@ -1955,6 +1990,7 @@ DB 저장 중 하나라도 실패하면 전체 트랜잭션을 롤백하고 성�
 | INVALID_REFRESH_TOKEN | 401 | 3-4, 3-5 | 유효하지 않거나 만료·폐기된 Refresh Token |
 | UNSUPPORTED_FORMAT | 200 응답의 `failed[]` | 4-1 | 배치 항목의 이미지 형식을 지원하지 않음 |
 | IMAGE_NOT_FOUND | 404 | 4-2, 5-2, 5-6, 5-7, 8-2, 8-6 | 대상 이미지가 없거나 요청 사용자가 접근할 수 없음 |
+| CATEGORY_NOT_FOUND | 404 | 6-2 | 카테고리가 없거나 요청 사용자가 접근할 수 없음 |
 | UPLOAD_ALREADY_COMPLETED | 409 | 4-2 | 스토리지 업로드가 이미 완료되어 URL을 재발급할 수 없음 |
 | ANALYSIS_IN_PROGRESS | 409 | 4-2 | 이미지 분석이 이미 시작되어 업로드 URL을 재발급할 수 없음 |
 | CONFIRM_REQUIRED | 400 | 7-2 | 저장 데이터 초기화 확인 문자열이 없거나 올바르지 않음 |

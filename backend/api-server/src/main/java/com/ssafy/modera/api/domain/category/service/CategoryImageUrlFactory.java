@@ -15,9 +15,13 @@ import java.time.Duration;
  * category_icon.py). categoryId가 이름의 해시라 키가 결정적이고, 그래서 DB에
  * 키를 저장하거나 AI를 호출하지 않고 목록 조회 시점에 키를 조립해 서명만 한다.
  *
+ * <p>호출처는 아이콘 리다이렉트(6-2, CategoryQueryService.getThumbnailRedirectUrl)
+ * 하나다 — 목록(6-1)에는 presign 대신 불변 경로가 나간다(앱이 Room에 저장·캐시 키로
+ * 쓰기 위해).
+ *
  * <p>생성은 AI 쪽 백그라운드(수십 초)라, 카테고리가 막 생긴 직후에는 객체가 아직
- * 없어 URL이 404일 수 있다. 존재 확인(HEAD)을 행마다 넣으면 목록 API가 MinIO
- * 왕복에 묶이므로 하지 않는다 — 앱이 이미지 404를 플레이스홀더로 처리한다.
+ * 없어 URL이 404일 수 있다. 존재 확인(HEAD)을 넣지 않는다 — 앱이 이미지 404를
+ * 플레이스홀더로 처리하고 다음 로드에서 자연 복구된다.
  */
 @Component
 @RequiredArgsConstructor

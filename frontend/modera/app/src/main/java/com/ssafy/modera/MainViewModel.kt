@@ -16,14 +16,12 @@ import com.ssafy.modera.registration.applyRegistrationOutcome
 import com.ssafy.modera.registration.startRegistration
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-import kotlin.time.Duration.Companion.seconds
 
 @HiltViewModel
 class MainViewModel @Inject constructor(
@@ -59,14 +57,7 @@ class MainViewModel @Inject constructor(
             if (_uiState.value.registeredImages.isNotEmpty()) {
                 categoryRepository.refreshCategories()
             }
-
-            delay(2.seconds)
-            dismissAnalysisBanner()
         }
-    }
-
-    fun dismissAnalysisBanner() {
-        _uiState.update { it.copy(showAnalysisBanner = false) }
     }
 
     private suspend fun registerSingleImage(

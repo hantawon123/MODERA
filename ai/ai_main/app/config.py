@@ -24,7 +24,16 @@ class Settings:
         self.mock_ai = os.environ.get("MOCK_AI", "false").lower() == "true"
 
         # 자격증명 (기본값 없음)
-        self.gemini_api_key = "" if self.mock_ai else _required("GEMINI_API_KEY")
+        # GMS_KEY: SSAFY GMS 프록시용 키. 현재 모든 Gemini 호출이 이걸 쓴다.
+        #   Agent Platform 전환 후에도 임베딩은 GMS 를 유지하므로(768차원 pgvector
+        #   계약 리스크 회피) 살아남는다. 구 이름은 GEMINI_API_KEY 였다.
+        self.gms_key = "" if self.mock_ai else _required("GMS_KEY")
+        # GEMINI_API_KEY: Agent Platform(구 Vertex AI) 표준 모드용 키.
+        #   ⚠️ 아직 아무도 쓰지 않는다 — 생성 클라이언트를 Agent Platform 으로
+        #   돌릴 때 붙는다. 그래서 필수가 아니다(없어도 기동한다).
+        #   SDK 가 이 이름의 환경변수를 자동으로 집는데(get_env_api_key),
+        #   enterprise 모드에서 필요한 키가 바로 이거라 이름이 맞아떨어진다.
+        self.gemini_api_key = os.environ.get("GEMINI_API_KEY", "")
         self.internal_token = _required("INTERNAL_TOKEN")
 
         # Spring 내부 API (10-4 콜백, 10-5 후보 조회)

@@ -88,7 +88,9 @@ def _client():
         genai, types = _sdk()
         settings = get_settings()
         _client_instance = genai.Client(
-            api_key=settings.gemini_api_key,
+            # GMS 프록시용 키. Agent Platform 전환 시 생성 경로만 갈라지고
+            # 임베딩은 이 키로 남는다.
+            api_key=settings.gms_key,
             http_options=types.HttpOptions(
                 # GMS 프록시 경유 — SDK 가 이 값 뒤에 /v1beta/... 를 붙인다.
                 base_url=settings.gemini_base_url,

@@ -33,6 +33,7 @@ class DefaultAnalyzedImageRepositoryTest {
         repository = DefaultAnalyzedImageRepository(
             analyzedImageClient = analyzedImageClient,
             ioDispatcher = testDispatcher,
+            analyzedImageDao = mock(),
         )
     }
 

@@ -2,7 +2,7 @@ package com.ssafy.modera.fcm
 
 import com.ssafy.modera.sync.work.SyncResourceType
 
-internal data class DataChangedEvent(
+data class DataChangedEvent(
     val eventId: String,
     val resource: SyncResourceType,
     val resourceId: Long,

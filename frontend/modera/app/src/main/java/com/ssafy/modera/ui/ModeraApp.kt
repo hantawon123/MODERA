@@ -278,14 +278,10 @@ internal fun ModeraApp(
 
                             val entryProvider = entryProvider {
                                 homeEntry(
-                                    onCategoryClick =
-                                        navigator::navigateToCategoryTab,
-                                    onCalendarClick =
-                                        navigator::navigateToCalendar,
-                                    onSettingsClick =
-                                        navigator::navigateToSettings,
-                                    onSearchResultClick =
-                                        navigator::navigateToImageDetail,
+                                    onCategoryClick = navigator::navigateToCategoryTab,
+                                    onCalendarClick = navigator::navigateToCalendar,
+                                    onSettingsClick = navigator::navigateToSettings,
+                                    onSearchResultClick = navigator::navigateToImageDetail,
                                 )
 
                                 settingsEntry(
@@ -294,14 +290,11 @@ internal fun ModeraApp(
                                 )
 
                                 categoryEntry(
-                                    onItemClick =
-                                        navigator::navigateToImageDetail,
+                                    onItemClick = navigator::navigateToImageDetail,
                                 )
 
                                 favoritesEntry(
-                                    onItemClick = {
-                                        // TODO: 자료 상세 연결
-                                    },
+                                    onItemClick = navigator::navigateToImageDetail,
                                 )
 
                                 calendarEntry(

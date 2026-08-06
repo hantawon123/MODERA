@@ -7,6 +7,8 @@ import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.ui.LocalNavAnimatedContentScope
 import com.ssafy.modera.core.model.analyzedimage.AnalyzedImage
 import com.ssafy.modera.core.navigation.Navigator
+import com.ssafy.modera.feature.analyzedimage.api.navigation.AnalyzedImageDetailNavKey
+import com.ssafy.modera.feature.analyzedimage.api.navigation.navigateToRelatedImages
 import com.ssafy.modera.feature.analyzedimage.detail.AnalyzedImageDetailScreen
 import com.ssafy.modera.feature.analyzedimage.detail.AnalyzedImageDetailViewModel
 import com.ssafy.modera.feature.analyzedimage.detail.AnalyzedImageDetailViewModel.Factory
@@ -16,8 +18,6 @@ fun EntryProviderScope<NavKey>.analyzedImageDetailEntry(
     sharedTransitionScope: SharedTransitionScope,
     onImageClick: (String) -> Unit,
     onCreateDocumentClick: (AnalyzedImage) -> Unit,
-    onBackClick: () -> Unit,
-    onRelatedImagesClick: (Long, String) -> Unit,
 ) {
     entry<AnalyzedImageDetailNavKey> { key ->
         val imageId = key.imageId
@@ -31,7 +31,7 @@ fun EntryProviderScope<NavKey>.analyzedImageDetailEntry(
 
         AnalyzedImageDetailScreen(
             viewModel = viewModel,
-            onBackClick = onBackClick,
+            onBackClick = navigator::popBackStack,
             sharedTransitionScope = sharedTransitionScope,
             animatedVisibilityScope = LocalNavAnimatedContentScope.current,
             onImageClick = onImageClick,
@@ -42,7 +42,7 @@ fun EntryProviderScope<NavKey>.analyzedImageDetailEntry(
             onScheduleClick = {
                 // TODO 일정 화면 이동
             },
-            onRelatedImagesClick = onRelatedImagesClick,
+            onRelatedImagesClick = navigator::navigateToRelatedImages,
         )
     }
 }

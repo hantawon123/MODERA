@@ -1,4 +1,4 @@
-package com.ssafy.modera.feature.analyzedimage.related.images.navigation
+package com.ssafy.modera.feature.analyzedimage.api.navigation
 
 import androidx.navigation3.runtime.NavKey
 import com.ssafy.modera.core.navigation.Navigator

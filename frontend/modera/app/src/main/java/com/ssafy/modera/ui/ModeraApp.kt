@@ -49,7 +49,6 @@ import com.ssafy.modera.feature.analyzedimagedetail.navigation.navigateToImageDe
 import com.ssafy.modera.feature.calendar.navigation.calendarEntry
 import com.ssafy.modera.feature.calendar.navigation.navigateToCalendar
 import com.ssafy.modera.feature.category.navigation.categoryEntry
-import com.ssafy.modera.feature.category.navigation.navigateToCategorySearch
 import com.ssafy.modera.feature.category.navigation.navigateToCategoryTab
 import com.ssafy.modera.feature.document.documentcreate.navigation.documentCreateEntry
 import com.ssafy.modera.feature.document.documentcreate.navigation.navigateToDocumentCreate
@@ -295,9 +294,6 @@ internal fun ModeraApp(
                                 )
 
                                 categoryEntry(
-                                    onBackClick = handleBack,
-                                    onSearchIconClick =
-                                        navigator::navigateToCategorySearch,
                                     onItemClick =
                                         navigator::navigateToImageDetail,
                                 )

@@ -1,5 +1,6 @@
 package com.ssafy.modera.core.ui
 
+
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -18,10 +19,10 @@ import com.ssafy.modera.core.designsystem.component.Text
 import com.ssafy.modera.core.designsystem.theme.ModeraTheme
 
 @Composable
-fun ErrorScreen(
+fun EmptyScreen(
     message: String,
     modifier: Modifier = Modifier,
-    @DrawableRes imageRes: Int = R.drawable.img_character_dizzy,
+    @DrawableRes imageRes: Int = R.drawable.img_character_crying,
 ) {
     Column(
         modifier = modifier
@@ -48,14 +49,15 @@ fun ErrorScreen(
 }
 
 @Preview(
-    name = "Error Screen",
+    name = "Empty Screen",
     showBackground = true,
 )
 @Composable
-private fun ErrorScreenPreview() {
+private fun EmptyScreenPreview() {
     ModeraTheme {
-        ErrorScreen(
-            message = "이미지 정보를 불러오지 못했습니다.",
+        EmptyScreen(
+            message = "검색 결과가 없습니다",
+            imageRes = R.drawable.img_character_crying,
         )
     }
 }

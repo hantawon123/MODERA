@@ -2,6 +2,7 @@ package com.ssafy.modera.feature.category
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -19,19 +20,19 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.ssafy.modera.core.ui.LoadingScreen
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ssafy.modera.core.component.ModeraScrollToTopButton
+import com.ssafy.modera.core.component.ModeraSearchBar
 import com.ssafy.modera.core.component.ModeraSortSection
 import com.ssafy.modera.core.component.ModeraTopBar
-import com.ssafy.modera.core.component.ModeraTopBarDefaults
+import com.ssafy.modera.core.component.SearchBarMode
 import com.ssafy.modera.core.component.item.ModeraAnalyzedImageItem
 import com.ssafy.modera.core.component.rememberShowScrollToTop
 import com.ssafy.modera.core.designsystem.component.HorizontalDivider
@@ -43,13 +44,15 @@ import com.ssafy.modera.core.designsystem.theme.ModeraTheme
 import com.ssafy.modera.core.model.analyzedimage.AnalyzedImage
 import com.ssafy.modera.core.model.analyzedimage.AnalyzedImageSortType
 import com.ssafy.modera.core.model.category.CategorySheetItem
+import com.ssafy.modera.core.ui.EmptyScreen
+import com.ssafy.modera.core.ui.ErrorScreen
+import com.ssafy.modera.core.ui.LoadingScreen
 import com.ssafy.modera.feature.category.component.CategoryTopSheet
 import kotlinx.coroutines.launch
 
 @Composable
 fun CategoryRoute(
     onItemClick: (Long) -> Unit,
-    onSearchIconClick: () -> Unit,
     selectedCategoryId: Long? = null,
     modifier: Modifier = Modifier,
     viewModel: CategoryViewModel = hiltViewModel(),
@@ -68,7 +71,8 @@ fun CategoryRoute(
         }
 
         CategoryUiState.Error -> {
-            CategoryErrorScreen(
+            ErrorScreen(
+                message = stringResource(R.string.category_load_error),
                 modifier = modifier,
             )
         }
@@ -82,11 +86,12 @@ fun CategoryRoute(
                 analyzedImages = state.analyzedImages,
                 totalImageCount = state.totalImageCount,
                 selectedSortType = state.selectedSortType,
+                searchQuery = state.searchQuery,
                 showCategorySheet = state.showCategorySheet,
                 showSortPopup = state.showSortPopup,
                 isLoadingMore = state.isLoadingMore,
                 hasNextPage = state.hasNextPage,
-                onSearchIconClick = onSearchIconClick,
+                onSearchQueryChange = viewModel::onSearchQueryChanged,
                 onCategoryTitleClick = viewModel::onCategoryTitleClick,
                 onCategorySheetDismiss = viewModel::onCategorySheetDismiss,
                 onCategorySelect = viewModel::onCategorySelect,
@@ -102,24 +107,6 @@ fun CategoryRoute(
 }
 
 @Composable
-private fun CategoryErrorScreen(
-    modifier: Modifier = Modifier,
-) {
-    Box(
-        modifier = modifier
-            .fillMaxSize()
-            .background(ModeraTheme.colors.white),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(
-            text = stringResource(R.string.category_load_error),
-            style = ModeraTheme.typography.bodyR14,
-            color = ModeraTheme.colors.gray700,
-        )
-    }
-}
-
-@Composable
 fun CategoryScreen(
     selectedCategoryId: Long,
     selectedCategoryTitle: String,
@@ -128,11 +115,12 @@ fun CategoryScreen(
     analyzedImages: List<AnalyzedImage>,
     totalImageCount: Long,
     selectedSortType: AnalyzedImageSortType,
+    searchQuery: String,
     showCategorySheet: Boolean,
     showSortPopup: Boolean,
     isLoadingMore: Boolean,
     hasNextPage: Boolean,
-    onSearchIconClick: () -> Unit,
+    onSearchQueryChange: (String) -> Unit,
     onCategoryTitleClick: () -> Unit,
     onCategorySheetDismiss: () -> Unit,
     onCategorySelect: (Long) -> Unit,
@@ -146,11 +134,13 @@ fun CategoryScreen(
     val listState = rememberLazyListState()
     val showScrollToTop = rememberShowScrollToTop(listState)
     val coroutineScope = rememberCoroutineScope()
+    val focusManager = LocalFocusManager.current
     val displayCategoryTitle = if (isAllCategorySelected) {
         stringResource(R.string.category_all)
     } else {
         selectedCategoryTitle
     }
+    val isSearching = searchQuery.isNotBlank()
     val displayImageCount = if (totalImageCount > 0) {
         totalImageCount
     } else {
@@ -179,42 +169,49 @@ fun CategoryScreen(
             modifier = Modifier
                 .fillMaxSize()
         ) {
-            ModeraTopBar(
-                onBackClick = {},
-                leftContent = {
-                    Row(
-                        modifier = Modifier
-                            .padding(start = 4.dp)
-                            .clickable(onClick = onCategoryTitleClick),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text(
-                            text = displayCategoryTitle,
-                            style = ModeraTheme.typography.titleSB20,
-                            color = ModeraTheme.colors.gray900,
-                        )
-                        Icon(
-                            painter = painterResource(ModeraIcons.ArrowDown),
-                            contentDescription = stringResource(
-                                R.string.category_title_picker_description,
-                            ),
-                            tint = ModeraTheme.colors.gray700,
-                            modifier = Modifier
-                                .padding(start = 4.dp)
-                                .size(16.dp),
-                        )
+            Box(
+                modifier = Modifier.pointerInput(Unit) {
+                    detectTapGestures {
+                        focusManager.clearFocus()
                     }
                 },
-                rightContent = {
-                    Icon(
-                        imageVector = ImageVector.vectorResource(ModeraIcons.Search),
-                        contentDescription = stringResource(R.string.icon_search_description),
-                        tint = ModeraTheme.colors.gray700,
-                        modifier = Modifier
-                            .size(ModeraTopBarDefaults.IconSize)
-                            .clickable(onClick = onSearchIconClick),
-                    )
-                },
+            ) {
+                ModeraTopBar(
+                    onBackClick = {},
+                    leftContent = {
+                        Row(
+                            modifier = Modifier
+                                .padding(start = 4.dp)
+                                .clickable(onClick = onCategoryTitleClick),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(
+                                text = displayCategoryTitle,
+                                style = ModeraTheme.typography.titleSB20,
+                                color = ModeraTheme.colors.gray900,
+                            )
+                            Icon(
+                                painter = painterResource(ModeraIcons.ArrowDown),
+                                contentDescription = stringResource(
+                                    R.string.category_title_picker_description,
+                                ),
+                                tint = ModeraTheme.colors.gray700,
+                                modifier = Modifier
+                                    .padding(start = 4.dp)
+                                    .size(16.dp),
+                            )
+                        }
+                    },
+                )
+            }
+
+            ModeraSearchBar(
+                query = searchQuery,
+                onQueryChange = onSearchQueryChange,
+                placeholder = stringResource(R.string.category_search_placeholder),
+                mode = SearchBarMode.General,
+                modifier = Modifier
+                    .padding(horizontal = CategoryScreenDefaults.HorizontalPadding),
             )
 
             Box {
@@ -222,14 +219,19 @@ fun CategoryScreen(
                     state = listState,
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(horizontal = CategoryScreenDefaults.HorizontalPadding),
+                        .padding(horizontal = CategoryScreenDefaults.HorizontalPadding)
+                        .pointerInput(Unit) {
+                            detectTapGestures {
+                                focusManager.clearFocus()
+                            }
+                        },
                 ) {
                     item {
                         Column {
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(top = 8.dp, bottom = 8.dp),
+                                    .padding(top = 12.dp, bottom = 8.dp),
                             ) {
                                 Text(
                                     text = stringResource(
@@ -260,21 +262,30 @@ fun CategoryScreen(
                         }
                     }
 
-                    items(
-                        items = analyzedImages,
-                        key = { it.id },
-                    ) { analyzedImage ->
-                        ModeraAnalyzedImageItem(
-                            title = analyzedImage.title,
-                            description = analyzedImage.summary,
-                            tags = analyzedImage.hashtags,
-                            imageUrl = analyzedImage.thumbnailUrl,
-                            favorite = analyzedImage.favorite,
-                            isDocumented = analyzedImage.isDocumented,
-                            hasSchedule = analyzedImage.hasSchedule,
-                            onClick = { onItemClick(analyzedImage.id) },
-                            modifier = Modifier.fillMaxWidth(),
-                        )
+                    if (isSearching && analyzedImages.isEmpty()) {
+                        item(key = "search_empty") {
+                            EmptyScreen(
+                                message = stringResource(R.string.category_search_result_empty),
+                                modifier = Modifier.padding(top = 40.dp),
+                            )
+                        }
+                    } else {
+                        items(
+                            items = analyzedImages,
+                            key = { it.id },
+                        ) { analyzedImage ->
+                            ModeraAnalyzedImageItem(
+                                title = analyzedImage.title,
+                                description = analyzedImage.summary,
+                                tags = analyzedImage.hashtags,
+                                imageUrl = analyzedImage.thumbnailUrl,
+                                favorite = analyzedImage.favorite,
+                                isDocumented = analyzedImage.isDocumented,
+                                hasSchedule = analyzedImage.hasSchedule,
+                                onClick = { onItemClick(analyzedImage.id) },
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                        }
                     }
 
                     if (isLoadingMore) {
@@ -352,11 +363,12 @@ private fun CategoryScreenPreview() {
             ),
             totalImageCount = 1,
             selectedSortType = AnalyzedImageSortType.UPLOADED_DESC,
+            searchQuery = "",
             showCategorySheet = false,
             showSortPopup = false,
             isLoadingMore = false,
             hasNextPage = false,
-            onSearchIconClick = {},
+            onSearchQueryChange = {},
             onCategoryTitleClick = {},
             onCategorySheetDismiss = {},
             onCategorySelect = {},

@@ -30,8 +30,10 @@ import com.ssafy.modera.core.designsystem.component.LoadingWheel
 import com.ssafy.modera.core.designsystem.component.Text
 import com.ssafy.modera.core.designsystem.theme.ModeraTheme
 import com.ssafy.modera.core.model.analyzedimage.AnalyzedImage
+import com.ssafy.modera.core.ui.EmptyScreen
+import com.ssafy.modera.core.ui.ErrorScreen
 import com.ssafy.modera.core.ui.LoadingScreen
-import com.ssafy.modera.core.util.statusBarTopPadding
+import com.ssafy.modera.core.ui.R.drawable.img_character_document_creating
 import kotlinx.coroutines.launch
 
 @Composable
@@ -50,7 +52,8 @@ fun FavoritesRoute(
         }
 
         FavoritesUiState.Error -> {
-            FavoritesErrorScreen(
+            ErrorScreen(
+                message = stringResource(R.string.favorites_load_error),
                 modifier = modifier,
             )
         }
@@ -65,24 +68,6 @@ fun FavoritesRoute(
                 modifier = modifier,
             )
         }
-    }
-}
-
-@Composable
-private fun FavoritesErrorScreen(
-    modifier: Modifier = Modifier,
-) {
-    Box(
-        modifier = modifier
-            .fillMaxSize()
-            .background(ModeraTheme.colors.white),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(
-            text = stringResource(R.string.favorites_load_error),
-            style = ModeraTheme.typography.bodyR14,
-            color = ModeraTheme.colors.gray700,
-        )
     }
 }
 
@@ -150,21 +135,31 @@ fun FavoritesScreen(
                     )
                 }
 
-                items(
-                    items = favorites,
-                    key = AnalyzedImage::id,
-                ) { favorite ->
-                    ModeraAnalyzedImageItem(
-                        title = favorite.title,
-                        description = favorite.summary,
-                        tags = favorite.hashtags,
-                        imageUrl = favorite.thumbnailUrl,
-                        favorite = favorite.favorite,
-                        isDocumented = favorite.isDocumented,
-                        hasSchedule = favorite.hasSchedule,
-                        onClick = { onItemClick(favorite.id) },
-                        modifier = Modifier.fillMaxWidth(),
-                    )
+                if (favorites.isEmpty()) {
+                    item {
+                        EmptyScreen(
+                            message = stringResource(R.string.favorites_item_empty),
+                            modifier = Modifier.fillParentMaxSize(),
+                            imageRes = img_character_document_creating,
+                        )
+                    }
+                } else {
+                    items(
+                        items = favorites,
+                        key = AnalyzedImage::id,
+                    ) { favorite ->
+                        ModeraAnalyzedImageItem(
+                            title = favorite.title,
+                            description = favorite.summary,
+                            tags = favorite.hashtags,
+                            imageUrl = favorite.thumbnailUrl,
+                            favorite = favorite.favorite,
+                            isDocumented = favorite.isDocumented,
+                            hasSchedule = favorite.hasSchedule,
+                            onClick = { onItemClick(favorite.id) },
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
                 }
 
                 if (isLoadingMore) {

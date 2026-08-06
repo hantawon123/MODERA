@@ -21,7 +21,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -42,6 +41,8 @@ import com.ssafy.modera.core.designsystem.theme.ModeraTheme
 import com.ssafy.modera.core.model.analyzedimage.AnalyzedImage
 import com.ssafy.modera.core.model.analyzedimage.AnalyzedImageSortType
 import com.ssafy.modera.core.model.category.CategorySheetItem
+import com.ssafy.modera.core.ui.EmptyScreen
+import com.ssafy.modera.core.ui.ErrorScreen
 import com.ssafy.modera.core.ui.LoadingScreen
 import com.ssafy.modera.feature.category.component.CategoryTopSheet
 import kotlinx.coroutines.launch
@@ -67,7 +68,8 @@ fun CategoryRoute(
         }
 
         CategoryUiState.Error -> {
-            CategoryErrorScreen(
+            ErrorScreen(
+                message = stringResource(R.string.category_load_error),
                 modifier = modifier,
             )
         }
@@ -98,24 +100,6 @@ fun CategoryRoute(
                 modifier = modifier,
             )
         }
-    }
-}
-
-@Composable
-private fun CategoryErrorScreen(
-    modifier: Modifier = Modifier,
-) {
-    Box(
-        modifier = modifier
-            .fillMaxSize()
-            .background(ModeraTheme.colors.white),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(
-            text = stringResource(R.string.category_load_error),
-            style = ModeraTheme.typography.bodyR14,
-            color = ModeraTheme.colors.gray700,
-        )
     }
 }
 
@@ -263,19 +247,10 @@ fun CategoryScreen(
 
                     if (isSearching && analyzedImages.isEmpty()) {
                         item(key = "search_empty") {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(top = 24.dp),
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                Text(
-                                    text = stringResource(R.string.category_search_result_empty),
-                                    style = ModeraTheme.typography.bodyR14,
-                                    color = ModeraTheme.colors.gray500,
-                                    textAlign = TextAlign.Center,
-                                )
-                            }
+                            EmptyScreen(
+                                message = stringResource(R.string.category_search_result_empty),
+                                modifier = Modifier.padding(top = 40.dp),
+                            )
                         }
                     } else {
                         items(

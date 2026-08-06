@@ -78,9 +78,13 @@ fun ModeraSearchBar(
     onFocusChanged: (Boolean) -> Unit = {},
 ) {
     val colors = ModeraTheme.colors
+    val backgroundColor = when (mode) {
+        SearchBarMode.General -> colors.gray100
+        SearchBarMode.Ai -> colors.white
+    }
     val accentColor = when (mode) {
-        SearchBarMode.General -> colors.gray500
-        SearchBarMode.Ai -> colors.yellow700
+        SearchBarMode.General -> colors.gray100
+        SearchBarMode.Ai -> rememberAiSearchIconColor()
     }
     val shape = SearchBarDefaults.Shape
     val resolvedFocusRequester = focusRequester ?: remember { FocusRequester() }
@@ -102,7 +106,7 @@ fun ModeraSearchBar(
         modifier = modifier
             .fillMaxWidth()
             .clip(shape)
-            .background(color = colors.white, shape = shape)
+            .background(color = backgroundColor, shape = shape)
             .border(
                 width = SearchBarDefaults.BorderWidth,
                 color = accentColor,
@@ -161,7 +165,7 @@ fun ModeraSearchBar(
                     imageVector = ImageVector.vectorResource(ModeraIcons.CloseCircle),
                     contentDescription = "초기화",
                     modifier = Modifier
-                        .size(SearchBarDefaults.IconSize)
+                        .size(SearchBarDefaults.xIconSize)
                         .clickable(
                             enabled = enabled,
                             indication = null,
@@ -182,7 +186,6 @@ fun ModeraSearchBar(
 
             SearchIcon(
                 mode = mode,
-                accentColor = accentColor,
                 onClick = onSearch,
                 enabled = enabled,
             )
@@ -193,13 +196,12 @@ fun ModeraSearchBar(
 @Composable
 private fun SearchIcon(
     mode: SearchBarMode,
-    accentColor: Color,
     onClick: (() -> Unit)?,
     enabled: Boolean,
     modifier: Modifier = Modifier,
 ) {
     val iconTint = when (mode) {
-        SearchBarMode.General -> accentColor
+        SearchBarMode.General -> ModeraTheme.colors.gray700
         SearchBarMode.Ai -> rememberAiSearchIconColor()
     }
     val clickableModifier = if (onClick != null) {
@@ -255,7 +257,8 @@ object SearchBarDefaults {
     val HorizontalPadding = 16.dp
     val VerticalPadding = 14.dp
     val IconSize = 24.dp
-    val IconTextSpacing = 8.dp
+    val xIconSize = 20.dp
+    val IconTextSpacing = 6.dp
     const val AiIconAnimationDurationMs = 1800
 }
 
@@ -276,7 +279,6 @@ private fun SearchBarPreviewHost(content: @Composable () -> Unit) {
 
 @Preview(
     showBackground = true,
-    backgroundColor = 0xFFF5F5F3,
     widthDp = 360,
     heightDp = 200,
 )
@@ -304,7 +306,6 @@ private fun ModeraSearchBarGeneralPlaceholderPreview() {
 @Preview(
     name = "AI SearchBar (animation)",
     showBackground = true,
-    backgroundColor = 0xFFF5F5F3,
     widthDp = 360,
     heightDp = 200,
 )

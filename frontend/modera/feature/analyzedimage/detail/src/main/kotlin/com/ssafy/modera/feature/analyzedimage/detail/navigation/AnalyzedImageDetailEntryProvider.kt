@@ -1,0 +1,48 @@
+package com.ssafy.modera.feature.analyzedimage.detail.navigation
+
+import androidx.compose.animation.SharedTransitionScope
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.navigation3.runtime.EntryProviderScope
+import androidx.navigation3.runtime.NavKey
+import androidx.navigation3.ui.LocalNavAnimatedContentScope
+import com.ssafy.modera.core.model.analyzedimage.AnalyzedImage
+import com.ssafy.modera.core.navigation.Navigator
+import com.ssafy.modera.feature.analyzedimage.detail.AnalyzedImageDetailScreen
+import com.ssafy.modera.feature.analyzedimage.detail.AnalyzedImageDetailViewModel
+import com.ssafy.modera.feature.analyzedimage.detail.AnalyzedImageDetailViewModel.Factory
+
+fun EntryProviderScope<NavKey>.analyzedImageDetailEntry(
+    navigator: Navigator,
+    sharedTransitionScope: SharedTransitionScope,
+    onImageClick: (String) -> Unit,
+    onCreateDocumentClick: (AnalyzedImage) -> Unit,
+    onBackClick: () -> Unit,
+    onRelatedImagesClick: (Long, String) -> Unit,
+) {
+    entry<AnalyzedImageDetailNavKey> { key ->
+        val imageId = key.imageId
+
+        val viewModel =
+            hiltViewModel<AnalyzedImageDetailViewModel, Factory>(
+                key = "analyzed-image-detail-$imageId",
+            ) { factory ->
+                factory.create(imageId)
+            }
+
+        AnalyzedImageDetailScreen(
+            viewModel = viewModel,
+            onBackClick = onBackClick,
+            sharedTransitionScope = sharedTransitionScope,
+            animatedVisibilityScope = LocalNavAnimatedContentScope.current,
+            onImageClick = onImageClick,
+            onCreateDocumentClick = onCreateDocumentClick,
+            onDocumentClick = {
+                // TODO 해당 문서 이동
+            },
+            onScheduleClick = {
+                // TODO 일정 화면 이동
+            },
+            onRelatedImagesClick = onRelatedImagesClick,
+        )
+    }
+}

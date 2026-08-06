@@ -20,6 +20,7 @@ import com.ssafy.modera.api.global.config.StorageProperties;
 import com.ssafy.modera.api.global.exception.BusinessException;
 import com.ssafy.modera.api.domain.notification.outbox.UserDataChangeOutboxService;
 import com.ssafy.modera.api.domain.notification.outbox.UserDataChangeResource;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -38,8 +39,15 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import com.ssafy.modera.api.domain.image.repository.UserImageViewDetail;
+import com.ssafy.modera.api.domain.schedule.service.ScheduleCreationService;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.mockito.Spy;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.verify;
@@ -62,6 +70,9 @@ class ImageCommandServiceTest {
     @Mock PlatformTransactionManager transactionManager;
     @Mock TransactionStatus transactionStatus;
     @Mock UserDataChangeOutboxService userDataChangeOutboxService;
+    @Mock ScheduleCreationService scheduleCreationService;
+    // 실제 파싱이 필요해 목이 아니라 실 인스턴스를 넣는다(구조화 데이터 JSON을 읽는다).
+    @Spy ObjectMapper objectMapper = new ObjectMapper();
     @InjectMocks ImageCommandService imageCommandService;
 
     @Test
@@ -378,5 +389,82 @@ class ImageCommandServiceTest {
         verify(imageCommandRepository, times(1)).deleteImage(1, 10);
         verify(userDataChangeOutboxService).record(
                 1, UserDataChangeResource.IMAGE_DELETE_BATCH, "[10,14]");
+    }
+
+    @Test
+    @DisplayName("중복 업로드로 분석을 물려받으면 두 번째 사용자에게도 일정을 만든다")
+    void createsScheduleForUserWhoInheritedAnalysis() throws Exception {
+        givenDuplicateUploadOf(20, "b".repeat(64), 200);
+        // 복사된 read model에 일정 구조화 데이터가 들어 있는 상황
+        when(imageQueryRepository.findDetail(1, 20)).thenReturn(Optional.of(detailWithStructuredData(
+                "구름 딥다이브 공모전",
+                "{\"type\":\"schedule\",\"fields\":{\"startYear\":2026,\"startMonth\":9,\"startDay\":1}}")));
+
+        imageCommandService.register(1, requestOf("existing.jpg", "b".repeat(64), 200));
+
+        // type과 fields를 나눠 넘겨야 한다(createFromAnalysis 계약).
+        verify(scheduleCreationService).createFromAnalysis(
+                eq(1), eq(20), eq("구름 딥다이브 공모전"), eq("schedule"),
+                argThat(fields -> fields != null && fields.contains("startYear")));
+    }
+
+    @Test
+    @DisplayName("구조화 데이터가 없는 중복 이미지는 일정을 만들지 않는다")
+    void skipsScheduleWhenNoStructuredData() throws Exception {
+        givenDuplicateUploadOf(20, "b".repeat(64), 200);
+        when(imageQueryRepository.findDetail(1, 20))
+                .thenReturn(Optional.of(detailWithStructuredData("제목만 있는 이미지", null)));
+
+        imageCommandService.register(1, requestOf("existing.jpg", "b".repeat(64), 200));
+
+        verify(scheduleCreationService, never()).createFromAnalysis(
+                any(), any(), any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("일정 생성이 실패해도 이미지 등록은 성공한다")
+    void keepsRegistrationSuccessfulWhenScheduleCreationFails() throws Exception {
+        givenDuplicateUploadOf(20, "b".repeat(64), 200);
+        when(imageQueryRepository.findDetail(1, 20)).thenReturn(Optional.of(detailWithStructuredData(
+                "일정 이미지", "{\"type\":\"schedule\",\"fields\":{}}")));
+        org.mockito.Mockito.doThrow(new IllegalStateException("일정 저장 실패"))
+                .when(scheduleCreationService).createFromAnalysis(any(), any(), any(), any(), any());
+
+        var response = imageCommandService.register(1, requestOf("existing.jpg", "b".repeat(64), 200));
+
+        assertThat(response.duplicated()).singleElement()
+                .satisfies(item -> assertThat(item.existingImageId()).isEqualTo(20));
+    }
+
+    /** 이미 소유한 이미지를 같은 해시로 다시 올리는 상황(=duplicated 응답 경로)을 만든다. */
+    private void givenDuplicateUploadOf(Integer imageId, String hash, Integer fileSize) {
+        ImageAsset existing = ImageAsset.builder()
+                .imageId(imageId)
+                .fileName("existing.jpg")
+                .contentHash(hash)
+                .fileSize(fileSize)
+                .s3Key("1/" + imageId + "-existing.jpg")
+                .uploadStatus("UPLOADED")
+                .build();
+        when(transactionManager.getTransaction(any())).thenReturn(transactionStatus);
+        when(registrationRequestRepository.findByUserIdAndClientRequestIdAndDelYn(any(), any(), any()))
+                .thenReturn(Optional.empty());
+        when(registrationRequestRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(imageAssetRepository.findByContentHashAndDelYn(hash, "N")).thenReturn(Optional.of(existing));
+        when(userImageRepository.findByUserIdAndImageIdAndDelYn(1, imageId, "N"))
+                .thenReturn(Optional.of(UserImage.builder().userId(1).imageId(imageId).build()));
+        when(imageQueryRepository.copyExistingView(1, imageId)).thenReturn(true);
+    }
+
+    private ImageRegisterRequest requestOf(String fileName, String hash, Integer fileSize) {
+        return new ImageRegisterRequest(List.of(new ImageRegisterItemRequest(
+                UUID.randomUUID(), fileName, hash, fileSize,
+                new ImageRegisterOcrRequest("text"))));
+    }
+
+    private UserImageViewDetail detailWithStructuredData(String title, String structuredDataJson) {
+        return new UserImageViewDetail(
+                "1/20-existing.jpg", null, "UPLOADED", "COMPLETED", title, false, "요약",
+                null, "일정", List.of(), List.of(), structuredDataJson, null, null, false, false);
     }
 }

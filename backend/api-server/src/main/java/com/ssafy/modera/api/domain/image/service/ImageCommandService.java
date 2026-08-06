@@ -20,6 +20,9 @@ import com.ssafy.modera.api.domain.image.repository.ImageRegistrationRequestRepo
 import com.ssafy.modera.api.domain.image.repository.OcrRepository;
 import com.ssafy.modera.api.domain.image.repository.UserImageViewRow;
 import com.ssafy.modera.api.domain.image.repository.UserImageViewDetail;
+import com.ssafy.modera.api.domain.schedule.service.ScheduleCreationService;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ssafy.modera.api.domain.category.repository.CategoryCommandRepository;
 import com.ssafy.modera.api.domain.library.entity.UserImage;
 import com.ssafy.modera.api.domain.library.repository.UserImageRepository;
@@ -73,6 +76,8 @@ public class ImageCommandService {
     private final S3Presigner s3Presigner;
     private final PlatformTransactionManager transactionManager;
     private final UserDataChangeOutboxService userDataChangeOutboxService;
+    private final ScheduleCreationService scheduleCreationService;
+    private final ObjectMapper objectMapper;
 
     public ImageRegisterResponse register(Integer userId, ImageRegisterRequest request) {
         List<ImageRegisterResponse.Registered> registered = new ArrayList<>();
@@ -307,8 +312,53 @@ public class ImageCommandService {
                 imageQueryRepository.copyExistingView(userId, imageAsset.getImageId());
         if (!reusedExistingAnalysis) {
             upsertInitialView(userId, imageAsset);
+            return false;
         }
-        return reusedExistingAnalysis;
+        createScheduleFromCopiedView(userId, imageAsset.getImageId());
+        return true;
+    }
+
+    /**
+     * 중복 업로드로 분석 결과를 물려받은 사용자에게도 일정 후보를 만들어 준다.
+     *
+     * <p>일정은 read model에만 있는 값이 아니라 schedule·user_schedule·image_schedule과
+     * 조회 뷰에 행이 있어야 목록에 뜬다. 그 행을 만드는 건 분석 완료 이벤트를 받는
+     * AnalysisResultEventHandler뿐인데, 중복 업로드는 분석을 다시 돌리지 않으므로 그
+     * 경로를 타지 않는다. 그래서 복사된 뷰의 structured_data로 여기서 직접 만든다 —
+     * 이걸 빼면 "상세에는 일정 정보가 보이는데 일정 목록에는 없는" 상태가 된다.
+     *
+     * <p>카테고리는 initializeFromDefault가, 태그는 read model 복사가 이미 처리한다.
+     * 별도 테이블에 행이 필요한 파생 데이터는 일정뿐이다.
+     */
+    private void createScheduleFromCopiedView(Integer userId, Integer imageId) {
+        imageQueryRepository.findDetail(userId, imageId).ifPresent(detail -> {
+            String structuredDataJson = detail.structuredDataJson();
+            if (structuredDataJson == null || structuredDataJson.isBlank()) {
+                return;
+            }
+            try {
+                // 복사된 값은 {"type": "...", "fields": {...}} 형태다(AnalysisResultEventHandler가
+                // 그렇게 조립해 넣는다). createFromAnalysis는 둘을 나눠 받으므로 여기서 푼다.
+                JsonNode structuredData = objectMapper.readTree(structuredDataJson);
+                JsonNode type = structuredData.get("type");
+                JsonNode fields = structuredData.get("fields");
+                if (type == null || type.isNull()) {
+                    return;
+                }
+                scheduleCreationService.createFromAnalysis(
+                        userId,
+                        imageId,
+                        detail.title(),
+                        type.asText(),
+                        fields == null || fields.isNull() ? null : fields.toString()
+                );
+            } catch (Exception exception) {
+                // 일정 생성 실패로 이미지 등록 자체를 되돌리지 않는다. 등록은 성공시키고
+                // 일정만 비는 편이 사용자에게 낫다(AnalysisResultEventHandler와 같은 판단).
+                log.warn("중복 업로드 이미지의 일정 생성 실패: userId={} imageId={}",
+                        userId, imageId, exception);
+            }
+        });
     }
 
     private void createUserImageAndInitialView(Integer userId, ImageAsset imageAsset) {

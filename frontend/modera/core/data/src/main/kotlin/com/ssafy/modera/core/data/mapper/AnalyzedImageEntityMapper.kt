@@ -29,6 +29,6 @@ fun AnalyzedImageDetailResponse.asCategoryEntity(): CategoryEntity =
     CategoryEntity(
         categoryId = categoryId,
         name = category,
-        thumbnailUrl = null,
+        thumbnailUrl = "https://i15d207.p.ssafy.io:8443/api/v1/categories/${categoryId}/thumbnail",
         isNew = true,
     )

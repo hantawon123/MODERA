@@ -46,6 +46,8 @@ import com.ssafy.modera.core.model.category.CategorySheetItem
 import com.ssafy.modera.core.ui.EmptyScreen
 import com.ssafy.modera.core.ui.ErrorScreen
 import com.ssafy.modera.core.ui.LoadingScreen
+import com.ssafy.modera.core.ui.R.drawable.img_pointing_character
+import com.ssafy.modera.core.ui.RecommendScreen
 import com.ssafy.modera.feature.category.component.CategoryTopSheet
 import kotlinx.coroutines.launch
 
@@ -208,104 +210,102 @@ fun CategoryScreen(
                         .fillMaxSize()
                         .padding(horizontal = CategoryScreenDefaults.HorizontalPadding),
                 ) {
-                    stickyHeader {
-                        Column(
-                            modifier = Modifier.background(ModeraTheme.colors.white),
-                        ) {
-                            ModeraSearchBar(
-                                query = searchQuery,
-                                onQueryChange = onSearchQueryChange,
-                                placeholder = stringResource(R.string.category_search_placeholder),
-                                mode = SearchBarMode.General,
-                            )
-
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(top = 12.dp, bottom = 8.dp)
-                                    .clickable(
-                                        interactionSource = remember { MutableInteractionSource() },
-                                        indication = null,
-                                        onClick = { focusManager.clearFocus() },
-                                    ),
-                            ) {
-                                Text(
-                                    text = stringResource(
-                                        R.string.category_item_count,
-                                        displayImageCount,
-                                    ),
-                                    modifier = Modifier.align(Alignment.CenterStart),
-                                    style = ModeraTheme.typography.bodyR14,
-                                    color = ModeraTheme.colors.gray500,
-                                )
-
-                                ModeraSortSection(
-                                    selectedLabel = selectedSortType.label,
-                                    expanded = showSortPopup,
-                                    options = AnalyzedImageSortType.entries,
-                                    selectedOption = selectedSortType,
-                                    labelOf = { it.label },
-                                    onSortClick = {
-                                        focusManager.clearFocus()
-                                        onSortClick()
-                                    },
-                                    onDismissRequest = onSortPopupDismiss,
-                                    onOptionClick = onSortTypeSelect,
-                                )
-                            }
-
-                            HorizontalDivider(
-                                thickness = 1.dp,
-                                color = ModeraTheme.colors.gray200,
-                            )
-                        }
-                    }
-
-                    if (isSearching && analyzedImages.isEmpty()) {
-                        item(key = "search_empty") {
-                            EmptyScreen(
-                                message = stringResource(R.string.category_search_result_empty),
-                                modifier = Modifier
-                                    .padding(top = 40.dp)
-                                    .clickable(
-                                        interactionSource = remember { MutableInteractionSource() },
-                                        indication = null,
-                                        onClick = { focusManager.clearFocus() },
-                                    ),
-                            )
-                        }
-                    } else if (!isSearching && analyzedImages.isEmpty()) {
+                    if (!isSearching && analyzedImages.isEmpty()) {
                         item(key = "list_empty") {
-                            EmptyScreen(
-                                message = stringResource(R.string.category_list_empty),
-                                modifier = Modifier
-                                    .fillParentMaxSize()
-                                    .clickable(
-                                        interactionSource = remember { MutableInteractionSource() },
-                                        indication = null,
-                                        onClick = { focusManager.clearFocus() },
-                                    ),
+                            RecommendScreen(
+                                title = stringResource(R.string.category_list_empty_title),
+                                subtitle = stringResource(R.string.category_list_empty_subtitle),
+                                image = img_pointing_character,
+                                modifier = Modifier.fillParentMaxSize(),
                             )
                         }
                     } else {
-                        items(
-                            items = analyzedImages,
-                            key = { it.id },
-                        ) { analyzedImage ->
-                            ModeraAnalyzedImageItem(
-                                title = analyzedImage.title,
-                                description = analyzedImage.summary,
-                                tags = analyzedImage.hashtags,
-                                imageUrl = analyzedImage.thumbnailUrl,
-                                favorite = analyzedImage.favorite,
-                                isDocumented = analyzedImage.isDocumented,
-                                hasSchedule = analyzedImage.hasSchedule,
-                                onClick = {
-                                    focusManager.clearFocus()
-                                    onItemClick(analyzedImage.id)
-                                },
-                                modifier = Modifier.fillMaxWidth(),
-                            )
+                        stickyHeader {
+                            Column(
+                                modifier = Modifier.background(ModeraTheme.colors.white),
+                            ) {
+                                ModeraSearchBar(
+                                    query = searchQuery,
+                                    onQueryChange = onSearchQueryChange,
+                                    placeholder = stringResource(R.string.category_search_placeholder),
+                                    mode = SearchBarMode.General,
+                                )
+
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(top = 12.dp, bottom = 8.dp)
+                                        .clickable(
+                                            interactionSource = remember { MutableInteractionSource() },
+                                            indication = null,
+                                            onClick = { focusManager.clearFocus() },
+                                        ),
+                                ) {
+                                    Text(
+                                        text = stringResource(
+                                            R.string.category_item_count,
+                                            displayImageCount,
+                                        ),
+                                        modifier = Modifier.align(Alignment.CenterStart),
+                                        style = ModeraTheme.typography.bodyR14,
+                                        color = ModeraTheme.colors.gray500,
+                                    )
+
+                                    ModeraSortSection(
+                                        selectedLabel = selectedSortType.label,
+                                        expanded = showSortPopup,
+                                        options = AnalyzedImageSortType.entries,
+                                        selectedOption = selectedSortType,
+                                        labelOf = { it.label },
+                                        onSortClick = {
+                                            focusManager.clearFocus()
+                                            onSortClick()
+                                        },
+                                        onDismissRequest = onSortPopupDismiss,
+                                        onOptionClick = onSortTypeSelect,
+                                    )
+                                }
+
+                                HorizontalDivider(
+                                    thickness = 1.dp,
+                                    color = ModeraTheme.colors.gray200,
+                                )
+                            }
+                        }
+
+                        if (isSearching && analyzedImages.isEmpty()) {
+                            item(key = "search_empty") {
+                                EmptyScreen(
+                                    message = stringResource(R.string.category_search_result_empty),
+                                    modifier = Modifier
+                                        .padding(top = 40.dp)
+                                        .clickable(
+                                            interactionSource = remember { MutableInteractionSource() },
+                                            indication = null,
+                                            onClick = { focusManager.clearFocus() },
+                                        ),
+                                )
+                            }
+                        } else {
+                            items(
+                                items = analyzedImages,
+                                key = { it.id },
+                            ) { analyzedImage ->
+                                ModeraAnalyzedImageItem(
+                                    title = analyzedImage.title,
+                                    description = analyzedImage.summary,
+                                    tags = analyzedImage.hashtags,
+                                    imageUrl = analyzedImage.thumbnailUrl,
+                                    favorite = analyzedImage.favorite,
+                                    isDocumented = analyzedImage.isDocumented,
+                                    hasSchedule = analyzedImage.hasSchedule,
+                                    onClick = {
+                                        focusManager.clearFocus()
+                                        onItemClick(analyzedImage.id)
+                                    },
+                                    modifier = Modifier.fillMaxWidth(),
+                                )
+                            }
                         }
                     }
                 }

@@ -31,5 +31,6 @@ fun ScheduleResponse.asExternalModel(
         startTime = start?.toLocalTime(),
         endTime = end?.toLocalTime(),
         isAdded = calendared,
+        imageId = imageId,
     )
 }

@@ -11,10 +11,15 @@ data class MainUiState(
     val duplicatedImages: List<DuplicatedImage> = emptyList(),
     val failedImages: List<FailedImage> = emptyList(),
 ) {
-    fun registerSummaryMessage(): String =
-        "성공 ${registeredImages.size}장, " +
-            "중복 ${duplicatedImages.size}장, " +
-            "실패 ${failedImages.size}장"
+    fun duplicatedSummaryMessage(): String? =
+        duplicatedImages.size.takeIf { it > 0 }?.let { count ->
+            "${count}장의 사진은 이미 업로드 되어있습니다"
+        }
+
+    fun failedSummaryMessage(): String? =
+        failedImages.size.takeIf { it > 0 }?.let { count ->
+            "${count}장의 사진 업로드에 실패했습니다"
+        }
 }
 
 fun MainUiState.startRegistration(imageCount: Int): MainUiState =

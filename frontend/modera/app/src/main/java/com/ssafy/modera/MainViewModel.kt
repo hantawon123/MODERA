@@ -85,11 +85,21 @@ class MainViewModel @Inject constructor(
 
         if (totalCount <= 0) return
 
-        snackbarMessenger.send(
-            ModeraSnackbarMessage(
-                message = state.registerSummaryMessage(),
-                iconRes = ModeraIcons.Images,
-            ),
-        )
+        state.duplicatedSummaryMessage()?.let { message ->
+            snackbarMessenger.send(
+                ModeraSnackbarMessage(
+                    message = message,
+                    iconRes = ModeraIcons.Images,
+                ),
+            )
+        }
+        state.failedSummaryMessage()?.let { message ->
+            snackbarMessenger.send(
+                ModeraSnackbarMessage(
+                    message = message,
+                    iconRes = ModeraIcons.Images,
+                ),
+            )
+        }
     }
 }

@@ -1,4 +1,4 @@
-package com.ssafy.modera.feature.document.documents.component
+package com.ssafy.modera.core.ui
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
@@ -13,19 +13,19 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.ssafy.modera.core.designsystem.component.Text
 import com.ssafy.modera.core.designsystem.theme.ModeraTheme
 import com.ssafy.modera.core.ui.R.drawable.img_character_document_empty
-import com.ssafy.modera.feature.document.R
 
 @Composable
-internal fun DocumentEmptyScreen(
-    modifier: Modifier = Modifier,
-) {
+fun RecommendScreen(
+    title: String,
+    subtitle: String,
+    image: Int,
+    modifier: Modifier = Modifier) {
     Box(
         modifier = modifier.fillMaxSize(),
         contentAlignment = Alignment.Center,
@@ -37,9 +37,9 @@ internal fun DocumentEmptyScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Image(
-                painter = painterResource(img_character_document_empty),
+                painter = painterResource(image),
                 contentDescription = null,
-                modifier = Modifier.width(136.dp),
+                modifier = Modifier.width(120.dp),
             )
 
             Spacer(
@@ -47,18 +47,18 @@ internal fun DocumentEmptyScreen(
             )
 
             Text(
-                text = stringResource(R.string.document_empty_title),
-                style = ModeraTheme.typography.titleB22,
+                text = title,
+                style = ModeraTheme.typography.titleB18,
                 color = ModeraTheme.colors.gray700,
                 maxLines = 1,
             )
 
             Spacer(
-                modifier = Modifier.height(16.dp),
+                modifier = Modifier.height(14.dp),
             )
 
             Text(
-                text = stringResource(R.string.document_empty_description),
+                text = subtitle,
                 style = ModeraTheme.typography.bodyR14,
                 color = ModeraTheme.colors.gray400,
                 textAlign = TextAlign.Center,
@@ -67,10 +67,14 @@ internal fun DocumentEmptyScreen(
     }
 }
 
-@Preview(name = "Document Screen - Empty", showBackground = true)
+@Preview(name = "RecommendScreen ", showBackground = true)
 @Composable
-private fun DocumentEmptyScreenPreview() {
+private fun RecommendScreenPreview() {
     ModeraTheme {
-        DocumentEmptyScreen()
+        RecommendScreen(
+            title = "스크린샷을 문서로 정리해보세요!",
+            subtitle = " 기존 이미지를 선택하면\nAI가 관련 이미지를 추천해드려요.",
+            image = img_character_document_empty
+        )
     }
 }

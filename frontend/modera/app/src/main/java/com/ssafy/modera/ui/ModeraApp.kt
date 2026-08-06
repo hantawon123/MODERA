@@ -339,6 +339,9 @@ internal fun ModeraApp(
 
                                 calendarEntry(
                                     onBackClick = handleBack,
+                                    onScheduleClick = { schedule ->
+                                        schedule.imageId?.let(navigator::navigateToImageDetail)
+                                    },
                                 )
                                 analyzedImageDetailEntry(
                                     navigator = navigator,

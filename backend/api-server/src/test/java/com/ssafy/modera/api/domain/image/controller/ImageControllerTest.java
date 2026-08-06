@@ -148,10 +148,10 @@ class ImageControllerTest {
                 .andExpect(status().isOk()).andExpect(jsonPath("$.code").value("I213"));
         mockMvc.perform(get("/api/v1/images/1/thumbnail"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.code").value("I214"));
-        // /sync는 /{imageId} 경로 변수와 겹치지 않아야 한다(리터럴 매칭 우선).
-        mockMvc.perform(get("/api/v1/images/sync"))
+        // /details는 /{imageId} 경로 변수와 겹치지 않아야 한다(리터럴 매칭 우선).
+        mockMvc.perform(get("/api/v1/images/details"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.code").value("I215"));
-        verify(queryService).getAllForSync(null);
+        verify(queryService).getAllImageDetails(null);
     }
 
     @Test

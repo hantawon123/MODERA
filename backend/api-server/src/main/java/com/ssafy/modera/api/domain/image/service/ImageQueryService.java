@@ -6,8 +6,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ssafy.modera.api.domain.image.dto.response.ImageDetailResponse;
 import com.ssafy.modera.api.domain.image.dto.response.ImageListResponse;
 import com.ssafy.modera.api.domain.image.dto.response.ImageSummaryResponse;
-import com.ssafy.modera.api.domain.image.dto.response.ImageSyncItemResponse;
-import com.ssafy.modera.api.domain.image.dto.response.ImageSyncResponse;
 import com.ssafy.modera.api.domain.image.exception.ImageErrorCode;
 import com.ssafy.modera.api.domain.image.repository.ImageListPage;
 import com.ssafy.modera.api.domain.image.repository.ImageListRow;
@@ -119,16 +117,16 @@ public class ImageQueryService {
     }
 
     /**
-     * 5-10 전체 동기화(앱 재설치 후 Room 복원). 상세(5-2) 수준 필드 + presigned URL을
-     * 페이지 없이 전부 준다(안드로이드 요청).
+     * 5-10 전체 상세 조회(앱 재설치 후 Room 복원). 상세(5-2)와 같은 DTO를 페이지 없이
+     * 전부 준다 — 문서의 8-7(/documents/details)과 같은 패턴이다.
      *
      * <p>썸네일 URL은 목록(5-1)과 같은 방식으로 존재 확인(HEAD) 없이 서명한다 —
      * 행마다 스토리지 왕복을 하면 수천 장 계정에서 이 API가 수 분짜리가 된다.
      * URL은 1시간 만료이므로 복원 후 표시 실패(403) 시 5-8/5-9로 재발급받는다.
      */
-    public ImageSyncResponse getAllForSync(Integer userId) {
-        List<ImageSyncItemResponse> list = imageQueryRepository.findAllForSync(userId).stream()
-                .map(row -> new ImageSyncItemResponse(
+    public List<ImageDetailResponse> getAllImageDetails(Integer userId) {
+        return imageQueryRepository.findAllImageDetails(userId).stream()
+                .map(row -> new ImageDetailResponse(
                         row.imageId(),
                         createImageUrl(row.s3Key()),
                         row.thumbnailKey() == null || row.thumbnailKey().isBlank()
@@ -148,8 +146,6 @@ public class ImageQueryService {
                         row.calendared()
                 ))
                 .toList();
-
-        return new ImageSyncResponse(list, list.size());
     }
 
     public PageResponse<ImageSummaryResponse> getImagesInOrder(

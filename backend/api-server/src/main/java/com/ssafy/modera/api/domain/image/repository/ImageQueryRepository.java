@@ -358,11 +358,11 @@ public class ImageQueryRepository {
     }
 
     /**
-     * 5-10 전체 동기화(로컬 DB 복원). 목록(findImages)과 같은 노출 규칙(del_yn='N',
+     * 5-10 전체 상세 조회(로컬 DB 복원). 목록(findImages)과 같은 노출 규칙(del_yn='N',
      * 분석 완료·EMPTY만)에 상세 필드를 전부 싣고, 페이지 없이 전 행을 돌려준다 —
      * 앱 재설치 복원이라는 드문 이벤트 전용이라 한 번에 준다(안드로이드 요청).
      */
-    public List<ImageSyncRow> findAllForSync(Integer userId) {
+    public List<ImageDetailRow> findAllImageDetails(Integer userId) {
         return jdbcTemplate.query(
                 """
                 SELECT image_view.image_id, image_view.s3_key, image_view.thumbnail_key,
@@ -377,7 +377,7 @@ public class ImageQueryRepository {
                   AND image_view.analysis_status IN ('COMPLETED', 'EMPTY')
                 ORDER BY image_view.image_id ASC
                 """,
-                (rs, rowNum) -> new ImageSyncRow(
+                (rs, rowNum) -> new ImageDetailRow(
                         rs.getInt("image_id"),
                         rs.getString("s3_key"),
                         rs.getString("thumbnail_key"),

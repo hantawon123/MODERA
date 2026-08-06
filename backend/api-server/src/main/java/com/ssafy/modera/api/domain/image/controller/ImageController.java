@@ -12,7 +12,6 @@ import com.ssafy.modera.api.domain.image.dto.response.ImageRegisterResponse;
 import com.ssafy.modera.api.domain.image.dto.response.ImageSummaryResponse;
 import com.ssafy.modera.api.domain.image.dto.response.ImageListResponse;
 import com.ssafy.modera.api.domain.image.dto.response.ImageFileUrlResponse;
-import com.ssafy.modera.api.domain.image.dto.response.ImageSyncResponse;
 import com.ssafy.modera.api.domain.image.dto.response.ImageUploadUrlResponse;
 import com.ssafy.modera.api.domain.image.service.ImageFileUrlService;
 import com.ssafy.modera.api.domain.image.service.ImageQueryService;
@@ -41,6 +40,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
 
 
 
@@ -120,13 +121,13 @@ public class ImageController {
     }
 
     @Operation(
-            summary = "이미지 전체 동기화(로컬 DB 복원)",
+            summary = "이미지 전체 상세 조회(로컬 DB 복원)",
             description = """
-                    앱 재설치 등으로 로컬 DB(Room)가 비었을 때, 상세 조회(5-2) 수준의 필드를
+                    앱 재설치 등으로 로컬 DB(Room)가 비었을 때, 상세 조회(5-2)와 같은 항목을
                     **페이지 없이 전부** 받아 복원하는 용도다. 재설치 복원이라는 드문 이벤트
-                    전용이며, 목록 화면에는 5-1을 쓴다.
+                    전용이며, 목록 화면에는 5-1을 쓴다. 문서의 /documents/details와 같은 패턴.
 
-                    항목 필드명·순서는 5-2와 동일하다. imageUrl/thumbnailUrl은 presigned
+                    항목은 5-2 응답 DTO 그대로다. imageUrl/thumbnailUrl은 presigned
                     URL(1시간 유효)이므로 **복원 직후 표시에는 그대로 쓰되, 만료 후에는
                     5-8/5-9로 재발급**받는다(Room에 URL을 영구 보관하지 말 것).
 
@@ -135,16 +136,16 @@ public class ImageController {
                     """
     )
     @ApiResponses({
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "조회 성공 — data.list에 전체 항목 배열"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "조회 성공 — data에 전체 항목 배열(이미지가 없으면 빈 배열)"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "accessToken 없음/무효(UNAUTHORIZED)")
     })
-    @GetMapping("/sync")
-    public ResponseEntity<ApiResponse<ImageSyncResponse>> syncImages(
+    @GetMapping("/details")
+    public ResponseEntity<ApiResponse<List<ImageDetailResponse>>> getAllImageDetails(
             @AuthenticationPrincipal Integer userId
     ) {
         return ResponseEntity.ok(ApiResponse.success(
                 "I215",
-                imageQueryService.getAllForSync(userId)
+                imageQueryService.getAllImageDetails(userId)
         ));
     }
 

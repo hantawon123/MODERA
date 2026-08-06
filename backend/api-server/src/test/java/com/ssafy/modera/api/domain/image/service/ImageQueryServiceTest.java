@@ -4,7 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ssafy.modera.api.domain.image.repository.ImageListPage;
 import com.ssafy.modera.api.domain.image.repository.ImageListRow;
 import com.ssafy.modera.api.domain.image.repository.ImageQueryRepository;
-import com.ssafy.modera.api.domain.image.repository.ImageSyncRow;
+import com.ssafy.modera.api.domain.image.repository.ImageDetailRow;
 import com.ssafy.modera.api.domain.image.repository.UserImageViewDetail;
 import com.ssafy.modera.api.global.config.StorageProperties;
 import com.ssafy.modera.api.global.exception.BusinessException;
@@ -48,16 +48,16 @@ class ImageQueryServiceTest {
     }
 
     @Test
-    void syncsEveryImageWithDetailFieldsAndPresignedUrls() throws Exception {
+    void returnsEveryImageDetailWithPresignedUrls() throws Exception {
         OffsetDateTime uploadedAt = OffsetDateTime.now();
-        when(imageQueryRepository.findAllForSync(1))
+        when(imageQueryRepository.findAllImageDetails(1))
                 .thenReturn(List.of(
-                        new ImageSyncRow(
+                        new ImageDetailRow(
                                 10, "1/10-a.jpg", "1/10-thumb.jpg", "C++", true, "summary",
                                 3, "공부", List.of("C++", "공부"), List.of("가격: 32,000원"),
                                 null, "정제 텍스트", uploadedAt, true, false),
                         // 썸네일이 아직 없는 행 — thumbnailUrl은 null, HEAD 확인도 없어야 한다.
-                        new ImageSyncRow(
+                        new ImageDetailRow(
                                 11, "1/11-b.jpg", null, "영수증", false, null,
                                 null, null, List.of(), List.of(),
                                 null, null, uploadedAt, false, false)));
@@ -72,15 +72,15 @@ class ImageQueryServiceTest {
                 software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest.class
         ))).thenReturn(presigned);
 
-        var response = imageQueryService.getAllForSync(1);
+        var response = imageQueryService.getAllImageDetails(1);
 
-        assertThat(response.totalElements()).isEqualTo(2);
-        var first = response.list().getFirst();
+        assertThat(response).hasSize(2);
+        var first = response.getFirst();
         assertThat(first.imageId()).isEqualTo(10);
         assertThat(first.imageUrl()).isEqualTo("https://storage.example/signed");
         assertThat(first.thumbnailUrl()).isEqualTo("https://storage.example/signed");
         assertThat(first.ocrRefinedText()).isEqualTo("정제 텍스트");
-        var second = response.list().get(1);
+        var second = response.get(1);
         assertThat(second.imageUrl()).isEqualTo("https://storage.example/signed");
         assertThat(second.thumbnailUrl()).isNull();
         // 행마다 스토리지 존재 확인(HEAD)을 하면 수천 장 계정에서 이 API가 수 분짜리가 된다.

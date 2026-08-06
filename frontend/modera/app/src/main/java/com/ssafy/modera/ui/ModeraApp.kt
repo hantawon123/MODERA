@@ -18,6 +18,7 @@ import androidx.compose.material3.adaptive.navigation3.rememberListDetailSceneSt
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteType
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.ExperimentalComposeUiApi
@@ -44,6 +45,8 @@ import com.ssafy.modera.core.ui.snackbar.ModeraSnackbarEffect
 import com.ssafy.modera.core.ui.snackbar.ModeraSnackbarMessage
 import com.ssafy.modera.core.ui.snackbar.ModeraSnackbarProvider
 import com.ssafy.modera.core.ui.snackbar.rememberModeraSnackbarHostState
+import com.ssafy.modera.fcm.NotificationNavigationTarget
+import com.ssafy.modera.feature.analyzedimagedetail.navigation.AnalyzedImageDetailNavKey
 import com.ssafy.modera.feature.analyzedimagedetail.navigation.analyzedImageDetailEntry
 import com.ssafy.modera.feature.analyzedimagedetail.navigation.navigateToImageDetail
 import com.ssafy.modera.feature.calendar.navigation.calendarEntry
@@ -83,6 +86,8 @@ fun ModeraApp(
     appState: ModeraAppState,
     modifier: Modifier = Modifier,
     windowAdaptiveInfo: WindowAdaptiveInfo = currentWindowAdaptiveInfo(),
+    notificationNavigationTarget: NotificationNavigationTarget? = null,
+    onNotificationNavigationConsumed: () -> Unit = {},
     viewModel: MainViewModel = hiltViewModel(),
     sessionViewModel: AppSessionViewModel = hiltViewModel(),
 ) {
@@ -122,6 +127,8 @@ fun ModeraApp(
                             ),
                         )
                     },
+                    notificationNavigationTarget = notificationNavigationTarget,
+                    onNotificationNavigationConsumed = onNotificationNavigationConsumed,
                     modifier = Modifier.fillMaxSize(),
                 )
             }
@@ -139,15 +146,41 @@ internal fun ModeraApp(
     viewModel: MainViewModel,
     onLogoutClick: () -> Unit,
     modifier: Modifier = Modifier,
+    notificationNavigationTarget: NotificationNavigationTarget? = null,
+    onNotificationNavigationConsumed: () -> Unit = {},
     windowAdaptiveInfo: WindowAdaptiveInfo = currentWindowAdaptiveInfo(),
 ) {
     ModeraSnackbarEffect(viewModel)
 
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-
     val navigator = remember {
         Navigator(appState.navigationState)
     }
+
+    LaunchedEffect(notificationNavigationTarget) {
+        when (
+            val target = notificationNavigationTarget
+        ) {
+            is NotificationNavigationTarget.ImageDetail -> {
+                navigator.navigateToNotificationImageDetail(
+                    imageId = target.imageId,
+                )
+            }
+
+            is NotificationNavigationTarget.DocumentDetail -> {
+                navigator.navigateToDocumentDetail(
+                    documentId = target.documentId,
+                )
+            }
+
+            null -> {
+                return@LaunchedEffect
+            }
+        }
+
+        onNotificationNavigationConsumed()
+    }
+
 
     val handleBack = rememberModeraBackHandler(navigator)
 
@@ -390,6 +423,21 @@ private fun Navigator.navigateToDocumentDetail(
     navigate(
         DocumentDetailNavKey(
             documentId = documentId,
+        ),
+    )
+}
+
+private fun Navigator.navigateToNotificationImageDetail(
+    imageId: Long,
+) {
+    navigateToTopLevelTab(
+        topLevelKey = HomeNavKey,
+        rootKey = HomeNavKey,
+    )
+
+    navigate(
+        AnalyzedImageDetailNavKey(
+            imageId = imageId,
         ),
     )
 }

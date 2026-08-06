@@ -23,6 +23,9 @@ class ModeraFirebaseMessagingService : FirebaseMessagingService() {
     lateinit var pushTokenRepository: PushTokenRepository
 
     @Inject
+    lateinit var fcmNotificationManager: FcmNotificationManager
+
+    @Inject
     @ApplicationScope
     lateinit var applicationScope: CoroutineScope
 
@@ -48,7 +51,6 @@ class ModeraFirebaseMessagingService : FirebaseMessagingService() {
         }
     }
 
-
     override fun onMessageReceived(
         message: RemoteMessage,
     ) {
@@ -65,6 +67,10 @@ class ModeraFirebaseMessagingService : FirebaseMessagingService() {
                 syncWorkEnqueuer.enqueue(
                     resource = event.resource,
                     resourceId = event.resourceId,
+                )
+
+                fcmNotificationManager.show(
+                    event = event,
                 )
             }
         }

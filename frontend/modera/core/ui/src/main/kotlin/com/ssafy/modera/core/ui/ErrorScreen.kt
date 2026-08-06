@@ -34,7 +34,7 @@ fun ErrorScreen(
         Image(
             painter = painterResource(imageRes),
             contentDescription = null,
-            modifier = Modifier.size(120.dp),
+            modifier = Modifier.size(100.dp),
         )
 
         Text(

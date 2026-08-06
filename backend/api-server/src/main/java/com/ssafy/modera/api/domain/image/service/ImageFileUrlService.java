@@ -12,12 +12,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * 원본·썸네일 이미지의 302 리다이렉트용 presigned URL 발급.
+ * 원본·썸네일 이미지의 presigned URL 발급(5-8/5-9).
  *
- * <p>앱이 저장하는 주소는 <b>{@code /api/v1/images/{imageId}/file}</b>·
- * <b>{@code .../thumbnail}</b>이라는 불변 경로이고, 그 순간의 presigned URL은 매 요청
- * 새로 만들어 Location으로만 내보낸다. 앱은 만료되는 URL을 저장하지 않아도 되고,
- * 이미지 캐시 키도 이 불변 경로로 안정된다.
+ * <p>앱이 들고 있던 presigned URL이 만료됐을 때 이 API로 새 URL을 받아 재시도한다.
+ * 302 리다이렉트가 아니라 <b>공통 envelope JSON의 값으로</b> 준다(안드로이드 요청 반영) —
+ * 만료 처리의 주체는 앱이고, 서버는 매 호출 소유권 검증 후 그 순간의 URL만 발급한다.
  *
  * <p><b>미소유·미존재를 구분하지 않고 전부 404로 응답한다.</b> 403으로 나누면 imageId를
  * 순회하며 "있지만 남의 것"을 식별할 수 있어 리소스 열거가 가능해진다 — 이 프로젝트가
@@ -30,7 +29,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class ImageFileRedirectService {
+public class ImageFileUrlService {
 
     private static final String ACTIVE = "N";
     private static final String UPLOAD_STATUS_UPLOADED = "UPLOADED";
@@ -43,7 +42,7 @@ public class ImageFileRedirectService {
 
     /** 원본 이미지의 presigned GET URL. */
     @Transactional(readOnly = true)
-    public String getOriginalRedirectUrl(Integer userId, Integer imageId) {
+    public String getOriginalUrl(Integer userId, Integer imageId) {
         ImageAsset imageAsset = readOwnedUploadedAsset(userId, imageId);
         return imageFileUrlFactory.createViewUrl(imageAsset.getS3Key());
     }
@@ -53,7 +52,7 @@ public class ImageFileRedirectService {
      * 404보다 화면이 자연스럽고 클라이언트에서 분기할 필요가 없다.
      */
     @Transactional(readOnly = true)
-    public String getThumbnailRedirectUrl(Integer userId, Integer imageId) {
+    public String getThumbnailUrl(Integer userId, Integer imageId) {
         ImageAsset imageAsset = readOwnedUploadedAsset(userId, imageId);
 
         return thumbnailRepository.findByImageId(imageId)

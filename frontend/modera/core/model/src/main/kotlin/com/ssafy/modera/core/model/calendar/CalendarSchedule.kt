@@ -11,6 +11,7 @@ data class CalendarSchedule(
     val startTime: LocalTime? = null,
     val endTime: LocalTime? = null,
     val isAdded: Boolean = false,
+    val imageId: Long? = null,
 )
 
 fun List<CalendarSchedule>.addedSchedules(): List<CalendarSchedule> =

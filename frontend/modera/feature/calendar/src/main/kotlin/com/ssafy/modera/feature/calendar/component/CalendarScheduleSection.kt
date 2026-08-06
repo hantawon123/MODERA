@@ -147,13 +147,9 @@ fun CalendarScheduleSection(
 
                 pendingSchedules.forEach { schedule ->
                     Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable(
-                                enabled = true,
-                                onClick = { onAddScheduleClick(schedule) },
-                            ),
+                        modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceEvenly,
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Text(
                             text = schedule.title,
@@ -161,7 +157,7 @@ fun CalendarScheduleSection(
                             color = ModeraTheme.colors.gray900,
                             modifier = Modifier
                                 .weight(1f)
-                                .align(Alignment.CenterVertically),
+                                .clickable(onClick = { onScheduleClick(schedule) }),
                         )
 
                         Icon(
@@ -169,7 +165,9 @@ fun CalendarScheduleSection(
                             contentDescription = stringResource(
                                 R.string.calendar_schedule_add_content_description,
                             ),
-                            modifier = Modifier.size(20.dp),
+                            modifier = Modifier
+                                .size(20.dp)
+                                .clickable(onClick = { onAddScheduleClick(schedule) }),
                             tint = ModeraTheme.colors.yellow700,
                         )
                     }
@@ -225,6 +223,7 @@ private fun CalendarScheduleSectionEditModePreview() {
                     title = "KTX 예매",
                     source = CalendarScheduleSource.APP,
                     isAdded = false,
+                    imageId = 40L,
                 ),
             ),
             isEditMode = true,

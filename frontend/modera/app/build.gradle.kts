@@ -123,7 +123,6 @@ dependencies {
     implementation(libs.androidx.compose.material3.windowSizeClass)
 
     // ML Kit OCR
-    implementation(libs.text.recognition)
     implementation(libs.text.recognition.korean)
 
     ksp(libs.hilt.compiler)

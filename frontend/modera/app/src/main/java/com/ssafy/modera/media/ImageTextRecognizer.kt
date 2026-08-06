@@ -3,30 +3,24 @@ package com.ssafy.modera.media
 import android.content.Context
 import android.graphics.Bitmap
 import android.net.Uri
+import androidx.core.net.toUri
 import com.google.android.gms.tasks.Task
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.TextRecognizer
 import com.google.mlkit.vision.text.korean.KoreanTextRecognizerOptions
-import com.google.mlkit.vision.text.latin.TextRecognizerOptions
 import com.ssafy.modera.core.model.image.SelectedImage
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
-import androidx.core.net.toUri
 
 /**
  * ML Kit Text Recognition으로 이미지에서 텍스트를 추출한다.
  */
 class ImageTextRecognizer : AutoCloseable {
 
-    private val recognizers: List<TextRecognizer> = listOf(
-        TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS),
-        TextRecognition.getClient(KoreanTextRecognizerOptions.Builder().build()),
-    )
+    private val recognizer: TextRecognizer =
+        TextRecognition.getClient(KoreanTextRecognizerOptions.Builder().build())
 
     /**
      * Content/파일 [Uri] 이미지에서 텍스트를 추출한다.
@@ -55,17 +49,9 @@ class ImageTextRecognizer : AutoCloseable {
     /**
      * [InputImage]에서 인식된 전체 텍스트를 반환한다.
      */
-    suspend fun recognize(image: InputImage): String = coroutineScope {
-        recognizers
-            .map { recognizer ->
-                async {
-                    runCatching { recognizer.process(image).await().text }
-                        .getOrDefault("")
-                }
-            }
-            .awaitAll()
-            .let(::mergeRecognizedTexts)
-    }
+    suspend fun recognize(image: InputImage): String =
+        runCatching { recognizer.process(image).await().text }
+            .getOrDefault("")
 
     /**
      * 여러 이미지에 대해 OCR을 수행하고, 각 [SelectedImage]에 추출 텍스트를 매핑한다.
@@ -81,17 +67,9 @@ class ImageTextRecognizer : AutoCloseable {
         }
 
     override fun close() {
-        recognizers.forEach(TextRecognizer::close)
+        recognizer.close()
     }
 }
-
-private fun mergeRecognizedTexts(texts: List<String>): String =
-    texts.asSequence()
-        .flatMap { it.lineSequence() }
-        .map { it.trim() }
-        .filter { it.isNotEmpty() }
-        .distinct()
-        .joinToString("\n")
 
 private suspend fun <T> Task<T>.await(): T =
     suspendCancellableCoroutine { continuation ->

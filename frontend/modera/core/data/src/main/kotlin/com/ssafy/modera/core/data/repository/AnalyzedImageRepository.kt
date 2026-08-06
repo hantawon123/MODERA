@@ -30,6 +30,11 @@ interface AnalyzedImageRepository : Syncable {
         favorite: Boolean,
     ): Flow<Unit>
 
+    fun setAnalyzedImageCalendared(
+        imageId: Long,
+        isCalendared: Boolean,
+    ): Flow<Unit>
+
     fun reanalyzeImage(imageId: Long): Flow<Unit>
 
     fun deleteAnalyzedImage(imageId: Long): Flow<Unit>

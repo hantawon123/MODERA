@@ -152,6 +152,17 @@ class DefaultAnalyzedImageRepository @Inject constructor(
         emit(Unit)
     }.flowOn(ioDispatcher)
 
+    override fun setAnalyzedImageCalendared(
+        imageId: Long,
+        isCalendared: Boolean,
+    ): Flow<Unit> = flow {
+        updateCalendaredOrSync(
+            imageId = imageId,
+            isCalendared = isCalendared,
+        )
+        emit(Unit)
+    }.flowOn(ioDispatcher)
+
     override fun reanalyzeImage(
         imageId: Long,
     ): Flow<Unit> = flow {
@@ -175,6 +186,31 @@ class DefaultAnalyzedImageRepository @Inject constructor(
 
         emit(Unit)
     }.flowOn(ioDispatcher)
+
+    private suspend fun updateCalendaredOrSync(
+        imageId: Long,
+        isCalendared: Boolean,
+    ) {
+        val updatedRows = analyzedImageDao.updateCalendared(
+            imageId = imageId,
+            isCalendared = isCalendared,
+        )
+
+        if (updatedRows > 0) {
+            return
+        }
+
+        val response = analyzedImageClient.fetchAnalyzedImageDetail(
+            imageId = imageId,
+        )
+
+        analyzedImageDao.upsertAnalyzedImageWithCategory(
+            categoryEntity = response.asCategoryEntity(isNew = false),
+            analyzedImageEntity = response.asEntity().copy(
+                isCalendared = isCalendared,
+            ),
+        )
+    }
 
     private fun List<AnalyzedImageEntity>.sortedBy(
         sortType: AnalyzedImageSortType,

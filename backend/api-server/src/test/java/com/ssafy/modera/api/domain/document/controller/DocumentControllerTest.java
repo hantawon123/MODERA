@@ -50,6 +50,8 @@ class DocumentControllerTest {
                 .andExpect(status().isOk());
         mockMvc.perform(get("/api/v1/documents"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.code").value("D201"));
+        mockMvc.perform(get("/api/v1/documents/details"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.code").value("D206"));
         mockMvc.perform(get("/api/v1/documents/1"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.code").value("D203"));
         mockMvc.perform(get("/api/v1/documents/1/images"))

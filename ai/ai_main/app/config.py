@@ -24,6 +24,15 @@ class Settings:
         self.mock_ai = os.environ.get("MOCK_AI", "false").lower() == "true"
 
         # 자격증명 (기본값 없음)
+        # GMS_KEY: SSAFY GMS 프록시용 키. 현재 모든 Gemini 호출이 이걸 쓴다.
+        #   Agent Platform 전환 후에도 임베딩은 GMS 를 유지하므로(768차원 pgvector
+        #   계약 리스크 회피) 살아남는다. 구 이름은 GEMINI_API_KEY 였다.
+        self.gms_key = "" if self.mock_ai else _required("GMS_KEY")
+        # GEMINI_API_KEY: Agent Platform(구 Vertex AI) 표준 모드용 키.
+        #   생성 호출(generate_content) 전부가 이걸 쓴다. 인증이 API 키라
+        #   서비스 계정 JSON·GOOGLE_APPLICATION_CREDENTIALS 가 필요 없다.
+        #   SDK 가 이 이름의 환경변수를 자동으로 집는데(get_env_api_key),
+        #   enterprise 모드에서 필요한 키가 바로 이거라 이름이 맞아떨어진다.
         self.gemini_api_key = "" if self.mock_ai else _required("GEMINI_API_KEY")
         self.internal_token = _required("INTERNAL_TOKEN")
 
@@ -239,11 +248,24 @@ class Settings:
         # 수백 장이 한꺼번에 들어와도 Gemini 호출이 폭주(429)하지 않게 막는다.
         self.max_concurrent_stages = int(os.environ.get("MAX_CONCURRENT_STAGES", "4"))
 
-        # Gemini 호출 엔드포인트. SSAFY GMS 프록시를 경유한다.
+        # Agent Platform(구 Vertex AI) 대상 프로젝트/리전 — 생성 호출 경로.
+        # 둘을 주면 요청 경로에 projects/{p}/locations/{l}/ 가 붙어 표준 모드가
+        # 된다(생략하면 express mode). SDK 가 location 을 보고 호스트를 고른다:
+        #   global → aiplatform.googleapis.com
+        #   us/eu  → aiplatform.{loc}.rep.googleapis.com
+        #   그 외  → {loc}-aiplatform.googleapis.com
+        # 리전을 바꾸면 모델 가용성과 쿼터도 같이 바뀐다. global 로 실측 확인했다.
+        # 프로젝트는 번호(741934320291)와 문자열 ID 둘 다 받는다.
+        self.gcp_project = "" if self.mock_ai else _required("GCP_PROJECT")
+        self.gcp_location = os.environ.get("GCP_LOCATION") or "global"
+
+        # 임베딩 호출 엔드포인트. SSAFY GMS 프록시를 경유한다.
         # SDK 가 이 값 뒤에 `/v1beta/models/...` 를 붙이므로 프록시가 요구하는
         # 업스트림 호스트까지 포함한 전체 접두사를 넣는다.
         # 경로 접두사(/gmsapi/...)는 gRPC 로 표현할 수 없어 gemini_client 가
         # transport="rest" 로 고정한다.
+        # ⚠️ 생성 경로는 이 값을 쓰지 않는다 — Agent Platform 은 SDK 가 호스트를
+        # 조립하고, 여기에 값을 물려주면 그 조립을 덮어쓴다. GMS_KEY 와 짝이다.
         # 빈 값(GEMINI_BASE_URL=)도 기본값으로 떨어뜨린다. env_file 은 빈 문자열을
         # "설정됨" 으로 넘기므로 os.environ.get 의 기본값이 먹지 않는다.
         self.gemini_base_url = (

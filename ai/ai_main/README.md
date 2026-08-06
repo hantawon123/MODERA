@@ -19,7 +19,9 @@ cp .env.example .env        # 값 채우기
 docker compose up -d --build
 ```
 
-`GEMINI_API_KEY` 와 `INTERNAL_TOKEN` 은 기본값이 없습니다. 설정하지 않으면 기동 시 바로 실패합니다.
+`GMS_KEY` 와 `INTERNAL_TOKEN` 은 기본값이 없습니다. 설정하지 않으면 기동 시 바로 실패합니다.
+(`GMS_KEY` 는 구 `GEMINI_API_KEY` 입니다. `GEMINI_API_KEY` 는 Agent Platform 전환용으로 비워
+두어도 됩니다.)
 OpenSearch 는 기동에 30~45초 걸립니다. 그 전 요청은 연결 거부됩니다.
 
 **Swagger: `http://<호스트>:8000/docs`** — `/api/v1/*` 은 Authorize 없이 바로

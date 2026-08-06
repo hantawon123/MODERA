@@ -21,6 +21,12 @@ class DocumentClient @Inject constructor(
             .getOrThrow()
             .data
 
+    suspend fun fetchDocumentDetails(): List<DocumentDetailResponse> =
+        documentService
+            .fetchDocumentDetails()
+            .getOrThrow()
+            .data
+
     suspend fun fetchDocuments(
         page: Int,
         sort: DocumentSortOption = DocumentSortOption.UPDATED_DESC,

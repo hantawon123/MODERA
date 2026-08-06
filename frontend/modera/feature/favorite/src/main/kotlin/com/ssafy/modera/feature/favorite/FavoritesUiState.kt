@@ -10,7 +10,5 @@ sealed interface FavoritesUiState {
 
     data class Success(
         val favorites: List<AnalyzedImage>,
-        val isLoadingMore: Boolean = false,
-        val hasNextPage: Boolean = false,
     ) : FavoritesUiState
 }

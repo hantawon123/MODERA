@@ -21,7 +21,5 @@ sealed interface CategoryUiState {
         val showCategorySheet: Boolean = false,
         val showSortPopup: Boolean = false,
         val isAllCategorySelected: Boolean = false,
-        val isLoadingMore: Boolean = false,
-        val hasNextPage: Boolean = false,
     ) : CategoryUiState
 }

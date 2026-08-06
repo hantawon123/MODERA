@@ -37,9 +37,15 @@ class AnalyzedImageClient @Inject constructor(
             .getOrThrow()
 
         return response.data.copy(
-            updatedAt = response.timestamp,
+            uploadedAt = response.timestamp,
         )
     }
+
+    suspend fun fetchAnalyzedImageDetails(): List<AnalyzedImageDetailResponse> =
+        analyzedImageService
+            .fetchAnalyzedImageDetails()
+            .getOrThrow()
+            .data
 
     // Todo: api 완성 되면 mock 삭제
     suspend fun fetchRelatedImages(

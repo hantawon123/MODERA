@@ -51,6 +51,7 @@ import com.ssafy.modera.feature.analyzedimagedetail.navigation.analyzedImageDeta
 import com.ssafy.modera.feature.analyzedimagedetail.navigation.navigateToImageDetail
 import com.ssafy.modera.feature.calendar.navigation.calendarEntry
 import com.ssafy.modera.feature.calendar.navigation.navigateToCalendar
+import com.ssafy.modera.feature.category.navigation.CategoryNavKey
 import com.ssafy.modera.feature.category.navigation.categoryEntry
 import com.ssafy.modera.feature.category.navigation.navigateToCategoryTab
 import com.ssafy.modera.feature.document.documentcreate.navigation.documentCreateEntry
@@ -245,6 +246,12 @@ internal fun ModeraApp(
                                                     )
                                                 }
 
+                                                is CategoryNavKey -> {
+                                                    navigator.navigateToCategoryTab(
+                                                        appState.categoryTabController,
+                                                    )
+                                                }
+
                                                 else -> {
                                                     navigator.navigate(navKey)
                                                 }
@@ -311,14 +318,10 @@ internal fun ModeraApp(
 
                             val entryProvider = entryProvider {
                                 homeEntry(
-                                    onCategoryClick =
-                                        navigator::navigateToCategoryTab,
-                                    onCalendarClick =
-                                        navigator::navigateToCalendar,
-                                    onSettingsClick =
-                                        navigator::navigateToSettings,
-                                    onSearchResultClick =
-                                        navigator::navigateToImageDetail,
+                                    onCategoryClick = navigator::navigateToCategoryTab,
+                                    onCalendarClick = navigator::navigateToCalendar,
+                                    onSettingsClick = navigator::navigateToSettings,
+                                    onSearchResultClick = navigator::navigateToImageDetail,
                                 )
 
                                 settingsEntry(
@@ -327,14 +330,11 @@ internal fun ModeraApp(
                                 )
 
                                 categoryEntry(
-                                    onItemClick =
-                                        navigator::navigateToImageDetail,
+                                    onItemClick = navigator::navigateToImageDetail,
                                 )
 
                                 favoritesEntry(
-                                    onItemClick = {
-                                        // TODO: 자료 상세 연결
-                                    },
+                                    onItemClick = navigator::navigateToImageDetail,
                                 )
 
                                 calendarEntry(

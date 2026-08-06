@@ -2,7 +2,7 @@ package com.ssafy.modera.feature.category
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -16,11 +16,11 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -37,7 +37,6 @@ import com.ssafy.modera.core.component.item.ModeraAnalyzedImageItem
 import com.ssafy.modera.core.component.rememberShowScrollToTop
 import com.ssafy.modera.core.designsystem.component.HorizontalDivider
 import com.ssafy.modera.core.designsystem.component.Icon
-import com.ssafy.modera.core.designsystem.component.LoadingWheel
 import com.ssafy.modera.core.designsystem.component.Text
 import com.ssafy.modera.core.designsystem.icon.ModeraIcons
 import com.ssafy.modera.core.designsystem.theme.ModeraTheme
@@ -89,8 +88,6 @@ fun CategoryRoute(
                 searchQuery = state.searchQuery,
                 showCategorySheet = state.showCategorySheet,
                 showSortPopup = state.showSortPopup,
-                isLoadingMore = state.isLoadingMore,
-                hasNextPage = state.hasNextPage,
                 onSearchQueryChange = viewModel::onSearchQueryChanged,
                 onCategoryTitleClick = viewModel::onCategoryTitleClick,
                 onCategorySheetDismiss = viewModel::onCategorySheetDismiss,
@@ -98,7 +95,6 @@ fun CategoryRoute(
                 onSortClick = viewModel::onSortClick,
                 onSortPopupDismiss = viewModel::onSortPopupDismiss,
                 onSortTypeSelect = viewModel::onSortTypeSelect,
-                onLoadMore = viewModel::loadNextPage,
                 onItemClick = onItemClick,
                 modifier = modifier,
             )
@@ -118,8 +114,6 @@ fun CategoryScreen(
     searchQuery: String,
     showCategorySheet: Boolean,
     showSortPopup: Boolean,
-    isLoadingMore: Boolean,
-    hasNextPage: Boolean,
     onSearchQueryChange: (String) -> Unit,
     onCategoryTitleClick: () -> Unit,
     onCategorySheetDismiss: () -> Unit,
@@ -127,7 +121,6 @@ fun CategoryScreen(
     onSortClick: () -> Unit,
     onSortPopupDismiss: () -> Unit,
     onSortTypeSelect: (AnalyzedImageSortType) -> Unit,
-    onLoadMore: () -> Unit,
     onItemClick: (Long) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -135,6 +128,7 @@ fun CategoryScreen(
     val showScrollToTop = rememberShowScrollToTop(listState)
     val coroutineScope = rememberCoroutineScope()
     val focusManager = LocalFocusManager.current
+    val clearFocusInteractionSource = remember { MutableInteractionSource() }
     val displayCategoryTitle = if (isAllCategorySelected) {
         stringResource(R.string.category_all)
     } else {
@@ -147,17 +141,13 @@ fun CategoryScreen(
         analyzedImages.size.toLong()
     }
 
-    LaunchedEffect(listState, hasNextPage, isLoadingMore) {
-        snapshotFlow {
-            val layoutInfo = listState.layoutInfo
-            val lastVisibleItemIndex = layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
-            val totalItems = layoutInfo.totalItemsCount
-            lastVisibleItemIndex >= totalItems - CategoryScreenDefaults.LOAD_MORE_THRESHOLD
-        }.collect { shouldLoadMore ->
-            if (shouldLoadMore && hasNextPage && !isLoadingMore) {
-                onLoadMore()
+    LaunchedEffect(listState) {
+        snapshotFlow { listState.isScrollInProgress }
+            .collect { isScrollInProgress ->
+                if (isScrollInProgress) {
+                    focusManager.clearFocus()
+                }
             }
-        }
     }
 
     Box(
@@ -166,15 +156,16 @@ fun CategoryScreen(
             .background(ModeraTheme.colors.white),
     ) {
         Column(
-            modifier = Modifier
-                .fillMaxSize()
+            modifier = Modifier.fillMaxSize(),
         ) {
             Box(
-                modifier = Modifier.pointerInput(Unit) {
-                    detectTapGestures {
-                        focusManager.clearFocus()
-                    }
-                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(
+                        interactionSource = clearFocusInteractionSource,
+                        indication = null,
+                        onClick = { focusManager.clearFocus() },
+                    ),
             ) {
                 ModeraTopBar(
                     onBackClick = {},
@@ -182,7 +173,12 @@ fun CategoryScreen(
                         Row(
                             modifier = Modifier
                                 .padding(start = 4.dp)
-                                .clickable(onClick = onCategoryTitleClick),
+                                .clickable(
+                                    onClick = {
+                                        focusManager.clearFocus()
+                                        onCategoryTitleClick()
+                                    },
+                                ),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Text(
@@ -205,33 +201,33 @@ fun CategoryScreen(
                 )
             }
 
-            ModeraSearchBar(
-                query = searchQuery,
-                onQueryChange = onSearchQueryChange,
-                placeholder = stringResource(R.string.category_search_placeholder),
-                mode = SearchBarMode.General,
-                modifier = Modifier
-                    .padding(horizontal = CategoryScreenDefaults.HorizontalPadding),
-            )
-
             Box {
                 LazyColumn(
                     state = listState,
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(horizontal = CategoryScreenDefaults.HorizontalPadding)
-                        .pointerInput(Unit) {
-                            detectTapGestures {
-                                focusManager.clearFocus()
-                            }
-                        },
+                        .padding(horizontal = CategoryScreenDefaults.HorizontalPadding),
                 ) {
-                    item {
-                        Column {
+                    stickyHeader {
+                        Column(
+                            modifier = Modifier.background(ModeraTheme.colors.white),
+                        ) {
+                            ModeraSearchBar(
+                                query = searchQuery,
+                                onQueryChange = onSearchQueryChange,
+                                placeholder = stringResource(R.string.category_search_placeholder),
+                                mode = SearchBarMode.General,
+                            )
+
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(top = 12.dp, bottom = 8.dp),
+                                    .padding(top = 12.dp, bottom = 8.dp)
+                                    .clickable(
+                                        interactionSource = remember { MutableInteractionSource() },
+                                        indication = null,
+                                        onClick = { focusManager.clearFocus() },
+                                    ),
                             ) {
                                 Text(
                                     text = stringResource(
@@ -249,7 +245,10 @@ fun CategoryScreen(
                                     options = AnalyzedImageSortType.entries,
                                     selectedOption = selectedSortType,
                                     labelOf = { it.label },
-                                    onSortClick = onSortClick,
+                                    onSortClick = {
+                                        focusManager.clearFocus()
+                                        onSortClick()
+                                    },
                                     onDismissRequest = onSortPopupDismiss,
                                     onOptionClick = onSortTypeSelect,
                                 )
@@ -266,7 +265,26 @@ fun CategoryScreen(
                         item(key = "search_empty") {
                             EmptyScreen(
                                 message = stringResource(R.string.category_search_result_empty),
-                                modifier = Modifier.padding(top = 40.dp),
+                                modifier = Modifier
+                                    .padding(top = 40.dp)
+                                    .clickable(
+                                        interactionSource = remember { MutableInteractionSource() },
+                                        indication = null,
+                                        onClick = { focusManager.clearFocus() },
+                                    ),
+                            )
+                        }
+                    } else if (!isSearching && analyzedImages.isEmpty()) {
+                        item(key = "list_empty") {
+                            EmptyScreen(
+                                message = stringResource(R.string.category_list_empty),
+                                modifier = Modifier
+                                    .fillParentMaxSize()
+                                    .clickable(
+                                        interactionSource = remember { MutableInteractionSource() },
+                                        indication = null,
+                                        onClick = { focusManager.clearFocus() },
+                                    ),
                             )
                         }
                     } else {
@@ -282,26 +300,12 @@ fun CategoryScreen(
                                 favorite = analyzedImage.favorite,
                                 isDocumented = analyzedImage.isDocumented,
                                 hasSchedule = analyzedImage.hasSchedule,
-                                onClick = { onItemClick(analyzedImage.id) },
+                                onClick = {
+                                    focusManager.clearFocus()
+                                    onItemClick(analyzedImage.id)
+                                },
                                 modifier = Modifier.fillMaxWidth(),
                             )
-                        }
-                    }
-
-                    if (isLoadingMore) {
-                        item(key = "loading_more") {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 16.dp),
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                LoadingWheel(
-                                    contentDescription = stringResource(
-                                        R.string.category_loading_more_description,
-                                    ),
-                                )
-                            }
                         }
                     }
                 }
@@ -330,7 +334,6 @@ fun CategoryScreen(
 
 internal object CategoryScreenDefaults {
     val HorizontalPadding = 20.dp
-    const val LOAD_MORE_THRESHOLD = 3
 }
 
 @Preview(showBackground = true, widthDp = 360, heightDp = 780)
@@ -366,8 +369,6 @@ private fun CategoryScreenPreview() {
             searchQuery = "",
             showCategorySheet = false,
             showSortPopup = false,
-            isLoadingMore = false,
-            hasNextPage = false,
             onSearchQueryChange = {},
             onCategoryTitleClick = {},
             onCategorySheetDismiss = {},
@@ -375,7 +376,6 @@ private fun CategoryScreenPreview() {
             onSortClick = {},
             onSortPopupDismiss = {},
             onSortTypeSelect = {},
-            onLoadMore = {},
             onItemClick = {},
         )
     }

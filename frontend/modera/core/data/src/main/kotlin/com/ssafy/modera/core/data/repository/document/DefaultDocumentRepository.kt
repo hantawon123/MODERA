@@ -4,13 +4,13 @@ import com.ssafy.modera.core.common.network.Dispatcher
 import com.ssafy.modera.core.common.network.ModeraDispatcher
 import com.ssafy.modera.core.data.mapper.asEntity
 import com.ssafy.modera.core.database.dao.DocumentDao
+import com.ssafy.modera.core.database.model.AnalyzedImageEntity
 import com.ssafy.modera.core.database.model.asDocument
 import com.ssafy.modera.core.database.model.asExternalModel
 import com.ssafy.modera.core.model.DocumentDetail
 import com.ssafy.modera.core.model.analyzedimage.AnalyzedImage
 import com.ssafy.modera.core.model.document.Document
 import com.ssafy.modera.core.model.document.DocumentSortType
-import com.ssafy.modera.core.network.model.analyzedimage.asExternalModel
 import com.ssafy.modera.core.network.model.document.asExternalModel
 import com.ssafy.modera.core.network.service.document.DocumentClient
 import kotlinx.coroutines.CoroutineDispatcher
@@ -60,19 +60,12 @@ class DefaultDocumentRepository @Inject constructor(
                 }
             }
 
-    override fun getDocumentImages(
+    override fun getAnalyzedImagesByDocumentId(
         documentId: Long,
-    ): Flow<List<AnalyzedImage>> = flow {
-        val response = documentClient.fetchDocumentImages(
-            documentId = documentId,
-        )
-
-        emit(
-            response.map { image ->
-                image.asExternalModel()
-            },
-        )
-    }.flowOn(ioDispatcher)
+    ): Flow<List<AnalyzedImage>> =
+        documentDao
+            .getAnalyzedImageEntitiesByDocumentId(documentId = documentId)
+            .map { it.map(AnalyzedImageEntity::asExternalModel) }
 
     override suspend fun syncWith(
         resourceId: Long,

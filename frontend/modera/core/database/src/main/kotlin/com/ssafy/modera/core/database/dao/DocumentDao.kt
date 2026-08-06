@@ -4,6 +4,7 @@ import androidx.room.Dao
 import androidx.room.Query
 import androidx.room.Transaction
 import androidx.room.Upsert
+import com.ssafy.modera.core.database.model.AnalyzedImageEntity
 import com.ssafy.modera.core.database.model.DocumentEntity
 import com.ssafy.modera.core.database.model.DocumentImageCrossRef
 import com.ssafy.modera.core.database.model.DocumentWithImageIds
@@ -31,6 +32,20 @@ interface DocumentDao {
     fun getDocumentWithImageIds(
         documentId: Long,
     ): Flow<DocumentWithImageIds?>
+
+    @Query(
+        """
+    SELECT analyzed_images.*
+    FROM analyzed_images
+    INNER JOIN document_image_cross_refs
+        ON analyzed_images.imageId = document_image_cross_refs.imageId
+    WHERE document_image_cross_refs.documentId = :documentId
+    ORDER BY document_image_cross_refs.position ASC
+    """,
+    )
+    fun getAnalyzedImageEntitiesByDocumentId(
+        documentId: Long,
+    ): Flow<List<AnalyzedImageEntity>>
 
     @Upsert
     suspend fun upsertDocument(

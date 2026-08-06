@@ -8,7 +8,7 @@ sealed interface RelatedImagesUiState {
 
     data class Success(val relatedImages: List<AnalyzedImage>) : RelatedImagesUiState
 
-    data class Error(val message: String) : RelatedImagesUiState
+    data class Error(val exception: Throwable) : RelatedImagesUiState
 
     data object Empty : RelatedImagesUiState
 }

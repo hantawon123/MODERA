@@ -1,4 +1,4 @@
-package com.ssafy.modera.feature.analyzedimage.related.images.component
+package com.ssafy.modera.feature.analyzedimage.related.component
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Row
@@ -22,17 +22,15 @@ import com.ssafy.modera.core.designsystem.theme.ModeraTheme
 import com.ssafy.modera.feature.analyzedimage.related.R
 
 @Composable
-internal fun RelatedImagesHeader(
+internal fun RelatedHeader(
     sourceTitle: String,
     relatedImageCount: Int,
+    headerSuffix: String,
     modifier: Modifier = Modifier,
 ) {
     val formattedSourceTitle = stringResource(
-        R.string.related_images_source_title_format,
+        R.string.related_source_title_format,
         sourceTitle,
-    )
-    val headerSuffix = stringResource(
-        R.string.related_images_header_suffix,
     )
 
     val headerText = buildAnnotatedString {
@@ -85,11 +83,12 @@ internal fun RelatedImagesHeader(
 
 @Preview(name = "Related Images Header", showBackground = true)
 @Composable
-private fun RelatedImagesHeaderPreview() {
+private fun RelatedHeaderPreview() {
     ModeraTheme {
-        RelatedImagesHeader(
+        RelatedHeader(
             sourceTitle = "ASCII 해커톤",
             relatedImageCount = 3,
+            headerSuffix = "와 관련된 자료",
             modifier = Modifier.padding(20.dp)
         )
     }

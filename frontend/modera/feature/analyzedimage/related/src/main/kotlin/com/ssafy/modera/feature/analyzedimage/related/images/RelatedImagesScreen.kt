@@ -21,10 +21,11 @@ import com.ssafy.modera.core.designsystem.component.HorizontalDivider
 import com.ssafy.modera.core.designsystem.component.Text
 import com.ssafy.modera.core.designsystem.theme.ModeraTheme
 import com.ssafy.modera.core.model.analyzedimage.AnalyzedImage
+import com.ssafy.modera.core.ui.EmptyScreen
 import com.ssafy.modera.core.ui.ErrorScreen
 import com.ssafy.modera.core.ui.LoadingScreen
 import com.ssafy.modera.feature.analyzedimage.related.R
-import com.ssafy.modera.feature.analyzedimage.related.images.component.RelatedImagesHeader
+import com.ssafy.modera.feature.analyzedimage.related.component.RelatedHeader
 
 @Composable
 fun RelatedImagesScreen(
@@ -88,15 +89,15 @@ fun RelatedImagesScreen(
             }
 
             RelatedImagesUiState.Empty -> {
-                ErrorScreen(
-                    message = "연관 자료가 없습니다.",
+                EmptyScreen(
+                    message = stringResource(R.string.related_images_empty_message),
                     modifier = Modifier.weight(1f),
                 )
             }
 
             is RelatedImagesUiState.Error -> {
                 ErrorScreen(
-                    message = uiState.message,
+                    message = stringResource(R.string.related_images_error_message),
                     modifier = Modifier.weight(1f),
                 )
             }
@@ -113,9 +114,10 @@ private fun RelatedImagesContent(
 ) {
     LazyColumn(modifier = modifier) {
         item(key = "related_images_header") {
-            RelatedImagesHeader(
+            RelatedHeader(
                 sourceTitle = sourceTitle,
                 relatedImageCount = relatedImages.size,
+                headerSuffix = stringResource(R.string.related_images_header_suffix),
                 modifier = Modifier.padding(vertical = 20.dp),
             )
 

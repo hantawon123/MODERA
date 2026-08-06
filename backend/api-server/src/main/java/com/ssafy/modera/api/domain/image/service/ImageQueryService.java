@@ -44,11 +44,6 @@ public class ImageQueryService {
     private static final Set<String> SUPPORTED_SORTS =
             Set.of("TITLE_ASC", "UPLOADED_DESC", "UPLOADED_ASC");
 
-    /**
-     * 5-10 동기화 페이지 상한. 목록(100)보다 큰 이유: 복원은 왕복 수가 곧 소요 시간이라
-     * 페이지를 키우는 편이 낫고, URL 서명이 없어 행당 비용도 목록보다 싸다.
-     */
-    private static final int SYNC_MAX_SIZE = 200;
 
     private final ImageQueryRepository imageQueryRepository;
     private final StorageProperties storageProperties;
@@ -124,22 +119,21 @@ public class ImageQueryService {
     }
 
     /**
-     * 5-10 전체 동기화(앱 재설치 후 Room 복원). 상세(5-2) 수준 필드를 페이지로 전부 준다.
+     * 5-10 전체 동기화(앱 재설치 후 Room 복원). 상세(5-2) 수준 필드 + presigned URL을
+     * 페이지 없이 전부 준다(안드로이드 요청).
      *
-     * <p>presigned URL은 싣지 않는다 — 만료되는 값이라 로컬 DB에 저장할 수 없고, 여기
-     * 실어봐야 복원이 끝나기 전에 죽는다. 이미지가 필요할 때 5-8/5-9로 받는다.
-     * URL 생성이 없으므로 페이지가 커도(최대 200) 요청당 비용은 조회·직렬화뿐이다.
+     * <p>썸네일 URL은 목록(5-1)과 같은 방식으로 존재 확인(HEAD) 없이 서명한다 —
+     * 행마다 스토리지 왕복을 하면 수천 장 계정에서 이 API가 수 분짜리가 된다.
+     * URL은 1시간 만료이므로 복원 후 표시 실패(403) 시 5-8/5-9로 재발급받는다.
      */
-    public ImageSyncResponse getSyncPage(Integer userId, int page, int size) {
-        if (page < 0 || size < 1 || size > SYNC_MAX_SIZE) {
-            throw new BusinessException(GlobalErrorCode.INVALID_PARAMETER);
-        }
-
-        ImageQueryRepository.ImageSyncPage result =
-                imageQueryRepository.findSyncPage(userId, page, size);
-        List<ImageSyncItemResponse> list = result.content().stream()
+    public ImageSyncResponse getAllForSync(Integer userId) {
+        List<ImageSyncItemResponse> list = imageQueryRepository.findAllForSync(userId).stream()
                 .map(row -> new ImageSyncItemResponse(
                         row.imageId(),
+                        createImageUrl(row.s3Key()),
+                        row.thumbnailKey() == null || row.thumbnailKey().isBlank()
+                                ? null
+                                : presignThumbnail(row.thumbnailKey()),
                         row.title(),
                         Boolean.TRUE.equals(row.favorite()),
                         row.summary(),
@@ -155,14 +149,7 @@ public class ImageQueryService {
                 ))
                 .toList();
 
-        return new ImageSyncResponse(
-                list,
-                page,
-                size,
-                result.totalElements(),
-                (long) (page + 1) * size < result.totalElements(),
-                page > 0
-        );
+        return new ImageSyncResponse(list, list.size());
     }
 
     public PageResponse<ImageSummaryResponse> getImagesInOrder(

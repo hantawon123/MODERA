@@ -25,6 +25,12 @@ RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTr
 # 앱 코드
 COPY app ./app
 
+# 점검 스크립트. CI 가 배포 전에 이미지 안에서 그대로 돌린다(Jenkinsfile 'AI Check').
+# 볼륨 마운트로 넣지 않는 이유: Jenkins 가 컨테이너 안에서 돌 경우 -v 의 경로가
+# 호스트 기준이라 워크스페이스가 안 잡힌다. 이미지에 구워 두면 그 문제가 없다.
+# 외부 의존이 없는 스크립트뿐이라 이미지 증가는 수 KB 다.
+COPY scripts ./scripts
+
 # 비루트 사용자로 실행 (보안)
 RUN useradd --create-home --uid 1000 appuser
 USER appuser

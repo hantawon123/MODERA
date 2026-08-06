@@ -24,6 +24,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup;
@@ -75,6 +76,37 @@ class ImageControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("I214"))
                 .andExpect(jsonPath("$.data.url").value(presigned));
+    }
+
+    @Test
+    @DisplayName("raw: 302 + Location(presigned) + no-store — JSON 버전과 같은 검증·같은 URL의 형제 API")
+    void redirectsRawEndpointsToPresignedUrl() throws Exception {
+        when(fileUrlService.getOriginalUrl(null, 1))
+                .thenReturn("http://localhost:9002/pictures/4/1-a.jpg?X-Amz-Signature=abc");
+        when(fileUrlService.getThumbnailUrl(null, 1))
+                .thenReturn("http://localhost:9002/thumbnails/4/1-thumb.jpg?X-Amz-Signature=def");
+
+        mockMvc.perform(get("/api/v1/images/1/file/raw"))
+                .andExpect(status().isFound())
+                .andExpect(header().string("Location",
+                        "http://localhost:9002/pictures/4/1-a.jpg?X-Amz-Signature=abc"))
+                .andExpect(header().string("Cache-Control", "no-store"));
+        mockMvc.perform(get("/api/v1/images/1/thumbnail/raw"))
+                .andExpect(status().isFound())
+                .andExpect(header().string("Location",
+                        "http://localhost:9002/thumbnails/4/1-thumb.jpg?X-Amz-Signature=def"))
+                .andExpect(header().string("Cache-Control", "no-store"));
+    }
+
+    @Test
+    @DisplayName("raw도 접근 불가 이미지는 404 envelope다")
+    void rawHidesInaccessibleImageBehind404() throws Exception {
+        when(fileUrlService.getOriginalUrl(null, 99))
+                .thenThrow(new BusinessException(ImageErrorCode.IMAGE_NOT_FOUND));
+
+        mockMvc.perform(get("/api/v1/images/99/file/raw"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("IMAGE_NOT_FOUND"));
     }
 
     @Test

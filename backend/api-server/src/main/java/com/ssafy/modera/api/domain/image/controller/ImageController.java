@@ -29,6 +29,8 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.CacheControl;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -41,6 +43,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.net.URI;
 import java.util.List;
 
 
@@ -224,6 +227,68 @@ public class ImageController {
                 "I214",
                 new ImageFileUrlResponse(imageFileUrlService.getThumbnailUrl(userId, imageId))
         ));
+    }
+
+    @Operation(
+            summary = "원본 이미지 조회(302 리다이렉트)",
+            description = """
+                    **이 API는 JSON이 아니라 302 리다이렉트로 응답한다** — 이미지 로더에 이
+                    불변 경로를 그대로 주면 리다이렉트를 따라가 이미지가 로드된다. URL 값이
+                    필요하면 JSON을 주는 `/file`을 쓴다(두 API는 같은 검증·같은 URL을 쓰는
+                    형제다).
+
+                    이 경로는 만료가 없어 Room 영구 저장·이미지 캐시 키로 쓸 수 있다.
+                    presigned URL의 1시간 만료는 매 호출 새로 발급하는 것으로 흡수된다.
+
+                    Cache-Control은 no-store다 — Location의 presigned URL이 만료되는 값이라
+                    리다이렉트 응답 자체를 캐시하면 안 된다(이미지 캐시는 앱이 이 경로를
+                    키로 관리).
+
+                    없거나·삭제됐거나·본인 소유가 아니거나·업로드 미완료는 모두 404다.
+                    """
+    )
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "302", description = "Location에 원본 presigned GET URL(1시간 유효)"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "accessToken 없음/무효(UNAUTHORIZED)"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "없거나 접근할 수 없는 imageId(IMAGE_NOT_FOUND)")
+    })
+    @GetMapping("/{imageId}/file/raw")
+    public ResponseEntity<Void> getImageFileRaw(
+            @AuthenticationPrincipal Integer userId,
+            @Parameter(description = "이미지 ID") @PathVariable(name = "imageId") Integer imageId
+    ) {
+        return redirectTo(imageFileUrlService.getOriginalUrl(userId, imageId));
+    }
+
+    @Operation(
+            summary = "썸네일 이미지 조회(302 리다이렉트)",
+            description = """
+                    **이 API는 JSON이 아니라 302 리다이렉트로 응답한다.** 규칙은 원본
+                    리다이렉트(`/file/raw`)와 같다.
+
+                    썸네일이 아직 만들어지지 않은 이미지(분석 전 등)는 404가 아니라 **원본으로
+                    폴백해 302**한다 — 클라이언트에서 분기할 필요가 없다.
+                    """
+    )
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "302", description = "Location에 썸네일 presigned GET URL(없으면 원본으로 폴백, 1시간 유효)"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "accessToken 없음/무효(UNAUTHORIZED)"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "없거나 접근할 수 없는 imageId(IMAGE_NOT_FOUND)")
+    })
+    @GetMapping("/{imageId}/thumbnail/raw")
+    public ResponseEntity<Void> getImageThumbnailRaw(
+            @AuthenticationPrincipal Integer userId,
+            @Parameter(description = "이미지 ID") @PathVariable(name = "imageId") Integer imageId
+    ) {
+        return redirectTo(imageFileUrlService.getThumbnailUrl(userId, imageId));
+    }
+
+    private ResponseEntity<Void> redirectTo(String presignedUrl) {
+        return ResponseEntity.status(HttpStatus.FOUND)
+                .location(URI.create(presignedUrl))
+                // 리다이렉트를 캐시하면 만료된 presigned URL이 재사용된다.
+                .cacheControl(CacheControl.noStore())
+                .build();
     }
 
     @Operation(

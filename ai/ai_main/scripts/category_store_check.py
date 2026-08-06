@@ -14,6 +14,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 os.environ.setdefault("INTERNAL_TOKEN", "check")
 os.environ.setdefault("GMS_KEY", "check")
+os.environ.setdefault("GEMINI_API_KEY", "check")
+os.environ.setdefault("GCP_PROJECT", "check")
 
 from app import search, stages                       # noqa: E402
 from app.category import normalize_name               # noqa: E402

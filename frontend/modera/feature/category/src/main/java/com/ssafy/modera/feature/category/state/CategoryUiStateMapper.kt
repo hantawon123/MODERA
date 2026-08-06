@@ -52,8 +52,6 @@ internal fun buildCategoryUiState(
                 showCategorySheet = screenState.showCategorySheet,
                 showSortPopup = screenState.showSortPopup,
                 isAllCategorySelected = selectedCategoryItem?.isAll == true,
-                isLoadingMore = imageListState.isLoadingMore,
-                hasNextPage = imageListState.hasNext,
             )
         }
     }

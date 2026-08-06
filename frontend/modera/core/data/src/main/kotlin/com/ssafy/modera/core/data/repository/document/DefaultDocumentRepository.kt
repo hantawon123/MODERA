@@ -89,6 +89,25 @@ class DefaultDocumentRepository @Inject constructor(
         true
     }
 
+    override suspend fun refreshDocumentsIfEmpty() {
+        withContext(ioDispatcher) {
+            if (documentDao.getDocumentCount() > 0) {
+                return@withContext
+            }
+
+            val responses = documentClient.fetchDocumentDetails()
+            if (responses.isEmpty()) {
+                return@withContext
+            }
+
+            documentDao.upsertDocumentsWithImageIds(
+                documents = responses.map { response ->
+                    response.asEntity() to response.imageIds
+                },
+            )
+        }
+    }
+
     override fun regenerateDocument(
         documentId: Long,
         clientRequestId: String,

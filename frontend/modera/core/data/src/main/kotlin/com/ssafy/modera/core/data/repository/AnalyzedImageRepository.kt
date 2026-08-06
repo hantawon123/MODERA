@@ -33,4 +33,6 @@ interface AnalyzedImageRepository : Syncable {
     fun reanalyzeImage(imageId: Long): Flow<Unit>
 
     fun deleteAnalyzedImage(imageId: Long): Flow<Unit>
+
+    suspend fun refreshAnalyzedImagesIfEmpty()
 }

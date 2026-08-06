@@ -9,7 +9,7 @@ import org.gradle.kotlin.dsl.dependencies
 import org.gradle.kotlin.dsl.getByType
 import org.jetbrains.kotlin.gradle.dsl.KotlinAndroidProjectExtension
 
-class AndroidFeatureConventionPlugin : Plugin<Project> {
+class AndroidFeatureImplConventionPlugin : Plugin<Project> {
     override fun apply(target: Project) {
         with(target) {
             pluginManager.apply {

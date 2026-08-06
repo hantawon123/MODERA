@@ -35,7 +35,7 @@ fun EmptyScreen(
         Image(
             painter = painterResource(imageRes),
             contentDescription = null,
-            modifier = Modifier.size(100.dp),
+            modifier = Modifier.size(120.dp),
         )
 
         Text(

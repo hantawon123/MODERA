@@ -99,20 +99,6 @@ fun FavoritesScreen(
                     .fillMaxSize()
                     .padding(horizontal = FavoritesScreenDefaults.HorizontalPadding),
             ) {
-                item {
-                    Text(
-                        text = stringResource(R.string.favorites_item_count, favorites.size),
-                        style = ModeraTheme.typography.bodyR14,
-                        color = ModeraTheme.colors.gray500,
-                        modifier = Modifier.padding(top = 12.dp, bottom = 12.dp),
-                    )
-
-                    HorizontalDivider(
-                        thickness = 1.dp,
-                        color = ModeraTheme.colors.gray200,
-                    )
-                }
-
                 if (favorites.isEmpty()) {
                     item {
                         EmptyScreen(
@@ -122,6 +108,20 @@ fun FavoritesScreen(
                         )
                     }
                 } else {
+                    item {
+                        Text(
+                            text = stringResource(R.string.favorites_item_count, favorites.size),
+                            style = ModeraTheme.typography.bodyR14,
+                            color = ModeraTheme.colors.gray500,
+                            modifier = Modifier.padding(top = 12.dp, bottom = 12.dp),
+                        )
+
+                        HorizontalDivider(
+                            thickness = 1.dp,
+                            color = ModeraTheme.colors.gray200,
+                        )
+                    }
+
                     items(
                         items = favorites,
                         key = AnalyzedImage::id,

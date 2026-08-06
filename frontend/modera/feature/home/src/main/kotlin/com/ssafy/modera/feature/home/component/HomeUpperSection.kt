@@ -68,12 +68,11 @@ internal fun HomeUpperSection(
             )
         }
 
-        Spacer(Modifier.weight(1f))
-
         Column(
             modifier = modifier.fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
+            Spacer(Modifier.weight(1f))
             BasicText(
                 text = stringResource(R.string.home_hero_title),
                 style = ModeraTheme.typography.titleB20.copy(
@@ -91,7 +90,7 @@ internal fun HomeUpperSection(
                 style = ModeraTheme.typography.captionR12,
                 color = ModeraTheme.colors.gray400,
             )
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(Modifier.weight(1f))
             Image(
                 painter = painterResource(R.drawable.img_search_character),
                 contentDescription = stringResource(R.string.home_hero_character_content_description),

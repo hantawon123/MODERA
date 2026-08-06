@@ -149,6 +149,7 @@ include(":core:ui")
 
 include(":feature:splash")
 include(":feature:home")
+include(":feature:analyzedimage:api")
 include(":feature:analyzedimage:detail")
 include(":feature:analyzedimage:related")
 include(":feature:imageviewer")

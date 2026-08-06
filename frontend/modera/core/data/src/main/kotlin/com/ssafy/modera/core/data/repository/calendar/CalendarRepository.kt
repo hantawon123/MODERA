@@ -13,9 +13,11 @@ interface CalendarRepository {
 
     fun registerSchedule(
         scheduleId: Long,
+        imageId: Long,
     ): Flow<Unit>
 
     fun deleteSchedule(
         scheduleId: Long,
+        imageId: Long,
     ): Flow<Unit>
 }

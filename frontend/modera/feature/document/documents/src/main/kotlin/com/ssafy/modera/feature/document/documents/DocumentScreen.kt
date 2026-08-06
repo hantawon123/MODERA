@@ -23,10 +23,11 @@ import com.ssafy.modera.core.model.document.Document
 import com.ssafy.modera.core.model.document.DocumentSortType
 import com.ssafy.modera.core.ui.ErrorScreen
 import com.ssafy.modera.core.ui.LoadingScreen
+import com.ssafy.modera.core.ui.R.drawable.img_character_document_empty
+import com.ssafy.modera.core.ui.RecommendScreen
 import com.ssafy.modera.feature.document.DocumentScreenPreviewData
 import com.ssafy.modera.feature.document.DocumentScreenPreviewParameterProvider
 import com.ssafy.modera.feature.document.R
-import com.ssafy.modera.feature.document.documents.component.DocumentEmptyScreen
 import com.ssafy.modera.feature.document.documents.component.DocumentItem
 import com.ssafy.modera.feature.document.documents.component.DocumentListHeader
 import com.ssafy.modera.feature.document.documents.component.DocumentTopBar
@@ -87,7 +88,12 @@ private fun DocumentScreen(
             }
 
             DocumentUiState.Empty -> {
-                DocumentEmptyScreen()
+                RecommendScreen(
+                    title = stringResource(R.string.document_empty_title),
+                    subtitle = stringResource(R.string.document_empty_description),
+                    image = img_character_document_empty,
+                    modifier = Modifier.fillMaxSize(),
+                )
             }
 
             is DocumentUiState.Error -> {

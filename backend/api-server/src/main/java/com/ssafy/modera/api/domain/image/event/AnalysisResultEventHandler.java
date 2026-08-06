@@ -86,8 +86,14 @@ public class AnalysisResultEventHandler {
                 payload.structuredType(),
                 payload.structuredFields()
         );
-        userDataChangeOutboxService.record(
-                payload.userId(), UserDataChangeResource.IMAGE, String.valueOf(imageId));
+        // categoryId가 있는 일반 분석은 바로 뒤의 INITIAL_CATEGORY_RESOLVED가
+        // 카테고리까지 저장한 뒤 알림을 한 번 기록한다. 카테고리가 없는 EMPTY 등의
+        // 결과만 여기서 직접 완료 알림을 기록한다.
+        if (payload.categoryName() == null || payload.categoryName().isBlank()) {
+            userDataChangeOutboxService.record(
+                    payload.userId(), UserDataChangeResource.IMAGE,
+                    String.valueOf(imageId));
+        }
     }
 
     private String resolveThumbnailKey(AnalysisCompletedPayload payload, Integer imageId) {

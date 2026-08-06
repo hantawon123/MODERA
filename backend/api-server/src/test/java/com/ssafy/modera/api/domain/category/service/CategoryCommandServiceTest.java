@@ -86,6 +86,6 @@ class CategoryCommandServiceTest {
 
         verify(categoryCommandRepository).saveInitialDefault(7, 18, 3, "문서");
         verify(imageQueryRepository).synchronizeUserCategories(7);
-        verify(userDataChangeOutboxService).record(7, "IMAGE_CATEGORY", "18");
+        verify(userDataChangeOutboxService).record(7, "IMAGE", "18");
     }
 }

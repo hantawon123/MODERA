@@ -53,6 +53,26 @@ pipeline {
             }
         }
 
+        // 배포 전 관문. 조용히 틀어지는 것들(카테고리 centroid 누적, 모델·차원 무효화,
+        // 409 재시도, 후보 병합·이름 공유)을 배포 전에 잡는다. 실제로 이 점검
+        // 스크립트가 모듈 분리 리팩터링 이후 나흘간 AttributeError 로 죽어 있었는데
+        // 아무도 돌리지 않아 발견이 늦었다 — 그래서 사람 손이 아니라 CI 가 돈다.
+        //
+        // 방금 빌드한 이미지 안에서 그대로 돌린다. 가짜 OpenSearch 를 쓰므로 클러스터도,
+        // 네트워크도, GMS 호출도 없다(필요한 환경변수는 스크립트가 setdefault 로 채운다).
+        stage('AI Check') {
+            when {
+                anyOf {
+                    changeset "ai/**"
+                    expression { !currentBuild.getBuildCauses('hudson.model.Cause$UserIdCause').isEmpty() }
+                }
+            }
+            steps {
+                echo 'AI 저장소 점검 (실 클러스터·외부 호출 없음)'
+                sh 'docker run --rm ai-main:latest python scripts/category_store_check.py'
+            }
+        }
+
         stage('AI Deploy') {
             when {
                 anyOf {

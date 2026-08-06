@@ -11,6 +11,7 @@ import com.ssafy.modera.core.model.analyzedimage.AnalyzedImage
 import com.ssafy.modera.core.model.analyzedimage.AnalyzedImageDetail
 import com.ssafy.modera.core.model.analyzedimage.AnalyzedImageQuery
 import com.ssafy.modera.core.model.analyzedimage.AnalyzedImageSortType
+import com.ssafy.modera.core.network.model.analyzedimage.AnalyzedImageDetailResponse
 import com.ssafy.modera.core.network.service.AnalyzedImageClient
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.Flow
@@ -76,6 +77,34 @@ class DefaultAnalyzedImageRepository @Inject constructor(
         )
 
         true
+    }
+
+    override suspend fun refreshAnalyzedImagesIfEmpty() {
+        withContext(ioDispatcher) {
+            if (analyzedImageDao.getAnalyzedImageCount() > 0) {
+                return@withContext
+            }
+
+            val responses = analyzedImageClient.fetchAnalyzedImageDetails()
+            if (responses.isEmpty()) {
+                return@withContext
+            }
+
+            val categoryEntities = responses
+                .distinctBy(AnalyzedImageDetailResponse::categoryId)
+                .map { response ->
+                    response.asCategoryEntity(isNew = false)
+                }
+
+            val imageEntities = responses.map { response ->
+                response.asEntity()
+            }
+
+            analyzedImageDao.upsertAnalyzedImagesWithCategories(
+                categoryEntities = categoryEntities,
+                analyzedImageEntities = imageEntities,
+            )
+        }
     }
 
     override fun getRelatedImages(

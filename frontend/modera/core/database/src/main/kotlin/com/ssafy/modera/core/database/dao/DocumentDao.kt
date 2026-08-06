@@ -37,6 +37,14 @@ interface DocumentDao {
         entity: DocumentEntity,
     )
 
+    @Query(
+        """
+        SELECT COUNT(*)
+        FROM documents
+        """,
+    )
+    suspend fun getDocumentCount(): Int
+
     @Upsert
     suspend fun upsertDocumentImageCrossRefs(
         crossRefs: List<DocumentImageCrossRef>,
@@ -82,6 +90,18 @@ interface DocumentDao {
                         position = index,
                     )
                 },
+            )
+        }
+    }
+
+    @Transaction
+    suspend fun upsertDocumentsWithImageIds(
+        documents: List<Pair<DocumentEntity, List<Long>>>,
+    ) {
+        documents.forEach { (entity, imageIds) ->
+            upsertDocumentWithImageIds(
+                entity = entity,
+                imageIds = imageIds,
             )
         }
     }

@@ -2,19 +2,13 @@ package com.ssafy.modera.core.data.mapper
 
 import com.ssafy.modera.core.database.model.CategoryEntity
 import com.ssafy.modera.core.network.model.category.CategoryResponse
-import com.ssafy.modera.core.network.model.category.asExternalModel
 
 fun CategoryResponse.asEntity(
     isNew: Boolean,
-): CategoryEntity {
-    val category = asExternalModel(
+): CategoryEntity =
+    CategoryEntity(
+        categoryId = categoryId,
+        name = name,
+        thumbnailUrl = "https://i15d207.p.ssafy.io:8443/api/v1/categories/${categoryId}/thumbnail",
         isNew = isNew,
     )
-
-    return CategoryEntity(
-        categoryId = category.id,
-        name = category.title,
-        thumbnailUrl = category.thumbnailUrl,
-        isNew = category.isNew,
-    )
-}

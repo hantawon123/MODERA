@@ -19,16 +19,18 @@ fun AnalyzedImageDetailResponse.asEntity(): AnalyzedImageEntity =
         ocrRefinedText = ocrRefinedText.orEmpty(),
         isDocumented = isDocumented,
         isCalendared = isCalendared,
-        updatedAt = updatedAt
+        updatedAt = uploadedAt
             ?.let(Instant::parse)
             ?.toEpochMilli()
             ?: 0L,
     )
 
-fun AnalyzedImageDetailResponse.asCategoryEntity(): CategoryEntity =
+fun AnalyzedImageDetailResponse.asCategoryEntity(
+    isNew: Boolean = true,
+): CategoryEntity =
     CategoryEntity(
         categoryId = categoryId,
         name = category,
-        thumbnailUrl = null,
-        isNew = true,
+        thumbnailUrl = "https://i15d207.p.ssafy.io:8443/api/v1/categories/${categoryId}/thumbnail",
+        isNew = isNew,
     )

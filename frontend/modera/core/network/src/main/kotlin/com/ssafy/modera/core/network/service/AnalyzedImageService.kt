@@ -27,6 +27,9 @@ interface AnalyzedImageService {
         @Query("categoryId") categoryId: Long?,
     ): ApiResponse<BaseResponse<AnalyzedImagesResponse>>
 
+    @GET("api/v1/images/details")
+    suspend fun fetchAnalyzedImageDetails(): ApiResponse<BaseResponse<List<AnalyzedImageDetailResponse>>>
+
     @GET("api/v1/images/{imageId}")
     suspend fun fetchAnalyzedImageDetail(
         @Path("imageId") imageId: Long,

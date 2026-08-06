@@ -76,6 +76,19 @@ interface AnalyzedImageDao {
         entity: AnalyzedImageEntity,
     )
 
+    @Upsert
+    suspend fun upsertAnalyzedImages(
+        entities: List<AnalyzedImageEntity>,
+    )
+
+    @Query(
+        """
+        SELECT COUNT(*)
+        FROM analyzed_images
+        """,
+    )
+    suspend fun getAnalyzedImageCount(): Int
+
     @Query(
         """
         UPDATE analyzed_images
@@ -121,6 +134,22 @@ interface AnalyzedImageDao {
 
         upsertAnalyzedImage(
             entity = analyzedImageEntity,
+        )
+    }
+
+    @Transaction
+    suspend fun upsertAnalyzedImagesWithCategories(
+        categoryEntities: List<CategoryEntity>,
+        analyzedImageEntities: List<AnalyzedImageEntity>,
+    ) {
+        categoryEntities.forEach { categoryEntity ->
+            insertCategoryIfAbsent(
+                entity = categoryEntity,
+            )
+        }
+
+        upsertAnalyzedImages(
+            entities = analyzedImageEntities,
         )
     }
 }

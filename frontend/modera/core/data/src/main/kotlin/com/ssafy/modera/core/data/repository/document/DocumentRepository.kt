@@ -40,4 +40,6 @@ interface DocumentRepository : Syncable {
     fun deleteDocument(
         documentId: Long,
     ): Flow<Unit>
+
+    suspend fun refreshDocumentsIfEmpty()
 }

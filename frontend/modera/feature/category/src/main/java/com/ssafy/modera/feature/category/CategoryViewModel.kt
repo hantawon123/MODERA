@@ -8,6 +8,7 @@ import com.ssafy.modera.core.data.repository.AnalyzedImageRepository
 import com.ssafy.modera.core.data.repository.CategoryRepository
 import com.ssafy.modera.core.model.analyzedimage.AnalyzedImageQuery
 import com.ssafy.modera.core.model.analyzedimage.AnalyzedImageSortType
+import com.ssafy.modera.core.model.category.CategorySheetItem
 import com.ssafy.modera.feature.category.state.CategoryImageListState
 import com.ssafy.modera.feature.category.state.CategoryScreenState
 import com.ssafy.modera.feature.category.state.buildCategoryUiState
@@ -33,6 +34,7 @@ import javax.inject.Inject
 class CategoryViewModel @Inject constructor(
     private val categoryRepository: CategoryRepository,
     private val analyzedImageRepository: AnalyzedImageRepository,
+    private val categoryTabController: CategoryTabController,
 ) : ViewModel() {
 
     private val navCategoryId = MutableStateFlow<Long?>(null)
@@ -143,12 +145,34 @@ class CategoryViewModel @Inject constructor(
         viewModelScope.launch {
             categoryRepository.refreshCategoriesIfEmpty()
         }
+
+        categoryTabController.observeShowAll(
+            scope = viewModelScope,
+            onShowAll = ::showAllCategories,
+        )
     }
 
     fun initialize(
         selectedCategoryId: Long?,
     ) {
         navCategoryId.value = selectedCategoryId
+        screenState.update { state ->
+            state.copy(
+                selectedCategoryId = selectedCategoryId
+                    ?: CategorySheetItem.ALL_CATEGORY_ID,
+            )
+        }
+    }
+
+    fun showAllCategories() {
+        navCategoryId.value = null
+        screenState.update { state ->
+            state.copy(
+                selectedCategoryId = CategorySheetItem.ALL_CATEGORY_ID,
+                showCategorySheet = false,
+                showSortPopup = false,
+            )
+        }
     }
 
     fun onCategoryTitleClick() {

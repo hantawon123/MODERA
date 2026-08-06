@@ -51,6 +51,7 @@ import com.ssafy.modera.feature.analyzedimagedetail.navigation.analyzedImageDeta
 import com.ssafy.modera.feature.analyzedimagedetail.navigation.navigateToImageDetail
 import com.ssafy.modera.feature.calendar.navigation.calendarEntry
 import com.ssafy.modera.feature.calendar.navigation.navigateToCalendar
+import com.ssafy.modera.feature.category.navigation.CategoryNavKey
 import com.ssafy.modera.feature.category.navigation.categoryEntry
 import com.ssafy.modera.feature.category.navigation.navigateToCategoryTab
 import com.ssafy.modera.feature.document.documentcreate.navigation.documentCreateEntry
@@ -242,6 +243,12 @@ internal fun ModeraApp(
                                                 HomeNavKey -> {
                                                     navigator.navigateToHomeTab(
                                                         appState.homeTabController,
+                                                    )
+                                                }
+
+                                                is CategoryNavKey -> {
+                                                    navigator.navigateToCategoryTab(
+                                                        appState.categoryTabController,
                                                     )
                                                 }
 

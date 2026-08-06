@@ -34,7 +34,8 @@ class UserPushNotificationServiceTest {
                 org.mockito.ArgumentMatchers.anyMap()))
                 .thenReturn(new PushSendResult(true, 2, 2, 0));
 
-        PushSendResult result = service.sendDataChanged(7, "IMAGE_CATEGORY", "41");
+        PushSendResult result = service.sendDataChanged(
+                UUID.randomUUID(), 7, "IMAGE_CATEGORY", "41", OffsetDateTime.now());
 
         @SuppressWarnings("unchecked")
         ArgumentCaptor<Map<String, String>> data = ArgumentCaptor.forClass(Map.class);
@@ -78,7 +79,11 @@ class UserPushNotificationServiceTest {
                 .thenReturn(new PushSendResult(true, 1, 1, 0));
 
         service.sendDataChanged(
-                7, UserDataChangeResource.IMAGE_DELETE_BATCH, "[10,11,12]");
+                UUID.randomUUID(),
+                7,
+                UserDataChangeResource.IMAGE_DELETE_BATCH,
+                "[10,11,12]",
+                OffsetDateTime.now());
 
         @SuppressWarnings("unchecked")
         ArgumentCaptor<Map<String, String>> data = ArgumentCaptor.forClass(Map.class);

@@ -103,7 +103,7 @@
       "imageIds": [102, 101]
     }
   ],
-  "markdown": "# C++ 입문서 구매 후보 비교\n\n같은 책을 두 곳에서 …",
+  "markdown": "## 가격 비교\n\n두 판매처 모두 동일한 도서이며 …",
   "sourceImageIds": [101, 102],
   "skipped": [],
   "modelVersion": "gemini-2.5-flash-lite",
@@ -116,8 +116,8 @@
 | title | String | 문서 제목. 요청의 `title`이 있으면 그 값 |
 | summary | String | 문서 전체 요약 |
 | sections | Array | 문서 구조 원자료. 앱·Spring이 직접 재조립할 때 쓴다 |
-| markdown | String | **최종 산출물.** 위 구조를 렌더링한 마크다운 전문 |
-| sourceImageIds | Number[] | 문서 재료로 쓴 imageId (= 요청 − `skipped`). 출처 표에 그대로 실린다. 모델이 어떤 이미지를 어느 섹션에도 인용하지 않아도 여기에는 남는다 |
+| markdown | String | **최종 산출물.** 위 구조를 렌더링한 마크다운 **본문**. `title`·`summary`는 들어 있지 않다 |
+| sourceImageIds | Number[] | 문서 재료로 쓴 imageId (= 요청 − `skipped`). 모델이 어떤 이미지를 어느 섹션에도 인용하지 않아도 여기에는 남는다 |
 | skipped | Array | 재료에서 빠진 항목 |
 | modelVersion | String | 사용한 LLM 모델명. `LLM_MODEL_NAME` 값(기본 `gemini-2.5-flash-lite`)을 그대로 실어 보낸다 |
 | generatedAt | String | 생성 시각. ISO-8601 UTC, 밀리초 3자리 |
@@ -144,29 +144,26 @@
 `markdown` 필드의 출력 형태:
 
 ```markdown
-# {title}
-
-{summary}
-
 ## {heading}
 
 {body}
 
 - {bullet}
 
-> 출처: #102, #101
+## {heading}
 
----
-
-## 출처
-
-| 이미지 | 제목 | 카테고리 | 저장 시각 |
-| --- | --- | --- | --- |
-| #101 | 교보문고 C++ 프로그래밍 입문 | 쇼핑 | 2026-07-16T06:00:00.000Z |
+{body}
 ```
 
-출처 표는 사용자가 원본 스크린샷을 되찾을 수 있도록 항상 마지막에 붙는다.
-셀 안의 `|`는 `\|`로 escape된다.
+**제목·요약은 들어 있지 않다.** 앱이 `title`을 화면 헤더에, `summary`를 '요약' 블록에
+각각 따로 그린 뒤 이 본문을 그 아래에 렌더하므로, 본문에 또 담으면 제목·요약이 한 화면에
+두 번 나온다. 두 값은 응답 JSON의 `title`·`summary`로 이미 나가니 그대로 쓰면 된다.
+
+이미지 id와 출처 표도 넣지 않는다. 내부 id는 사용자에게 의미가 없고 본문 흐름을 끊는다.
+근거 매핑은 `sections[].imageIds`로만 나간다.
+
+섹션이 하나도 없으면 본문 대신 `summary`(그것도 비면 `title`)를 한 줄 담는다 —
+빈 문자열을 내보내면 Spring이 '완료인데 내용 없음'으로 보고 실패 처리한다.
 
 ### 에러
 

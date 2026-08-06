@@ -1133,15 +1133,13 @@ centroid 방식이라 개별 이미지가 아니라 공통 주제에 가까운 �
 
 `GET /api/v1/images/sync`
 
-앱 재설치 등으로 로컬 DB(Room)가 비었을 때, 상세 조회(5-2) 수준의 필드를 페이지로
-전부 받아 복원한다. `hasNext`가 `false`가 나올 때까지 `page`를 올려 호출한다.
+앱 재설치 등으로 로컬 DB(Room)가 비었을 때, 상세 조회(5-2) 수준의 필드를 **페이지
+없이 전부** 받아 복원한다. 재설치 복원이라는 드문 이벤트 전용이며, 목록 화면에는
+5-1을 쓴다.
 
 ### Query Parameters
 
-| 파라미터 | 타입 | 설명 |
-| --- | --- | --- |
-| page | Number | 페이지 번호, 0부터 시작. 기본값 `0` |
-| size | Number | 페이지 크기. 기본값 `100`, 최대 `200`. 복원은 왕복 수가 곧 시간이라 크게 잡는 것을 권장 |
+없다. 요청 한 번에 전체가 내려간다.
 
 ### Response `data`
 
@@ -1154,6 +1152,8 @@ centroid 방식이라 개별 이미지가 아니라 공통 주제에 가까운 �
     "list": [
       {
         "imageId": 1024,
+        "imageUrl": "https://...presigned-get...",
+        "thumbnailUrl": "https://...presigned-get...",
         "title": "C++ 프로그래밍 입문",
         "favorite": false,
         "summary": "교보문고에서 판매 중인 C++ 프로그래밍 입문서, 32,000원",
@@ -1168,11 +1168,7 @@ centroid 방식이라 개별 이미지가 아니라 공통 주제에 가까운 �
         "isCalendared": false
       }
     ],
-    "page": 0,
-    "size": 100,
-    "totalElements": 250,
-    "hasNext": true,
-    "hasPrevious": false
+    "totalElements": 250
   },
   "timestamp": "2026-08-06T06:00:00.000Z"
 }
@@ -1180,17 +1176,18 @@ centroid 방식이라 개별 이미지가 아니라 공통 주제에 가까운 �
 
 ### 규칙
 
-- 항목 필드명은 5-2 상세와 동일하다. **`imageUrl`/`thumbnailUrl`만 없다** — 만료되는
-  presigned URL은 로컬 DB에 저장할 수 없으므로 싣지 않는다. 이미지는 5-8/5-9로
-  그때그때 받는다.
-- 정렬은 `imageId` 오름차순 고정이다 — 동기화 도중 순서가 흔들리지 않게 한 것이므로
-  화면 정렬 용도로 쓰지 않는다.
+- 항목 필드명·순서는 5-2 상세와 동일하다 — 같은 매퍼로 Room을 채우면 된다.
+- `imageUrl`/`thumbnailUrl`은 presigned GET URL(1시간 유효)이다. **복원 직후 표시에는
+  그대로 쓰되 Room에 영구 보관하지 말 것** — 만료 후 표시 실패(403) 시 5-8/5-9로
+  재발급받는다. `thumbnailUrl`은 썸네일이 아직 없으면 `null`이다.
+- 정렬은 `imageId` 오름차순 고정 — 화면 정렬 용도가 아니다.
 - 분석이 완료(`COMPLETED`·`EMPTY`)된 활성 이미지만 내려간다(5-1과 같은 노출 규칙).
+- 이미지가 많은 계정은 응답이 수 MB가 될 수 있다. 클라이언트 read 타임아웃을 넉넉히
+  잡고, 스트리밍 파서(Moshi/Gson streaming 등) 사용을 권장한다.
 
 ### 에러
 
 - `UNAUTHORIZED` (401)
-- `INVALID_PARAMETER` (400) — page/size 범위 위반
 
 ## 6-1 카테고리 목록
 

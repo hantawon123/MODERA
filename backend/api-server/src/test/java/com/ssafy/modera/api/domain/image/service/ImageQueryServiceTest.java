@@ -48,38 +48,44 @@ class ImageQueryServiceTest {
     }
 
     @Test
-    void syncsDetailLevelFieldsWithoutPresignedUrls() {
+    void syncsEveryImageWithDetailFieldsAndPresignedUrls() throws Exception {
         OffsetDateTime uploadedAt = OffsetDateTime.now();
-        when(imageQueryRepository.findSyncPage(1, 0, 100))
-                .thenReturn(new ImageQueryRepository.ImageSyncPage(
-                        List.of(new ImageSyncRow(
-                                10, "C++", true, "summary", 3, "공부",
-                                List.of("C++", "공부"), List.of("가격: 32,000원"),
-                                null, "정제 텍스트", uploadedAt, true, false)),
-                        250
-                ));
+        when(imageQueryRepository.findAllForSync(1))
+                .thenReturn(List.of(
+                        new ImageSyncRow(
+                                10, "1/10-a.jpg", "1/10-thumb.jpg", "C++", true, "summary",
+                                3, "공부", List.of("C++", "공부"), List.of("가격: 32,000원"),
+                                null, "정제 텍스트", uploadedAt, true, false),
+                        // 썸네일이 아직 없는 행 — thumbnailUrl은 null, HEAD 확인도 없어야 한다.
+                        new ImageSyncRow(
+                                11, "1/11-b.jpg", null, "영수증", false, null,
+                                null, null, List.of(), List.of(),
+                                null, null, uploadedAt, false, false)));
+        StorageProperties.Bucket bucket = new StorageProperties.Bucket();
+        bucket.setPictures("pictures");
+        bucket.setThumbnails("thumbnails");
+        when(storageProperties.getBucket()).thenReturn(bucket);
+        PresignedGetObjectRequest presigned =
+                org.mockito.Mockito.mock(PresignedGetObjectRequest.class);
+        when(presigned.url()).thenReturn(URI.create("https://storage.example/signed").toURL());
+        when(s3Presigner.presignGetObject(any(
+                software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest.class
+        ))).thenReturn(presigned);
 
-        var response = imageQueryService.getSyncPage(1, 0, 100);
+        var response = imageQueryService.getAllForSync(1);
 
-        var item = response.list().getFirst();
-        assertThat(item.imageId()).isEqualTo(10);
-        assertThat(item.categoryId()).isEqualTo(3);
-        assertThat(item.ocrRefinedText()).isEqualTo("정제 텍스트");
-        assertThat(item.isDocumented()).isTrue();
-        // presigned URL 필드 자체가 없다 — 만료값을 로컬 DB에 저장하지 못하게 하는 계약.
-        assertThat(Arrays.stream(item.getClass().getRecordComponents())
-                .map(component -> component.getName()))
-                .doesNotContain("imageUrl", "thumbnailUrl");
-        assertThat(response.totalElements()).isEqualTo(250);
-        assertThat(response.hasNext()).isTrue();
-    }
-
-    @Test
-    void rejectsSyncPageBeyondSizeLimit() {
-        assertThatThrownBy(() -> imageQueryService.getSyncPage(1, 0, 201))
-                .isInstanceOf(BusinessException.class);
-        assertThatThrownBy(() -> imageQueryService.getSyncPage(1, -1, 100))
-                .isInstanceOf(BusinessException.class);
+        assertThat(response.totalElements()).isEqualTo(2);
+        var first = response.list().getFirst();
+        assertThat(first.imageId()).isEqualTo(10);
+        assertThat(first.imageUrl()).isEqualTo("https://storage.example/signed");
+        assertThat(first.thumbnailUrl()).isEqualTo("https://storage.example/signed");
+        assertThat(first.ocrRefinedText()).isEqualTo("정제 텍스트");
+        var second = response.list().get(1);
+        assertThat(second.imageUrl()).isEqualTo("https://storage.example/signed");
+        assertThat(second.thumbnailUrl()).isNull();
+        // 행마다 스토리지 존재 확인(HEAD)을 하면 수천 장 계정에서 이 API가 수 분짜리가 된다.
+        verify(s3Client, never()).headObject(any(
+                software.amazon.awssdk.services.s3.model.HeadObjectRequest.class));
     }
 
     @Test

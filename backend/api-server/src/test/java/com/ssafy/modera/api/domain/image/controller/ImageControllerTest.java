@@ -151,7 +151,7 @@ class ImageControllerTest {
         // /sync는 /{imageId} 경로 변수와 겹치지 않아야 한다(리터럴 매칭 우선).
         mockMvc.perform(get("/api/v1/images/sync"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.code").value("I215"));
-        verify(queryService).getSyncPage(null, 0, 100);
+        verify(queryService).getAllForSync(null);
     }
 
     @Test

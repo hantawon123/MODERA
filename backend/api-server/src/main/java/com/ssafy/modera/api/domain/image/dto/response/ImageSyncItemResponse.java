@@ -7,12 +7,15 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 5-10 전체 동기화 항목. 필드명은 상세 조회(5-2)와 동일하게 맞춰 앱이 같은 매퍼로
- * Room 엔티티를 채울 수 있게 한다. presigned URL(imageUrl/thumbnailUrl)만 없다 —
- * 만료되는 값이라 로컬 DB에 저장할 수 없고, 이미지는 5-8/5-9로 그때그때 받는다.
+ * 5-10 전체 동기화 항목. 필드명·순서를 상세 조회(5-2)와 동일하게 맞춰 앱이 같은
+ * 매퍼로 Room 엔티티를 채울 수 있게 한다.
  */
 public record ImageSyncItemResponse(
         @Schema(description = "이미지 ID") Integer imageId,
+        @Schema(description = "원본 이미지 Presigned GET URL(1시간 유효). 만료 후에는 5-8로 재발급")
+        String imageUrl,
+        @Schema(description = "썸네일 Presigned GET URL(1시간 유효). 썸네일이 없으면 null, 만료 후에는 5-9로 재발급")
+        String thumbnailUrl,
         @Schema(description = "제목") String title,
         @Schema(description = "즐겨찾기 여부") Boolean favorite,
         @Schema(description = "분석 요약") String summary,

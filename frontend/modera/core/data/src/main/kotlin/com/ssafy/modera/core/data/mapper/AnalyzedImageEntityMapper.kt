@@ -29,6 +29,6 @@ fun AnalyzedImageDetailResponse.asCategoryEntity(): CategoryEntity =
     CategoryEntity(
         categoryId = categoryId,
         name = category,
-        thumbnailUrl = null,
+        thumbnailUrl = "https://api.example.com:8443/api/v1/categories/${categoryId}/thumbnail",
         isNew = true,
     )

@@ -196,7 +196,7 @@ fun CategoryScreen(
                             }
                         },
                 ) {
-                    item {
+                    stickyHeader {
                         Column {
                             ModeraSearchBar(
                                 query = searchQuery,

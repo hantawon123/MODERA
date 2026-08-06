@@ -2,6 +2,7 @@ package com.ssafy.modera.feature.category
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -19,6 +20,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
@@ -131,6 +134,7 @@ fun CategoryScreen(
     val listState = rememberLazyListState()
     val showScrollToTop = rememberShowScrollToTop(listState)
     val coroutineScope = rememberCoroutineScope()
+    val focusManager = LocalFocusManager.current
     val displayCategoryTitle = if (isAllCategorySelected) {
         stringResource(R.string.category_all)
     } else {
@@ -165,33 +169,41 @@ fun CategoryScreen(
             modifier = Modifier
                 .fillMaxSize()
         ) {
-            ModeraTopBar(
-                onBackClick = {},
-                leftContent = {
-                    Row(
-                        modifier = Modifier
-                            .padding(start = 4.dp)
-                            .clickable(onClick = onCategoryTitleClick),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text(
-                            text = displayCategoryTitle,
-                            style = ModeraTheme.typography.titleSB20,
-                            color = ModeraTheme.colors.gray900,
-                        )
-                        Icon(
-                            painter = painterResource(ModeraIcons.ArrowDown),
-                            contentDescription = stringResource(
-                                R.string.category_title_picker_description,
-                            ),
-                            tint = ModeraTheme.colors.gray700,
-                            modifier = Modifier
-                                .padding(start = 4.dp)
-                                .size(16.dp),
-                        )
+            Box(
+                modifier = Modifier.pointerInput(Unit) {
+                    detectTapGestures {
+                        focusManager.clearFocus()
                     }
                 },
-            )
+            ) {
+                ModeraTopBar(
+                    onBackClick = {},
+                    leftContent = {
+                        Row(
+                            modifier = Modifier
+                                .padding(start = 4.dp)
+                                .clickable(onClick = onCategoryTitleClick),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(
+                                text = displayCategoryTitle,
+                                style = ModeraTheme.typography.titleSB20,
+                                color = ModeraTheme.colors.gray900,
+                            )
+                            Icon(
+                                painter = painterResource(ModeraIcons.ArrowDown),
+                                contentDescription = stringResource(
+                                    R.string.category_title_picker_description,
+                                ),
+                                tint = ModeraTheme.colors.gray700,
+                                modifier = Modifier
+                                    .padding(start = 4.dp)
+                                    .size(16.dp),
+                            )
+                        }
+                    },
+                )
+            }
 
             ModeraSearchBar(
                 query = searchQuery,
@@ -207,7 +219,12 @@ fun CategoryScreen(
                     state = listState,
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(horizontal = CategoryScreenDefaults.HorizontalPadding),
+                        .padding(horizontal = CategoryScreenDefaults.HorizontalPadding)
+                        .pointerInput(Unit) {
+                            detectTapGestures {
+                                focusManager.clearFocus()
+                            }
+                        },
                 ) {
                     item {
                         Column {

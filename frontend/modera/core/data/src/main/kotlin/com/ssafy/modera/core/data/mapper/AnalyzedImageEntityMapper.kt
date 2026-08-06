@@ -9,8 +9,8 @@ fun AnalyzedImageDetailResponse.asEntity(): AnalyzedImageEntity =
     AnalyzedImageEntity(
         imageId = imageId,
         categoryId = categoryId,
-        imageUrl = imageUrl,
-        thumbnailUrl = thumbnailUrl.orEmpty(),
+        imageUrl = "https://api.example.com:8443/api/v1/images/${imageId}/file/raw",
+        thumbnailUrl = "https://api.example.com:8443/api/v1/images/${imageId}/thumbnail/raw",
         title = title,
         summary = summary,
         favorite = favorite,

@@ -33,6 +33,7 @@ class DefaultAnalyzedImageRepositoryTest {
         repository = DefaultAnalyzedImageRepository(
             analyzedImageClient = analyzedImageClient,
             ioDispatcher = testDispatcher,
+            analyzedImageDao = mock(),
         )
     }
 
@@ -56,6 +57,7 @@ class DefaultAnalyzedImageRepositoryTest {
                         category = "개발",
                         isDocumented = true,
                         isCalendared = false,
+                        categoryId = 0,
                     ),
                 ),
                 page = 0,
@@ -143,6 +145,9 @@ class DefaultAnalyzedImageRepositoryTest {
                 ),
                 isDocumented = true,
                 isCalendared = false,
+                categoryId = 0,
+                ocrRefinedText = "",
+                updatedAt = "",
             )
 
             whenever(

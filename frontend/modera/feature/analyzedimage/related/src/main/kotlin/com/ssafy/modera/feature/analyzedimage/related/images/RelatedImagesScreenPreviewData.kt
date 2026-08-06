@@ -37,8 +37,10 @@ internal class RelatedImagesScreenPreviewParameterProvider :
                 name = "Error",
                 sourceTitle = "ASCII 해커톤",
                 uiState = RelatedImagesUiState.Error(
-                    message = "연관 자료를 불러오지 못했습니다.",
-                ),
+                    exception = IllegalStateException(
+                        "연관 문서를 불러오지 못했습니다.",
+                    ),
+                )
             ),
         )
 }

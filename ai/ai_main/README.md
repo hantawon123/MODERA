@@ -118,8 +118,11 @@ OCR 이 비었거나 정보성이 없다고 판정되면 분석을 건너뛰고 
 - **태그·카테고리는 전부 AI 가 자동 생성합니다.** 사람이 직접 만들거나 고치는 경로는
   없습니다(6-3 수정 API 는 범위 밖). 그래서 `tags[].source` 와 `fieldSources` 는
   항상 `"AGENT"`, `TagItem.createdBy` 도 항상 `"AGENT"` 입니다.
-  카테고리는 분석 시작 시 기본 17종을 후보로 쓰고, AGENT 가 그중 어디에도
-  못 붙이겠다고 판단하면 새 이름을 만들어 늘어납니다.
+  카테고리는 기본 13종이 정의돼 있고, 그중 `기타` 를 뺀 **12종이 AGENT 의 선택
+  후보**입니다 — 프롬프트가 `기타` 선택을 금지하고, 어느 후보에도 못 붙이겠다고
+  판단하면 새 이름을 만들어 늘어납니다. `기타` 는 AGENT 가 고르는 값이 아니라
+  **정보성 게이트가 자동으로 부여**합니다(OCR 텍스트에 다시 찾아볼 정보가 없으면
+  AI 호출 없이 즉시 `기타`).
 - **카테고리(7-2)만 페이지네이션이 없습니다.** 프론트 요청으로 뺐습니다(명세와 다른 부분).
   `data.list` 에 전체가 들어오고 `page`·`size`·`totalElements` 등은 없습니다.
   `page`·`size` 를 보내도 무시됩니다. `sort` 는 그대로 동작합니다.
@@ -523,7 +526,7 @@ POST /internal/v1/documents/candidates   X-Internal-Token: <공유 토큰>
 
 ## 팀 확인이 필요한 사항
 
-1. **카테고리 대표 벡터.** AI 서버가 카테고리별 centroid 를 OpenSearch `{OPENSEARCH_INDEX}_categories` 인덱스에 직접 유지합니다(판정된 카테고리에 그 이미지의 요약 임베딩을 누적 평균으로 반영). 서버를 재기동해도 카테고리와 벡터가 남고, 이미지가 쌓일수록 정확해집니다. 기본 17종 이름 벡터는 기동 시 전역 시드(`user_id=0`)로 심습니다. 10-5 응답에 `representativeVector` 가 오면 그쪽을 우선 씁니다(스키마는 이미 준비돼 있음) — 백엔드가 pgvector centroid 를 유지한다면 어느 쪽을 정본으로 볼지 합의가 필요합니다. **추가 카테고리 벡터를 사용자별로 둘지 공유할지는 미결입니다** — 현재는 사용자별 격리. 트레이드오프와 바꿀 때 손댈 지점은 [docs/CATEGORY_VECTOR_STORE.md](docs/CATEGORY_VECTOR_STORE.md) 참고.
+1. **카테고리 대표 벡터.** AI 서버가 카테고리별 centroid 를 OpenSearch `{OPENSEARCH_INDEX}_categories` 인덱스에 직접 유지합니다(판정된 카테고리에 그 이미지의 요약 임베딩을 누적 평균으로 반영). 서버를 재기동해도 카테고리와 벡터가 남고, 이미지가 쌓일수록 정확해집니다. 기본 13종 이름 벡터는 기동 시 전역 시드(`user_id=0`)로 심습니다. 10-5 응답에 `representativeVector` 가 오면 그쪽을 우선 씁니다(스키마는 이미 준비돼 있음) — 백엔드가 pgvector centroid 를 유지한다면 어느 쪽을 정본으로 볼지 합의가 필요합니다. **추가 카테고리 벡터는 2026-08-06 에 "이름만 공유, centroid 는 개인화" 로 확정했습니다** — 타 사용자 카테고리의 이름만 후보로 빌려오고(이름 terms 집계라 문서 본문을 읽지 않습니다) centroid 는 사용자별로 격리합니다. 근거와 구현 지점은 [docs/CATEGORY_VECTOR_STORE.md](docs/CATEGORY_VECTOR_STORE.md) 참고.
 2. **기본 카테고리 위치.** 쌓인 카테고리가 하나도 없을 때(콜드 스타트) `stages.DEFAULT_CATEGORIES` 17개를 후보로 씁니다. 원칙적으로는 Spring DB 시드로 옮기는 편이 낫습니다.
 3. **`categoryCreated` 필드.** AGENT 결과에 신규 카테고리 여부를 담았습니다. 명세에 없는 필드라 Spring 과 합의가 필요합니다(불필요하면 제거).
 3-1. **`documentVector` 필드.** AGENT 결과에 검색용 문서 임베딩(요약 기준, `DOCUMENT`)을 함께 실어 보냅니다. Spring 은 콜백 한 번으로 메타데이터와 벡터를 같이 받아 pgvector 등에 적재하면 됩니다(임베딩 재호출 불필요). `embeddingModel`·`embeddingDimension` 도 함께 넘어가니 벡터 컬럼 차원과 일치하는지 확인이 필요합니다. 명세 밖 필드라 Spring 과 계약 확정이 필요합니다.

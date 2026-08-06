@@ -46,9 +46,11 @@ import com.ssafy.modera.core.ui.snackbar.ModeraSnackbarMessage
 import com.ssafy.modera.core.ui.snackbar.ModeraSnackbarProvider
 import com.ssafy.modera.core.ui.snackbar.rememberModeraSnackbarHostState
 import com.ssafy.modera.fcm.NotificationNavigationTarget
-import com.ssafy.modera.feature.analyzedimagedetail.navigation.AnalyzedImageDetailNavKey
-import com.ssafy.modera.feature.analyzedimagedetail.navigation.analyzedImageDetailEntry
-import com.ssafy.modera.feature.analyzedimagedetail.navigation.navigateToImageDetail
+import com.ssafy.modera.feature.analyzedimage.detail.navigation.AnalyzedImageDetailNavKey
+import com.ssafy.modera.feature.analyzedimage.detail.navigation.analyzedImageDetailEntry
+import com.ssafy.modera.feature.analyzedimage.detail.navigation.navigateToImageDetail
+import com.ssafy.modera.feature.analyzedimage.related.images.navigation.navigateToRelatedImages
+import com.ssafy.modera.feature.analyzedimage.related.images.navigation.relatedImagesEntry
 import com.ssafy.modera.feature.calendar.navigation.calendarEntry
 import com.ssafy.modera.feature.calendar.navigation.navigateToCalendar
 import com.ssafy.modera.feature.category.navigation.CategoryNavKey
@@ -70,7 +72,6 @@ import com.ssafy.modera.feature.home.navigation.navigateToHomeTab
 import com.ssafy.modera.feature.imageviewer.navigation.imageViewerEntry
 import com.ssafy.modera.feature.imageviewer.navigation.navigateToImageViewer
 import com.ssafy.modera.feature.login.LoginRoute
-import com.ssafy.modera.feature.relatedimages.navigation.relatedImagesEntry
 import com.ssafy.modera.feature.settings.navigation.navigateToSettings
 import com.ssafy.modera.feature.settings.navigation.settingsEntry
 import com.ssafy.modera.media.rememberGalleryPickerLauncher
@@ -352,6 +353,7 @@ internal fun ModeraApp(
                                     onBackClick = handleBack,
                                     onCreateDocumentClick =
                                         navigator::navigateToDocumentCreate,
+                                    onRelatedImagesClick = navigator::navigateToRelatedImages,
                                 )
 
                                 imageViewerEntry(
@@ -363,6 +365,7 @@ internal fun ModeraApp(
                                 relatedImagesEntry(
                                     navigator = navigator,
                                     onBackClick = handleBack,
+                                    onRelatedImageClick = navigator::navigateToImageDetail,
                                 )
 
                                 documentEntry(

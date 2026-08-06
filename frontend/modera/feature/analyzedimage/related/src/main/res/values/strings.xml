@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="related_images_title">연관 자료</string>
+    <string name="related_images_source_title_format">“%1$s”</string>
+    <string name="related_images_header_suffix">의 연관 자료</string>
+</resources>

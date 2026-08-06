@@ -5,6 +5,7 @@ import com.ssafy.modera.core.common.network.ModeraDispatcher
 import com.ssafy.modera.core.data.mapper.asEntity
 import com.ssafy.modera.core.database.dao.DocumentDao
 import com.ssafy.modera.core.database.model.AnalyzedImageEntity
+import com.ssafy.modera.core.database.model.DocumentEntity
 import com.ssafy.modera.core.database.model.asDocument
 import com.ssafy.modera.core.database.model.asExternalModel
 import com.ssafy.modera.core.model.DocumentDetail
@@ -40,6 +41,10 @@ class DefaultDocumentRepository @Inject constructor(
             .map { document ->
                 document.asExternalModel()
             }
+
+    override fun getDocumentsByImageId(imageId: Long): Flow<List<Document>> =
+        documentDao.getDocumentEntitiesByImageId(imageId)
+            .map { it.map(DocumentEntity::asDocument) }
 
     override fun getDocuments(
         sortType: DocumentSortType,

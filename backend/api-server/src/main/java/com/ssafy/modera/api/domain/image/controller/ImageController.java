@@ -12,6 +12,7 @@ import com.ssafy.modera.api.domain.image.dto.response.ImageRegisterResponse;
 import com.ssafy.modera.api.domain.image.dto.response.ImageSummaryResponse;
 import com.ssafy.modera.api.domain.image.dto.response.ImageListResponse;
 import com.ssafy.modera.api.domain.image.dto.response.ImageFileUrlResponse;
+import com.ssafy.modera.api.domain.image.dto.response.ImageSyncResponse;
 import com.ssafy.modera.api.domain.image.dto.response.ImageUploadUrlResponse;
 import com.ssafy.modera.api.domain.image.service.ImageFileUrlService;
 import com.ssafy.modera.api.domain.image.service.ImageQueryService;
@@ -116,6 +117,40 @@ public class ImageController {
         ImageListResponse response = imageQueryService.getImages(
                 userId, favorite, page, size, sort, keyword, categoryId);
         return ResponseEntity.ok(ApiResponse.success("I205", response));
+    }
+
+    @Operation(
+            summary = "이미지 전체 동기화(로컬 DB 복원)",
+            description = """
+                    앱 재설치 등으로 로컬 DB(Room)가 비었을 때, 상세 조회(5-2) 수준의 필드를
+                    페이지로 전부 받아 복원하는 용도다. hasNext가 false가 나올 때까지 page를
+                    올려 호출한다.
+
+                    항목 필드명은 5-2와 동일하다. **imageUrl/thumbnailUrl만 없다** — 만료되는
+                    presigned URL은 로컬 DB에 저장할 수 없으므로, 이미지는 5-8/5-9로 그때그때
+                    받는다.
+
+                    정렬은 imageId 오름차순 고정이다(페이지를 도는 동안 순서가 흔들리지 않게).
+                    분석이 완료(COMPLETED·EMPTY)된 활성 이미지만 내려간다 — 목록(5-1)과 같은
+                    노출 규칙이다.
+                    """
+    )
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "조회 성공 — data.list에 상세 수준 항목 배열"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "page/size 값이 올바르지 않음(INVALID_PARAMETER)"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "accessToken 없음/무효(UNAUTHORIZED)")
+    })
+    @GetMapping("/sync")
+    public ResponseEntity<ApiResponse<ImageSyncResponse>> syncImages(
+            @AuthenticationPrincipal Integer userId,
+            @RequestParam(name = "page", defaultValue = "0") int page,
+            @Parameter(description = "페이지 크기(1~200). 복원은 왕복 수가 곧 시간이라 크게 잡는 것을 권장")
+            @RequestParam(name = "size", defaultValue = "100") int size
+    ) {
+        return ResponseEntity.ok(ApiResponse.success(
+                "I215",
+                imageQueryService.getSyncPage(userId, page, size)
+        ));
     }
 
     @Operation(

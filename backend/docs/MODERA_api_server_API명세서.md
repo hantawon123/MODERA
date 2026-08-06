@@ -158,6 +158,7 @@ CANCELED            취소
 | 5-7 | POST | /images/documentize | 다중 이미지 문서화 기반 관련 자료 검색 |
 | 5-8 | GET | /images/{imageId}/file | 원본 이미지 URL 발급 |
 | 5-9 | GET | /images/{imageId}/thumbnail | 썸네일 이미지 URL 발급 |
+| 5-10 | GET | /images/sync | 이미지 전체 동기화(로컬 DB 복원) |
 | 6-1 | GET | /categories | 카테고리 목록 |
 | 6-2 | GET | /categories/{categoryId}/thumbnail | 카테고리 아이콘 조회(302 리다이렉트) |
 | 7-1 | GET | /user | 내 정보 |
@@ -1127,6 +1128,69 @@ centroid 방식이라 개별 이미지가 아니라 공통 주제에 가까운 �
 
 **썸네일이 아직 생성되지 않은 이미지(분석 전 등)는 404가 아니라 원본 URL로 폴백한다.**
 클라이언트에서 분기할 필요가 없도록 한 폴백이다.
+
+## 5-10 이미지 전체 동기화(로컬 DB 복원)
+
+`GET /api/v1/images/sync`
+
+앱 재설치 등으로 로컬 DB(Room)가 비었을 때, 상세 조회(5-2) 수준의 필드를 페이지로
+전부 받아 복원한다. `hasNext`가 `false`가 나올 때까지 `page`를 올려 호출한다.
+
+### Query Parameters
+
+| 파라미터 | 타입 | 설명 |
+| --- | --- | --- |
+| page | Number | 페이지 번호, 0부터 시작. 기본값 `0` |
+| size | Number | 페이지 크기. 기본값 `100`, 최대 `200`. 복원은 왕복 수가 곧 시간이라 크게 잡는 것을 권장 |
+
+### Response `data`
+
+```json
+{
+  "result": "SUCCESS",
+  "code": "I215",
+  "message": "요청이 성공했습니다.",
+  "data": {
+    "list": [
+      {
+        "imageId": 1024,
+        "title": "C++ 프로그래밍 입문",
+        "favorite": false,
+        "summary": "교보문고에서 판매 중인 C++ 프로그래밍 입문서, 32,000원",
+        "categoryId": 3,
+        "category": "공부",
+        "tags": ["C++", "쇼핑"],
+        "keyInformation": ["가격: 32,000원", "판매처: 교보문고"],
+        "scheduledData": null,
+        "ocrRefinedText": "C++ 프로그래밍 입문\n교보문고 32,000원 ...",
+        "uploadedAt": "2026-07-28T05:00:00.000Z",
+        "isDocumented": true,
+        "isCalendared": false
+      }
+    ],
+    "page": 0,
+    "size": 100,
+    "totalElements": 250,
+    "hasNext": true,
+    "hasPrevious": false
+  },
+  "timestamp": "2026-08-06T06:00:00.000Z"
+}
+```
+
+### 규칙
+
+- 항목 필드명은 5-2 상세와 동일하다. **`imageUrl`/`thumbnailUrl`만 없다** — 만료되는
+  presigned URL은 로컬 DB에 저장할 수 없으므로 싣지 않는다. 이미지는 5-8/5-9로
+  그때그때 받는다.
+- 정렬은 `imageId` 오름차순 고정이다 — 동기화 도중 순서가 흔들리지 않게 한 것이므로
+  화면 정렬 용도로 쓰지 않는다.
+- 분석이 완료(`COMPLETED`·`EMPTY`)된 활성 이미지만 내려간다(5-1과 같은 노출 규칙).
+
+### 에러
+
+- `UNAUTHORIZED` (401)
+- `INVALID_PARAMETER` (400) — page/size 범위 위반
 
 ## 6-1 카테고리 목록
 

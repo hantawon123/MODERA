@@ -108,7 +108,9 @@ class CalendarViewModel @Inject constructor(
     ) { navigation, appSchedules, deviceSchedule, localChanges ->
         val appSchedulesWithLocalChanges = appSchedules.applyLocalChanges(localChanges)
         val appSchedulesForSelectedDate = appSchedulesWithLocalChanges
-            .filter { it.date == navigation.selectedDate }
+            .filter { schedule ->
+                schedule.date == null || schedule.date == navigation.selectedDate
+            }
 
         CalendarUiState(
             visibleMonth = navigation.visibleMonth,
@@ -193,9 +195,13 @@ class CalendarViewModel @Inject constructor(
 
     fun onDeleteDialogConfirm() {
         val target = scheduleToDelete.value ?: return
+        val imageId = target.imageId ?: return
 
         viewModelScope.launch {
-            calendarRepository.deleteSchedule(target.id)
+            calendarRepository.deleteSchedule(
+                scheduleId = target.id,
+                imageId = imageId,
+            )
                 .asResult()
                 .collect { result ->
                     when (result) {
@@ -215,8 +221,13 @@ class CalendarViewModel @Inject constructor(
     }
 
     fun addSchedule(schedule: CalendarSchedule) {
+        val imageId = schedule.imageId ?: return
+
         viewModelScope.launch {
-            calendarRepository.registerSchedule(schedule.id)
+            calendarRepository.registerSchedule(
+                scheduleId = schedule.id,
+                imageId = imageId,
+            )
                 .asResult()
                 .collect { result ->
                     when (result) {

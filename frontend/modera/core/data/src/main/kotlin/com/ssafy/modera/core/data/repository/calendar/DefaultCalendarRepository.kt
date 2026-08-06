@@ -2,6 +2,7 @@ package com.ssafy.modera.core.data.repository.calendar
 
 import com.ssafy.modera.core.common.network.Dispatcher
 import com.ssafy.modera.core.common.network.ModeraDispatcher
+import com.ssafy.modera.core.data.repository.AnalyzedImageRepository
 import com.ssafy.modera.core.model.calendar.CalendarSchedule
 import com.ssafy.modera.core.network.model.calendar.ScheduleResponse
 import com.ssafy.modera.core.network.model.calendar.SchedulesRequest
@@ -9,6 +10,7 @@ import com.ssafy.modera.core.network.model.calendar.asExternalModel
 import com.ssafy.modera.core.network.service.CalendarClient
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import java.time.LocalDate
@@ -17,6 +19,7 @@ import javax.inject.Inject
 
 class DefaultCalendarRepository @Inject constructor(
     private val calendarClient: CalendarClient,
+    private val analyzedImageRepository: AnalyzedImageRepository,
     @Dispatcher(ModeraDispatcher.IO) private val ioDispatcher: CoroutineDispatcher,
 ) : CalendarRepository {
 
@@ -40,21 +43,39 @@ class DefaultCalendarRepository @Inject constructor(
 
     override fun registerSchedule(
         scheduleId: Long,
+        imageId: Long,
     ): Flow<Unit> = flow {
         val response = calendarClient.registerSchedule(scheduleId)
         if (!response.calendared) {
             error("스케쥴 등록에 실패했습니다.")
         }
+
+        analyzedImageRepository
+            .setAnalyzedImageCalendared(
+                imageId = imageId,
+                isCalendared = true,
+            )
+            .first()
+
         emit(Unit)
     }.flowOn(ioDispatcher)
 
     override fun deleteSchedule(
         scheduleId: Long,
+        imageId: Long,
     ): Flow<Unit> = flow {
         val response = calendarClient.deleteSchedule(scheduleId)
         if (!response.deleted) {
             error("일정 삭제에 실패했습니다.")
         }
+
+        analyzedImageRepository
+            .setAnalyzedImageCalendared(
+                imageId = imageId,
+                isCalendared = false,
+            )
+            .first()
+
         emit(Unit)
     }.flowOn(ioDispatcher)
 

@@ -1,6 +1,7 @@
 package com.ssafy.modera.core.data
 
 import app.cash.turbine.test
+import com.ssafy.modera.core.data.repository.AnalyzedImageRepository
 import com.ssafy.modera.core.data.repository.calendar.CalendarRepository
 import com.ssafy.modera.core.data.repository.calendar.DefaultCalendarRepository
 import com.ssafy.modera.core.model.calendar.CalendarScheduleSource
@@ -24,6 +25,7 @@ import java.time.ZoneId
 class DefaultCalendarRepositoryTest {
 
     private lateinit var calendarClient: CalendarClient
+    private lateinit var analyzedImageRepository: AnalyzedImageRepository
     private lateinit var repository: CalendarRepository
 
     private val testDispatcher = StandardTestDispatcher()
@@ -32,9 +34,11 @@ class DefaultCalendarRepositoryTest {
     @Before
     fun setUp() {
         calendarClient = mock()
+        analyzedImageRepository = mock()
 
         repository = DefaultCalendarRepository(
             calendarClient = calendarClient,
+            analyzedImageRepository = analyzedImageRepository,
             ioDispatcher = testDispatcher,
         )
     }
@@ -102,6 +106,7 @@ class DefaultCalendarRepositoryTest {
 
             val addedSchedule = schedules[0]
             assertEquals(2L, addedSchedule.id)
+            assertEquals(10L, addedSchedule.imageId)
             assertEquals("성심당 케이크 예약", addedSchedule.title)
             assertEquals(CalendarScheduleSource.APP, addedSchedule.source)
             assertEquals(

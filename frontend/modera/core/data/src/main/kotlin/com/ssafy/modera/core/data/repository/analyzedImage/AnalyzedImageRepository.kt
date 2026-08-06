@@ -1,4 +1,4 @@
-package com.ssafy.modera.core.data.repository
+package com.ssafy.modera.core.data.repository.analyzedImage
 
 import com.ssafy.modera.core.data.sync.Syncable
 import com.ssafy.modera.core.model.analyzedimage.AnalyzedImage

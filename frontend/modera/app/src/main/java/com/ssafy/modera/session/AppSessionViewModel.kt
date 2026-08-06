@@ -2,7 +2,7 @@ package com.ssafy.modera.session
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.ssafy.modera.core.data.repository.AnalyzedImageRepository
+import com.ssafy.modera.core.data.repository.analyzedImage.AnalyzedImageRepository
 import com.ssafy.modera.core.data.repository.auth.AuthRepository
 import com.ssafy.modera.core.data.repository.document.DocumentRepository
 import com.ssafy.modera.core.ui.snackbar.ModeraSnackbarMessage

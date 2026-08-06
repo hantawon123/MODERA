@@ -252,7 +252,7 @@ fun CategoryScreen(
                         item(key = "list_empty") {
                             EmptyScreen(
                                 message = stringResource(R.string.category_list_empty),
-                                modifier = Modifier.padding(top = 40.dp),
+                                modifier = Modifier.fillParentMaxSize(),
                             )
                         }
                     } else {

@@ -6,6 +6,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import com.ssafy.modera.core.navigation.NavigationState
 import com.ssafy.modera.core.navigation.rememberNavigationState
+import com.ssafy.modera.feature.category.CategoryTabController
+import com.ssafy.modera.feature.category.navigation.rememberCategoryTabController
 import com.ssafy.modera.feature.home.HomeTabController
 import com.ssafy.modera.feature.home.navigation.HomeNavKey
 import com.ssafy.modera.feature.home.navigation.rememberHomeTabController
@@ -18,15 +20,18 @@ fun rememberModeraAppState(
 ): ModeraAppState {
     val navigationState = rememberNavigationState(HomeNavKey, TOP_LEVEL_NAV_ITEMS.keys)
     val homeTabController = rememberHomeTabController()
+    val categoryTabController = rememberCategoryTabController()
 
     return remember(
         navigationState,
         homeTabController,
+        categoryTabController,
         coroutineScope,
     ) {
         ModeraAppState(
             navigationState = navigationState,
             homeTabController = homeTabController,
+            categoryTabController = categoryTabController,
             coroutineScope = coroutineScope,
         )
     }
@@ -36,8 +41,8 @@ fun rememberModeraAppState(
 class ModeraAppState(
     val navigationState: NavigationState,
     val homeTabController: HomeTabController,
+    val categoryTabController: CategoryTabController,
     coroutineScope: CoroutineScope,
 ) {
     // TODO : 추후 필요한 기능 관련 state 추가
 }
-

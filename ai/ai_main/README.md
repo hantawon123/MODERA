@@ -255,7 +255,7 @@ Spring → AI   POST /internal/v1/documents
                   "교보문고 32,000원 (10% 할인)"],
       "imageIds": [103, 102, 101] }        // ← 한 섹션이 세 장을 근거로 삼는다
   ],
-  "markdown": "# C++ 입문서 구매 후보 비교\n\n...",
+  "markdown": "## 가격 비교\n\n...",
   "sourceImageIds": [101, 102, 103],
   "skipped": [],
   "modelVersion": "gemini-2.5-flash-lite",
@@ -265,6 +265,7 @@ Spring → AI   POST /internal/v1/documents
 
 - **`markdown` 이 최종 산출물입니다.** `sections` 는 Spring/앱이 직접 재조립하고 싶을 때 쓰는 원자료입니다.
 - 마크다운에는 이미지 id 와 출처 표를 넣지 않습니다(내부 id 는 사용자에게 의미가 없고 본문 흐름을 끊습니다). 근거 매핑은 `sections[].imageIds` 로만 나갑니다.
+- 마크다운에 **문서 제목·요약도 넣지 않습니다.** 앱이 `title` 을 헤더에, `summary` 를 '요약' 블록에 따로 그린 뒤 그 아래에 이 본문을 렌더하므로, 본문에 또 담으면 한 화면에 두 번 나옵니다. 섹션이 하나도 없을 때만 예외로 `summary`(그것도 비면 `title`) 한 줄을 담습니다 — 빈 문자열은 Spring 이 실패로 끊습니다.
 - 마크다운을 모델에게 시키지 않고 구조(JSON)만 받아 서버가 렌더합니다. 출력 모양이 항상 같고 코드펜스·잡문이 섞이지 않습니다. 모델이 규칙을 어기고 `summary`·`body` 에 마크다운을 넣어도 서버가 중화합니다(줄 앞 `#`·`>`·`|` 는 escape, 코드펜스 줄은 폐기).
 - `title`·`summary`·`keyInformation`·`ocr` 이 **전부 빈** 항목은 `skipped: NO_CONTENT` 로 빠집니다(빈 블록을 넣으면 모델이 지어냅니다). 한 장도 못 쓰면 `NO_DOCUMENT_SOURCE`(400).
 - 한 번에 **최대 30장**(`document.MAX_IMAGES`), 이미지당 OCR **1500자**까지 프롬프트에 넣습니다. OCR 은 자르지 말고 전체를 보내면 AI 가 자릅니다. 30장 초과는 400.

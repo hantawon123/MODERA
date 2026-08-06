@@ -195,15 +195,16 @@ def _prose(value: Any) -> str:
 
 # ── 3) 마크다운 렌더링 ────────────────────────────────────────────────────
 def render_markdown(document: dict[str, Any]) -> str:
-    """문서 구조 → 마크다운 문자열.
+    """문서 구조 → 마크다운 **본문**.
+
+    제목·요약은 넣지 않는다. 앱은 title 을 헤더에, summary 를 '요약' 블록에 각각 따로
+    그린 뒤 이 문자열을 그 아래에 붙인다. 여기에 또 담으면 한 화면에 제목·요약이 두 번
+    나온다. 두 값은 응답 JSON 의 title·summary 로 이미 나가므로 손실은 없다.
 
     이미지 id 는 렌더에 넣지 않는다. 사용자에게 내부 id 는 의미가 없고, 출처 표기가
     본문 흐름을 끊는다. 근거 매핑은 응답 JSON 의 sections[].imageIds 로만 나간다.
     """
-    lines: list[str] = [f"# {document['title']}", ""]
-
-    if document.get("summary"):
-        lines += [document["summary"], ""]
+    lines: list[str] = []
 
     for section in document.get("sections") or []:
         lines += [f"## {section['heading']}", ""]
@@ -213,7 +214,9 @@ def render_markdown(document: dict[str, Any]) -> str:
             lines += [f"- {b}" for b in section["bullets"]]
             lines.append("")
 
-    return "\n".join(lines).rstrip() + "\n"
+    # 섹션이 하나도 없으면 본문이 통째로 비고, Spring 은 빈 markdown 을 실패로 끊는다
+    # (완료인데 내용 없음을 저장하지 않으려는 규칙). 요약이라도 남겨 문서를 살린다.
+    return "\n".join(lines or [document.get("summary") or document["title"]]).rstrip() + "\n"
 
 
 # ── 진입점 ────────────────────────────────────────────────────────────────

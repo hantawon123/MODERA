@@ -1,6 +1,6 @@
 plugins {
     id("modera.android.feature.impl")
-    alias(libs.plugins.kotlinx.serialization)
+    id("modera.android.hilt")
 }
 
 android {

@@ -16,6 +16,9 @@ import retrofit2.http.Query
 
 interface DocumentService {
 
+    @GET("api/v1/documents/details")
+    suspend fun fetchDocumentDetails(): ApiResponse<BaseResponse<List<DocumentDetailResponse>>>
+
     @GET("api/v1/documents/{documentId}")
     suspend fun fetchDocumentDetail(
         @Path("documentId") documentId: Long,

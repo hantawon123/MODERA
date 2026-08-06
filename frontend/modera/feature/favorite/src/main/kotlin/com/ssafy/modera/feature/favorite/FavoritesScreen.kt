@@ -10,10 +10,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -26,7 +24,6 @@ import com.ssafy.modera.core.component.ModeraTopBar
 import com.ssafy.modera.core.component.item.ModeraAnalyzedImageItem
 import com.ssafy.modera.core.component.rememberShowScrollToTop
 import com.ssafy.modera.core.designsystem.component.HorizontalDivider
-import com.ssafy.modera.core.designsystem.component.LoadingWheel
 import com.ssafy.modera.core.designsystem.component.Text
 import com.ssafy.modera.core.designsystem.theme.ModeraTheme
 import com.ssafy.modera.core.model.analyzedimage.AnalyzedImage
@@ -61,9 +58,6 @@ fun FavoritesRoute(
         is FavoritesUiState.Success -> {
             FavoritesScreen(
                 favorites = state.favorites,
-                isLoadingMore = state.isLoadingMore,
-                hasNextPage = state.hasNextPage,
-                onLoadMore = viewModel::loadNextPage,
                 onItemClick = onItemClick,
                 modifier = modifier,
             )
@@ -74,28 +68,12 @@ fun FavoritesRoute(
 @Composable
 fun FavoritesScreen(
     favorites: List<AnalyzedImage>,
-    isLoadingMore: Boolean,
-    hasNextPage: Boolean,
-    onLoadMore: () -> Unit,
     onItemClick: (Long) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val listState = rememberLazyListState()
     val showScrollToTop = rememberShowScrollToTop(listState)
     val coroutineScope = rememberCoroutineScope()
-
-    LaunchedEffect(listState, hasNextPage, isLoadingMore) {
-        snapshotFlow {
-            val layoutInfo = listState.layoutInfo
-            val lastVisibleItemIndex = layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
-            val totalItems = layoutInfo.totalItemsCount
-            lastVisibleItemIndex >= totalItems - FavoritesScreenDefaults.LOAD_MORE_THRESHOLD
-        }.collect { shouldLoadMore ->
-            if (shouldLoadMore && hasNextPage && !isLoadingMore) {
-                onLoadMore()
-            }
-        }
-    }
 
     Column(
         modifier = modifier
@@ -161,23 +139,6 @@ fun FavoritesScreen(
                         )
                     }
                 }
-
-                if (isLoadingMore) {
-                    item(key = "loading_more") {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 16.dp),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            LoadingWheel(
-                                contentDescription = stringResource(
-                                    R.string.favorites_loading_more_description,
-                                ),
-                            )
-                        }
-                    }
-                }
             }
 
             ModeraScrollToTopButton(
@@ -195,7 +156,6 @@ fun FavoritesScreen(
 
 internal object FavoritesScreenDefaults {
     val HorizontalPadding = 20.dp
-    const val LOAD_MORE_THRESHOLD = 3
 }
 
 @Preview(showBackground = true, widthDp = 360, heightDp = 780)
@@ -204,9 +164,6 @@ private fun FavoritesScreenPreview() {
     ModeraTheme {
         FavoritesScreen(
             favorites = FavoritesPreviewData.items,
-            isLoadingMore = false,
-            hasNextPage = false,
-            onLoadMore = {},
             onItemClick = {},
         )
     }

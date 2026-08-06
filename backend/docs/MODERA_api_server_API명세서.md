@@ -159,6 +159,8 @@ CANCELED            취소
 | 5-8 | GET | /images/{imageId}/file | 원본 이미지 URL 발급 |
 | 5-9 | GET | /images/{imageId}/thumbnail | 썸네일 이미지 URL 발급 |
 | 5-10 | GET | /images/details | 이미지 전체 상세 조회(로컬 DB 복원) |
+| 5-11 | GET | /images/{imageId}/file/raw | 원본 이미지 조회(302 리다이렉트) |
+| 5-12 | GET | /images/{imageId}/thumbnail/raw | 썸네일 이미지 조회(302 리다이렉트) |
 | 6-1 | GET | /categories | 카테고리 목록 |
 | 6-2 | GET | /categories/{categoryId}/thumbnail | 카테고리 아이콘 조회(302 리다이렉트) |
 | 7-1 | GET | /user | 내 정보 |
@@ -1186,6 +1188,44 @@ centroid 방식이라 개별 이미지가 아니라 공통 주제에 가까운 �
 ### 에러
 
 - `UNAUTHORIZED` (401)
+
+## 5-11 원본 이미지 조회(302 리다이렉트)
+
+`GET /api/v1/images/{imageId}/file/raw`
+
+**이 API는 JSON이 아니라 302 리다이렉트로 응답한다** — 이미지 로더(Coil 등)에 이
+불변 경로를 그대로 주면 리다이렉트를 따라가 이미지가 로드된다. URL **값**이 필요하면
+5-8(`/file`)을 쓴다. 두 API는 같은 검증·같은 presigned URL을 쓰는 형제이며, 응답
+형태만 다르다.
+
+### 응답
+
+```http
+HTTP/1.1 302 Found
+Location: https://.../pictures/7/101-a.jpg?X-Amz-Algorithm=...&X-Amz-Signature=...
+Cache-Control: no-store
+```
+
+- 본문 없음. **공통 JSON envelope의 예외다.** 에러(401·404)는 평소처럼 envelope JSON이다.
+- 이 경로는 만료가 없어 Room 영구 저장·이미지 캐시 키로 쓸 수 있다. presigned URL의
+  1시간 만료는 매 호출 새로 발급하는 것으로 흡수된다.
+- `Cache-Control: no-store`는 리다이렉트 응답 자체의 캐시 금지다(만료되는 Location 재사용
+  방지). 이미지 캐시는 앱이 이 불변 경로를 키로 관리한다.
+- 이 경로로 이미지를 로드할 때도 **Authorization 헤더가 필요**하다(`/api/v1/**`).
+  리다이렉트 대상(presigned URL)에는 헤더를 붙이면 안 된다 — OkHttp 인터셉터 규칙은
+  [image-file-url-api.md](./image-file-url-api.md) 3절 참고.
+
+### 에러
+
+- `UNAUTHORIZED` (401)
+- `IMAGE_NOT_FOUND` (404) — 없거나 접근할 수 없는 imageId (5-8과 동일 정책)
+
+## 5-12 썸네일 이미지 조회(302 리다이렉트)
+
+`GET /api/v1/images/{imageId}/thumbnail/raw`
+
+규칙은 5-11과 같고, 대상만 썸네일이다. **썸네일이 아직 없으면 404가 아니라 원본으로
+폴백해 302한다**(5-9와 동일한 폴백).
 
 ## 6-1 카테고리 목록
 

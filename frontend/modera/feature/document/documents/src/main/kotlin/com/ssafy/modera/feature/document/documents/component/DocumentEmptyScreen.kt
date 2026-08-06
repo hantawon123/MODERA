@@ -8,7 +8,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -19,8 +19,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.ssafy.modera.core.designsystem.component.Text
 import com.ssafy.modera.core.designsystem.theme.ModeraTheme
+import com.ssafy.modera.core.ui.R.drawable.img_character_document_empty
 import com.ssafy.modera.feature.document.R
-import com.ssafy.modera.core.ui.R as uiR
 
 @Composable
 internal fun DocumentEmptyScreen(
@@ -37,9 +37,9 @@ internal fun DocumentEmptyScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Image(
-                painter = painterResource(uiR.drawable.img_chracter_error),
+                painter = painterResource(img_character_document_empty),
                 contentDescription = null,
-                modifier = Modifier.size(124.dp),
+                modifier = Modifier.width(136.dp),
             )
 
             Spacer(

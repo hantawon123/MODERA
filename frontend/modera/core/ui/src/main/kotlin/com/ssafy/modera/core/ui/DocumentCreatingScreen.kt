@@ -24,9 +24,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -34,6 +31,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.ssafy.modera.core.component.PulsingGradientCircle
 import com.ssafy.modera.core.designsystem.component.Text
 import com.ssafy.modera.core.designsystem.theme.ModeraTheme
 import com.ssafy.modera.core.model.analyzedimage.AnalyzedImage
@@ -153,21 +151,11 @@ private fun DocumentCreatingCharacter(
 
     Box(
         modifier = modifier
-            .size(220.dp)
-            .drawBehind {
-                drawCircle(
-                    brush = Brush.radialGradient(
-                        colors = listOf(
-                            glowColor.copy(alpha = 0.2f),
-                            glowColor.copy(alpha = 0.06f),
-                            Color.Transparent,
-                        ),
-                        radius = size.minDimension / 2f,
-                    ),
-                )
-            },
+            .size(220.dp),
         contentAlignment = Alignment.Center,
     ) {
+        PulsingGradientCircle()
+
         Image(
             painter = characterPainter,
             contentDescription = null,

@@ -158,6 +158,7 @@ CANCELED            취소
 | 5-7 | POST | /images/documentize | 다중 이미지 문서화 기반 관련 자료 검색 |
 | 5-8 | GET | /images/{imageId}/file | 원본 이미지 URL 발급 |
 | 5-9 | GET | /images/{imageId}/thumbnail | 썸네일 이미지 URL 발급 |
+| 5-10 | GET | /images/details | 이미지 전체 상세 조회(로컬 DB 복원) |
 | 6-1 | GET | /categories | 카테고리 목록 |
 | 6-2 | GET | /categories/{categoryId}/thumbnail | 카테고리 아이콘 조회(302 리다이렉트) |
 | 7-1 | GET | /user | 내 정보 |
@@ -1127,6 +1128,64 @@ centroid 방식이라 개별 이미지가 아니라 공통 주제에 가까운 �
 
 **썸네일이 아직 생성되지 않은 이미지(분석 전 등)는 404가 아니라 원본 URL로 폴백한다.**
 클라이언트에서 분기할 필요가 없도록 한 폴백이다.
+
+## 5-10 이미지 전체 상세 조회(로컬 DB 복원)
+
+`GET /api/v1/images/details`
+
+앱 재설치 등으로 로컬 DB(Room)가 비었을 때, 상세 조회(5-2)와 같은 항목을 **페이지
+없이 전부** 받아 복원한다. 재설치 복원이라는 드문 이벤트 전용이며, 목록 화면에는
+5-1을 쓴다. 문서의 전체 상세 조회(`GET /documents/details`)와 같은 패턴이다.
+
+### Query Parameters
+
+없다. 요청 한 번에 전체가 내려간다.
+
+### Response `data` (5-2 응답 DTO의 배열)
+
+```json
+{
+  "result": "SUCCESS",
+  "code": "I215",
+  "message": "요청이 성공했습니다.",
+  "data": [
+    {
+      "imageId": 1024,
+      "imageUrl": "https://...presigned-get...",
+      "thumbnailUrl": "https://...presigned-get...",
+      "title": "C++ 프로그래밍 입문",
+      "favorite": false,
+      "summary": "교보문고에서 판매 중인 C++ 프로그래밍 입문서, 32,000원",
+      "categoryId": 3,
+      "category": "공부",
+      "tags": ["C++", "쇼핑"],
+      "keyInformation": ["가격: 32,000원", "판매처: 교보문고"],
+      "scheduledData": null,
+      "ocrRefinedText": "C++ 프로그래밍 입문\n교보문고 32,000원 ...",
+      "uploadedAt": "2026-07-28T05:00:00.000Z",
+      "isDocumented": true,
+      "isCalendared": false
+    }
+  ],
+  "timestamp": "2026-08-06T06:00:00.000Z"
+}
+```
+
+### 규칙
+
+- 항목은 5-2 상세 응답 DTO **그대로**다 — 같은 매퍼로 Room을 채우면 된다. `data`는
+  배열이며 이미지가 없으면 빈 배열이다(`/documents/details`와 동일한 형식).
+- `imageUrl`/`thumbnailUrl`은 presigned GET URL(1시간 유효)이다. **복원 직후 표시에는
+  그대로 쓰되 Room에 영구 보관하지 말 것** — 만료 후 표시 실패(403) 시 5-8/5-9로
+  재발급받는다. `thumbnailUrl`은 썸네일이 아직 없으면 `null`이다.
+- 정렬은 `imageId` 오름차순 고정 — 화면 정렬 용도가 아니다.
+- 분석이 완료(`COMPLETED`·`EMPTY`)된 활성 이미지만 내려간다(5-1과 같은 노출 규칙).
+- 이미지가 많은 계정은 응답이 수 MB가 될 수 있다. 클라이언트 read 타임아웃을 넉넉히
+  잡고, 스트리밍 파서(Moshi/Gson streaming 등) 사용을 권장한다.
+
+### 에러
+
+- `UNAUTHORIZED` (401)
 
 ## 6-1 카테고리 목록
 

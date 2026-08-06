@@ -42,6 +42,7 @@ public class ImageQueryService {
     private static final Set<String> SUPPORTED_SORTS =
             Set.of("TITLE_ASC", "UPLOADED_DESC", "UPLOADED_ASC");
 
+
     private final ImageQueryRepository imageQueryRepository;
     private final StorageProperties storageProperties;
     private final S3Client s3Client;
@@ -113,6 +114,38 @@ public class ImageQueryService {
                 (long) (page + 1) * size < result.totalElements(),
                 page > 0
         );
+    }
+
+    /**
+     * 5-10 전체 상세 조회(앱 재설치 후 Room 복원). 상세(5-2)와 같은 DTO를 페이지 없이
+     * 전부 준다 — 문서의 8-7(/documents/details)과 같은 패턴이다.
+     *
+     * <p>썸네일 URL은 목록(5-1)과 같은 방식으로 존재 확인(HEAD) 없이 서명한다 —
+     * 행마다 스토리지 왕복을 하면 수천 장 계정에서 이 API가 수 분짜리가 된다.
+     * URL은 1시간 만료이므로 복원 후 표시 실패(403) 시 5-8/5-9로 재발급받는다.
+     */
+    public List<ImageDetailResponse> getAllImageDetails(Integer userId) {
+        return imageQueryRepository.findAllImageDetails(userId).stream()
+                .map(row -> new ImageDetailResponse(
+                        row.imageId(),
+                        createImageUrl(row.s3Key()),
+                        row.thumbnailKey() == null || row.thumbnailKey().isBlank()
+                                ? null
+                                : presignThumbnail(row.thumbnailKey()),
+                        row.title(),
+                        Boolean.TRUE.equals(row.favorite()),
+                        row.summary(),
+                        row.categoryId(),
+                        row.categoryName(),
+                        row.tagNames(),
+                        row.keyInformation(),
+                        parseStructuredData(row.structuredDataJson()),
+                        row.ocrRefinedText(),
+                        row.uploadedAt(),
+                        row.documented(),
+                        row.calendared()
+                ))
+                .toList();
     }
 
     public PageResponse<ImageSummaryResponse> getImagesInOrder(

@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ssafy.modera.api.domain.image.repository.ImageListPage;
 import com.ssafy.modera.api.domain.image.repository.ImageListRow;
 import com.ssafy.modera.api.domain.image.repository.ImageQueryRepository;
+import com.ssafy.modera.api.domain.image.repository.ImageDetailRow;
 import com.ssafy.modera.api.domain.image.repository.UserImageViewDetail;
 import com.ssafy.modera.api.global.config.StorageProperties;
 import com.ssafy.modera.api.global.exception.BusinessException;
@@ -44,6 +45,47 @@ class ImageQueryServiceTest {
         assertThatThrownBy(() -> imageQueryService.getImages(
                 1, null, 0, 20, "UNKNOWN", null, null))
                 .isInstanceOf(BusinessException.class);
+    }
+
+    @Test
+    void returnsEveryImageDetailWithPresignedUrls() throws Exception {
+        OffsetDateTime uploadedAt = OffsetDateTime.now();
+        when(imageQueryRepository.findAllImageDetails(1))
+                .thenReturn(List.of(
+                        new ImageDetailRow(
+                                10, "1/10-a.jpg", "1/10-thumb.jpg", "C++", true, "summary",
+                                3, "공부", List.of("C++", "공부"), List.of("가격: 32,000원"),
+                                null, "정제 텍스트", uploadedAt, true, false),
+                        // 썸네일이 아직 없는 행 — thumbnailUrl은 null, HEAD 확인도 없어야 한다.
+                        new ImageDetailRow(
+                                11, "1/11-b.jpg", null, "영수증", false, null,
+                                null, null, List.of(), List.of(),
+                                null, null, uploadedAt, false, false)));
+        StorageProperties.Bucket bucket = new StorageProperties.Bucket();
+        bucket.setPictures("pictures");
+        bucket.setThumbnails("thumbnails");
+        when(storageProperties.getBucket()).thenReturn(bucket);
+        PresignedGetObjectRequest presigned =
+                org.mockito.Mockito.mock(PresignedGetObjectRequest.class);
+        when(presigned.url()).thenReturn(URI.create("https://storage.example/signed").toURL());
+        when(s3Presigner.presignGetObject(any(
+                software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest.class
+        ))).thenReturn(presigned);
+
+        var response = imageQueryService.getAllImageDetails(1);
+
+        assertThat(response).hasSize(2);
+        var first = response.getFirst();
+        assertThat(first.imageId()).isEqualTo(10);
+        assertThat(first.imageUrl()).isEqualTo("https://storage.example/signed");
+        assertThat(first.thumbnailUrl()).isEqualTo("https://storage.example/signed");
+        assertThat(first.ocrRefinedText()).isEqualTo("정제 텍스트");
+        var second = response.get(1);
+        assertThat(second.imageUrl()).isEqualTo("https://storage.example/signed");
+        assertThat(second.thumbnailUrl()).isNull();
+        // 행마다 스토리지 존재 확인(HEAD)을 하면 수천 장 계정에서 이 API가 수 분짜리가 된다.
+        verify(s3Client, never()).headObject(any(
+                software.amazon.awssdk.services.s3.model.HeadObjectRequest.class));
     }
 
     @Test

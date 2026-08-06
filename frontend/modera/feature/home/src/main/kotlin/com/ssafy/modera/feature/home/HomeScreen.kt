@@ -45,6 +45,8 @@ fun HomeRoute(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
+    NotificationPermissionEffect()
+
     when (val state = uiState) {
         is HomeUiState.Loading -> {
             LoadingScreen(

@@ -26,12 +26,12 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * 리다이렉트용 presigned URL 발급의 접근 통제·폴백 검증.
+ * URL 발급(5-8/5-9)의 접근 통제·폴백 검증.
  *
  * <p>핵심 규약은 "접근할 수 없는 이미지는 이유를 구분하지 않고 전부 404"다. 403으로
  * 나누면 imageId를 순회해 존재 여부를 알아낼 수 있다.
  */
-class ImageFileRedirectServiceTest {
+class ImageFileUrlServiceTest {
 
     private static final Integer USER_ID = 7;
     private static final Integer IMAGE_ID = 101;
@@ -45,7 +45,7 @@ class ImageFileRedirectServiceTest {
     private ThumbnailRepository thumbnailRepository;
     private ImageFileUrlFactory imageFileUrlFactory;
     private ThumbnailUrlFactory thumbnailUrlFactory;
-    private ImageFileRedirectService service;
+    private ImageFileUrlService service;
 
     @BeforeEach
     void setUp() {
@@ -54,7 +54,7 @@ class ImageFileRedirectServiceTest {
         thumbnailRepository = mock(ThumbnailRepository.class);
         imageFileUrlFactory = mock(ImageFileUrlFactory.class);
         thumbnailUrlFactory = mock(ThumbnailUrlFactory.class);
-        service = new ImageFileRedirectService(
+        service = new ImageFileUrlService(
                 userImageRepository, imageAssetRepository, thumbnailRepository,
                 imageFileUrlFactory, thumbnailUrlFactory);
     }
@@ -65,7 +65,7 @@ class ImageFileRedirectServiceTest {
         givenOwnedUploadedImage();
         when(imageFileUrlFactory.createViewUrl(ORIGINAL_KEY)).thenReturn(ORIGINAL_URL);
 
-        assertThat(service.getOriginalRedirectUrl(USER_ID, IMAGE_ID)).isEqualTo(ORIGINAL_URL);
+        assertThat(service.getOriginalUrl(USER_ID, IMAGE_ID)).isEqualTo(ORIGINAL_URL);
     }
 
     @Test
@@ -77,7 +77,7 @@ class ImageFileRedirectServiceTest {
                 .thenReturn(Optional.of(thumbnail));
         when(thumbnailUrlFactory.createViewUrl(THUMBNAIL_KEY)).thenReturn(THUMBNAIL_URL);
 
-        assertThat(service.getThumbnailRedirectUrl(USER_ID, IMAGE_ID)).isEqualTo(THUMBNAIL_URL);
+        assertThat(service.getThumbnailUrl(USER_ID, IMAGE_ID)).isEqualTo(THUMBNAIL_URL);
     }
 
     @Test
@@ -86,10 +86,10 @@ class ImageFileRedirectServiceTest {
         when(userImageRepository.findByUserIdAndImageIdAndDelYn(USER_ID, IMAGE_ID, "N"))
                 .thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.getOriginalRedirectUrl(USER_ID, IMAGE_ID))
+        assertThatThrownBy(() -> service.getOriginalUrl(USER_ID, IMAGE_ID))
                 .isInstanceOf(BusinessException.class)
                 .hasFieldOrPropertyWithValue("errorCode", ImageErrorCode.IMAGE_NOT_FOUND);
-        assertThatThrownBy(() -> service.getThumbnailRedirectUrl(USER_ID, IMAGE_ID))
+        assertThatThrownBy(() -> service.getThumbnailUrl(USER_ID, IMAGE_ID))
                 .isInstanceOf(BusinessException.class)
                 .hasFieldOrPropertyWithValue("errorCode", ImageErrorCode.IMAGE_NOT_FOUND);
 
@@ -108,7 +108,7 @@ class ImageFileRedirectServiceTest {
         when(imageAssetRepository.findByImageIdAndDelYn(IMAGE_ID, "N"))
                 .thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.getOriginalRedirectUrl(USER_ID, IMAGE_ID))
+        assertThatThrownBy(() -> service.getOriginalUrl(USER_ID, IMAGE_ID))
                 .isInstanceOf(BusinessException.class)
                 .hasFieldOrPropertyWithValue("errorCode", ImageErrorCode.IMAGE_NOT_FOUND);
     }
@@ -123,7 +123,7 @@ class ImageFileRedirectServiceTest {
         when(imageAssetRepository.findByImageIdAndDelYn(IMAGE_ID, "N"))
                 .thenReturn(Optional.of(pending));
 
-        assertThatThrownBy(() -> service.getOriginalRedirectUrl(USER_ID, IMAGE_ID))
+        assertThatThrownBy(() -> service.getOriginalUrl(USER_ID, IMAGE_ID))
                 .isInstanceOf(BusinessException.class)
                 .hasFieldOrPropertyWithValue("errorCode", ImageErrorCode.IMAGE_NOT_FOUND);
         verify(imageFileUrlFactory, never()).createViewUrl(anyString());
@@ -136,7 +136,7 @@ class ImageFileRedirectServiceTest {
         when(thumbnailRepository.findByImageId(IMAGE_ID)).thenReturn(Optional.empty());
         when(imageFileUrlFactory.createViewUrl(ORIGINAL_KEY)).thenReturn(ORIGINAL_URL);
 
-        assertThat(service.getThumbnailRedirectUrl(USER_ID, IMAGE_ID)).isEqualTo(ORIGINAL_URL);
+        assertThat(service.getThumbnailUrl(USER_ID, IMAGE_ID)).isEqualTo(ORIGINAL_URL);
         verify(thumbnailUrlFactory, never()).createViewUrl(anyString());
     }
 
@@ -148,8 +148,8 @@ class ImageFileRedirectServiceTest {
                 .thenReturn(ORIGINAL_URL + "1")
                 .thenReturn(ORIGINAL_URL + "2");
 
-        String first = service.getOriginalRedirectUrl(USER_ID, IMAGE_ID);
-        String second = service.getOriginalRedirectUrl(USER_ID, IMAGE_ID);
+        String first = service.getOriginalUrl(USER_ID, IMAGE_ID);
+        String second = service.getOriginalUrl(USER_ID, IMAGE_ID);
 
         assertThat(first).isNotEqualTo(second);
         verify(imageFileUrlFactory, times(2)).createViewUrl(eq(ORIGINAL_KEY));

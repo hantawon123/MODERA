@@ -241,6 +241,7 @@ public class ImageCommandService {
         String normalizedHash = request.contentHash().toLowerCase(Locale.ROOT);
         ImageAsset imageAsset = imageAssetRepository.findByContentHashAndDelYn(normalizedHash, "N").orElse(null);
         boolean duplicated;
+        boolean reusedExistingAnalysis = false;
 
         if (imageAsset == null) {
             imageAsset = createImageAsset(userId, request, normalizedHash);
@@ -258,14 +259,16 @@ public class ImageCommandService {
                     .findByUserIdAndImageIdAndDelYn(
                             userId, imageAsset.getImageId(), "N")
                     .isPresent();
-            ensureUserImage(userId, imageAsset);
+            reusedExistingAnalysis = ensureUserImage(userId, imageAsset);
             // Duplicated means the user currently owns the image. A soft-deleted
             // relationship is restored through the ordinary registered/PUT flow.
             duplicated = alreadyOwned;
         }
 
         history.complete(imageAsset.getImageId(), duplicated, OffsetDateTime.now());
-        if (!duplicated) {
+        // 신규 이미지나 재분석이 필요한 이미지는 ANALYSIS_COMPLETED/FAILED에서
+        // 최종 결과 알림을 보낸다. 기존 분석 결과 연결만 끝난 경우에만 여기서 알린다.
+        if (!duplicated && reusedExistingAnalysis) {
             userDataChangeOutboxService.record(
                     userId, UserDataChangeResource.IMAGE,
                     String.valueOf(imageAsset.getImageId()));
@@ -287,7 +290,7 @@ public class ImageCommandService {
         return imageAssetRepository.save(imageAsset);
     }
 
-    private void ensureUserImage(Integer userId, ImageAsset imageAsset) {
+    private boolean ensureUserImage(Integer userId, ImageAsset imageAsset) {
         UserImage userImage = userImageRepository
                 .findByUserIdAndImageIdAndDelYn(userId, imageAsset.getImageId(), "N")
                 .orElse(null);
@@ -300,9 +303,12 @@ public class ImageCommandService {
         }
 
         categoryCommandRepository.initializeFromDefault(userId, imageAsset.getImageId());
-        if (!imageQueryRepository.copyExistingView(userId, imageAsset.getImageId())) {
+        boolean reusedExistingAnalysis =
+                imageQueryRepository.copyExistingView(userId, imageAsset.getImageId());
+        if (!reusedExistingAnalysis) {
             upsertInitialView(userId, imageAsset);
         }
+        return reusedExistingAnalysis;
     }
 
     private void createUserImageAndInitialView(Integer userId, ImageAsset imageAsset) {

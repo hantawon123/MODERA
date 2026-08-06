@@ -43,9 +43,7 @@ class RelatedImagesViewModel @AssistedInject constructor(
                     }
 
                     is Result.Error -> {
-                        RelatedImagesUiState.Error(
-                            message = DEFAULT_ERROR_MESSAGE,
-                        )
+                        RelatedImagesUiState.Error(result.exception)
                     }
                 }
             }
@@ -60,10 +58,5 @@ class RelatedImagesViewModel @AssistedInject constructor(
         fun create(
             imageId: Long,
         ): RelatedImagesViewModel
-    }
-
-    private companion object {
-        const val DEFAULT_ERROR_MESSAGE =
-            "연관 자료를 불러오지 못했습니다."
     }
 }

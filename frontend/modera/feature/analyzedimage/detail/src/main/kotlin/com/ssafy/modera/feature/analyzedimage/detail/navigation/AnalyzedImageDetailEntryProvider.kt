@@ -8,6 +8,7 @@ import androidx.navigation3.ui.LocalNavAnimatedContentScope
 import com.ssafy.modera.core.model.analyzedimage.AnalyzedImage
 import com.ssafy.modera.core.navigation.Navigator
 import com.ssafy.modera.feature.analyzedimage.api.navigation.AnalyzedImageDetailNavKey
+import com.ssafy.modera.feature.analyzedimage.api.navigation.navigateToRelatedDocuments
 import com.ssafy.modera.feature.analyzedimage.api.navigation.navigateToRelatedImages
 import com.ssafy.modera.feature.analyzedimage.detail.AnalyzedImageDetailScreen
 import com.ssafy.modera.feature.analyzedimage.detail.AnalyzedImageDetailViewModel
@@ -36,10 +37,8 @@ fun EntryProviderScope<NavKey>.analyzedImageDetailEntry(
             animatedVisibilityScope = LocalNavAnimatedContentScope.current,
             onImageClick = onImageClick,
             onCreateDocumentClick = onCreateDocumentClick,
-            onDocumentClick = {
-                // TODO 해당 문서 이동
-            },
-            onScheduleClick = {
+            onRelatedDocumentClick = navigator::navigateToRelatedDocuments,
+            onRelatedScheduleClick = {
                 // TODO 일정 화면 이동
             },
             onRelatedImagesClick = navigator::navigateToRelatedImages,

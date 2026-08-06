@@ -46,16 +46,16 @@ import com.ssafy.modera.core.model.analyzedimage.AnalyzedImage
 import com.ssafy.modera.core.model.analyzedimage.AnalyzedImageDetail
 import com.ssafy.modera.core.ui.ErrorScreen
 import com.ssafy.modera.core.ui.LoadingScreen
-import com.ssafy.modera.feature.analyzedimage.detail.component.ExtractedTextSection
-import com.ssafy.modera.feature.detail.AnalyzedImageDetailScreenPreviewData
-import com.ssafy.modera.feature.detail.AnalyzedImageDetailScreenPreviewParameterProvider
 import com.ssafy.modera.feature.analyzedimage.detail.component.AnalysisSummarySection
 import com.ssafy.modera.feature.analyzedimage.detail.component.AnalyzedImageDetailActionItem
 import com.ssafy.modera.feature.analyzedimage.detail.component.AnalyzedImageDetailSkeleton
 import com.ssafy.modera.feature.analyzedimage.detail.component.AnalyzedImageDetailTopBar
 import com.ssafy.modera.feature.analyzedimage.detail.component.CategoryLabel
+import com.ssafy.modera.feature.analyzedimage.detail.component.ExtractedTextSection
 import com.ssafy.modera.feature.analyzedimage.detail.component.ImageSection
 import com.ssafy.modera.feature.analyzedimage.detail.component.KeyInformationSection
+import com.ssafy.modera.feature.detail.AnalyzedImageDetailScreenPreviewData
+import com.ssafy.modera.feature.detail.AnalyzedImageDetailScreenPreviewParameterProvider
 
 private val TopBarTitleScrollThreshold = 96.dp
 
@@ -67,8 +67,8 @@ internal fun AnalyzedImageDetailScreen(
     onBackClick: () -> Unit,
     onImageClick: (String) -> Unit,
     onCreateDocumentClick: (AnalyzedImage) -> Unit,
-    onDocumentClick: () -> Unit,
-    onScheduleClick: () -> Unit,
+    onRelatedScheduleClick: () -> Unit,
+    onRelatedDocumentClick: (Long, String) -> Unit,
     onRelatedImagesClick: (Long, String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -82,8 +82,8 @@ internal fun AnalyzedImageDetailScreen(
         onImageClick = onImageClick,
         onFavoriteClick = viewModel::toggleAnalyzedImageFavorite,
         onCreateDocumentClick = onCreateDocumentClick,
-        onDocumentClick = onDocumentClick,
-        onScheduleClick = onScheduleClick,
+        onRelatedDocumentClick = onRelatedDocumentClick,
+        onScheduleClick = onRelatedScheduleClick,
         onReanalyzeClick = viewModel::reanalyzeImage,
         onDeleteClick = {
             viewModel.deleteAnalyzedImage { onBackClick() }
@@ -102,10 +102,10 @@ private fun AnalyzedImageDetailScreen(
     onImageClick: (String) -> Unit,
     onFavoriteClick: () -> Unit,
     onCreateDocumentClick: (AnalyzedImage) -> Unit,
-    onDocumentClick: () -> Unit,
     onScheduleClick: () -> Unit,
     onReanalyzeClick: () -> Unit,
     onDeleteClick: () -> Unit,
+    onRelatedDocumentClick: (Long, String) -> Unit,
     onRelatedImagesClick: (Long, String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -198,7 +198,7 @@ private fun AnalyzedImageDetailScreen(
                     scrollState = scrollState,
                     onImageClick = onImageClick,
                     onFavoriteClick = onFavoriteClick,
-                    onDocumentClick = onDocumentClick,
+                    onRelatedDocumentClick = onRelatedDocumentClick,
                     onScheduleClick = onScheduleClick,
                     onRelatedImagesClick = onRelatedImagesClick,
                     modifier = Modifier.weight(1f),
@@ -272,8 +272,8 @@ private fun AnalyzedImageDetailContent(
     scrollState: ScrollState,
     onImageClick: (String) -> Unit,
     onFavoriteClick: () -> Unit,
-    onDocumentClick: () -> Unit,
     onScheduleClick: () -> Unit,
+    onRelatedDocumentClick: (Long, String) -> Unit,
     onRelatedImagesClick: (Long, String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -362,7 +362,9 @@ private fun AnalyzedImageDetailContent(
                     text = stringResource(
                         R.string.analyzed_image_detail_document,
                     ),
-                    onClick = onDocumentClick,
+                    onClick = {
+                        onRelatedDocumentClick(image.id, image.title)
+                    },
                 )
             }
 
@@ -485,10 +487,10 @@ private fun AnalyzedImageDetailScreenPreview(
                         }
                     },
                     onCreateDocumentClick = {},
-                    onDocumentClick = {},
                     onScheduleClick = {},
                     onReanalyzeClick = {},
                     onDeleteClick = {},
+                    onRelatedDocumentClick = { _, _ -> },
                     onRelatedImagesClick = { _, _ -> },
                 )
             }

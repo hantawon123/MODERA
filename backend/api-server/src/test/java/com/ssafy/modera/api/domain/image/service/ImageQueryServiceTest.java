@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ssafy.modera.api.domain.image.repository.ImageListPage;
 import com.ssafy.modera.api.domain.image.repository.ImageListRow;
 import com.ssafy.modera.api.domain.image.repository.ImageQueryRepository;
+import com.ssafy.modera.api.domain.image.repository.ImageSyncRow;
 import com.ssafy.modera.api.domain.image.repository.UserImageViewDetail;
 import com.ssafy.modera.api.global.config.StorageProperties;
 import com.ssafy.modera.api.global.exception.BusinessException;
@@ -43,6 +44,41 @@ class ImageQueryServiceTest {
     void rejectsUnsupportedSort() {
         assertThatThrownBy(() -> imageQueryService.getImages(
                 1, null, 0, 20, "UNKNOWN", null, null))
+                .isInstanceOf(BusinessException.class);
+    }
+
+    @Test
+    void syncsDetailLevelFieldsWithoutPresignedUrls() {
+        OffsetDateTime uploadedAt = OffsetDateTime.now();
+        when(imageQueryRepository.findSyncPage(1, 0, 100))
+                .thenReturn(new ImageQueryRepository.ImageSyncPage(
+                        List.of(new ImageSyncRow(
+                                10, "C++", true, "summary", 3, "공부",
+                                List.of("C++", "공부"), List.of("가격: 32,000원"),
+                                null, "정제 텍스트", uploadedAt, true, false)),
+                        250
+                ));
+
+        var response = imageQueryService.getSyncPage(1, 0, 100);
+
+        var item = response.list().getFirst();
+        assertThat(item.imageId()).isEqualTo(10);
+        assertThat(item.categoryId()).isEqualTo(3);
+        assertThat(item.ocrRefinedText()).isEqualTo("정제 텍스트");
+        assertThat(item.isDocumented()).isTrue();
+        // presigned URL 필드 자체가 없다 — 만료값을 로컬 DB에 저장하지 못하게 하는 계약.
+        assertThat(Arrays.stream(item.getClass().getRecordComponents())
+                .map(component -> component.getName()))
+                .doesNotContain("imageUrl", "thumbnailUrl");
+        assertThat(response.totalElements()).isEqualTo(250);
+        assertThat(response.hasNext()).isTrue();
+    }
+
+    @Test
+    void rejectsSyncPageBeyondSizeLimit() {
+        assertThatThrownBy(() -> imageQueryService.getSyncPage(1, 0, 201))
+                .isInstanceOf(BusinessException.class);
+        assertThatThrownBy(() -> imageQueryService.getSyncPage(1, -1, 100))
                 .isInstanceOf(BusinessException.class);
     }
 

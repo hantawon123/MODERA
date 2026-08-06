@@ -357,6 +357,57 @@ public class ImageQueryRepository {
         );
     }
 
+    /**
+     * 5-10 전체 동기화(로컬 DB 복원). 목록(findImages)과 같은 노출 규칙(del_yn='N',
+     * 분석 완료·EMPTY만)에 상세 필드를 전부 싣는다.
+     *
+     * <p>정렬은 image_id ASC 고정 — 동기화는 "전 페이지를 빠짐없이 한 번씩"이 목적이라
+     * 페이지를 도는 동안 순서가 흔들리면 안 된다. uploaded_at은 재분석 등으로 바뀔 수
+     * 있지만 image_id는 불변이다.
+     */
+    public ImageSyncPage findSyncPage(Integer userId, int page, int size) {
+        String where = """
+                FROM query_schema.user_image_view image_view
+                WHERE image_view.user_id = ?
+                  AND image_view.del_yn = 'N'
+                  AND image_view.analysis_status IN ('COMPLETED', 'EMPTY')
+                """;
+
+        Long total = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) " + where, Long.class, userId);
+
+        List<ImageSyncRow> content = jdbcTemplate.query(
+                """
+                SELECT image_view.image_id, image_view.title, image_view.favorite,
+                       image_view.summary, image_view.category_id, image_view.category_name,
+                       image_view.tags, image_view.key_information, image_view.structured_data,
+                       image_view.ocr_refined_text, image_view.uploaded_at,
+                       image_view.is_documented_yn, image_view.is_calendared_yn
+                """ + where + " ORDER BY image_view.image_id ASC LIMIT ? OFFSET ?",
+                (rs, rowNum) -> new ImageSyncRow(
+                        rs.getInt("image_id"),
+                        rs.getString("title"),
+                        rs.getObject("favorite", Boolean.class),
+                        rs.getString("summary"),
+                        rs.getObject("category_id", Integer.class),
+                        rs.getString("category_name"),
+                        parseTagNames(rs.getString("tags")),
+                        toStringList(rs.getArray("key_information")),
+                        rs.getString("structured_data"),
+                        rs.getString("ocr_refined_text"),
+                        rs.getObject("uploaded_at", OffsetDateTime.class),
+                        "Y".equals(rs.getString("is_documented_yn")),
+                        "Y".equals(rs.getString("is_calendared_yn"))
+                ),
+                userId, size, (long) page * size
+        );
+
+        return new ImageSyncPage(List.copyOf(content), total == null ? 0L : total);
+    }
+
+    public record ImageSyncPage(List<ImageSyncRow> content, long totalElements) {
+    }
+
     public ImageListPage findImages(
             Integer userId,
             Boolean favorite,

@@ -17,6 +17,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
@@ -147,6 +148,10 @@ class ImageControllerTest {
                 .andExpect(status().isOk()).andExpect(jsonPath("$.code").value("I213"));
         mockMvc.perform(get("/api/v1/images/1/thumbnail"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.code").value("I214"));
+        // /sync는 /{imageId} 경로 변수와 겹치지 않아야 한다(리터럴 매칭 우선).
+        mockMvc.perform(get("/api/v1/images/sync"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.code").value("I215"));
+        verify(queryService).getSyncPage(null, 0, 100);
     }
 
     @Test

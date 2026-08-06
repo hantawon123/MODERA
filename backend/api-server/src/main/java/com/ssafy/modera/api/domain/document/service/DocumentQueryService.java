@@ -7,6 +7,7 @@ import com.ssafy.modera.api.domain.document.entity.DocumentGenerationRequest;
 import com.ssafy.modera.api.domain.document.exception.DocumentErrorCode;
 import com.ssafy.modera.api.domain.document.repository.DocumentDetailRow;
 import com.ssafy.modera.api.domain.document.repository.DocumentGenerationRequestRepository;
+import com.ssafy.modera.api.domain.document.repository.DocumentImageIdRow;
 import com.ssafy.modera.api.domain.document.repository.DocumentQueryRepository;
 import com.ssafy.modera.api.domain.image.service.ThumbnailUrlFactory;
 import com.ssafy.modera.api.global.exception.BusinessException;
@@ -16,9 +17,13 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * 문서 조회(8-1 목록, 8-3 상세, 8-4 구성 이미지).
@@ -76,6 +81,40 @@ public class DocumentQueryService {
                 isRegenerating(userId, documentId),
                 row.updatedAt()
         );
+    }
+
+    /** 본인의 삭제되지 않은 모든 문서를 페이지네이션 없이 상세 형식으로 반환한다. */
+    public List<DocumentDetailResponse> getAllDocumentDetails(Integer userId) {
+        List<DocumentDetailRow> documents = documentQueryRepository.findAllDocumentDetails(userId);
+        if (documents.isEmpty()) {
+            return List.of();
+        }
+
+        Map<Integer, List<Integer>> imageIdsByDocument = documentQueryRepository
+                .findAllDocumentImageIds(userId)
+                .stream()
+                .collect(Collectors.groupingBy(
+                        DocumentImageIdRow::documentId,
+                        LinkedHashMap::new,
+                        Collectors.mapping(DocumentImageIdRow::imageId, Collectors.toList())
+                ));
+        Set<Integer> regeneratingDocumentIds = new HashSet<>(
+                documentGenerationRequestRepository.findSourceDocumentIdsByUserIdAndStatus(
+                        userId, DocumentGenerationRequest.STATUS_QUEUED));
+
+        return documents.stream()
+                .map(row -> new DocumentDetailResponse(
+                        row.documentId(),
+                        row.name(),
+                        row.summary(),
+                        row.content(),
+                        row.imageCount(),
+                        row.delImageCount(),
+                        List.copyOf(imageIdsByDocument.getOrDefault(row.documentId(), List.of())),
+                        regeneratingDocumentIds.contains(row.documentId()),
+                        row.updatedAt()
+                ))
+                .toList();
     }
 
     /**

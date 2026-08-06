@@ -132,4 +132,7 @@ dependencies {
     testImplementation(libs.kotlin.test)
 
     androidTestImplementation(libs.hilt.android.testing)
+
+    implementation(libs.coil.kt)
+    implementation(libs.coil.kt.compose)
 }

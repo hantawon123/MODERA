@@ -184,15 +184,6 @@ fun CategoryScreen(
                 )
             }
 
-            ModeraSearchBar(
-                query = searchQuery,
-                onQueryChange = onSearchQueryChange,
-                placeholder = stringResource(R.string.category_search_placeholder),
-                mode = SearchBarMode.General,
-                modifier = Modifier
-                    .padding(horizontal = CategoryScreenDefaults.HorizontalPadding),
-            )
-
             Box {
                 LazyColumn(
                     state = listState,
@@ -207,6 +198,13 @@ fun CategoryScreen(
                 ) {
                     item {
                         Column {
+                            ModeraSearchBar(
+                                query = searchQuery,
+                                onQueryChange = onSearchQueryChange,
+                                placeholder = stringResource(R.string.category_search_placeholder),
+                                mode = SearchBarMode.General,
+                            )
+
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()

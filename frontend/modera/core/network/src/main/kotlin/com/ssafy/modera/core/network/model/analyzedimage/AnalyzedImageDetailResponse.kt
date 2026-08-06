@@ -12,14 +12,14 @@ data class AnalyzedImageDetailResponse(
     val title: String,
     val favorite: Boolean,
     val summary: String,
-    val categoryId:Long,
+    val categoryId: Long,
     val category: String,
     val tags: List<String>,
     val keyInformation: List<String>,
     val ocrRefinedText: String? = null,
     val isDocumented: Boolean,
     val isCalendared: Boolean,
-    val updatedAt: String? = null,
+    val uploadedAt: String? = null,
 )
 
 fun AnalyzedImageDetailResponse.asExternalModel(): AnalyzedImageDetail =
@@ -40,7 +40,7 @@ fun AnalyzedImageDetailResponse.asExternalModel(): AnalyzedImageDetail =
         keyInformation = keyInformation,
         isDocumented = isDocumented,
         isCalendared = isCalendared,
-        updatedAt = updatedAt
+        updatedAt = uploadedAt
             ?.let(Instant::parse)
             ?.toEpochMilli()
             ?: 0L,

@@ -357,6 +357,47 @@ public class ImageQueryRepository {
         );
     }
 
+    /**
+     * 5-10 전체 상세 조회(로컬 DB 복원). 목록(findImages)과 같은 노출 규칙(del_yn='N',
+     * 분석 완료·EMPTY만)에 상세 필드를 전부 싣고, 페이지 없이 전 행을 돌려준다 —
+     * 앱 재설치 복원이라는 드문 이벤트 전용이라 한 번에 준다(안드로이드 요청).
+     */
+    public List<ImageDetailRow> findAllImageDetails(Integer userId) {
+        return jdbcTemplate.query(
+                """
+                SELECT image_view.image_id, image_view.s3_key, image_view.thumbnail_key,
+                       image_view.title, image_view.favorite,
+                       image_view.summary, image_view.category_id, image_view.category_name,
+                       image_view.tags, image_view.key_information, image_view.structured_data,
+                       image_view.ocr_refined_text, image_view.uploaded_at,
+                       image_view.is_documented_yn, image_view.is_calendared_yn
+                FROM query_schema.user_image_view image_view
+                WHERE image_view.user_id = ?
+                  AND image_view.del_yn = 'N'
+                  AND image_view.analysis_status IN ('COMPLETED', 'EMPTY')
+                ORDER BY image_view.image_id ASC
+                """,
+                (rs, rowNum) -> new ImageDetailRow(
+                        rs.getInt("image_id"),
+                        rs.getString("s3_key"),
+                        rs.getString("thumbnail_key"),
+                        rs.getString("title"),
+                        rs.getObject("favorite", Boolean.class),
+                        rs.getString("summary"),
+                        rs.getObject("category_id", Integer.class),
+                        rs.getString("category_name"),
+                        parseTagNames(rs.getString("tags")),
+                        toStringList(rs.getArray("key_information")),
+                        rs.getString("structured_data"),
+                        rs.getString("ocr_refined_text"),
+                        rs.getObject("uploaded_at", OffsetDateTime.class),
+                        "Y".equals(rs.getString("is_documented_yn")),
+                        "Y".equals(rs.getString("is_calendared_yn"))
+                ),
+                userId
+        );
+    }
+
     public ImageListPage findImages(
             Integer userId,
             Boolean favorite,

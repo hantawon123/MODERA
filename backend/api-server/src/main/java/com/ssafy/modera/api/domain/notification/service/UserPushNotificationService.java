@@ -19,15 +19,6 @@ public class UserPushNotificationService {
     private final PushMessageSender pushMessageSender;
 
     public PushSendResult sendDataChanged(
-            Integer userId,
-            String resource,
-            String resourceId
-    ) {
-        return sendDataChanged(
-                UUID.randomUUID(), userId, resource, resourceId, OffsetDateTime.now());
-    }
-
-    public PushSendResult sendDataChanged(
             UUID eventId,
             Integer userId,
             String resource,

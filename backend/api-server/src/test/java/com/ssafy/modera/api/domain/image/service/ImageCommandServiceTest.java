@@ -44,6 +44,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.never;
 
 @ExtendWith(MockitoExtension.class)
 class ImageCommandServiceTest {
@@ -232,6 +233,8 @@ class ImageCommandServiceTest {
             assertThat(item.clientRequestId()).isEqualTo(invalidRequestId);
             assertThat(item.reason()).isEqualTo("UNSUPPORTED_FORMAT");
         });
+        verify(userDataChangeOutboxService, never()).record(
+                1, UserDataChangeResource.IMAGE, "21");
     }
 
     @Test
@@ -289,6 +292,8 @@ class ImageCommandServiceTest {
                     .isEqualTo("https://storage.example/1/20-shared.jpg");
         });
         verify(userImageRepository).saveAndFlush(any(UserImage.class));
+        verify(userDataChangeOutboxService).record(
+                2, UserDataChangeResource.IMAGE, "20");
     }
 
     @Test
@@ -342,6 +347,8 @@ class ImageCommandServiceTest {
         assertThat(response.registered()).singleElement().satisfies(item ->
                 assertThat(item.presignedUrl())
                         .isEqualTo("https://storage.example/6/7-60.jpg"));
+        verify(userDataChangeOutboxService, never()).record(
+                6, UserDataChangeResource.IMAGE, "7");
     }
 
     @Test

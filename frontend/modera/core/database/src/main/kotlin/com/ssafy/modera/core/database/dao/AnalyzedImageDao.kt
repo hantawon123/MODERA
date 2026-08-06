@@ -111,7 +111,7 @@ interface AnalyzedImageDao {
     suspend fun updateCalendared(
         imageId: Long,
         isCalendared: Boolean,
-    )
+    ): Int
 
     @Query(
         """

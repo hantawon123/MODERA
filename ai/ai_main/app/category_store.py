@@ -45,6 +45,21 @@ SEED_USER_ID = 0
 # 정도라 넉넉하다. 넘으면 경고를 남긴다(조용히 잘리면 판정이 이유 없이 나빠진다).
 _CATEGORY_LOAD_LIMIT = 500
 
+# 다른 사용자가 만든 카테고리 이름을 한 번에 몇 개까지 빌려올지(서로 다른 이름 기준).
+# 0 이면 이름 공유를 끈다.
+#
+# 이 값은 "얼마나 공유할까" 의 예산이 아니라 폭주 감지선이다. 카테고리가 우후죽순
+# 늘어나는 것을 막으려고 만든 것이 프롬프트 재사용 규칙과 흡수 관문(표기 변형 +
+# 이름 임베딩 0.90)이고, 그게 제대로 돌면 서로 다른 이름은 기본 12종에 주제 몇십
+# 개가 더해지는 선에서 멈춘다(실사진 55장·엣지 40장 실측 모두 파편화 0건).
+# 이름을 전역으로 공유하는 것 자체가 그 수렴 장치를 사용자 사이로 확장하는 것이라
+# 이름 수는 오히려 줄어드는 방향이다.
+#
+# 그래서 여기 걸린다는 것은 "상한을 올려야 한다" 가 아니라 "관문이 새고 있다" 는
+# 신호다. 경고를 남기는 이유가 그것이다 — 조용히 잘리면 파편화가 진행 중인데도
+# 후보만 잘려 나가 원인을 못 찾는다. `_CATEGORY_LOAD_LIMIT` 과 같은 성격·같은 크기.
+_SHARED_NAME_LIMIT = _CATEGORY_LOAD_LIMIT
+
 
 def _category_index() -> str:
     return f"{get_settings().opensearch_index}_categories"
@@ -139,7 +154,79 @@ def load_category_vectors(user_id: int) -> dict[str, dict[str, Any]]:
                 "vector": [float(v) for v in vector],
                 "count": int(source.get("count") or 0),
             }
+    _add_shared_names(stored, user_id, settings)
     return stored
+
+
+def _add_shared_names(
+    stored: dict[str, dict[str, Any]], user_id: int, settings: Any
+) -> None:
+    """다른 사용자가 만든 카테고리 **이름**을 후보에 채운다. 벡터는 빌리지 않는다.
+
+    아이콘과 Spring taxonomy 는 이미 이름 단위 전역이다 — 같은 이름이면 stable_id
+    가 같아 같은 행·같은 아이콘 파일을 쓴다. 그런데 판정 후보가 사용자별로 갇혀
+    있으면 같은 개념이 사람마다 다른 이름으로 갈라져("부동산" vs "집구하기") 그
+    전제가 깨진다. 개념당 아이콘 한 장이라는 설계가 개념당 N 장이 되고, 생성 요금이
+    그만큼 나간다(같은 이름은 `ensure_icon` 이 이미 존재 확인으로 막아 준다).
+
+    centroid 는 공유하지 않는다 — 그 사람 이미지 요약의 평균이라 개인 데이터다.
+    이름만 count=0 으로 넣으면 `stages.build_candidates` 가 전역 시드와 똑같이
+    다룬다: 이름은 프롬프트 후보에 들어가고 벡터 판정에서는 빠진다(이름 임베딩의
+    분리력이 노이즈라는 실측 결과를 그대로 따른다).
+
+    사용자가 하나뿐이면 빌려올 문서가 없어 아무 것도 하지 않는다 — 지금까지의
+    단일 사용자 실측(골드셋 93.6%)과 후보 목록이 완전히 같다.
+    """
+    if _SHARED_NAME_LIMIT <= 0:
+        return
+    try:
+        resp = _client().search(
+            index=_category_index(),
+            body={
+                # 문서가 아니라 이름 집계만 필요하다. 같은 이름을 쓰는 사용자가
+                # 많을수록 문서도 그만큼 많으므로(1:쇼핑, 2:쇼핑 …) 문서를 그대로
+                # 읽으면 흔한 이름의 사본이 상한을 다 잡아먹는다. terms 집계는
+                # 이름당 한 칸만 쓰므로 상한이 곧 "서로 다른 이름 수" 가 된다.
+                "size": 0,
+                "query": {"bool": {
+                    "filter": [
+                        {"term": {"model": settings.embedding_model_name}},
+                        {"term": {"dim": settings.embedding_dim}},
+                    ],
+                    # 시드와 본인 문서는 위에서 이미 벡터까지 읽었다.
+                    "must_not": [
+                        {"terms": {"user_id": sorted({SEED_USER_ID, user_id})}}],
+                }},
+                # 기본 정렬이 doc_count 내림차순 — 쓰는 사람이 많은 이름부터다.
+                # 상한에 걸려 잘려도 흔한 어휘가 남아 수렴에 가장 도움이 된다.
+                "aggs": {"names": {"terms": {"field": "name",
+                                             "size": _SHARED_NAME_LIMIT}}},
+            },
+        )
+    except Exception as e:
+        # 조회 실패는 판정을 막지 않는다 — 이 사용자 후보만으로 진행한다.
+        logger.warning("공유 카테고리 이름 조회 실패 userId=%s: %s", user_id, e)
+        return
+
+    aggregations = resp.get("aggregations") or {}
+    names_agg = aggregations.get("names") or {}
+    if names_agg.get("sum_other_doc_count"):
+        # 상한을 넘었다 = 서로 다른 카테고리 이름이 수백 개라는 뜻이다. 프롬프트
+        # 재사용 규칙과 흡수 관문이 새고 있는 것이므로 상한을 올릴 게 아니라
+        # 파편화 원인을 봐야 한다(어떤 이름들이 갈렸는지 저장소를 직접 조회).
+        logger.warning(
+            "공유 카테고리 이름이 상한 %s개를 넘었다 — 카테고리 파편화를 의심할 것"
+            "(흡수 관문·프롬프트 재사용 규칙 점검). userId=%s",
+            _SHARED_NAME_LIMIT, user_id)
+    for bucket in names_agg.get("buckets") or []:
+        name = bucket.get("key")
+        if not name:
+            continue
+        key = normalize_name(name)
+        # 본인 centroid·시드가 이미 있으면 그쪽이 이긴다(벡터를 갖고 있다).
+        if key not in stored:
+            stored[key] = {"name": name, "category_id": stable_id(name),
+                           "vector": None, "count": 0}
 
 
 def put_seed_category_vectors(name_to_vector: dict[str, list[float]]) -> int:

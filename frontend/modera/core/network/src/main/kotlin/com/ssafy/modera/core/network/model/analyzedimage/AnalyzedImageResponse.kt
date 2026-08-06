@@ -11,7 +11,7 @@ data class AnalyzedImageResponse(
     val favorite: Boolean = false,
     val thumbnailUrl: String? = null,
     val tags: List<String> = emptyList(),
-    val categoryId: Long,
+    val categoryId: Long = 0L,
     val category: String = "",
     val uploadedAt: String? = null,
     val isDocumented: Boolean = false,

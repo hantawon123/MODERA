@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -41,4 +42,16 @@ public interface DocumentGenerationRequestRepository extends JpaRepository<Docum
      */
     boolean existsByUserIdAndSourceDocumentIdAndStatusAndDelYn(
             Integer userId, Integer sourceDocumentId, String status, String delYn);
+
+    @Query("""
+            SELECT r.sourceDocumentId
+              FROM DocumentGenerationRequest r
+             WHERE r.userId = :userId
+               AND r.status = :status
+               AND r.delYn = 'N'
+               AND r.sourceDocumentId IS NOT NULL
+            """)
+    List<Integer> findSourceDocumentIdsByUserIdAndStatus(
+            @Param("userId") Integer userId,
+            @Param("status") String status);
 }

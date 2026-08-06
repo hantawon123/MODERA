@@ -82,6 +82,47 @@ public class DocumentQueryRepository {
         return rows.stream().findFirst();
     }
 
+    /** 본인이 소유한 삭제되지 않은 모든 문서의 상세 조회 모델을 반환한다. */
+    public List<DocumentDetailRow> findAllDocumentDetails(Integer userId) {
+        return jdbcTemplate.query(
+                """
+                SELECT document_id, name, summary, content, image_count, del_image_count, updated_at
+                  FROM query_schema.user_document_view
+                 WHERE user_id = ?
+                   AND del_yn = 'N'
+                 ORDER BY updated_at DESC, document_id DESC
+                """,
+                (rs, rowNum) -> new DocumentDetailRow(
+                        rs.getInt("document_id"),
+                        rs.getString("name"),
+                        rs.getString("summary"),
+                        rs.getString("content"),
+                        rs.getInt("image_count"),
+                        rs.getInt("del_image_count"),
+                        rs.getObject("updated_at", OffsetDateTime.class)
+                ),
+                userId
+        );
+    }
+
+    /** 전체 상세 조회 대상 문서들의 구성 이미지 ID를 한 번에 조회한다. */
+    public List<DocumentImageIdRow> findAllDocumentImageIds(Integer userId) {
+        return jdbcTemplate.query(
+                """
+                SELECT document_id, image_id
+                  FROM query_schema.document_image_view
+                 WHERE user_id = ?
+                   AND del_yn = 'N'
+                 ORDER BY document_id, updated_at, image_document_id
+                """,
+                (rs, rowNum) -> new DocumentImageIdRow(
+                        rs.getInt("document_id"),
+                        rs.getInt("image_id")
+                ),
+                userId
+        );
+    }
+
     public boolean existsDocument(Integer userId, Integer documentId) {
         Integer count = jdbcTemplate.queryForObject(
                 """

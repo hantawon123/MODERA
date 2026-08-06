@@ -119,6 +119,24 @@ public class DocumentController {
     }
 
     @Operation(
+            summary = "모든 문서 상세 정보 조회",
+            description = "본인의 삭제되지 않은 모든 문서를 페이지네이션 없이 상세 조회 응답 형식으로 반환합니다."
+    )
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "조회 성공. 문서가 없으면 빈 배열"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "accessToken 없음/무효(UNAUTHORIZED)")
+    })
+    @GetMapping(value = "/details", produces = "application/json;charset=UTF-8")
+    public ResponseEntity<ApiResponse<List<DocumentDetailResponse>>> getAllDocumentDetails(
+            @AuthenticationPrincipal Integer userId
+    ) {
+        return ResponseEntity.ok(ApiResponse.success(
+                "D206",
+                documentQueryService.getAllDocumentDetails(userId)
+        ));
+    }
+
+    @Operation(
             summary = "문서 상세 조회",
             description = """
                     마크다운 본문 전문과 구성 이미지 ID를 함께 준다.

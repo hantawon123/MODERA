@@ -37,6 +37,7 @@ class CategoryViewModel @Inject constructor(
     private val screenState = MutableStateFlow(CategoryScreenState())
     private val imageListState = MutableStateFlow(CategoryImageListState())
     private var imageLoadGeneration = 0
+    private var hasLoadedImagesOnce = false
 
     private val categoriesResult = categoryRepository
         .observeCategories()
@@ -62,6 +63,9 @@ class CategoryViewModel @Inject constructor(
                 AnalyzedImageQuery(
                     categoryId = resolvedCategoryId.toQueryCategoryId(),
                     sort = screen.selectedSortType,
+                    keyword = screen.searchQuery
+                        .trim()
+                        .takeIf(String::isNotEmpty),
                 )
             }
 
@@ -154,6 +158,10 @@ class CategoryViewModel @Inject constructor(
         }
     }
 
+    fun onSearchQueryChanged(query: String) {
+        screenState.update { it.copy(searchQuery = query) }
+    }
+
     fun loadNextPage() {
         val query = imageQuery.value ?: return
         val currentState = imageListState.value
@@ -204,7 +212,9 @@ class CategoryViewModel @Inject constructor(
         query: AnalyzedImageQuery,
     ) {
         val generation = ++imageLoadGeneration
-        imageListState.value = CategoryImageListState(isInitialLoading = true)
+        imageListState.value = CategoryImageListState(
+            isInitialLoading = !hasLoadedImagesOnce,
+        )
 
         runCatching {
             analyzedImageRepository
@@ -218,6 +228,7 @@ class CategoryViewModel @Inject constructor(
                 return@onSuccess
             }
 
+            hasLoadedImagesOnce = true
             imageListState.value = CategoryImageListState(
                 images = images,
                 hasNext = images.size >= PAGE_SIZE,

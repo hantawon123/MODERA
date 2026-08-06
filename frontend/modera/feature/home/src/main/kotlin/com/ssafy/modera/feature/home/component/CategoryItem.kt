@@ -1,7 +1,5 @@
 package com.ssafy.modera.feature.home.component
 
-import androidx.annotation.DrawableRes
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
@@ -12,14 +10,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import coil.compose.AsyncImage
 import com.ssafy.modera.core.designsystem.component.ClickableSurface
 import com.ssafy.modera.core.designsystem.component.Text
-import com.ssafy.modera.core.designsystem.icon.ModeraCategoryIcons
 import com.ssafy.modera.core.designsystem.theme.ModeraTheme
 import com.ssafy.modera.feature.home.R
 
@@ -32,11 +29,10 @@ import com.ssafy.modera.feature.home.R
 @Composable
 fun CategoryItem(
     title: String,
+    imageUrl: String?,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val illustrationRes = categoryIllustrationRes(title)
-
     ClickableSurface(
         onClick = onClick,
         modifier = modifier.aspectRatio(1f),
@@ -58,8 +54,8 @@ fun CategoryItem(
                 overflow = TextOverflow.Ellipsis,
             )
 
-            Image(
-                painter = painterResource(illustrationRes),
+            AsyncImage(
+                model = imageUrl,
                 contentDescription = stringResource(
                     R.string.home_category_image_content_description,
                     title,
@@ -71,31 +67,6 @@ fun CategoryItem(
             )
         }
     }
-}
-
-/**
- * 카테고리 제목 → 대표 일러스트 drawable 매핑.
- * 알 수 없는 제목은 [ModeraCategoryIcons.Etc]로 처리한다.
- */
-@DrawableRes
-internal fun categoryIllustrationRes(title: String): Int = when (title.trim()) {
-    "쇼핑" -> ModeraCategoryIcons.Shopping
-    "음식" -> ModeraCategoryIcons.Food
-    "여행" -> ModeraCategoryIcons.Travel
-    "예약" -> ModeraCategoryIcons.Reservation
-    "할인" -> ModeraCategoryIcons.Discount
-    "금융" -> ModeraCategoryIcons.Finance
-    "미용" -> ModeraCategoryIcons.Beauty
-    "학습" -> ModeraCategoryIcons.Learning
-    "취업" -> ModeraCategoryIcons.Job
-    "IT" -> ModeraCategoryIcons.It
-    "뉴스" -> ModeraCategoryIcons.News
-    "부동산" -> ModeraCategoryIcons.RealEstate
-    "건강" -> ModeraCategoryIcons.Health
-    "엔터" -> ModeraCategoryIcons.Entertainment
-    "자동차" -> ModeraCategoryIcons.Automotive
-    "반려동물" -> ModeraCategoryIcons.Pet
-    else -> ModeraCategoryIcons.Etc
 }
 
 private object CategoryItemDefaults {
@@ -111,6 +82,7 @@ private fun CategoryItemFoodPreview() {
         Box(modifier = Modifier.padding(16.dp)) {
             CategoryItem(
                 title = "음식",
+                imageUrl = "",
                 onClick = {},
                 modifier = Modifier.size(160.dp),
             )
@@ -125,6 +97,7 @@ private fun CategoryItemShoppingPreview() {
         Box(modifier = Modifier.padding(16.dp)) {
             CategoryItem(
                 title = "쇼핑",
+                imageUrl = "",
                 onClick = {},
                 modifier = Modifier.size(160.dp),
             )

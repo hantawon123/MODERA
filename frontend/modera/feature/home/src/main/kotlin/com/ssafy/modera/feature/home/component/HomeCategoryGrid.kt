@@ -33,6 +33,7 @@ internal fun HomeCategoryGrid(
                     if (category != null) {
                         CategoryItem(
                             title = category.title,
+                            imageUrl = category.thumbnailUrl,
                             onClick = { onCategoryClick(category) },
                             modifier = Modifier.weight(1f),
                         )

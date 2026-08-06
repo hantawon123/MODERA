@@ -34,14 +34,21 @@ internal fun buildCategoryUiState(
                 it.id == resolvedCategoryId
             }
 
+            val isSearching = screenState.searchQuery.isNotBlank()
+            val totalImageCount = when {
+                isSearching -> imageListState.images.size.toLong()
+                else -> selectedCategoryItem?.itemCount?.toLong()
+                    ?: imageListState.images.size.toLong()
+            }
+
             return CategoryUiState.Success(
                 selectedCategoryId = resolvedCategoryId,
                 selectedCategoryTitle = selectedCategoryItem?.title.orEmpty(),
                 categories = sheetItems,
                 analyzedImages = imageListState.images,
-                totalImageCount = selectedCategoryItem?.itemCount?.toLong()
-                    ?: imageListState.images.size.toLong(),
+                totalImageCount = totalImageCount,
                 selectedSortType = screenState.selectedSortType,
+                searchQuery = screenState.searchQuery,
                 showCategorySheet = screenState.showCategorySheet,
                 showSortPopup = screenState.showSortPopup,
                 isAllCategorySelected = selectedCategoryItem?.isAll == true,

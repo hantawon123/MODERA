@@ -35,6 +35,19 @@ interface DocumentDao {
 
     @Query(
         """
+    SELECT documents.*
+    FROM documents
+    INNER JOIN document_image_cross_refs
+        ON documents.documentId = document_image_cross_refs.documentId
+    WHERE document_image_cross_refs.imageId = :imageId
+    """,
+    )
+    fun getDocumentEntitiesByImageId(
+        imageId: Long,
+    ): Flow<List<DocumentEntity>>
+
+    @Query(
+        """
     SELECT analyzed_images.*
     FROM analyzed_images
     INNER JOIN document_image_cross_refs

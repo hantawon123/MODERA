@@ -17,7 +17,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
@@ -37,7 +36,6 @@ import com.ssafy.modera.core.component.item.ModeraAnalyzedImageItem
 import com.ssafy.modera.core.component.rememberShowScrollToTop
 import com.ssafy.modera.core.designsystem.component.HorizontalDivider
 import com.ssafy.modera.core.designsystem.component.Icon
-import com.ssafy.modera.core.designsystem.component.LoadingWheel
 import com.ssafy.modera.core.designsystem.component.Text
 import com.ssafy.modera.core.designsystem.icon.ModeraIcons
 import com.ssafy.modera.core.designsystem.theme.ModeraTheme
@@ -89,8 +87,6 @@ fun CategoryRoute(
                 searchQuery = state.searchQuery,
                 showCategorySheet = state.showCategorySheet,
                 showSortPopup = state.showSortPopup,
-                isLoadingMore = state.isLoadingMore,
-                hasNextPage = state.hasNextPage,
                 onSearchQueryChange = viewModel::onSearchQueryChanged,
                 onCategoryTitleClick = viewModel::onCategoryTitleClick,
                 onCategorySheetDismiss = viewModel::onCategorySheetDismiss,
@@ -98,7 +94,6 @@ fun CategoryRoute(
                 onSortClick = viewModel::onSortClick,
                 onSortPopupDismiss = viewModel::onSortPopupDismiss,
                 onSortTypeSelect = viewModel::onSortTypeSelect,
-                onLoadMore = viewModel::loadNextPage,
                 onItemClick = onItemClick,
                 modifier = modifier,
             )
@@ -118,8 +113,6 @@ fun CategoryScreen(
     searchQuery: String,
     showCategorySheet: Boolean,
     showSortPopup: Boolean,
-    isLoadingMore: Boolean,
-    hasNextPage: Boolean,
     onSearchQueryChange: (String) -> Unit,
     onCategoryTitleClick: () -> Unit,
     onCategorySheetDismiss: () -> Unit,
@@ -127,7 +120,6 @@ fun CategoryScreen(
     onSortClick: () -> Unit,
     onSortPopupDismiss: () -> Unit,
     onSortTypeSelect: (AnalyzedImageSortType) -> Unit,
-    onLoadMore: () -> Unit,
     onItemClick: (Long) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -145,19 +137,6 @@ fun CategoryScreen(
         totalImageCount
     } else {
         analyzedImages.size.toLong()
-    }
-
-    LaunchedEffect(listState, hasNextPage, isLoadingMore) {
-        snapshotFlow {
-            val layoutInfo = listState.layoutInfo
-            val lastVisibleItemIndex = layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
-            val totalItems = layoutInfo.totalItemsCount
-            lastVisibleItemIndex >= totalItems - CategoryScreenDefaults.LOAD_MORE_THRESHOLD
-        }.collect { shouldLoadMore ->
-            if (shouldLoadMore && hasNextPage && !isLoadingMore) {
-                onLoadMore()
-            }
-        }
     }
 
     Box(
@@ -269,6 +248,13 @@ fun CategoryScreen(
                                 modifier = Modifier.padding(top = 40.dp),
                             )
                         }
+                    } else if (!isSearching && analyzedImages.isEmpty()) {
+                        item(key = "list_empty") {
+                            EmptyScreen(
+                                message = stringResource(R.string.category_list_empty),
+                                modifier = Modifier.padding(top = 40.dp),
+                            )
+                        }
                     } else {
                         items(
                             items = analyzedImages,
@@ -285,23 +271,6 @@ fun CategoryScreen(
                                 onClick = { onItemClick(analyzedImage.id) },
                                 modifier = Modifier.fillMaxWidth(),
                             )
-                        }
-                    }
-
-                    if (isLoadingMore) {
-                        item(key = "loading_more") {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 16.dp),
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                LoadingWheel(
-                                    contentDescription = stringResource(
-                                        R.string.category_loading_more_description,
-                                    ),
-                                )
-                            }
                         }
                     }
                 }
@@ -330,7 +299,6 @@ fun CategoryScreen(
 
 internal object CategoryScreenDefaults {
     val HorizontalPadding = 20.dp
-    const val LOAD_MORE_THRESHOLD = 3
 }
 
 @Preview(showBackground = true, widthDp = 360, heightDp = 780)
@@ -366,8 +334,6 @@ private fun CategoryScreenPreview() {
             searchQuery = "",
             showCategorySheet = false,
             showSortPopup = false,
-            isLoadingMore = false,
-            hasNextPage = false,
             onSearchQueryChange = {},
             onCategoryTitleClick = {},
             onCategorySheetDismiss = {},
@@ -375,7 +341,6 @@ private fun CategoryScreenPreview() {
             onSortClick = {},
             onSortPopupDismiss = {},
             onSortTypeSelect = {},
-            onLoadMore = {},
             onItemClick = {},
         )
     }

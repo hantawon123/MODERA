@@ -738,6 +738,10 @@ async def _index_for_search(request: AnalyzeRequest, result: dict[str, Any]) -> 
             category_name=result.get("category"),
             raw_text=raw_text,
             created_at=now_iso(),
+            # 10-1 AGENT 단계 경로. 이 경로는 이미지를 안 보내 교정본이 없는 것이
+            # 보통이지만(값이 None 이면 index_document 가 키를 생략한다), 융합
+            # 호출이 낸 교정본이 있으면 같은 필드로 들어가야 6-2 가 한 곳만 읽는다.
+            refined_text=result.get("ocrRefinedText"),
         )
     except Exception as e:
         logger.warning("검색 색인 실패 imageId=%s: %s (분석은 정상 진행)",
@@ -1099,6 +1103,11 @@ async def _run_full_pipeline(
                     key_information=result["key_information"],
                     status="COMPLETED",
                     category_confidence=generated.get("categoryConfidence"),
+                    # 융합 호출이 만든 교정본을 여기서 영속화한다. 이게 없으면 앱
+                    # 직결 경로에서 교정 결과가 어디에도 닿지 않는다 — 폴링 result 는
+                    # 위에서 새로 조립되며 이 키를 빼고, callback_result 는 Spring 만
+                    # 본다. 6-2 상세의 '추출된 텍스트'가 이 필드를 읽는다.
+                    refined_text=generated.get("ocrRefinedText"),
                 )
         except Exception as e:
             logger.warning("검색 색인 실패 imageId=%s: %s (분석 결과는 유지)",

@@ -123,23 +123,30 @@ class FcmNotificationManager @Inject constructor(
 
     private fun DataChangedEvent.toNotificationContent(): NotificationContent =
         when (resource) {
-            SyncResourceType.IMAGE -> {
+            SyncResourceType.IMAGE_UPLOAD -> {
                 NotificationContent(
-                    title = "이미지 분석 결과가 업데이트됐어요",
+                    title = "이미지 분석 완료",
+                    body = "눌러서 분석 결과를 확인해 보세요.",
+                )
+            }
+
+            SyncResourceType.IMAGE_CATEGORY -> {
+                NotificationContent(
+                    title = "이미지 재분석 완료",
                     body = "눌러서 분석 결과를 확인해 보세요.",
                 )
             }
 
             SyncResourceType.DOCUMENT -> {
                 NotificationContent(
-                    title = "문서가 업데이트됐어요",
+                    title = "문서 생성 완료",
                     body = "새로운 문서 내용을 확인해 보세요.",
                 )
             }
 
             SyncResourceType.CALENDAR -> {
                 NotificationContent(
-                    title = "일정이 업데이트됐어요",
+                    title = "일정 등록 완료",
                     body = "등록된 일정 내용을 확인해 보세요.",
                 )
             }

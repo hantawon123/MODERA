@@ -2,7 +2,7 @@ package com.ssafy.modera.core.data.repository.calendar
 
 import com.ssafy.modera.core.common.network.Dispatcher
 import com.ssafy.modera.core.common.network.ModeraDispatcher
-import com.ssafy.modera.core.data.repository.AnalyzedImageRepository
+import com.ssafy.modera.core.data.repository.analyzedImage.AnalyzedImageRepository
 import com.ssafy.modera.core.model.calendar.CalendarSchedule
 import com.ssafy.modera.core.network.model.calendar.ScheduleResponse
 import com.ssafy.modera.core.network.model.calendar.SchedulesRequest

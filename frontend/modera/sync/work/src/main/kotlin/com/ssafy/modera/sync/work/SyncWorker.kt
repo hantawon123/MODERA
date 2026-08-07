@@ -4,7 +4,7 @@ import android.content.Context
 import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
-import com.ssafy.modera.core.data.repository.AnalyzedImageRepository
+import com.ssafy.modera.core.data.repository.analyzedImage.AnalyzedImageRepository
 import com.ssafy.modera.core.data.repository.document.DocumentRepository
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
@@ -38,7 +38,8 @@ class SyncWorker @AssistedInject constructor(
 
         return try {
             val synced = when (resource) {
-                SyncResourceType.IMAGE -> {
+                SyncResourceType.IMAGE_UPLOAD,
+                SyncResourceType.IMAGE_CATEGORY -> {
                     analyzedImageRepository.syncWith(
                         resourceId = resourceId,
                     )
@@ -53,6 +54,7 @@ class SyncWorker @AssistedInject constructor(
                 SyncResourceType.CALENDAR -> {
                     return Result.failure()
                 }
+
             }
 
             if (synced) {

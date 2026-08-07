@@ -4,7 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ssafy.modera.core.common.result.Result
 import com.ssafy.modera.core.common.result.asResult
-import com.ssafy.modera.core.data.repository.AnalyzedImageRepository
+import com.ssafy.modera.core.data.repository.analyzedImage.AnalyzedImageRepository
 import com.ssafy.modera.core.data.repository.document.DocumentRepository
 import com.ssafy.modera.core.model.analyzedimage.AnalyzedImage
 import dagger.assisted.Assisted

@@ -51,7 +51,7 @@ interface AnalyzedImageDao {
     )
     fun getAnalyzedImageWithCategory(
         imageId: Long,
-    ): Flow<AnalyzedImageWithCategory?>
+    ): Flow<AnalyzedImageWithCategory>
 
     @Query(
         """
@@ -63,6 +63,19 @@ interface AnalyzedImageDao {
     suspend fun getAnalyzedImageEntity(
         imageId: Long,
     ): AnalyzedImageEntity?
+
+    @Query(
+        """
+    SELECT EXISTS(
+        SELECT 1
+        FROM document_image_cross_refs
+        WHERE imageId = :imageId
+    )
+    """,
+    )
+    fun hasRelatedDocuments(
+        imageId: Long,
+    ): Flow<Boolean>
 
     @Insert(
         onConflict = OnConflictStrategy.IGNORE,

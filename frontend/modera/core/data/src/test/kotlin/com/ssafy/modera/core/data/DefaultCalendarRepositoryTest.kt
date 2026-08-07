@@ -1,7 +1,7 @@
 package com.ssafy.modera.core.data
 
 import app.cash.turbine.test
-import com.ssafy.modera.core.data.repository.AnalyzedImageRepository
+import com.ssafy.modera.core.data.repository.analyzedImage.AnalyzedImageRepository
 import com.ssafy.modera.core.data.repository.calendar.CalendarRepository
 import com.ssafy.modera.core.data.repository.calendar.DefaultCalendarRepository
 import com.ssafy.modera.core.model.calendar.CalendarScheduleSource

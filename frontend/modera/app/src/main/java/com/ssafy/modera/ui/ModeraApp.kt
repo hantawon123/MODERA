@@ -46,16 +46,14 @@ import com.ssafy.modera.core.ui.snackbar.ModeraSnackbarMessage
 import com.ssafy.modera.core.ui.snackbar.ModeraSnackbarProvider
 import com.ssafy.modera.core.ui.snackbar.rememberModeraSnackbarHostState
 import com.ssafy.modera.fcm.NotificationNavigationTarget
-import com.ssafy.modera.feature.analyzedimagedetail.navigation.AnalyzedImageDetailNavKey
-import com.ssafy.modera.feature.analyzedimagedetail.navigation.analyzedImageDetailEntry
-import com.ssafy.modera.feature.analyzedimagedetail.navigation.navigateToImageDetail
+import com.ssafy.modera.feature.analyzedimage.api.navigation.AnalyzedImageDetailNavKey
+import com.ssafy.modera.feature.analyzedimage.api.navigation.navigateToImageDetail
 import com.ssafy.modera.feature.calendar.navigation.calendarEntry
 import com.ssafy.modera.feature.calendar.navigation.navigateToCalendar
 import com.ssafy.modera.feature.category.navigation.CategoryNavKey
 import com.ssafy.modera.feature.category.navigation.categoryEntry
 import com.ssafy.modera.feature.category.navigation.navigateToCategoryTab
 import com.ssafy.modera.feature.document.documentcreate.navigation.documentCreateEntry
-import com.ssafy.modera.feature.document.documentcreate.navigation.navigateToDocumentCreate
 import com.ssafy.modera.feature.document.documentcreate.navigation.navigateToDocumentRecreate
 import com.ssafy.modera.feature.document.documentdetail.navigation.DocumentDetailNavKey
 import com.ssafy.modera.feature.document.documentdetail.navigation.documentDetailEntry
@@ -68,14 +66,13 @@ import com.ssafy.modera.feature.home.navigation.HomeNavKey
 import com.ssafy.modera.feature.home.navigation.homeEntry
 import com.ssafy.modera.feature.home.navigation.navigateToHomeTab
 import com.ssafy.modera.feature.imageviewer.navigation.imageViewerEntry
-import com.ssafy.modera.feature.imageviewer.navigation.navigateToImageViewer
 import com.ssafy.modera.feature.login.LoginRoute
-import com.ssafy.modera.feature.relatedimages.navigation.relatedImagesEntry
 import com.ssafy.modera.feature.settings.navigation.navigateToSettings
 import com.ssafy.modera.feature.settings.navigation.settingsEntry
 import com.ssafy.modera.media.rememberGalleryPickerLauncher
 import com.ssafy.modera.navigation.BOTTOM_NAV_ITEMS
 import com.ssafy.modera.navigation.TOP_LEVEL_NAV_ITEMS
+import com.ssafy.modera.navigation.analyzedImageEntries
 import com.ssafy.modera.navigation.moderaPopTransition
 import com.ssafy.modera.navigation.moderaPredictivePopTransition
 import com.ssafy.modera.navigation.moderaPushTransition
@@ -329,6 +326,11 @@ internal fun ModeraApp(
                                     onLogoutClick = onLogoutClick,
                                 )
 
+                                analyzedImageEntries(
+                                    navigator = navigator,
+                                    sharedTransitionScope = this@SharedTransitionLayout,
+                                )
+
                                 categoryEntry(
                                     onItemClick = navigator::navigateToImageDetail,
                                 )
@@ -343,25 +345,10 @@ internal fun ModeraApp(
                                         schedule.imageId?.let(navigator::navigateToImageDetail)
                                     },
                                 )
-                                analyzedImageDetailEntry(
-                                    navigator = navigator,
-                                    sharedTransitionScope =
-                                        this@SharedTransitionLayout,
-                                    onImageClick =
-                                        navigator::navigateToImageViewer,
-                                    onBackClick = handleBack,
-                                    onCreateDocumentClick =
-                                        navigator::navigateToDocumentCreate,
-                                )
 
                                 imageViewerEntry(
                                     sharedTransitionScope =
                                         this@SharedTransitionLayout,
-                                    onBackClick = handleBack,
-                                )
-
-                                relatedImagesEntry(
-                                    navigator = navigator,
                                     onBackClick = handleBack,
                                 )
 

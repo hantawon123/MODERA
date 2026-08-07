@@ -12,3 +12,5 @@ services:
 networks:
   infra_default:
     external: true
+  shared-web:
+    external: true

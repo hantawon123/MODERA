@@ -62,7 +62,7 @@ class ModeraFirebaseMessagingService : FirebaseMessagingService() {
 
         when (event.resource) {
             SyncResourceType.CALENDAR,
-            SyncResourceType.IMAGE,
+            SyncResourceType.IMAGE_UPLOAD,
             SyncResourceType.IMAGE_CATEGORY,
             SyncResourceType.DOCUMENT -> {
                 syncWorkEnqueuer.enqueue(

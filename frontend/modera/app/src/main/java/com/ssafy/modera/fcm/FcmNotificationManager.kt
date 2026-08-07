@@ -123,7 +123,7 @@ class FcmNotificationManager @Inject constructor(
 
     private fun DataChangedEvent.toNotificationContent(): NotificationContent =
         when (resource) {
-            SyncResourceType.IMAGE -> {
+            SyncResourceType.IMAGE_UPLOAD -> {
                 NotificationContent(
                     title = "이미지 분석 완료",
                     body = "눌러서 분석 결과를 확인해 보세요.",

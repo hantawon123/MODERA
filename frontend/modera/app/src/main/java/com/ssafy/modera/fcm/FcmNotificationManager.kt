@@ -137,9 +137,16 @@ class FcmNotificationManager @Inject constructor(
                 )
             }
 
-            SyncResourceType.DOCUMENT -> {
+            SyncResourceType.DOCUMENT_UPLOAD -> {
                 NotificationContent(
                     title = "문서 생성 완료",
+                    body = "새로운 문서 내용을 확인해 보세요.",
+                )
+            }
+
+            SyncResourceType.DOCUMENT_REANALYSIS -> {
+                NotificationContent(
+                    title = "문서 재생성 완료",
                     body = "새로운 문서 내용을 확인해 보세요.",
                 )
             }

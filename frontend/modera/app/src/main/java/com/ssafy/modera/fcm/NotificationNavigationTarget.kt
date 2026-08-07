@@ -32,7 +32,7 @@ internal fun Intent.toNotificationNavigationTarget():
             )
         }
 
-        SyncResourceType.DOCUMENT.name -> {
+        SyncResourceType.DOCUMENT_UPLOAD.name -> {
             NotificationNavigationTarget.DocumentDetail(
                 documentId = resourceId,
             )

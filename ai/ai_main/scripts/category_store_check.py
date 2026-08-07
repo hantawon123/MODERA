@@ -70,7 +70,8 @@ class FakeClient:
         if id not in self.docs:
             raise FakeError(404)
         source, seq_no, primary_term = self.docs[id]
-        return {"_source": source, "_seq_no": seq_no, "_primary_term": primary_term}
+        return {"found": True, "_source": source,
+                "_seq_no": seq_no, "_primary_term": primary_term}
 
     def index(self, index, id, body, **guard):
         if self.force_conflicts > 0:
@@ -82,6 +83,11 @@ class FakeClient:
             raise FakeError(409)
         seq_no = self.docs[id][1] + 1 if id in self.docs else 1
         self.docs[id] = (body, seq_no, 1)
+
+    def update(self, index, id, body):
+        """부분 병합(doc_as_upsert). 이미지 인덱스의 _merge_doc 이 쓴다."""
+        source, seq_no, _ = self.docs.get(id, ({}, 0, 1))
+        self.docs[id] = ({**source, **body["doc"]}, seq_no + 1, 1)
 
 
 def use(client: FakeClient) -> None:
@@ -383,6 +389,39 @@ client = SharedBoomClient(
 use(client)
 assert set(category_store.load_category_vectors(3)) == {"쇼핑"}
 
+
+# 21) OCR 교정본이 색인에 남아 6-2 상세까지 닿는다. 카테고리 벡터는 아니지만 같은
+#     가짜 OpenSearch 로 검증되고, 끊기면 조용하다 — 장당 교정 토큰을 내고 결과를
+#     100% 버리는데 아무 에러도 안 난다. 그래서 같은 관문에서 잡는다.
+client = FakeClient()
+use(client)
+search._index_checked_at = 0.0
+search.embedder.embed = lambda text: []      # 로컬 bge-m3 로딩 회피
+
+
+def indexed(image_id=1, **kw):
+    args = {"image_id": image_id, "user_id": 1, "title": "t", "summary": "s",
+            "tags": [], "category_name": "쇼핑", "raw_text": "동으1서",
+            "created_at": "2026-08-07T00:00:00+09:00"}
+    search.index_document(**{**args, **kw})
+    return client.docs[str(image_id)][0]
+
+
+assert indexed(refined_text="동의서")["refined_text"] == "동의서"
+# 교정본 없이 다시 색인해도(재분석·비융합 AGENT) 이미 있는 교정본을 지우지 않는다.
+assert indexed()["refined_text"] == "동의서", "교정본이 None 으로 덮였다"
+assert "refined_text" not in indexed(image_id=2), "빈 교정본이 키로 들어갔다"
+# 원문은 그대로 남아야 한다 — 교정본은 추가 필드이고 검색은 raw_text 로 한다.
+assert client.docs["1"][0]["raw_text"] == "동으1서"
+
+# 6-2 가 읽는 상세 조회에 실려 나간다(없으면 None → 앱이 rawText 로 폴백).
+assert search.get_image(1)["refined_text"] == "동의서"
+assert search.get_image(2)["refined_text"] is None
+
+# 매핑에도 있어야 한다(dynamic mapping 에 맡기면 text 로 굳어 저장 전용 의도가 깨진다).
+props = search._index_body()["mappings"]["properties"]
+assert props["refined_text"] == {"type": "text", "index": False}, props["refined_text"]
+
 # 20-b) 상한을 넘으면 경고를 남긴다 — 조용히 자르지 않는다.
 #       상한에 걸린다는 건 서로 다른 이름이 수백 개라는 뜻이고, 그건 파편화를 막으려고
 #       만든 흡수 관문·프롬프트 재사용 규칙이 새고 있다는 신호다(상한을 올릴 일이 아니다).
@@ -415,4 +454,5 @@ try:
 finally:
     category_store._SHARED_NAME_LIMIT = original_limit
 
-print("OK — centroid 누적·무효화·409 재시도·후보 병합·전역 시드·이름 공유 전부 통과")
+print("OK — centroid 누적·무효화·409 재시도·후보 병합·전역 시드·이름 공유"
+      "·OCR 교정본 배선 전부 통과")

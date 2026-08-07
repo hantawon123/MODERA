@@ -4,6 +4,7 @@ public record InitialCategoryResolvedPayload(
         int imageId,
         int userId,
         int categoryId,
-        String categoryName
+        String categoryName,
+        String triggerType
 ) {
 }

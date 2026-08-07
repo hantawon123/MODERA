@@ -80,12 +80,21 @@ class CategoryCommandServiceTest {
 
     @Test
     void storesTheInitialAiOwnedCategoryThroughItsSeparateEvent() {
-        var payload = new InitialCategoryResolvedPayload(18, 7, 3, "문서");
+        var payload = new InitialCategoryResolvedPayload(18, 7, 3, "문서", "INITIAL");
 
         categoryCommandService.initialize(payload);
 
         verify(categoryCommandRepository).saveInitialDefault(7, 18, 3, "문서");
         verify(imageQueryRepository).synchronizeUserCategories(7);
-        verify(userDataChangeOutboxService).record(7, "IMAGE", "18");
+        verify(userDataChangeOutboxService).record(7, "IMAGE_UPLOAD", "18");
+    }
+
+    @Test
+    void routesAReuploadCategoryToImageReanalysisResource() {
+        var payload = new InitialCategoryResolvedPayload(18, 7, 3, "문서", "REUPLOAD");
+
+        categoryCommandService.initialize(payload);
+
+        verify(userDataChangeOutboxService).record(7, "IMAGE_REANALYSIS", "18");
     }
 }

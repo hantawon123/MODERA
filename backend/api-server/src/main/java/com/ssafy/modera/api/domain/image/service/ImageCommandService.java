@@ -53,7 +53,6 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -164,17 +163,6 @@ public class ImageCommandService {
             }
         }
 
-        if (!deletedImageIds.isEmpty()) {
-            String deletedIdsPayload = deletedImageIds.stream()
-                    .map(String::valueOf)
-                    .collect(Collectors.joining(",", "[", "]"));
-            userDataChangeOutboxService.record(
-                    userId,
-                    UserDataChangeResource.IMAGE_DELETE_BATCH,
-                    deletedIdsPayload
-            );
-        }
-
         return new ImageDeleteResponse(
                 List.copyOf(deletedImageIds),
                 List.copyOf(alreadyDeletedImageIds),
@@ -275,7 +263,7 @@ public class ImageCommandService {
         // 최종 결과 알림을 보낸다. 기존 분석 결과 연결만 끝난 경우에만 여기서 알린다.
         if (!duplicated && reusedExistingAnalysis) {
             userDataChangeOutboxService.record(
-                    userId, UserDataChangeResource.IMAGE,
+                    userId, UserDataChangeResource.IMAGE_UPLOAD,
                     String.valueOf(imageAsset.getImageId()));
         }
         return duplicated ? duplicated(imageAsset.getImageId()) : registered(imageAsset);

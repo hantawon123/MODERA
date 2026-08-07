@@ -100,7 +100,7 @@ public class DocumentPersistService {
 
         request.complete(document.getDocumentId(), now);
         userDataChangeOutboxService.record(
-                request.getUserId(), UserDataChangeResource.DOCUMENT,
+                request.getUserId(), UserDataChangeResource.DOCUMENT_UPLOAD,
                 String.valueOf(document.getDocumentId()));
 
         log.info("문서 저장 완료: documentRequestId={} documentId={} images={}",
@@ -154,7 +154,8 @@ public class DocumentPersistService {
 
         request.complete(documentId, now);
         userDataChangeOutboxService.record(
-                userId, UserDataChangeResource.DOCUMENT, String.valueOf(documentId));
+                userId, UserDataChangeResource.DOCUMENT_REANALYSIS,
+                String.valueOf(documentId));
 
         log.info("문서 재분석 반영 완료: documentRequestId={} documentId={} images={} removed={}",
                 request.getId(), documentId, imageIds.size(), removed.size());

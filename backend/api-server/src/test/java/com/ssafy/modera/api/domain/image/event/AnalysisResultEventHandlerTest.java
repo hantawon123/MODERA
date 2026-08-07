@@ -67,7 +67,7 @@ class AnalysisResultEventHandlerTest {
         eventHandler.handleCompleted(completed("자동차"));
 
         verify(userDataChangeOutboxService, never()).record(
-                7, UserDataChangeResource.IMAGE, "18");
+                7, UserDataChangeResource.IMAGE_UPLOAD, "18");
     }
 
     @Test
@@ -75,10 +75,22 @@ class AnalysisResultEventHandlerTest {
         eventHandler.handleCompleted(completed(null));
 
         verify(userDataChangeOutboxService).record(
-                7, UserDataChangeResource.IMAGE, "18");
+                7, UserDataChangeResource.IMAGE_UPLOAD, "18");
+    }
+
+    @Test
+    void routesReuploadAnalysisToReanalysisResource() {
+        eventHandler.handleCompleted(completed(null, "REUPLOAD"));
+
+        verify(userDataChangeOutboxService).record(
+                7, UserDataChangeResource.IMAGE_REANALYSIS, "18");
     }
 
     private AnalysisCompletedPayload completed(String categoryName) {
+        return completed(categoryName, "INITIAL");
+    }
+
+    private AnalysisCompletedPayload completed(String categoryName, String triggerType) {
         return new AnalysisCompletedPayload(
                 18,
                 7,
@@ -92,7 +104,8 @@ class AnalysisResultEventHandlerTest {
                 null,
                 null,
                 "COMPLETED",
-                "model-v1"
+                "model-v1",
+                triggerType
         );
     }
 }

@@ -91,7 +91,8 @@ public class AnalysisCallbackService {
             }
             eventPublisher.publish(Streams.ANALYSIS_RESULT, EventTypes.ANALYSIS_FAILED, 1,
                     new AnalysisFailedPayload(job.getImageId(), job.getUserId(),
-                            CALLBACK_PERSIST_ERROR, truncate(message), true));
+                            CALLBACK_PERSIST_ERROR, truncate(message), true,
+                            job.getTriggerType()));
             log.warn("ANALYSIS_FAILED 발행(콜백 처리 실패): jobId={}", job.getJobId());
         });
     }
@@ -212,7 +213,8 @@ public class AnalysisCallbackService {
                 str(structured, "type"),
                 jsonObject(structured, "fields"),
                 request.status(),
-                request.modelVersion()
+                request.modelVersion(),
+                analysisJob.getTriggerType()
         );
         eventPublisher.publish(Streams.ANALYSIS_RESULT, EventTypes.ANALYSIS_COMPLETED, 1, payload);
         publishInitialCategory(analysisJob, result);
@@ -233,7 +235,8 @@ public class AnalysisCallbackService {
                     EventTypes.INITIAL_CATEGORY_RESOLVED,
                     1,
                     new InitialCategoryResolvedPayload(
-                            job.getImageId(), job.getUserId(), categoryId, categoryName)
+                            job.getImageId(), job.getUserId(), categoryId, categoryName,
+                            job.getTriggerType())
             );
         } catch (Exception exception) {
             // Initial category replication is auxiliary. A Redis failure here must not
@@ -256,7 +259,8 @@ public class AnalysisCallbackService {
         }
 
         AnalysisFailedPayload payload = new AnalysisFailedPayload(
-                job.getImageId(), job.getUserId(), code, message, retryable);
+                job.getImageId(), job.getUserId(), code, message, retryable,
+                job.getTriggerType());
         eventPublisher.publish(Streams.ANALYSIS_RESULT, EventTypes.ANALYSIS_FAILED, 1, payload);
         log.warn("ANALYSIS_FAILED 발행: jobId={} code={}", job.getJobId(), code);
     }

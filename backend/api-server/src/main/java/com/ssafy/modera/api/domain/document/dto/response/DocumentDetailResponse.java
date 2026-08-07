@@ -9,8 +9,8 @@ import java.util.List;
  * 8-3 문서 상세.
  *
  * @param regenerating 재분석이 진행 중이면 true. 이 값이 true인 동안 클라이언트는 로딩
- *                     화면을 띄우고 폴링하면 된다 — 완료 알림(FCM)이 아직 없어서, 재분석이
- *                     끝났는지 확인할 수 있는 유일한 창구가 이 조회다. 실패로 끝나도 문서
+ *                     화면을 띄우고 폴링하면 된다. 완료 시 DOCUMENT_REANALYSIS FCM도
+ *                     발송된다. 실패로 끝나도 문서
  *                     내용은 이전 상태 그대로 남는다(재분석은 새 문서를 만들지 않는다).
  */
 public record DocumentDetailResponse(

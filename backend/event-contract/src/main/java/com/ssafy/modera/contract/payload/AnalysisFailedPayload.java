@@ -8,6 +8,7 @@ public record AnalysisFailedPayload(
         int userId,
         String errorCode,
         String errorMessage,
-        boolean retryable
+        boolean retryable,
+        String triggerType
 ) {
 }

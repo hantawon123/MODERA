@@ -121,7 +121,7 @@ public class StuckJobScanner {
 
         eventPublisher.publish(Streams.ANALYSIS_RESULT, EventTypes.ANALYSIS_FAILED, 1,
                 new AnalysisFailedPayload(job.getImageId(), job.getUserId(),
-                        errorCode, errorMessage, true));
+                        errorCode, errorMessage, true, job.getTriggerType()));
         log.warn("ANALYSIS_FAILED 발행({}): jobId={}", errorCode, job.getJobId());
     }
 }

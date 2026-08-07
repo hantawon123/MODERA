@@ -245,7 +245,7 @@ class ImageCommandServiceTest {
             assertThat(item.reason()).isEqualTo("UNSUPPORTED_FORMAT");
         });
         verify(userDataChangeOutboxService, never()).record(
-                1, UserDataChangeResource.IMAGE, "21");
+                1, UserDataChangeResource.IMAGE_UPLOAD, "21");
     }
 
     @Test
@@ -304,7 +304,7 @@ class ImageCommandServiceTest {
         });
         verify(userImageRepository).saveAndFlush(any(UserImage.class));
         verify(userDataChangeOutboxService).record(
-                2, UserDataChangeResource.IMAGE, "20");
+                2, UserDataChangeResource.IMAGE_UPLOAD, "20");
     }
 
     @Test
@@ -359,7 +359,7 @@ class ImageCommandServiceTest {
                 assertThat(item.presignedUrl())
                         .isEqualTo("https://storage.example/6/7-60.jpg"));
         verify(userDataChangeOutboxService, never()).record(
-                6, UserDataChangeResource.IMAGE, "7");
+                6, UserDataChangeResource.IMAGE_UPLOAD, "7");
     }
 
     @Test
@@ -387,8 +387,10 @@ class ImageCommandServiceTest {
         assertThat(response.deletedCount()).isEqualTo(2);
         assertThat(response.failedCount()).isEqualTo(2);
         verify(imageCommandRepository, times(1)).deleteImage(1, 10);
-        verify(userDataChangeOutboxService).record(
-                1, UserDataChangeResource.IMAGE_DELETE_BATCH, "[10,14]");
+        verify(userDataChangeOutboxService, never()).record(
+                org.mockito.ArgumentMatchers.anyInt(),
+                org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.anyString());
     }
 
     @Test

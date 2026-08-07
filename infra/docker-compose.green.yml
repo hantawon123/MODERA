@@ -1,0 +1,16 @@
+# blue-green 배포용 임시 인스턴스. 본체(docker-compose.yml)의 modera-api를 상속하므로
+# 본체 env를 수정해도 이 파일은 손댈 필요 없음. deploy-api.sh가 기동·제거를 관리한다.
+services:
+  modera-api-green:
+    extends:
+      file: docker-compose.yml
+      service: modera-api
+    container_name: modera-api-green
+    image: modera-api:${DEPLOY_TAG:-latest}
+    restart: "no"
+
+networks:
+  infra_default:
+    external: true
+  shared-web:
+    external: true

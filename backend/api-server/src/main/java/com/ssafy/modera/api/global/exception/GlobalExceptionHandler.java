@@ -1,0 +1,70 @@
+package com.ssafy.modera.api.global.exception;
+
+import com.ssafy.modera.api.global.response.ApiResponse;
+import com.ssafy.modera.api.global.response.ApiV1Controller;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
+
+import java.util.List;
+
+/**
+ * /api/v1/**(= {@link ApiV1Controller}가 붙은 컨트롤러)에서만 동작한다.
+ * /internal/**, actuator, swagger는 이 Advice의 대상이 아니라 Spring 기본 오류 응답을 쓴다.
+ */
+@Slf4j
+@RestControllerAdvice(annotations = ApiV1Controller.class)
+public class GlobalExceptionHandler {
+
+    @ExceptionHandler(BusinessException.class)
+    public ResponseEntity<ApiResponse<Object>> handleBusinessException(BusinessException e) {
+        ErrorCode errorCode = e.getErrorCode();
+        log.warn("BusinessException: code={}, message={}", errorCode.getCode(), e.getMessage());
+        return ResponseEntity.status(errorCode.getStatus())
+                .body(ApiResponse.fail(errorCode, e.getMessage(), e.getDetail()));
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<ApiResponse<List<FieldErrorResponse>>> handleValidation(MethodArgumentNotValidException e) {
+        List<FieldErrorResponse> fieldErrors = e.getBindingResult().getFieldErrors().stream()
+                .map(fieldError -> new FieldErrorResponse(fieldError.getField(), fieldError.getDefaultMessage()))
+                .toList();
+        log.warn("요청 검증 실패: {}", fieldErrors);
+        return ResponseEntity.status(GlobalErrorCode.INVALID_PARAMETER.getStatus())
+                .body(ApiResponse.fail(GlobalErrorCode.INVALID_PARAMETER, GlobalErrorCode.INVALID_PARAMETER.getMessage(), fieldErrors));
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ApiResponse<Object>> handleUnreadableRequest(HttpMessageNotReadableException e) {
+        log.warn("요청 본문 역직렬화 실패: {}", e.getMessage());
+        return ResponseEntity.status(GlobalErrorCode.INVALID_PARAMETER.getStatus())
+                .body(ApiResponse.fail(
+                        GlobalErrorCode.INVALID_PARAMETER,
+                        GlobalErrorCode.INVALID_PARAMETER.getMessage(),
+                        null
+                ));
+    }
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ApiResponse<Object>> handleTypeMismatch(MethodArgumentTypeMismatchException e) {
+        log.warn("요청 파라미터 타입 변환 실패: parameter={}, value={}", e.getName(), e.getValue());
+        return ResponseEntity.status(GlobalErrorCode.INVALID_PARAMETER.getStatus())
+                .body(ApiResponse.fail(
+                        GlobalErrorCode.INVALID_PARAMETER,
+                        GlobalErrorCode.INVALID_PARAMETER.getMessage(),
+                        null
+                ));
+    }
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ApiResponse<Object>> handleException(Exception e) {
+        // 스택트레이스는 로그에만 남기고 응답에는 내부 정보를 노출하지 않는다.
+        log.error("처리되지 않은 예외", e);
+        return ResponseEntity.status(GlobalErrorCode.INTERNAL_ERROR.getStatus())
+                .body(ApiResponse.fail(GlobalErrorCode.INTERNAL_ERROR, GlobalErrorCode.INTERNAL_ERROR.getMessage(), null));
+    }
+}

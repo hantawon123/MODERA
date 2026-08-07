@@ -1,0 +1,19 @@
+databaseChangeLog:
+  - include:
+      file: db/changelog/001-init-schema.sql
+  - include:
+      file: db/changelog/002-convert-image-id-to-integer.sql
+  - include:
+      file: db/changelog/003-add-user-id-to-job.sql
+  - include:
+      file: db/changelog/004-add-client-ocr-to-job.sql
+  - include:
+      file: db/changelog/005-add-stuck-job-index.sql
+  - include:
+      file: db/changelog/006-add-active-job-unique-index.sql
+  - include:
+      file: db/changelog/007-add-pending-job-index.sql
+  - include:
+      file: db/changelog/008-add-s3-key-and-retry-index.sql
+  - include:
+      file: db/changelog/009-create-category-reanalysis-job.sql

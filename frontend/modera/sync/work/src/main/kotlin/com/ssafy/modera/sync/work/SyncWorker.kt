@@ -45,7 +45,8 @@ class SyncWorker @AssistedInject constructor(
                     )
                 }
 
-                SyncResourceType.DOCUMENT -> {
+                SyncResourceType.DOCUMENT_UPLOAD,
+                SyncResourceType.DOCUMENT_REANALYSIS -> {
                     documentRepository.syncWith(
                         resourceId = resourceId,
                     )

@@ -1,0 +1,22 @@
+services:
+  mock-kakao:
+    build:
+      context: ./mock-kakao
+    image: modera/mock-kakao:performance
+    container_name: modera-mock-kakao
+    environment:
+      MOCK_KAKAO_APP_ID: ${MOCK_KAKAO_APP_ID:-1525155}
+      MOCK_KAKAO_TOKEN_PREFIX: ${MOCK_KAKAO_TOKEN_PREFIX:-modera-perf-kakao}
+      MOCK_KAKAO_DELAY_MS: ${MOCK_KAKAO_DELAY_MS:-0}
+    networks:
+      - performance-network
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8080/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+networks:
+  performance-network:
+    external: true
+    name: ${K6_NETWORK:-infra_default}

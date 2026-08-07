@@ -1,0 +1,73 @@
+# 로컬 개발용 compose. 배포용 docker-compose.yml 과 별개다.
+#
+# 자급자족 스택이다 — MinIO 를 직접 띄우므로 backend/local-infra 가 필요 없다.
+# (local-infra 는 develop/backend 브랜치에만 있다. analysis-worker 콜백까지
+#  왕복시키려면 LOCAL_DEV.md 의 local-infra 절차를 따를 것.)
+#
+# 실행:
+#   cp .env.local.example .env.local
+#   docker compose -f docker-compose.local.yml up -d --build
+#   python scripts/seed_minio.py                                       # 버킷·테스트 이미지 시드
+#   docker compose -f docker-compose.local.yml --profile search up -d  # OpenSearch 까지
+#
+# 콜백 테스트는 sink 로 받는다 (worker 없이):
+#   AI_IN_DOCKER=true python scripts/full_stage_test.py --sink --count 4
+services:
+  ai-server:
+    build:
+      context: .
+    container_name: modera-ai-server
+    env_file: .env.local
+    environment:
+      # .env.local 의 값(호스트 기준 localhost:9002)을 컨테이너 기준으로 덮어쓴다.
+      S3_ENDPOINT: http://minio:9000
+      # presigned URL 은 컨테이너 밖(브라우저·앱)에서 열리므로 호스트 주소를 유지한다.
+      S3_PUBLIC_ENDPOINT: http://localhost:9002
+      OPENSEARCH_HOST: opensearch
+      OPENSEARCH_PORT: "9200"
+      OPENSEARCH_USE_SSL: "false"
+    ports:
+      - "8000:8000"
+    depends_on:
+      - minio
+
+  # 원본·썸네일 스토리지. 호스트 포트는 local-infra 관례(9002)를 따른다.
+  minio:
+    image: minio/minio
+    container_name: modera-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports:
+      - "9002:9000"
+      - "19001:9001"
+    volumes:
+      - minio-local-data:/data
+
+  # 검색·목록 API(/api/v1/*)까지 볼 때만 띄운다. FULL 파이프라인은 이것 없이도 돈다
+  # (색인 실패는 경고만 남기고 통과).
+  #
+  # nori 이미지는 먼저 빌드해야 한다:
+  #   docker build -t ai-opensearch-nori:latest -f opensearch.Dockerfile .
+  # 로컬은 보안 플러그인을 꺼서 http + 무인증으로 붙는다(배포용 compose 와 다른 점).
+  opensearch:
+    image: ai-opensearch-nori:latest
+    container_name: modera-opensearch
+    profiles: ["search"]
+    environment:
+      - discovery.type=single-node
+      - DISABLE_SECURITY_PLUGIN=true
+      - OPENSEARCH_JAVA_OPTS=-Xms1g -Xmx1g
+    ulimits:
+      memlock: { soft: -1, hard: -1 }
+      nofile: { soft: 65536, hard: 65536 }
+    volumes:
+      - opensearch-local-data:/usr/share/opensearch/data
+
+    ports:
+      - "127.0.0.1:9200:9200"
+
+volumes:
+  minio-local-data:
+  opensearch-local-data:

@@ -1,0 +1,5 @@
+services:
+  modera-worker:
+    environment:
+      - ANALYSIS_CLIENT=fastapi
+      - AI_SERVER_URL=http://modera-mock-ai:8000

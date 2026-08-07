@@ -1,0 +1,96 @@
+spring:
+  application:
+    name: modera-analysis-worker
+
+  profiles:
+    default: local
+
+  # [Modern Java] Virtual Threads (Project Loom)
+  threads:
+    virtual:
+      enabled: true
+
+  # [Lifecycle] 종료 시 진행 중인 작업을 기다리는 유예 시간
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
+
+  jackson:
+    time-zone: Asia/Seoul
+    default-property-inclusion: always
+
+# [Web] AI 서버가 분석 결과를 콜백으로 보내는 걸 받기 위한 서버.
+# api-server가 8080을 쓰므로 겹치지 않게 8081. graceful shutdown은 위
+# lifecycle.timeout-per-shutdown-phase와 짝을 이룬다(스트림 컨슈머 스레드뿐
+# 아니라 처리 중인 콜백 요청도 그 유예 시간 안에 마무리된다).
+server:
+  shutdown: graceful
+  port: 8081
+
+# [Analysis] mock | fastapi. local 기본은 mock(AI 서버 없이 파이프라인 검증용).
+analysis:
+  client: mock
+  callback-url: ${CALLBACK_URL:http://modera-worker:8081/internal/v1/callback/analysis}
+
+  # [Stuck Job] AI가 콜백을 끝내 보내지 않으면 job이 PROCESSING에 영구히 남는다. 그 상태를
+  # StuckJobScanner가 주기적으로 걷어낸다. stuck-timeout은 "이만큼 지나도록 콜백이 없으면
+  # 포기한다"는 기준이고, stuck-scan-interval은 후보를 훑는 주기다.
+  #
+  # 값은 ISO-8601 기간 형식으로 적는다 — @Scheduled의 fixedDelayString은 "5m" 같은 축약
+  # 표기를 파싱하지 못하고 ISO-8601 또는 밀리초 숫자만 받는다.
+  stuck-timeout: ${STUCK_TIMEOUT:PT5M}
+  stuck-scan-interval: ${STUCK_SCAN_INTERVAL:PT1M}
+
+  # PENDING으로 방치된 job(분석이 시작조차 못 한 경우)의 임계 시간. 같은 스캔 주기를 쓴다.
+  # stuck-timeout보다 훨씬 짧은 이유: PENDING은 저장 직후 다음 줄에서 PROCESSING이 되므로
+  # 정상 흐름에서 머무는 시간이 1초도 안 된다. 여기 걸린다는 건 그 사이에 worker가 죽었거나
+  # 상태 전이 저장이 실패했다는 뜻이라, 오래 기다릴 이유가 없다.
+  pending-timeout: ${PENDING_TIMEOUT:PT1M}
+
+  # [Auto Retry] FAILED + retryable=true로 끝난 job을 AnalysisRetryScanner가 자동 재시도한다.
+  # retry-backoff: 실패 확정 후 이만큼 지나야 재시도한다. 실패 직후 바로 다시 보내면
+  #   같은 원인(AI 다운 등)으로 그대로 실패해 attempt만 소모한다. stuck-timeout(5분)과
+  #   조합하면 최악 경로(요청→콜백 미도착→타임아웃→백오프)의 한 사이클이 약 7분이다.
+  # retry-max-attempt: 최초 시도를 포함한 총 시도 상한. 3이면 "처음 1번 + 재시도 2번".
+  retry-scan-interval: ${RETRY_SCAN_INTERVAL:PT1M}
+  retry-backoff: ${RETRY_BACKOFF:PT2M}
+  retry-max-attempt: ${RETRY_MAX_ATTEMPT:3}
+
+  # [PEL Reclaim] 컨슈머가 메시지를 가져간 뒤 XACK 없이 죽으면 그 메시지는 Redis PEL에
+  # 남아 아무도 다시 가져가지 않는다 (새 컨슈머는 '>' 오프셋으로 새 메시지만 읽는다.)
+  # PelReclaimScanner가 주기적으로 그런 메시지를 회수해 재처리한다.
+
+  # StuckJobScanner가 "분석은 시작했는데 안 끝난 것"을 걷어낸다면, 이쪽은
+  # "분석이 아예 시작되지 못한 것"을 되살리는 짝이다.
+  pel-min-idle: ${PEL_MIN_IDLE:PT3M}    # 이만큼 pending이면 죽은 컨슈머로 간주
+  pel-scan-interval: ${PEL_SCAN_INTERVAL:PT1M} # 후보를 훑는 주기
+  pel-max-delivery: ${PEL_MAX_DELIVERY:5}      # 이 횟수를 넘게 재전달됐으면 포기(XACK+에러 로그)
+
+# [AI Server] FastApiAnalysisClient가 분석을 요청할 주소.
+# analysis.client=fastapi일 때만 읽힌다(mock이면 빈 자체가 만들어지지 않는다).
+analysis-worker:
+  ai-server-url: ${AI_SERVER_URL:http://ai-server:8000}
+
+# [Observability] 액추에이터는 health만 노출한다. api-server와 달리 요청 트래픽을
+# 받는 API 서버가 아니라 컨슈머+콜백 수신용 백그라운드 프로세스라 info/metrics/
+# prometheus까지는 지금 필요 없다고 판단했다.
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "health, prometheus"
+  endpoint:
+    health:
+      show-details: always
+      probes:
+        enabled: true
+  # 메트릭에 application 라벨을 붙여 api와 라벨 체계를 맞춘다.
+  metrics:
+    tags:
+      application: ${spring.application.name}
+
+# [Logging] eventId(이벤트 컨슈머/퍼블리셔가 MDC에 심음)를 모든 로그 라인에 붙인다.
+# 콜백 수신용 웹서버가 생겼지만 api-server의 RequestIdFilter 같은 요청 ID 추적
+# 장치는 아직 없어 requestId는 안 쓴다 — eventId만 남긴다.
+logging:
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} ${LOG_LEVEL_PATTERN:-%5p} ${PID:- } --- [%15.15t] [eventId=%X{eventId}] %-40.40logger{39} : %m%n${LOG_EXCEPTION_CONVERSION_WORD:-%wEx}"

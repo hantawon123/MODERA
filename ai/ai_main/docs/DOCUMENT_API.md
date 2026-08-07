@@ -103,7 +103,7 @@
       "imageIds": [102, 101]
     }
   ],
-  "markdown": "## 가격 비교\n\n두 판매처 모두 동일한 도서이며 …",
+  "markdown": "### 가격 비교\n\n두 판매처 모두 동일한 도서이며 …",
   "sourceImageIds": [101, 102],
   "skipped": [],
   "modelVersion": "gemini-2.5-flash-lite",
@@ -126,7 +126,7 @@
 
 | 필드 | 타입 | 설명 |
 | --- | --- | --- |
-| heading | String | 섹션 제목 (마크다운 `##`) |
+| heading | String | 섹션 제목 (마크다운 `###`) |
 | body | String | 서술 본문. 빈 문자열일 수 있다 |
 | bullets | String[] | 나열 항목 (마크다운 `-`). 빈 배열일 수 있다 |
 | imageIds | Number[] | 이 섹션의 근거 이미지. **요청에 실제로 있던 id만 남는다** |
@@ -144,13 +144,13 @@
 `markdown` 필드의 출력 형태:
 
 ```markdown
-## {heading}
+### {heading}
 
 {body}
 
 - {bullet}
 
-## {heading}
+### {heading}
 
 {body}
 ```

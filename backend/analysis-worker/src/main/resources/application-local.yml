@@ -1,0 +1,63 @@
+spring:
+  config:
+    activate:
+      on-profile: local
+
+  # [Data Source] local-infra의 analysis-db 컨테이너.
+  # 이 개발 환경은 host 5432가 이미 다른 프로젝트 컨테이너 차지라
+  # local-infra/docker-compose.yml에서 analysis-db를 host 5434로 노출했다(3단계 참고).
+  datasource:
+    driver-class-name: org.postgresql.Driver
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5434}/${DB_NAME:modera_analysis}
+    username: ${DB_USERNAME:analysis_admin}
+    password: ${DB_PASSWORD:localdev}
+
+    hikari:
+      pool-name: modera-analysis-hikari-local
+      maximum-pool-size: 10
+      minimum-idle: 2
+      connection-timeout: 3000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+
+  jpa:
+    hibernate:
+      # 스키마는 Liquibase가 소유. Hibernate는 검증만 한다.
+      ddl-auto: validate
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+        highlight_sql: true
+
+  # [Redis] local-infra의 redis 컨테이너. host 6379도 다른 프로젝트가 쓰고 있어 6380으로 노출했다.
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6380}
+      password: ${REDIS_PASSWORD:}
+
+## server:
+##   port: 8082
+# 로컬 실연동 테스트용 (Jenkins가 8081 점유하고 있어서 8082로 바꿨음)
+
+# [Internal] AI 서버가 분석 결과 콜백(X-Internal-Token 헤더)을 보낼 때 검증할 값.
+# AI 서버가 /internal/v1/analyze 요청에 쓰는 토큰과 같은 값이다(양방향 공유 토큰).
+internal:
+  callback:
+    token: ${INTERNAL_TOKEN:local-dev-internal-token}
+
+# [Analysis] AI 서버 실연동 테스트용. mock으로 되돌리려면 client만 mock으로.
+# ai-server는 도커 컨테이너, worker는 IDE(호스트)에서 뜨므로
+# 콜백 주소는 컨테이너에서 호스트를 가리키는 host.docker.internal을 쓴다.
+# analysis:
+#   client: ${ANALYSIS_CLIENT:fastapi}
+#   callback-url: ${CALLBACK_URL:http://host.docker.internal:8082/internal/v1/callback/analysis}
+
+# analysis-worker:
+#   ai-server-url: ${AI_SERVER_URL:http://localhost:8000}
+
+logging:
+  level:
+    root: INFO
+    com.ssafy.modera: DEBUG

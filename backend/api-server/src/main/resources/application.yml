@@ -1,0 +1,105 @@
+spring:
+  application:
+    name: modera-api
+
+  profiles:
+    default: local
+
+  # [Modern Java] Virtual Threads (Project Loom)
+  threads:
+    virtual:
+      enabled: true
+
+  # [Lifecycle] 종료 시 진행 중인 요청을 기다리는 유예 시간
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
+
+  # [JSON] 공통 직렬화 옵션
+  jackson:
+    time-zone: Asia/Seoul
+    default-property-inclusion: always
+
+  # [Data] 공통 JPA 옵션 (DB 접속 정보는 프로필별)
+  jpa:
+    open-in-view: false
+    properties:
+      hibernate:
+        query.in_clause_parameter_padding: true
+
+server:
+  shutdown: graceful
+  port: 8080
+  forward-headers-strategy: native
+
+# [Logging] requestId(RequestIdFilter)·eventId(이벤트 컨슈머/퍼블리셔가 MDC에 심음)를
+# 모든 로그 라인에 붙인다. 둘 다 없으면 빈 문자열로 찍힌다(%X는 MDC 키가 없으면 공백).
+logging:
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} ${LOG_LEVEL_PATTERN:-%5p} ${PID:- } --- [%15.15t] [reqId=%X{requestId} eventId=%X{eventId}] %-40.40logger{39} : %m%n${LOG_EXCEPTION_CONVERSION_WORD:-%wEx}"
+
+# [Security] JWT 설정. 모든 환경에서 JWT_SECRET 환경변수 주입 필수 (fallback 없음 — 미주입 시 기동 실패).
+jwt:
+  secret: ${JWT_SECRET}
+  access-token-validity-in-seconds: 2592000
+  refresh-token-validity-in-seconds: 1209600
+
+oauth:
+  kakao:
+    # 운영 기본값은 실제 Kakao API다. 성능 테스트 배포에서만
+    # KAKAO_API_BASE_URL=http://modera-mock-kakao:8080 으로 덮어쓴다.
+    api-base-url: ${KAKAO_API_BASE_URL:https://kapi.kakao.com}
+    allowed-app-ids: ${KAKAO_ALLOWED_APP_IDS:1525155}
+    connect-timeout: ${KAKAO_CONNECT_TIMEOUT:3s}
+    read-timeout: ${KAKAO_READ_TIMEOUT:5s}
+
+# FCM data-only 메시지. 운영에서는 서비스 계정 JSON 파일을 컨테이너에 마운트하고
+# GOOGLE_APPLICATION_CREDENTIALS에 해당 파일 경로를 지정한 뒤 FIREBASE_ENABLED=true로 켠다.
+firebase:
+  enabled: ${FIREBASE_ENABLED:false}
+  project-id: ${FIREBASE_PROJECT_ID:}
+
+notification:
+  outbox:
+    poll-delay-ms: ${FCM_OUTBOX_POLL_DELAY_MS:1000}
+    batch-size: ${FCM_OUTBOX_BATCH_SIZE:100}
+    max-retries: ${FCM_OUTBOX_MAX_RETRIES:5}
+    stale-seconds: ${FCM_OUTBOX_STALE_SECONDS:300}
+    cleanup:
+      retention-days: ${FCM_OUTBOX_SENT_RETENTION_DAYS:7}
+      batch-size: ${FCM_OUTBOX_CLEANUP_BATCH_SIZE:1000}
+      max-batches: ${FCM_OUTBOX_CLEANUP_MAX_BATCHES:10}
+      soft-delete-batch-size: ${SOFT_DELETE_CLEANUP_BATCH_SIZE:1000}
+      soft-delete-max-batches: ${SOFT_DELETE_CLEANUP_MAX_BATCHES:10}
+      cron: ${FCM_OUTBOX_CLEANUP_CRON:0 0 4 * * *}
+      zone: ${FCM_OUTBOX_CLEANUP_ZONE:Asia/Seoul}
+
+# [Docs] Swagger는 /api/v1/**만 다룬다 — /internal/**은 JWT가 아니라
+# X-Webhook-Token으로 인증하는 서버 간 내부 API라 문서에서 뺀다(SwaggerConfig 설명 참고).
+springdoc:
+  paths-to-exclude: /internal/**
+
+# [Observability] 액추에이터 기본 노출
+management:
+  server:
+    port: 9080
+  endpoints:
+    web:
+      exposure:
+        include: "health, info, prometheus, metrics"
+  endpoint:
+    health:
+      show-details: always
+      probes:
+        enabled: true
+    metrics:
+      enabled: true
+    prometheus:
+      enabled: true
+  metrics:
+    tags:
+      application: ${spring.application.name}
+    # 응답시간 백분위수(p95)를 계산하려면 히스토그램 버킷이 필요하다.
+    # 기본은 count/sum/max만 노출해서 histogram_quantile()을 쓸 수 없다.
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true

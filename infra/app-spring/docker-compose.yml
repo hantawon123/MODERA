@@ -1,0 +1,79 @@
+services:
+  modera-api:
+    image: modera-api:latest
+    container_name: modera-api
+    environment:
+      - TZ=Asia/Seoul
+      - SPRING_PROFILES_ACTIVE=prod
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=modera_api
+      - DB_USERNAME=api_admin
+      - DB_PASSWORD=${API_DB_PASSWORD}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - JWT_SECRET=${JWT_SECRET}
+      - S3_INTERNAL_ENDPOINT=http://minio:9000
+      - S3_PUBLIC_ENDPOINT=${S3_PUBLIC_ENDPOINT}
+      - S3_REGION=us-east-1
+      - S3_BUCKET=${S3_BUCKET}
+      - S3_ACCESS_KEY=${S3_ACCESS_KEY}
+      - S3_SECRET_KEY=${S3_SECRET_KEY}
+      - MINIO_WEBHOOK_TOKEN=${MINIO_WEBHOOK_TOKEN}
+      - SERVER_URL=https://i15d207.p.ssafy.io:8443
+      - INTERNAL_TOKEN=${INTERNAL_TOKEN}
+      - WORKER_BASE_URL=http://modera-worker:8081
+      - AI_SERVER_URL=http://ai-ai-service-1:8000
+      - KAKAO_CLIENT_ID=${KAKAO_CLIENT_ID}
+      - KAKAO_CLIENT_SECRET=${KAKAO_CLIENT_SECRET}
+      - KAKAO_REDIRECT_URI=${KAKAO_REDIRECT_URI}
+      - KAKAO_ALLOWED_APP_IDS=${KAKAO_ALLOWED_APP_IDS}
+      - FIREBASE_ENABLED=true
+      - FIREBASE_PROJECT_ID=modera-1d6a0
+      - GOOGLE_APPLICATION_CREDENTIALS=/run/secrets/firebase-service-account.json
+
+    volumes:
+      - /opt/modera/secrets/firebase-service-account.json:/run/secrets/firebase-service-account.json:ro
+
+    networks:
+      infra_default: {}
+      # AI(SPRING_BASE_URL=http://spring-api:8080)가 이 별칭으로 백엔드를 부른다.
+      # 과거 수동 docker network connect로만 존재하다 배포 재생성마다 소실됐던 것을
+      # 선언으로 고정(2026-08-07 사고 재발 방지). green은 extends로 이 별칭을 상속해
+      # 배포 드레인·재생성 중에도 spring-api 해석이 끊기지 않는다.
+      shared-web:
+        aliases:
+          - spring-api
+    restart: unless-stopped
+
+  modera-worker:
+    image: modera-worker:latest
+    container_name: modera-worker
+    environment:
+      - TZ=Asia/Seoul
+      - SPRING_PROFILES_ACTIVE=prod
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=modera_analysis
+      - DB_USERNAME=analysis_admin
+      - DB_PASSWORD=${ANALYSIS_DB_PASSWORD}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - S3_INTERNAL_ENDPOINT=http://minio:9000
+      - S3_REGION=us-east-1
+      - S3_BUCKET=${S3_BUCKET}
+      - S3_ACCESS_KEY=${S3_ACCESS_KEY}
+      - S3_SECRET_KEY=${S3_SECRET_KEY}
+      - ANALYSIS_CLIENT=fastapi
+      - AI_SERVER_URL=http://ai-ai-service-1:8000
+      - INTERNAL_TOKEN=${INTERNAL_TOKEN}
+      - CALLBACK_URL=http://modera-worker:8081/internal/v1/callback/analysis
+    networks:
+      - infra_default
+    restart: unless-stopped
+
+networks:
+  infra_default:
+    external: true
+  shared-web:
+    external: true

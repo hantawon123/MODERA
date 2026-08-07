@@ -1,0 +1,67 @@
+spring:
+  config:
+    activate:
+      on-profile: prod
+
+  threads:
+    virtual:
+      enabled: true
+
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
+
+  # [Data Source] 운영 PostgreSQL. analysis-db 컨테이너/DB와 같은 docker network의 컨테이너명으로 접속.
+  datasource:
+    driver-class-name: org.postgresql.Driver
+    url: jdbc:postgresql://${DB_HOST}:${DB_PORT:5432}/${DB_NAME}?reWriteBatchedInserts=true
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+
+    hikari:
+      pool-name: modera-analysis-hikari-prod
+      maximum-pool-size: ${DB_POOL_MAX:20}
+      minimum-idle: ${DB_POOL_MIN:10}
+      connection-timeout: 3000
+      max-lifetime: 1800000
+      validation-timeout: 2000
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: false
+        highlight_sql: false
+
+  data:
+    redis:
+      host: ${REDIS_HOST:redis}
+      port: ${REDIS_PORT:6379}
+      connect-timeout: 2000
+      # ImageAnalysisConsumer의 XREADGROUP block(5초)보다 반드시 길어야 한다.
+      # 이보다 짧으면 컨슈머가 유휴 상태일 때마다 RedisCommandTimeoutException이 발생한다.
+      timeout: 6000
+
+# [Internal] AI 서버가 분석 결과 콜백(X-Internal-Token 헤더)을 보낼 때 검증할 값.
+# fallback 없음 — 미주입 시 기동 실패.
+internal:
+  callback:
+    token: ${INTERNAL_TOKEN}
+
+# [Analysis] FastApiAnalysisClient가 아직 미완성 스펙(AI 서버 실제 API와 다름)이라
+# 기본값을 mock으로 낮춰뒀다. TODO: C안(FastApiAnalysisClient, 콜백 기반 재구현)
+# 구현 완료 시 기본값을 fastapi로 되돌릴 것.
+analysis:
+  client: ${ANALYSIS_CLIENT:mock}
+  # AI가 분석 결과를 보낼 worker 주소. 같은 docker network의 컨테이너명으로 접근한다.
+  callback-url: ${CALLBACK_URL:http://modera-worker:8081/internal/v1/callback/analysis}
+
+analysis-worker:
+  ai-server-url: ${AI_SERVER_URL}
+
+logging:
+  level:
+    root: INFO
+    org.hibernate.SQL: ERROR
+    com.ssafy.modera: INFO

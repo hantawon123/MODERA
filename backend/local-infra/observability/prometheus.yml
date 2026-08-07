@@ -1,0 +1,20 @@
+# 로컬 전용 스크레이프 설정. 대상은 호스트 프로세스(IDE/gradle로 띄운 앱)다.
+# 부하테스트의 버스트(수 초)가 보이도록 앱 잡은 2초 간격으로 긁는다.
+global:
+  scrape_interval: 5s
+
+scrape_configs:
+  - job_name: modera-api-local
+    metrics_path: /actuator/prometheus
+    scrape_interval: 2s
+    static_configs:
+      # api-server 관리 포트(9080). 앱이 꺼져 있으면 target down으로 보인다.
+      - targets: ["host.docker.internal:9080"]
+
+  - job_name: modera-worker-local
+    metrics_path: /actuator/prometheus
+    scrape_interval: 2s
+    static_configs:
+      # analysis-worker(8082, 관리 포트 분리 없음). 구버전 프로세스는 이
+      # 엔드포인트가 없어 down으로 보이며, 최신 코드로 재시작하면 up이 된다.
+      - targets: ["host.docker.internal:8082"]

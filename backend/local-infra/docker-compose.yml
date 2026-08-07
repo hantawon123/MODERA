@@ -1,0 +1,155 @@
+services:
+  api-db:
+    build:
+      context: ./api-db
+    container_name: modera-api-db
+    environment:
+      POSTGRES_DB: modera_api
+      POSTGRES_USER: api_admin
+      POSTGRES_PASSWORD: localdev
+    ports:
+      - "5433:5432"
+    volumes:
+      - api-db-data:/var/lib/postgresql/data
+      - ./api-db/init:/docker-entrypoint-initdb.d
+    networks:
+      - modera-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U api_admin -d modera_api"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  analysis-db:
+    image: pgvector/pgvector:pg16
+    container_name: modera-analysis-db
+    environment:
+      POSTGRES_DB: modera_analysis
+      POSTGRES_USER: analysis_admin
+      POSTGRES_PASSWORD: localdev
+    ports:
+      - "5434:5432"
+    volumes:
+      - analysis-db-data:/var/lib/postgresql/data
+      - ./analysis-db/init:/docker-entrypoint-initdb.d
+    networks:
+      - modera-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U analysis_admin -d modera_analysis"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: modera-redis
+    ports:
+      - "6380:6379"
+    networks:
+      - modera-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  minio:
+    image: minio/minio
+    container_name: modera-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports:
+      - "9002:9000"
+      - "19001:9001"
+    volumes:
+      - minio-data:/data
+    networks:
+      - modera-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # 앱 컨테이너 2개. 인프라만 띄우는 기존 사용성(docker compose up -d)을 지키기 위해
+  # profiles: ["app"]으로 분리했다 — 이 둘은 `docker compose --profile app up`에서만 뜬다.
+  # jar는 gradle이 먼저 만들어야 한다: ./gradlew bootJar (외부 빌드 방식).
+  api-server:
+    build:
+      context: ../api-server
+    container_name: modera-api-server
+    profiles: ["app"]
+    depends_on:
+      api-db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      # JWT_SECRET은 base64여야 한다(JwtTokenProvider가 Decoders.BASE64로 디코딩).
+      # 문자열을 그대로 쓰면(예: 하이픈 포함) 기동이 실패한다 — 로컬 전용 더미값.
+      JWT_SECRET: ${JWT_SECRET:-JST22TJeTXAaCo/L6KKPBDYAbKyxmR7DUxJCcQup770=}
+      KAKAO_ALLOWED_APP_IDS: ${KAKAO_ALLOWED_APP_IDS:-1525155}
+      KAKAO_API_BASE_URL: ${KAKAO_API_BASE_URL:-https://kapi.kakao.com}
+      KAKAO_CONNECT_TIMEOUT: ${KAKAO_CONNECT_TIMEOUT:-3s}
+      KAKAO_READ_TIMEOUT: ${KAKAO_READ_TIMEOUT:-5s}
+      MINIO_WEBHOOK_TOKEN: local-dev-webhook-token
+      DB_HOST: api-db
+      REDIS_HOST: redis
+      S3_INTERNAL_ENDPOINT: http://minio:9000
+      S3_PUBLIC_ENDPOINT: http://localhost:9002
+    ports:
+      - "8090:8080"
+    networks:
+      - modera-network
+
+  analysis-worker:
+    build:
+      context: ../analysis-worker
+    container_name: modera-analysis-worker
+    profiles: ["app"]
+    depends_on:
+      analysis-db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      DB_HOST: analysis-db
+      REDIS_HOST: redis
+      ANALYSIS_CLIENT: mock
+    networks:
+      - modera-network
+
+  # 실제 Kakao 토큰을 소모하지 않고 Kakao 로그인 이후의 백엔드 파이프라인을
+  # 측정하는 성능 테스트 전용 서버다. 일반 로컬 실행에서는 올라오지 않는다.
+  mock-kakao:
+    build:
+      context: ../ops/k6/mock-kakao
+    container_name: modera-mock-kakao
+    profiles: ["performance"]
+    environment:
+      MOCK_KAKAO_APP_ID: ${MOCK_KAKAO_APP_ID:-1525155}
+      MOCK_KAKAO_TOKEN_PREFIX: ${MOCK_KAKAO_TOKEN_PREFIX:-modera-perf-kakao}
+    ports:
+      - "18080:8080"
+    networks:
+      - modera-network
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8080/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+networks:
+  modera-network:
+    driver: bridge
+
+volumes:
+  api-db-data:
+  analysis-db-data:
+  minio-data:

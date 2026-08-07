@@ -4,8 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ssafy.modera.core.common.result.Result
 import com.ssafy.modera.core.common.result.asResult
-import com.ssafy.modera.core.data.repository.AnalyzedImageRepository
 import com.ssafy.modera.core.data.repository.CategoryRepository
+import com.ssafy.modera.core.data.repository.analyzedImage.AnalyzedImageRepository
 import com.ssafy.modera.core.model.analyzedimage.AnalyzedImageQuery
 import com.ssafy.modera.core.model.analyzedimage.AnalyzedImageSortType
 import com.ssafy.modera.core.model.category.CategorySheetItem
@@ -34,7 +34,7 @@ import javax.inject.Inject
 class CategoryViewModel @Inject constructor(
     private val categoryRepository: CategoryRepository,
     private val analyzedImageRepository: AnalyzedImageRepository,
-    private val categoryTabController: CategoryTabController,
+    categoryTabController: CategoryTabController,
 ) : ViewModel() {
 
     private val navCategoryId = MutableStateFlow<Long?>(null)
@@ -176,9 +176,6 @@ class CategoryViewModel @Inject constructor(
     }
 
     fun onCategoryTitleClick() {
-        viewModelScope.launch {
-            categoryRepository.clearNewCategoryFlags()
-        }
         screenState.update { it.copy(showCategorySheet = true) }
     }
 
@@ -194,6 +191,10 @@ class CategoryViewModel @Inject constructor(
                 selectedCategoryId = categoryId,
                 showCategorySheet = false,
             )
+        }
+
+        viewModelScope.launch {
+            categoryRepository.clearNewCategoryFlag(categoryId)
         }
     }
 

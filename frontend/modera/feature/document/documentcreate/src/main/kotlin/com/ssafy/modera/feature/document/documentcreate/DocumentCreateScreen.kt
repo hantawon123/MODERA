@@ -41,6 +41,7 @@ import com.ssafy.modera.core.designsystem.icon.ModeraIcons
 import com.ssafy.modera.core.designsystem.theme.ModeraTheme
 import com.ssafy.modera.core.model.analyzedimage.AnalyzedImage
 import com.ssafy.modera.core.ui.DocumentCreatingScreen
+import com.ssafy.modera.core.ui.EmptyScreen
 import com.ssafy.modera.core.ui.ErrorScreen
 import com.ssafy.modera.feature.document.documentcreate.component.SelectedImagesSection
 import com.ssafy.modera.feature.documentcreate.DocumentRecommendationSkeleton
@@ -188,17 +189,32 @@ private fun DocumentCreateScreen(
                             }
 
                             is DocumentCreateUiState.Success -> {
-                                items(
-                                    items = uiState.recommendedImages,
-                                    key = AnalyzedImage::id,
-                                ) { image ->
-                                    ModeraMaterialItem(
-                                        title = image.title,
-                                        description = image.summary,
-                                        tags = image.hashtags,
-                                        imageUrl = image.thumbnailUrl,
-                                        onClick = { onRecommendedImageClick(image) },
-                                    )
+                                if (uiState.recommendedImages.isEmpty()) {
+                                    item(
+                                        key = "recommendation_empty",
+                                    ) {
+                                        EmptyScreen(
+                                            message = stringResource(
+                                                R.string.document_create_recommendation_empty,
+                                            ),
+                                            modifier = Modifier.fillParentMaxSize(),
+                                        )
+                                    }
+                                } else {
+                                    items(
+                                        items = uiState.recommendedImages,
+                                        key = AnalyzedImage::id,
+                                    ) { image ->
+                                        ModeraMaterialItem(
+                                            title = image.title,
+                                            description = image.summary,
+                                            tags = image.hashtags,
+                                            imageUrl = image.thumbnailUrl,
+                                            onClick = {
+                                                onRecommendedImageClick(image)
+                                            },
+                                        )
+                                    }
                                 }
                             }
                         }

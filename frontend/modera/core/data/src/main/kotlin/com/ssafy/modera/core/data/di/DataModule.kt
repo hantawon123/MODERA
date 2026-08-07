@@ -1,8 +1,8 @@
 ﻿package com.ssafy.modera.core.data.di
 
-import com.ssafy.modera.core.data.repository.AnalyzedImageRepository
+import com.ssafy.modera.core.data.repository.analyzedImage.AnalyzedImageRepository
 import com.ssafy.modera.core.data.repository.CategoryRepository
-import com.ssafy.modera.core.data.repository.DefaultAnalyzedImageRepository
+import com.ssafy.modera.core.data.repository.analyzedImage.DefaultAnalyzedImageRepository
 import com.ssafy.modera.core.data.repository.DefaultCategoryRepository
 import com.ssafy.modera.core.data.repository.DefaultImageRepository
 import com.ssafy.modera.core.data.repository.ImageRepository

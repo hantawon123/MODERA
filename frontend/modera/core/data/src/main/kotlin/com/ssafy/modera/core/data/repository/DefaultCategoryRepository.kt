@@ -68,6 +68,10 @@ class DefaultCategoryRepository @Inject constructor(
         }
     }
 
+    override suspend fun clearNewCategoryFlag(categoryId: Long) {
+        categoryDao.clearNewCategoryFlag(categoryId)
+    }
+
     override suspend fun clearNewCategoryFlags() {
         withContext(ioDispatcher) {
             categoryDao.clearNewCategoryFlags()

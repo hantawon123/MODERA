@@ -25,8 +25,8 @@ data class AnalyzedImageDetailResponse(
 fun AnalyzedImageDetailResponse.asExternalModel(): AnalyzedImageDetail =
     AnalyzedImageDetail(
         id = imageId,
-        imageUrl = imageUrl,
-        thumbnailUrl = thumbnailUrl.orEmpty(),
+        imageUrl = "https://i15d207.p.ssafy.io:8443/api/v1/images/${imageId}/file/raw",
+        thumbnailUrl = "https://i15d207.p.ssafy.io:8443/api/v1/images/${imageId}/thumbnail/raw",
         title = title,
         favorite = favorite,
         summary = summary,

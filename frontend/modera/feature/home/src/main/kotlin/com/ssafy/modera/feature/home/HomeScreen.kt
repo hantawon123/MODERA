@@ -59,7 +59,10 @@ fun HomeRoute(
                 uiState = state,
                 onCalendarClick = onCalendarClick,
                 onSettingsClick = onSettingsClick,
-                onCategoryClick = onCategoryClick,
+                onCategoryClick = { category ->
+                    onCategoryClick(category)
+                    viewModel.clearNewCategoryFlag(category.id)
+                },
                 onSearchQueryChange = viewModel::onSearchQueryChanged,
                 onSearchBarFocusChange = viewModel::onSearchBarFocusChanged,
                 onSearchSubmit = viewModel::submitSearch,

@@ -132,7 +132,7 @@ class FcmNotificationManager @Inject constructor(
 
             SyncResourceType.IMAGE_CATEGORY -> {
                 NotificationContent(
-                    title = "이미지 재분석 완료",
+                    title = "이미지 재분류 완료",
                     body = "눌러서 분석 결과를 확인해 보세요.",
                 )
             }

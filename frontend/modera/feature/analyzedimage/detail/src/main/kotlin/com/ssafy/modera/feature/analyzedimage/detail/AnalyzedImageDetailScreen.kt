@@ -326,14 +326,14 @@ private fun AnalyzedImageDetailContent(
                     },
                 ),
                 colors = ModeraIconButtonDefaults.iconButtonColors(
-                    contentColor = ModeraTheme.colors.yellow800,
+                    contentColor = ModeraTheme.colors.yellow500,
                 ),
                 size = 24.dp,
                 onClick = onFavoriteClick,
             )
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(8.dp))
 
         Text(
             text = image.title,

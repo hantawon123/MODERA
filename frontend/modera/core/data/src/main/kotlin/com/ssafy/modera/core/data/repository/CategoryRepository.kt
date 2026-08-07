@@ -11,5 +11,6 @@ interface CategoryRepository {
 
     suspend fun refreshCategoriesIfEmpty()
 
+    suspend fun clearNewCategoryFlag(categoryId: Long)
     suspend fun clearNewCategoryFlags()
 }

@@ -120,7 +120,7 @@ private fun NewBadge(
 
 private object CategoryItemDefaults {
     val Shape = RoundedCornerShape(20.dp)
-    val ShadowElevation = 6.dp
+    val ShadowElevation = 4.dp
 
     const val IllustrationSizeFraction = 0.80f
 }

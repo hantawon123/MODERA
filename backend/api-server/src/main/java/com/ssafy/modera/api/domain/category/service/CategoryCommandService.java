@@ -89,10 +89,7 @@ public class CategoryCommandService {
                 payload.categoryId(), payload.categoryName());
         imageQueryRepository.synchronizeUserCategories(payload.userId());
         userDataChangeOutboxService.record(
-                payload.userId(), payload.triggerType() != null
-                        && !"INITIAL".equals(payload.triggerType())
-                        ? UserDataChangeResource.IMAGE_REANALYSIS
-                        : UserDataChangeResource.IMAGE_UPLOAD,
+                payload.userId(), UserDataChangeResource.IMAGE_UPLOAD,
                 String.valueOf(payload.imageId()));
     }
 

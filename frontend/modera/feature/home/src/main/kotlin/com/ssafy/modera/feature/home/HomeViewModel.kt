@@ -28,7 +28,7 @@ class HomeViewModel @Inject constructor(
     private val categoryRepository: CategoryRepository,
     private val searchRepository: SearchRepository,
     private val recentSearchRepository: RecentSearchRepository,
-    private val homeTabController: HomeTabController,
+    homeTabController: HomeTabController,
 ) : ViewModel() {
     private val searchState = MutableStateFlow(HomeSearchState())
 
@@ -47,7 +47,6 @@ class HomeViewModel @Inject constructor(
                 .map { categories ->
                     categories
                         .filter { category -> category.itemCount > 0 }
-                        .take(HomeScreenDefaults.MaxCategoryCount)
                 }
                 .asResult(),
             searchState,

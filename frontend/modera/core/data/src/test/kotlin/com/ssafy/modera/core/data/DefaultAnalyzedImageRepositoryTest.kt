@@ -1,8 +1,8 @@
 package com.ssafy.modera.core.data
 
 import app.cash.turbine.test
-import com.ssafy.modera.core.data.repository.AnalyzedImageRepository
-import com.ssafy.modera.core.data.repository.DefaultAnalyzedImageRepository
+import com.ssafy.modera.core.data.repository.analyzedImage.AnalyzedImageRepository
+import com.ssafy.modera.core.data.repository.analyzedImage.DefaultAnalyzedImageRepository
 import com.ssafy.modera.core.model.analyzedimage.AnalyzedImageQuery
 import com.ssafy.modera.core.network.model.analyzedimage.AnalyzedImageDetailResponse
 import com.ssafy.modera.core.network.model.analyzedimage.AnalyzedImageResponse
@@ -147,7 +147,7 @@ class DefaultAnalyzedImageRepositoryTest {
                 isCalendared = false,
                 categoryId = 0,
                 ocrRefinedText = "",
-                updatedAt = "",
+                uploadedAt = "",
             )
 
             whenever(

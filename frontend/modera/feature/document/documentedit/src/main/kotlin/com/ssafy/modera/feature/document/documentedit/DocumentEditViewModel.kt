@@ -24,7 +24,7 @@ class DocumentEditViewModel @AssistedInject constructor(
 
     val uiState: StateFlow<DocumentEditUiState> =
         documentRepository
-            .getDocumentImages(documentId)
+            .getAnalyzedImagesByDocumentId(documentId)
             .asResult()
             .map { result ->
                 when (result) {

@@ -259,7 +259,8 @@ google-services = { id = "com.google.gms.google-services", version.ref = "google
 # Plugins defined by this project
 modera-android-application = { id = "modera.android.application" }
 modera-android-application-compose = { id = "modera.android.application.compose" }
-modera-android-feature = { id = "modera.android.feature" }
+modera-android-feature-impl = { id = "modera.android.feature.impl" }
+modera-android-feature-api = { id = "modera.android.feature.api" }
 modera-android-library = { id = "modera.android.library" }
 modera-android-library-compose = { id = "modera.android.library.compose" }
 modera-android-room = { id = "modera.android.room" }

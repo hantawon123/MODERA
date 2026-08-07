@@ -38,7 +38,7 @@ class SyncWorker @AssistedInject constructor(
 
         return try {
             val synced = when (resource) {
-                SyncResourceType.IMAGE,
+                SyncResourceType.IMAGE_UPLOAD,
                 SyncResourceType.IMAGE_CATEGORY -> {
                     analyzedImageRepository.syncWith(
                         resourceId = resourceId,

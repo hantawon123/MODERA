@@ -1,7 +1,7 @@
 package com.ssafy.modera.sync.work
 
 enum class SyncResourceType {
-    IMAGE,
+    IMAGE_UPLOAD,
     IMAGE_CATEGORY,
     DOCUMENT,
     CALENDAR,

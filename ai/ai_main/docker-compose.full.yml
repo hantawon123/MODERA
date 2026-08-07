@@ -1,0 +1,43 @@
+# feature/full-stage 전용 두 번째 스택. Jenkins 배포(/home/ubuntu/app/AI, ai-main:latest)와
+# 완전히 분리된다. 이미지 태그·서비스명·포트·OpenSearch 인덱스가 모두 다르다.
+#
+# 서버(i15d207)에서:
+#   git clone -b feature/full-stage <repo> /home/ubuntu/app/AI-full-src
+#   cd /home/ubuntu/app/AI-full-src/ai/ai_main
+#   sudo cp /home/ubuntu/app/AI/.env .env && sudo chown $USER .env   # Jenkins 가 넣어둔 .env 재사용
+#   docker compose -f docker-compose.full.yml -p ai-full up -d --build
+#
+# 확인: curl http://localhost:8001/health
+services:
+  ai-service-full:
+    build: .
+    # Jenkins 가 계속 덮어쓰는 ai-main:latest 와 겹치면 안 된다.
+    image: ai-main:full
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      # 기존 스택의 opensearch 컨테이너를 그대로 쓴다(ai_default 네트워크 참고).
+      # 인덱스만 분리해 배포본 데이터와 섞이지 않게 한다.
+      - OPENSEARCH_HOST=opensearch
+      - OPENSEARCH_PORT=9200
+      - OPENSEARCH_INDEX=screenshot_kb_full
+    networks:
+      # ai_default    : Jenkins 스택(/home/ubuntu/app/AI, 프로젝트명 'ai')의 opensearch
+      # infra_default : MinIO
+      # shared-web    : nginx 가 필요해지면 ai-service-full:8000 으로 프록시할 수 있게
+      - ai_default
+      - infra_default
+      - shared-web
+    ports:
+      # 8000 은 배포본이 쓰고 있다.
+      - "8001:8000"
+
+networks:
+  # 모두 다른 compose 프로젝트가 만든 것. 이 파일은 네트워크를 만들지 않는다.
+  # 이름이 다르면 `docker network ls | grep -E 'ai|infra|shared'` 로 확인할 것.
+  ai_default:
+    external: true
+  infra_default:
+    external: true
+  shared-web:
+    external: true

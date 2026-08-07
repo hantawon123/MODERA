@@ -1,0 +1,395 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI 파이프라인 실시간 처리</title>
+<style>
+  :root{
+    --bg:#ffffff; --panel:#ffffff; --tint:#f4f5f7; --soft:#fff2c0;
+    --ink:#20242b; --muted:#7b828c; --dim:#c4c9d0; --line:#e6e9ee;
+    --yellow:#f6a800; --bright:#ffce2e; --gold:#e09600; --golddeep:#a86f00;
+    --green:#3e9b5f; --red:#e0484a;
+    --shadow:0 6px 24px rgba(30,35,45,.09);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{
+    background:var(--bg);
+    color:var(--ink);
+    font-family:"Segoe UI",-apple-system,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1200px;margin:0 auto;padding:20px 22px 44px}
+
+  header{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:16px}
+  header h1{font-size:20px;margin:0;font-weight:750;letter-spacing:-.3px}
+  header h1 .g{color:var(--golddeep)}
+  .conn{display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--muted);
+    margin-left:auto;background:var(--panel);border:1px solid var(--line);
+    padding:6px 12px;border-radius:999px;box-shadow:var(--shadow)}
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--dim)}
+  .dot.ok{background:var(--green);animation:beat 2s infinite}
+  .dot.bad{background:var(--red)}
+  @keyframes beat{0%{box-shadow:0 0 0 0 rgba(62,155,95,.5)}70%{box-shadow:0 0 0 7px rgba(62,155,95,0)}100%{box-shadow:0 0 0 0 rgba(62,155,95,0)}}
+
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px}
+  .stat{background:var(--panel);border:1px solid var(--line);border-radius:14px;
+    padding:12px 16px;box-shadow:var(--shadow)}
+  .stat .n{font-size:26px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums;color:var(--gold)}
+  .stat .l{font-size:12px;color:var(--muted);margin-top:6px}
+  .stat.done .n{color:var(--green)} .stat.fail .n{color:var(--red)} .stat.q .n{color:var(--muted)}
+
+  /* ── 중앙 히어로: 가장 최근 이미지 ── */
+  .hero{background:var(--panel);border:1px solid var(--line);border-radius:22px;
+    box-shadow:var(--shadow);padding:24px 26px;position:relative;overflow:hidden;margin-bottom:20px}
+  .hero::before{content:"";position:absolute;inset:0 0 auto 0;height:5px;
+    background:linear-gradient(90deg,var(--bright),var(--yellow),var(--gold))}
+  .hero.enter{animation:heroIn .5s cubic-bezier(.2,.7,.2,1)}
+  @keyframes heroIn{from{opacity:.3;transform:scale(.985)}to{opacity:1;transform:none}}
+  .hero.failed::before{background:linear-gradient(90deg,#f3a3a3,var(--red))}
+
+  .hrow{display:flex;align-items:center;gap:12px;margin-bottom:20px}
+  .hrow .cap{font-size:12px;font-weight:700;color:var(--golddeep);letter-spacing:.4px;
+    background:var(--soft);padding:4px 11px;border-radius:999px}
+  .hrow .iid{font-size:18px;font-weight:800}
+  .st{font-size:12px;font-weight:800;padding:4px 11px;border-radius:999px;letter-spacing:.3px}
+  .st.QUEUED{background:#eef0f3;color:var(--muted)}
+  .st.PROCESSING{background:var(--soft);color:var(--golddeep)}
+  .st.COMPLETED{background:#dcf1e3;color:var(--green)}
+  .st.EMPTY{background:#fdeec2;color:var(--golddeep)}
+  .st.FAILED,.st.CANCELED{background:#fadddd;color:var(--red)}
+  .htimer{margin-left:auto;font-size:22px;font-weight:800;color:var(--gold);
+    font-variant-numeric:tabular-nums}
+
+  .hmain{display:flex;gap:26px;align-items:center}
+  .himg{flex:0 0 auto;width:190px;height:190px;border-radius:16px;object-fit:cover;
+    background:var(--tint);border:1px solid var(--line)}
+  .himg.ph{display:flex;align-items:center;justify-content:center;font-size:46px;color:var(--dim)}
+  .hpipe{flex:1;min-width:0}
+
+  /* 파이프라인 (큰 사이즈) */
+  .flow{display:flex;align-items:flex-start;overflow-x:auto;padding:6px 2px 2px}
+  .node{flex:1;min-width:96px;display:flex;flex-direction:column;align-items:center;text-align:center}
+  .bubble{width:74px;height:74px;border-radius:20px;display:flex;align-items:center;justify-content:center;
+    background:var(--tint);border:2px solid var(--line);font-size:30px;transition:.35s;position:relative}
+  .node.future .bubble{opacity:.45}
+  .node.pass .bubble{background:var(--soft);border-color:var(--yellow)}
+  .node.hot .bubble{border-color:var(--yellow);background:#fff;
+    box-shadow:0 0 0 5px rgba(246,168,0,.18),0 0 26px rgba(246,168,0,.5);
+    animation:bob 1.1s ease-in-out infinite}
+  @keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
+  .node.doneNode .bubble{background:#dcf1e3;border-color:var(--green)}
+  .node.failx .bubble{background:#fadddd;border-color:var(--red)}
+  .node .name{font-size:12.5px;font-weight:650;margin-top:10px;line-height:1.25}
+  .node .sub{font-size:10.5px;color:var(--dim);margin-top:1px}
+  .node .tchip{font-size:11px;font-weight:750;margin-top:6px;min-height:15px;
+    color:var(--golddeep);font-variant-numeric:tabular-nums}
+  .node.hot .tchip{color:var(--gold)} .node.future .tchip{color:transparent}
+
+  .conn-line{flex:0 0 40px;align-self:flex-start;margin-top:35px;height:4px;border-radius:2px;
+    background:var(--line);overflow:hidden;position:relative}
+  .conn-line.done{background:var(--yellow)}
+  .conn-line.live::after{content:"";position:absolute;inset:0;
+    background:linear-gradient(90deg,transparent,var(--bright),transparent);
+    background-size:200% 100%;animation:slide 1s linear infinite}
+  @keyframes slide{from{background-position:200% 0}to{background-position:-40% 0}}
+
+  .stage-now{margin-top:20px;font-size:15px;color:var(--muted)}
+  .stage-now b{font-size:19px;color:var(--ink);font-weight:750}
+  .stage-now.fail b{color:var(--red)}
+
+  /* 결과 */
+  .result{margin-top:20px;padding-top:18px;border-top:1px dashed var(--line);animation:heroIn .4s}
+  .rtitle{font-size:19px;font-weight:750;line-height:1.4;margin-bottom:10px}
+  .cat{display:inline-block;font-size:13px;font-weight:800;color:#3a2c00;
+    background:linear-gradient(90deg,var(--bright),var(--yellow));padding:5px 13px;border-radius:999px}
+  .tags{display:flex;flex-wrap:wrap;gap:7px;margin-top:12px}
+  .tag{font-size:12.5px;color:var(--golddeep);background:var(--soft);border:1px solid var(--line);
+    padding:4px 11px;border-radius:999px}
+  .kinfo{margin:14px 0 0;padding:0;list-style:none;font-size:13px;color:var(--muted)}
+  .kinfo li{padding-left:15px;position:relative;line-height:1.7}
+  .kinfo li::before{content:"▪";position:absolute;left:0;color:var(--yellow)}
+  .empty-note{margin-top:16px;font-size:14px;color:var(--golddeep);background:var(--soft);
+    padding:12px 16px;border-radius:12px}
+  .fail-note{margin-top:14px;font-size:13px;color:var(--red);font-family:ui-monospace,monospace}
+  .idle{color:var(--dim);font-size:15px;padding:26px 0;text-align:center}
+
+  /* 하단 최근 처리 스트립 */
+  .recent-h{font-size:13px;font-weight:700;color:var(--muted);margin:0 4px 10px}
+  .recent{display:flex;gap:10px;overflow-x:auto;padding-bottom:6px}
+  .rthumb{flex:0 0 auto;width:70px;text-align:center}
+  .rthumb img{width:70px;height:70px;border-radius:12px;object-fit:cover;
+    border:1px solid var(--line);background:var(--tint)}
+  .rthumb span{display:block;font-size:10.5px;color:var(--muted);margin-top:4px}
+
+  @media(max-width:720px){
+    .hmain{flex-direction:column;align-items:stretch}
+    .himg{width:100%;height:150px}
+    .stats{grid-template-columns:repeat(2,1fr)}
+    .htimer{font-size:18px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1><span class="g">AI 서버</span> · 이미지 처리 실시간 시각화</h1>
+    <div class="conn"><span class="dot" id="dot"></span><span id="conntxt">연결 중…</span></div>
+  </header>
+
+  <div class="stats">
+    <div class="stat"><div class="n" id="s-proc">0</div><div class="l">처리 중</div></div>
+    <div class="stat q"><div class="n" id="s-q">0</div><div class="l">대기</div></div>
+    <div class="stat done"><div class="n" id="s-done">0</div><div class="l">완료</div></div>
+    <div class="stat fail"><div class="n" id="s-fail">0</div><div class="l">실패</div></div>
+  </div>
+
+  <div class="hero" id="hero">
+    <div class="idle" id="idle">📷 이미지 업로드를 기다리는 중… 앱에서 사진을 올리면 처리 과정이 여기에 크게 표시됩니다.</div>
+    <div id="herobody" style="display:none">
+      <div class="hrow">
+        <span class="cap">가장 최근 이미지</span>
+        <span class="iid" id="h-iid">#—</span>
+        <span class="st QUEUED" id="h-st">QUEUED</span>
+        <span class="htimer" id="h-timer">0.0s</span>
+      </div>
+      <div class="hmain">
+        <img class="himg" id="h-img" alt="">
+        <div class="hpipe">
+          <div class="flow" id="flow"></div>
+          <div class="stage-now" id="h-stage">현재 단계: <b>—</b></div>
+        </div>
+      </div>
+      <div id="h-result"></div>
+    </div>
+  </div>
+
+  <div class="recent-h">최근 처리된 이미지 (지식 DB에 쌓인 결과)</div>
+  <div class="recent" id="recent"></div>
+</div>
+
+<script>
+const POLL_MS = 500;
+
+// 서버가 추적하는 stage/status → 6단계 흐름
+const NODES = [
+  {icon:'⏳', name:'대기열',        sub:'세마포어'},
+  {icon:'🧠', name:'정보성 판정',    sub:'LLM'},
+  {icon:'🖼️', name:'이미지 분석',    sub:'Vision'},
+  {icon:'🏷️', name:'메타데이터',     sub:'AGENT'},
+  {icon:'🔎', name:'검색 색인',      sub:'OpenSearch'},
+  {icon:'✅', name:'완료',          sub:'저장·검색'},
+];
+const STAGE_NODE = {LLM:1, IMAGE_ANALYSIS:2, AGENT:3, INDEXING:4};
+const isTerminal = s => s==='COMPLETED'||s==='EMPTY'||s==='FAILED'||s==='CANCELED';
+const isFail = s => s==='FAILED'||s==='CANCELED';
+
+// 진행 중 노드(대기·성공·실패 제외한 처리 단계)를 계산
+function procNode(job){
+  if(job.status==='QUEUED') return 0;
+  if(job.status==='COMPLETED'||job.status==='EMPTY') return 5;
+  return STAGE_NODE[job.stage] ?? 1;   // PROCESSING
+}
+
+// 파이프라인 노드 DOM 1회 생성
+const flow=document.getElementById('flow');
+NODES.forEach((n,i)=>{
+  if(i>0){const l=document.createElement('div');l.className='conn-line';flow.appendChild(l);}
+  const el=document.createElement('div');el.className='node future';
+  el.innerHTML=`<div class="bubble">${n.icon}</div><div class="name">${n.name}</div>
+    <div class="sub">${n.sub}</div><div class="tchip"></div>`;
+  flow.appendChild(el);
+});
+const nodeEls=[...flow.querySelectorAll('.node')];
+const lineEls=[...flow.querySelectorAll('.conn-line')];
+
+// 관측 상태 (jobId 기준) — 페이지를 연 시점부터 단계별 소요를 잰다
+const state=new Map();     // jobId → {firstSeen,node,nodeSince,times,failed,detail,fetching,total,frozen}
+let heroId=null;
+
+async function api(p){const r=await fetch(p,{cache:'no-store'});if(!r.ok)throw new Error(r.status);return r.json();}
+function setConn(ok){const d=document.getElementById('dot');d.className='dot '+(ok?'ok':'bad');
+  document.getElementById('conntxt').textContent=ok?'서버 연결됨 · 실시간':'서버 연결 끊김';}
+const fmt=s=>s<10?s.toFixed(1)+'s':Math.round(s)+'s';
+const esc=s=>(s==null?'':String(s)).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+// 관측원(observation source). 서버 코드는 건드리지 않고 있는 API 로만 본다.
+//
+//  1순위 /api/v1/analysis/jobs — stage·progress 까지 나와 가장 좋다. 그러나 AI 쪽
+//        job_store 는 인메모리이고 앱 직결 업로드(4-2)에서만 채워진다.
+//  2순위 /api/v1/images        — 분석이 Spring 으로 넘어가면 worker 가 AI 의
+//        /internal/v1/analyze 만 부르고 job_store 는 건드리지 않아 1순위가 항상 빈다.
+//        색인 문서는 남으므로 이 목록을 쓴다.
+//
+// 2순위의 한계: 색인 문서는 분석이 끝난 뒤 만들어진다(search.set_status 는 호출되는
+// 곳이 없다). 그래서 진행 중인 이미지는 목록에 아예 없고, 단계별 진행은 관측되지
+// 않는다. Spring 의 단건 조회에 analysisStatus 가 있지만 목록 API 가 없어 어떤
+// imageId 를 물어볼지 알 수 없다.
+async function fetchJobs(){
+  const jobs=(await api('/api/v1/analysis/jobs?size=60')).data.list||[];
+  if(jobs.length) return jobs;
+  return ((await api('/api/v1/images?size=60')).data.list||[]).map(i=>({
+    jobId:i.imageId, imageId:i.imageId, fileName:i.fileName,
+    status:i.status||'COMPLETED', stage:'INDEXING', item:i,
+  }));
+}
+
+async function poll(){
+  let jobs;
+  try{jobs=await fetchJobs();setConn(true);}
+  catch(e){setConn(false);return;}
+
+  const now=Date.now();
+  const counts={PROCESSING:0,QUEUED:0,done:0,FAILED:0};
+
+  jobs.forEach(job=>{
+    const id=job.jobId;
+    let st=state.get(id);
+    if(!st){st={firstSeen:now,node:procNode(job),nodeSince:now,times:{},failed:false,
+                detail:null,fetching:false,total:0,frozen:false,
+                // 이미 끝난 상태로 처음 보인 항목은 시작 시점을 알 수 없다. 페이지를
+                // 연 시각부터 잰 값은 실제 소요가 아니므로 아예 표시하지 않는다.
+                preexisting:isTerminal(job.status)};state.set(id,st);}
+    const raw=procNode(job);
+    if(isFail(job.status)){st.failed=true;}          // 실패면 마지막 단계 위치를 유지
+    else{
+      st.failed=false;
+      if(raw!==st.node){st.times[st.node]=(now-st.nodeSince)/1000;st.node=raw;st.nodeSince=now;}
+    }
+    if(st.preexisting){/* 소요 미측정 */}
+    else if(!isTerminal(job.status)) st.total=now-st.firstSeen;
+    else if(!st.frozen){st.total=now-st.firstSeen;st.frozen=true;}
+
+    if(job.status==='QUEUED')counts.QUEUED++;
+    else if(job.status==='PROCESSING')counts.PROCESSING++;
+    else if(job.status==='COMPLETED'||job.status==='EMPTY')counts.done++;
+    else counts.FAILED++;
+
+    // 완료 시 서버가 실제로 추출한 결과를 한 번 가져온다
+    if((job.status==='COMPLETED') && !st.detail && !st.fetching){
+      st.fetching=true;
+      api('/api/v1/images/'+job.imageId).then(r=>{st.detail=r.data;}).catch(()=>{}).finally(()=>st.fetching=false);
+    }
+  });
+
+  document.getElementById('s-proc').textContent=counts.PROCESSING;
+  document.getElementById('s-q').textContent=counts.QUEUED;
+  document.getElementById('s-done').textContent=counts.done;
+  document.getElementById('s-fail').textContent=counts.FAILED;
+
+  // 가장 최근 작업 = 리스트 맨 위 (updatedAt desc)
+  const hero=jobs[0]||null;
+  renderHero(hero);
+  renderRecent(jobs);
+}
+
+function renderHero(job){
+  const idle=document.getElementById('idle'), body=document.getElementById('herobody');
+  if(!job){idle.style.display='';body.style.display='none';heroId=null;return;}
+  idle.style.display='none';body.style.display='';
+
+  const st=state.get(job.jobId);
+  const heroEl=document.getElementById('hero');
+  // 새 이미지로 교체되면 등장 애니메이션 + 썸네일 갱신
+  if(job.jobId!==heroId){
+    heroId=job.jobId;
+    heroEl.classList.remove('enter');void heroEl.offsetWidth;heroEl.classList.add('enter');
+    const img=document.getElementById('h-img');
+    img.className='himg';
+    img.onerror=()=>{img.className='himg ph';img.removeAttribute('src');};  // 썸네일 아직 없으면 빈 타일
+    img.src='/api/v1/images/'+job.imageId+'/thumbnail/raw';
+  }
+
+  // fileName·attempt 는 서버가 주면 쓰고, 없는 빌드면 조용히 생략된다.
+  document.getElementById('h-iid').textContent='#'+job.imageId
+    +(job.fileName?' · '+job.fileName:'')
+    +(job.attempt>1?' · 재시도 '+job.attempt:'');
+  const badge=document.getElementById('h-st');badge.className='st '+job.status;badge.textContent=job.status;
+  heroEl.classList.toggle('failed', st.failed);
+  document.getElementById('h-timer').textContent=st.preexisting?'—':fmt(st.total/1000);
+
+  const now=Date.now(), node=st.node, failed=st.failed;
+  nodeEls.forEach((el,i)=>{
+    el.className='node';
+    const chip=el.querySelector('.tchip');chip.textContent='';
+    if(failed && i===node){el.classList.add('failx');}
+    else if(i<node){el.classList.add('pass');
+      if(st.times[i]!=null&&i>=1)chip.textContent=st.times[i].toFixed(1)+'s';}
+    else if(i===node){
+      if(i===5)el.classList.add('doneNode');
+      else{el.classList.add('hot');if(i>=1)chip.textContent=((now-st.nodeSince)/1000).toFixed(1)+'s';}
+    } else el.classList.add('future');
+  });
+  lineEls.forEach((l,i)=>{l.className='conn-line'+(i+1<node?' done':'')+(i+1===node&&!failed&&node<5?' live':'');});
+
+  const sn=document.getElementById('h-stage');
+  if(failed){sn.className='stage-now fail';sn.innerHTML='단계 실패: <b>'+esc(job.errorCode||'ANALYSIS_FAILED')+'</b>';}
+  else{sn.className='stage-now';sn.innerHTML='현재 단계: <b>'+NODES[node].name+'</b>'
+    // progress 는 서버가 보고하는 값. 노드 위치는 stage 로 정하고 여기에만 덧붙인다.
+    +(job.progress!=null?' · <b>'+esc(job.progress)+'%</b>':'');}
+
+  renderResult(job, st);
+}
+
+function renderResult(job, st){
+  const box=document.getElementById('h-result');
+  const key=job.status+':'+(st.detail?'d':'')+':'+(st.failed?'f':'');
+  if(box.dataset.key===key) return;          // 내용 바뀔 때만 갱신
+  box.dataset.key=key;
+
+  if(job.status==='EMPTY'){
+    box.innerHTML=`<div class="empty-note">정보성 없음 → '기타'로 분류·색인 (분석 생략). 이미지 자체는 목록·검색에 남습니다.</div>`;
+  }else if(st.failed){
+    box.innerHTML=`<div class="fail-note">${esc(job.errorCode||'ANALYSIS_FAILED')}</div>`;
+  }else if(st.detail){
+    const d=st.detail;
+    const cat=(d.categories&&d.categories[0])?d.categories[0].name:null;
+    const conf=(d.categories&&d.categories[0]&&d.categories[0].confidence!=null)
+      ?' · '+Math.round(d.categories[0].confidence*100)+'%':'';
+    const tags=(d.tags||[]).slice(0,8).map(t=>`<span class="tag">#${esc(t.name)}</span>`).join('');
+    const ki=(d.keyInformation||[]).slice(0,4).map(k=>`<li>${esc(k)}</li>`).join('');
+    box.innerHTML=`<div class="result">
+      <div class="rtitle">${esc(d.title||'(제목 없음)')}</div>
+      ${cat?`<span class="cat">${esc(cat)}${conf}</span>`:''}
+      <div class="tags">${tags}</div>
+      ${ki?`<ul class="kinfo">${ki}</ul>`:''}</div>`;
+  }else{
+    box.innerHTML='';                         // 처리 중 → 결과 없음
+  }
+}
+
+let recentKey='';
+function renderRecent(jobs){
+  const ids=jobs.filter(j=>j.status==='COMPLETED'||j.status==='EMPTY')
+                .slice(0,14).map(j=>j.imageId);
+  const key=ids.join(',');
+  if(key===recentKey) return;
+  recentKey=key;
+  document.getElementById('recent').innerHTML = ids.map(id=>
+    // 썸네일이 MinIO 에 없으면 404 다(색인만 남고 객체가 빠진 경우). 깨진 이미지
+    // 아이콘 대신 빈 타일로 두고 #id 는 남긴다.
+    `<div class="rthumb"><img loading="lazy" src="/api/v1/images/${id}/thumbnail/raw" alt=""
+       onerror="this.style.visibility='hidden'">
+     <span>#${id}</span></div>`).join('') ||
+    `<div class="idle" style="padding:14px">아직 완료된 이미지가 없습니다.</div>`;
+}
+
+// 히어로 타이머·현재 단계 시간을 부드럽게 갱신
+setInterval(()=>{
+  const st=state.get(heroId);if(!st||st.preexisting)return;
+  const badge=document.getElementById('h-st');if(!badge)return;
+  if(!isTerminal(badge.textContent) && !st.failed){
+    const now=Date.now();
+    st.total=now-st.firstSeen;
+    document.getElementById('h-timer').textContent=fmt(st.total/1000);
+    const cur=nodeEls[st.node];
+    if(cur&&cur.classList.contains('hot')&&st.node>=1)
+      cur.querySelector('.tchip').textContent=((now-st.nodeSince)/1000).toFixed(1)+'s';
+  }
+},200);
+
+poll(); setInterval(poll, POLL_MS);
+</script>
+</body>
+</html>

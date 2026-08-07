@@ -79,3 +79,6 @@ Thumbs.db
 *.log
 logs/
 opensearch-data/
+# ── 테스트 ────────────────────────────────────────────────────────────────
+# ai_main 테스트 폴더
+ai/ai_main/test/

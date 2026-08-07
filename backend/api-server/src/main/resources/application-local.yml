@@ -1,0 +1,84 @@
+spring:
+  config:
+    activate:
+      on-profile: local
+
+  # [Data Source] local-infra의 api-db 컨테이너.
+  # local-infra의 api-db 컨테이너가 호스트에 노출한 5433 포트로 접속한다.
+  datasource:
+    driver-class-name: org.postgresql.Driver
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5433}/${DB_NAME:modera_api}
+    username: ${DB_USERNAME:api_admin}
+    password: ${DB_PASSWORD:localdev}
+
+    hikari:
+      pool-name: modera-api-hikari-local
+      maximum-pool-size: 10
+      minimum-idle: 2
+      connection-timeout: 3000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+
+  # [JPA & Hibernate]
+  jpa:
+    hibernate:
+      # 스키마는 Liquibase가 소유. Hibernate는 검증만 한다.
+      ddl-auto: validate
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+        highlight_sql: true
+        jdbc.batch_size: 20
+        order_inserts: true
+        order_updates: true
+
+  # [Redis] local-infra의 redis 컨테이너. host 6379도 다른 프로젝트가 쓰고 있어 6380으로 노출했다.
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6380}
+      password: ${REDIS_PASSWORD:}
+
+  threads:
+    virtual:
+      enabled: true
+
+# [Object Storage] local-infra의 minio 컨테이너. host 9000도 다른 프로젝트가 쓰고 있어 9002로 노출했다(3단계 참고).
+# internal: 서버가 MinIO에 접근·서명할 때 / public: presigned URL을 클라이언트에 줄 때 호스트 치환용
+storage:
+  s3:
+    internal-endpoint: ${S3_INTERNAL_ENDPOINT:http://localhost:9002}
+    public-endpoint: ${S3_PUBLIC_ENDPOINT:http://localhost:9002}
+    region: ${S3_REGION:us-east-1}
+    bucket:
+      pictures: ${S3_BUCKET_PICTURES:pictures}
+      thumbnails: ${S3_BUCKET_THUMBNAILS:thumbnails}
+      category-thumbnails: ${S3_BUCKET_CATEGORY_THUMBNAILS:category-thumbnails}
+    access-key: ${S3_ACCESS_KEY:minioadmin}
+    secret-key: ${S3_SECRET_KEY:minioadmin}
+    path-style-access: true
+
+# [Internal] MinIO ObjectCreated webhook 인증 토큰
+# token: worker 내부 API(연관 이미지 조회) 호출용 공유 토큰. worker의
+# internal.callback.token과 반드시 같은 값이어야 한다(다르면 worker가 401 → 빈 목록).
+internal:
+  storage:
+    webhook-token: ${MINIO_WEBHOOK_TOKEN:local-dev-webhook-token}
+  token: ${INTERNAL_TOKEN:local-dev-internal-token}
+
+# [Worker] 연관 이미지 검색 내부 API. 로컬은 worker를 호스트에서 직접 띄운다.
+worker:
+  base-url: ${WORKER_BASE_URL:http://localhost:8081}
+
+# [AI] 문서 생성 동기 호출. 로컬은 ai-server를 호스트(uvicorn)나 컨테이너로 띄운다.
+# 컨테이너면 http://localhost:8000 대신 compose가 노출한 포트를 쓴다.
+ai:
+  base-url: ${AI_SERVER_URL:http://localhost:8000}
+
+logging:
+  level:
+    root: INFO
+    com.ssafy.modera: DEBUG
+    org.hibernate.orm.jdbc.bind: TRACE
+    org.springframework.cache: TRACE

@@ -1,0 +1,16 @@
+fastapi>=0.115
+uvicorn[standard]>=0.30
+# multipart 업로드(POST /api/v1/images/upload) 파싱용
+python-multipart>=0.0.9
+pydantic>=2.7
+httpx>=0.27
+boto3>=1.34
+pillow>=10.0
+# 구 google-generativeai 에서 이전(2026-08-03). thinking 제어(thinkingConfig)와
+# REST 전송이 필요해서다 — 상세는 app/gemini_client.py 모듈 docstring 참고.
+google-genai>=1.30
+opensearch-py>=2.4
+# 검색용 로컬 임베딩(bge-m3). torch 는 Dockerfile 에서 CPU 전용 휠로 먼저 설치한다.
+sentence-transformers>=3.0
+# Prometheus 스크레이프용 /metrics 노출 (Grafana 모니터링)
+prometheus-fastapi-instrumentator>=7.0

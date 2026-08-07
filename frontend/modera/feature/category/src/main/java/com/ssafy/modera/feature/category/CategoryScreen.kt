@@ -1,5 +1,11 @@
 package com.ssafy.modera.feature.category
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -16,11 +22,18 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -48,6 +61,7 @@ import com.ssafy.modera.core.ui.ErrorScreen
 import com.ssafy.modera.core.ui.LoadingScreen
 import com.ssafy.modera.core.ui.R.drawable.img_pointing_character
 import com.ssafy.modera.core.ui.RecommendScreen
+import com.ssafy.modera.core.util.statusBarTopPadding
 import com.ssafy.modera.feature.category.component.CategoryTopSheet
 import kotlinx.coroutines.launch
 
@@ -152,6 +166,34 @@ fun CategoryScreen(
             }
     }
 
+    val headerExpandedState = rememberSaveable { mutableStateOf(true) }
+    var isHeaderExpanded by headerExpandedState
+    val collapsedSearchBarTopSpacing by animateDpAsState(
+        targetValue =
+            if (isHeaderExpanded) 0.dp
+            else CategoryScreenDefaults.CollapsedSearchBarTopSpacing,
+        label = "collapsedSearchBarTopSpacing",
+    )
+
+    val headerNestedScrollConnection = remember {
+        object : NestedScrollConnection {
+            override fun onPreScroll(
+                available: Offset,
+                source: NestedScrollSource,
+            ): Offset {
+                if (available.y > 0 && !headerExpandedState.value) {
+                    headerExpandedState.value = true
+                    return available
+                }
+                if (available.y < 0 && headerExpandedState.value) {
+                    headerExpandedState.value = false
+                    return available
+                }
+                return Offset.Zero
+            }
+        }
+    }
+
     Box(
         modifier = modifier
             .fillMaxSize()
@@ -160,181 +202,248 @@ fun CategoryScreen(
         Column(
             modifier = Modifier.fillMaxSize(),
         ) {
-            Box(
+            AnimatedVisibility(
+                visible = isHeaderExpanded,
+                enter = expandVertically(expandFrom = Alignment.Top) + fadeIn(),
+                exit = shrinkVertically(shrinkTowards = Alignment.Top) + fadeOut(),
+            ) {
+                CategoryTitleBar(
+                    displayCategoryTitle = displayCategoryTitle,
+                    onCategoryTitleClick = {
+                        focusManager.clearFocus()
+                        onCategoryTitleClick()
+                    },
+                    clearFocusInteractionSource = clearFocusInteractionSource,
+                    onClearFocus = { focusManager.clearFocus() },
+                )
+            }
+
+            ModeraSearchBar(
+                query = searchQuery,
+                onQueryChange = onSearchQueryChange,
+                placeholder = stringResource(R.string.category_search_placeholder),
+                mode = SearchBarMode.General,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable(
-                        interactionSource = clearFocusInteractionSource,
-                        indication = null,
-                        onClick = { focusManager.clearFocus() },
+                    .background(ModeraTheme.colors.white)
+                    .then(
+                        if (!isHeaderExpanded) Modifier.statusBarTopPadding()
+                        else Modifier,
+                    )
+                    .padding(
+                        top = collapsedSearchBarTopSpacing,
+                        start = CategoryScreenDefaults.HorizontalPadding,
+                        bottom = collapsedSearchBarTopSpacing,
+                        end = CategoryScreenDefaults.HorizontalPadding,
                     ),
+            )
+
+            AnimatedVisibility(
+                visible = isHeaderExpanded,
+                enter = expandVertically(expandFrom = Alignment.Top) + fadeIn(),
+                exit = shrinkVertically(shrinkTowards = Alignment.Top) + fadeOut(),
             ) {
-                ModeraTopBar(
-                    onBackClick = {},
-                    leftContent = {
-                        Row(
-                            modifier = Modifier
-                                .padding(start = 4.dp)
-                                .clickable(
-                                    onClick = {
-                                        focusManager.clearFocus()
-                                        onCategoryTitleClick()
-                                    },
-                                ),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Text(
-                                text = displayCategoryTitle,
-                                style = ModeraTheme.typography.titleSB20,
-                                color = ModeraTheme.colors.gray900,
-                            )
-                            Icon(
-                                painter = painterResource(ModeraIcons.ArrowDown),
-                                contentDescription = stringResource(
-                                    R.string.category_title_picker_description,
-                                ),
-                                tint = ModeraTheme.colors.gray700,
-                                modifier = Modifier
-                                    .padding(start = 4.dp)
-                                    .size(16.dp),
-                            )
-                        }
+                CategoryCountSortSection(
+                    displayImageCount = displayImageCount,
+                    selectedSortType = selectedSortType,
+                    showSortPopup = showSortPopup,
+                    onSortClick = {
+                        focusManager.clearFocus()
+                        onSortClick()
                     },
+                    onSortPopupDismiss = onSortPopupDismiss,
+                    onSortTypeSelect = onSortTypeSelect,
+                    onClearFocus = { focusManager.clearFocus() },
                 )
             }
 
-            Box {
-                LazyColumn(
-                    state = listState,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = CategoryScreenDefaults.HorizontalPadding),
-                ) {
-                    if (!isSearching && analyzedImages.isEmpty()) {
-                        item(key = "list_empty") {
-                            RecommendScreen(
-                                title = stringResource(R.string.category_list_empty_title),
-                                subtitle = stringResource(R.string.category_list_empty_subtitle),
-                                image = img_pointing_character,
-                                modifier = Modifier.fillParentMaxSize(),
-                            )
-                        }
-                    } else {
-                        stickyHeader {
-                            Column(
-                                modifier = Modifier.background(ModeraTheme.colors.white),
-                            ) {
-                                ModeraSearchBar(
-                                    query = searchQuery,
-                                    onQueryChange = onSearchQueryChange,
-                                    placeholder = stringResource(R.string.category_search_placeholder),
-                                    mode = SearchBarMode.General,
+            LazyColumn(
+                state = listState,
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+                    .nestedScroll(headerNestedScrollConnection),
+            ) {
+                if (!isSearching && analyzedImages.isEmpty()) {
+                    item(key = "list_empty") {
+                        RecommendScreen(
+                            title = stringResource(R.string.category_list_empty_title),
+                            subtitle = stringResource(R.string.category_list_empty_subtitle),
+                            image = img_pointing_character,
+                            modifier = Modifier.fillParentMaxSize(),
+                        )
+                    }
+                } else if (isSearching && analyzedImages.isEmpty()) {
+                    item(key = "search_empty") {
+                        EmptyScreen(
+                            message = stringResource(R.string.category_search_result_empty),
+                            modifier = Modifier
+                                .padding(
+                                    horizontal = CategoryScreenDefaults.HorizontalPadding,
+                                    vertical = 40.dp,
                                 )
-
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(top = 12.dp, bottom = 8.dp)
-                                        .clickable(
-                                            interactionSource = remember { MutableInteractionSource() },
-                                            indication = null,
-                                            onClick = { focusManager.clearFocus() },
-                                        ),
-                                ) {
-                                    Text(
-                                        text = stringResource(
-                                            R.string.category_item_count,
-                                            displayImageCount,
-                                        ),
-                                        modifier = Modifier.align(Alignment.CenterStart),
-                                        style = ModeraTheme.typography.bodyR14,
-                                        color = ModeraTheme.colors.gray500,
-                                    )
-
-                                    ModeraSortSection(
-                                        selectedLabel = selectedSortType.label,
-                                        expanded = showSortPopup,
-                                        options = AnalyzedImageSortType.entries,
-                                        selectedOption = selectedSortType,
-                                        labelOf = { it.label },
-                                        onSortClick = {
-                                            focusManager.clearFocus()
-                                            onSortClick()
-                                        },
-                                        onDismissRequest = onSortPopupDismiss,
-                                        onOptionClick = onSortTypeSelect,
-                                    )
-                                }
-
-                                HorizontalDivider(
-                                    thickness = 1.dp,
-                                    color = ModeraTheme.colors.gray200,
-                                )
-                            }
-                        }
-
-                        if (isSearching && analyzedImages.isEmpty()) {
-                            item(key = "search_empty") {
-                                EmptyScreen(
-                                    message = stringResource(R.string.category_search_result_empty),
-                                    modifier = Modifier
-                                        .padding(top = 40.dp)
-                                        .clickable(
-                                            interactionSource = remember { MutableInteractionSource() },
-                                            indication = null,
-                                            onClick = { focusManager.clearFocus() },
-                                        ),
-                                )
-                            }
-                        } else {
-                            items(
-                                items = analyzedImages,
-                                key = { it.id },
-                            ) { analyzedImage ->
-                                ModeraAnalyzedImageItem(
-                                    title = analyzedImage.title,
-                                    description = analyzedImage.summary,
-                                    updatedAt = analyzedImage.updatedAt,
-                                    tags = analyzedImage.hashtags,
-                                    imageUrl = analyzedImage.thumbnailUrl,
-                                    favorite = analyzedImage.favorite,
-                                    isDocumented = analyzedImage.isDocumented,
-                                    hasSchedule = analyzedImage.hasSchedule,
-                                    onClick = {
-                                        focusManager.clearFocus()
-                                        onItemClick(analyzedImage.id)
-                                    },
-                                    modifier = Modifier.fillMaxWidth(),
-                                )
-                            }
-                        }
+                                .clickable(
+                                    interactionSource = remember { MutableInteractionSource() },
+                                    indication = null,
+                                    onClick = { focusManager.clearFocus() },
+                                ),
+                        )
+                    }
+                } else {
+                    items(
+                        items = analyzedImages,
+                        key = { it.id },
+                    ) { analyzedImage ->
+                        ModeraAnalyzedImageItem(
+                            title = analyzedImage.title,
+                            description = analyzedImage.summary,
+                            updatedAt = analyzedImage.updatedAt,
+                            tags = analyzedImage.hashtags,
+                            imageUrl = analyzedImage.thumbnailUrl,
+                            favorite = analyzedImage.favorite,
+                            isDocumented = analyzedImage.isDocumented,
+                            hasSchedule = analyzedImage.hasSchedule,
+                            onClick = {
+                                focusManager.clearFocus()
+                                onItemClick(analyzedImage.id)
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = CategoryScreenDefaults.HorizontalPadding),
+                        )
                     }
                 }
-
-                CategoryTopSheet(
-                    visible = showCategorySheet,
-                    categories = categories,
-                    selectedCategoryId = selectedCategoryId,
-                    onCategoryClick = { onCategorySelect(it.id) },
-                    onDismissRequest = onCategorySheetDismiss,
-                )
-
-                ModeraScrollToTopButton(
-                    visible = showScrollToTop,
-                    onClick = {
-                        coroutineScope.launch {
-                            listState.animateScrollToItem(0)
-                        }
-                    },
-                    modifier = Modifier.align(Alignment.BottomEnd),
-                )
             }
         }
+
+        CategoryTopSheet(
+            visible = showCategorySheet,
+            categories = categories,
+            selectedCategoryId = selectedCategoryId,
+            onCategoryClick = { onCategorySelect(it.id) },
+            onDismissRequest = onCategorySheetDismiss,
+        )
+
+        ModeraScrollToTopButton(
+            visible = showScrollToTop,
+            onClick = {
+                coroutineScope.launch {
+                    isHeaderExpanded = true
+                    listState.animateScrollToItem(0)
+                }
+            },
+            modifier = Modifier.align(Alignment.BottomEnd),
+        )
+    }
+}
+
+@Composable
+private fun CategoryTitleBar(
+    displayCategoryTitle: String,
+    onCategoryTitleClick: () -> Unit,
+    clearFocusInteractionSource: MutableInteractionSource,
+    onClearFocus: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .background(ModeraTheme.colors.white)
+            .clickable(
+                interactionSource = clearFocusInteractionSource,
+                indication = null,
+                onClick = onClearFocus,
+            ),
+    ) {
+        ModeraTopBar(
+            onBackClick = {},
+            leftContent = {
+                Row(
+                    modifier = Modifier
+                        .padding(start = 4.dp)
+                        .clickable(onClick = onCategoryTitleClick),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = displayCategoryTitle,
+                        style = ModeraTheme.typography.titleSB20,
+                        color = ModeraTheme.colors.gray900,
+                    )
+                    Icon(
+                        painter = painterResource(ModeraIcons.ArrowDown),
+                        contentDescription = stringResource(
+                            R.string.category_title_picker_description,
+                        ),
+                        tint = ModeraTheme.colors.gray700,
+                        modifier = Modifier
+                            .padding(start = 4.dp)
+                            .size(16.dp),
+                    )
+                }
+            },
+        )
+    }
+}
+
+@Composable
+private fun CategoryCountSortSection(
+    displayImageCount: Long,
+    selectedSortType: AnalyzedImageSortType,
+    showSortPopup: Boolean,
+    onSortClick: () -> Unit,
+    onSortPopupDismiss: () -> Unit,
+    onSortTypeSelect: (AnalyzedImageSortType) -> Unit,
+    onClearFocus: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .background(ModeraTheme.colors.white)
+            .padding(horizontal = CategoryScreenDefaults.HorizontalPadding),
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 12.dp, bottom = 8.dp)
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    onClick = onClearFocus,
+                ),
+        ) {
+            Text(
+                text = stringResource(
+                    R.string.category_item_count,
+                    displayImageCount,
+                ),
+                modifier = Modifier.align(Alignment.CenterStart),
+                style = ModeraTheme.typography.bodyR14,
+                color = ModeraTheme.colors.gray500,
+            )
+
+            ModeraSortSection(
+                selectedLabel = selectedSortType.label,
+                expanded = showSortPopup,
+                options = AnalyzedImageSortType.entries,
+                selectedOption = selectedSortType,
+                labelOf = { it.label },
+                onSortClick = onSortClick,
+                onDismissRequest = onSortPopupDismiss,
+                onOptionClick = onSortTypeSelect,
+            )
+        }
+
+        HorizontalDivider(
+            thickness = 1.dp,
+            color = ModeraTheme.colors.gray200,
+        )
     }
 }
 
 internal object CategoryScreenDefaults {
     val HorizontalPadding = 20.dp
+    val CollapsedSearchBarTopSpacing = 12.dp
 }
 
 @Preview(showBackground = true, widthDp = 360, heightDp = 780)

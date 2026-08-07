@@ -389,7 +389,7 @@ private fun AnalyzedImageDetailContent(
             )
         }
 
-        Spacer(modifier = Modifier.height(30.dp))
+        Spacer(modifier = Modifier.height(8.dp))
 
         AnalysisSummarySection(
             content = image.summary,

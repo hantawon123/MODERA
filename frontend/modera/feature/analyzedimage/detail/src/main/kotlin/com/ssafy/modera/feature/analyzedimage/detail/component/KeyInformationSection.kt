@@ -38,7 +38,7 @@ internal fun KeyInformationSection(
     ) {
         HighlightedTitle(text = title)
 
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(4.dp))
 
         Column(
             modifier = Modifier

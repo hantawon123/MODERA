@@ -8,4 +8,5 @@
     <string name="document_create_selected_image_description">%1$s 선택된 자료 이미지</string>
     <string name="document_create_remove_selected_image">%1$s 선택 해제</string>
     <string name="document_create_load_error">문서화할 자료를 불러오지 못했습니다.</string>
+    <string name="document_create_recommendation_empty">추가할 수 있는 추천 이미지가 없어요.</string>
 </resources>

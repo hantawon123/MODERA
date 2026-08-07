@@ -45,7 +45,7 @@ private const val INFINITE_ITEM_COUNT = Int.MAX_VALUE
 private val AUTO_SCROLL_SPEED = 60.dp
 private const val AUTO_SCROLL_RESUME_DELAY_MILLIS = 400L
 
-private const val MIN_SCALE = 0.96f
+private const val MIN_SCALE = 0.94f
 private const val SCALE_DEAD_ZONE = 0.10f
 
 private const val NANOS_PER_SECOND = 1_000_000_000.0

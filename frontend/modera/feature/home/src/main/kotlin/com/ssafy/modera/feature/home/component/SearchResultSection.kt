@@ -76,6 +76,7 @@ internal fun SearchResultSection(
                         ModeraAnalyzedImageItem(
                             title = result.title,
                             description = result.summary,
+                            updatedAt = result.updatedAt,
                             tags = result.hashtags,
                             favorite = result.favorite,
                             imageUrl = result.thumbnailUrl.takeIf(String::isNotBlank),

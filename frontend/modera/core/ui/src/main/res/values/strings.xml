@@ -5,7 +5,7 @@
     <string name="analyzed_image_item_document">문서</string>
     <string name="analyzed_image_item_schedule">일정</string>
     <string name="analyzed_image_item_meta_divider">|</string>
-    <string name="analyzed_image_item_meta_separator">·</string>
+    <string name="analyzed_image_item_meta_separator"> · </string>
     <string name="scroll_to_top_description">맨 위로 이동</string>
 
     <string name="document_source_image_count">원본 %1$d개</string>

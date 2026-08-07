@@ -13,8 +13,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -32,6 +34,13 @@ import com.ssafy.modera.core.designsystem.component.Text
 import com.ssafy.modera.core.designsystem.icon.ModeraIcons
 import com.ssafy.modera.core.designsystem.theme.ModeraTheme
 import com.ssafy.modera.core.ui.R
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.util.Locale
+
+private val AnalyzedImageDateFormatter: DateTimeFormatter =
+    DateTimeFormatter.ofPattern("yyyy.MM.dd", Locale.KOREA)
 
 /**
  * 분석 이미지 리스트 아이템 — 즐겨찾기/문서/일정 메타 row + 해시태그 row.
@@ -40,6 +49,7 @@ import com.ssafy.modera.core.ui.R
 fun ModeraAnalyzedImageItem(
     title: String,
     description: String,
+    updatedAt: Long,
     tags: List<String>,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -48,49 +58,59 @@ fun ModeraAnalyzedImageItem(
     isDocumented: Boolean = false,
     hasSchedule: Boolean = false,
 ) {
+    val dateTime = remember(updatedAt) {
+        updatedAt.toAnalyzedImageDateTime()
+    }
+
     Column(
-        modifier = modifier,
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(AnalyzedImageItemDefaults.ContentPadding),
     ) {
+        Text(
+            text = title,
+            style = ModeraTheme.typography.titleSB18,
+            color = ModeraTheme.colors.gray900,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+        Spacer(Modifier.height(6.dp))
+        Row(
+            modifier = Modifier,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            if (dateTime.isNotEmpty()) {
+                Text(
+                    text = dateTime,
+                    style = ModeraTheme.typography.bodyR14,
+                    color = ModeraTheme.colors.gray400,
+                )
+            }
+            if (favorite || isDocumented || hasSchedule) {
+                if (dateTime.isNotEmpty()) {
+                    Spacer(Modifier.width(14.dp))
+                }
+
+                AnalyzedImageMetaRow(
+                    favorite = favorite,
+                    isDocumented = isDocumented,
+                    hasSchedule = hasSchedule,
+                )
+            }
+        }
+
+        Spacer(modifier.height(8.dp))
         Row(
             modifier = Modifier
-                .fillMaxWidth()
-                .clickable(onClick = onClick)
-                .padding(AnalyzedImageItemDefaults.ContentPadding),
+                .fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(AnalyzedImageItemDefaults.TextImageSpacing),
-            verticalAlignment = Alignment.Top,
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(
                 modifier = Modifier.weight(1f),
             ) {
-                Text(
-                    text = title,
-                    style = ModeraTheme.typography.bodySB16,
-                    color = ModeraTheme.colors.gray900,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-
-                Spacer(modifier = Modifier.height(AnalyzedImageItemDefaults.TitleDescriptionSpacing))
-
-                Text(
-                    text = description,
-                    style = ModeraTheme.typography.bodyR14,
-                    color = ModeraTheme.colors.gray500,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
-
-                if (favorite || isDocumented || hasSchedule) {
-                    Spacer(modifier = Modifier.height(AnalyzedImageItemDefaults.MetaItemSpacing))
-                    AnalyzedImageMetaRow(
-                        favorite = favorite,
-                        isDocumented = isDocumented,
-                        hasSchedule = hasSchedule,
-                    )
-                }
-
                 if (tags.isNotEmpty()) {
-                    Spacer(modifier = Modifier.height(AnalyzedImageItemDefaults.FooterSpacing))
                     Text(
                         text = tags.joinToString(separator = " ") { "#$it" },
                         style = ModeraTheme.typography.bodyR14,
@@ -100,6 +120,14 @@ fun ModeraAnalyzedImageItem(
                         modifier = Modifier.fillMaxWidth(),
                     )
                 }
+                Spacer(modifier.height(4.dp))
+                Text(
+                    text = description,
+                    style = ModeraTheme.typography.bodyR14,
+                    color = ModeraTheme.colors.gray700,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
             }
 
             if (imageUrl != null) {
@@ -118,12 +146,12 @@ fun ModeraAnalyzedImageItem(
                 }
             }
         }
-
-        HorizontalDivider(
-            thickness = 1.dp,
-            color = ModeraTheme.colors.gray200,
-        )
     }
+
+    HorizontalDivider(
+        thickness = 1.dp,
+        color = ModeraTheme.colors.gray200,
+    )
 }
 
 @Composable
@@ -133,9 +161,17 @@ private fun AnalyzedImageMetaRow(
     hasSchedule: Boolean,
     modifier: Modifier = Modifier,
 ) {
+    val labels = buildList {
+        if (isDocumented) {
+            add(stringResource(R.string.analyzed_image_item_document))
+        }
+        if (hasSchedule) {
+            add(stringResource(R.string.analyzed_image_item_schedule))
+        }
+    }
+
     Row(
         modifier = modifier,
-        horizontalArrangement = Arrangement.spacedBy(AnalyzedImageItemDefaults.MetaItemSpacing),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (favorite) {
@@ -145,40 +181,35 @@ private fun AnalyzedImageMetaRow(
                 modifier = Modifier.size(AnalyzedImageItemDefaults.MetaIconSize),
                 tint = ModeraTheme.colors.yellow500,
             )
+        }
 
-            if (isDocumented || hasSchedule) {
+        if (labels.isNotEmpty()) {
+            if (favorite) {
                 Text(
                     text = stringResource(R.string.analyzed_image_item_meta_divider),
                     style = ModeraTheme.typography.captionR12,
                     color = ModeraTheme.colors.gray300,
+                    modifier = Modifier.padding(horizontal = AnalyzedImageItemDefaults.MetaItemSpacing),
                 )
             }
-        }
 
-        if (isDocumented) {
             Text(
-                text = stringResource(R.string.analyzed_image_item_document),
-                style = ModeraTheme.typography.captionR12,
-                color = ModeraTheme.colors.gray400,
-            )
-        }
-
-        if (isDocumented && hasSchedule) {
-            Text(
-                text = stringResource(R.string.analyzed_image_item_meta_separator),
-                style = ModeraTheme.typography.captionR12,
-                color = ModeraTheme.colors.gray400,
-            )
-        }
-
-        if (hasSchedule) {
-            Text(
-                text = stringResource(R.string.analyzed_image_item_schedule),
+                text = labels.joinToString(
+                    separator = stringResource(R.string.analyzed_image_item_meta_separator),
+                ),
                 style = ModeraTheme.typography.captionR12,
                 color = ModeraTheme.colors.gray400,
             )
         }
     }
+}
+
+private fun Long.toAnalyzedImageDateTime(): String {
+    if (this <= 0L) return ""
+
+    return Instant.ofEpochMilli(this)
+        .atZone(ZoneId.systemDefault())
+        .format(AnalyzedImageDateFormatter)
 }
 
 object AnalyzedImageItemDefaults {
@@ -188,9 +219,11 @@ object AnalyzedImageItemDefaults {
     val FooterSpacing = 12.dp
     val MetaItemSpacing = 4.dp
     val MetaIconSize = 14.dp
-    val ThumbnailSize = 88.dp
+    val ThumbnailSize = 60.dp
     val ThumbnailShape = RoundedCornerShape(4.dp)
 }
+
+private const val PreviewUpdatedAt = 1_767_225_600_000L // 2026.01.01
 
 @Preview(showBackground = true, widthDp = 360)
 @Composable
@@ -199,6 +232,7 @@ private fun ModeraAnalyzedImageItemAllMetaPreview() {
         ModeraAnalyzedImageItem(
             title = "성심당 케이크 리스트",
             description = "올해 성심당 케이크 메뉴 리스트로, 샤인머스켓 시루, 귤 시루, 맛있겠다.",
+            updatedAt = PreviewUpdatedAt,
             tags = listOf("기차", "예약", "KTX"),
             imageUrl = "",
             favorite = true,
@@ -216,6 +250,7 @@ private fun ModeraAnalyzedImageItemDocumentSchedulePreview() {
         ModeraAnalyzedImageItem(
             title = "성심당 케이크 리스트",
             description = "올해 성심당 케이크 메뉴 리스트로, 샤인머스켓 시루, 귤 시루, 맛있겠다.",
+            updatedAt = PreviewUpdatedAt,
             tags = listOf("기차", "예약", "KTX"),
             imageUrl = "",
             isDocumented = true,
@@ -232,6 +267,7 @@ private fun ModeraAnalyzedImageItemDocumentOnlyPreview() {
         ModeraAnalyzedImageItem(
             title = "성심당 케이크 리스트",
             description = "올해 성심당 케이크 메뉴 리스트로, 샤인머스켓 시루, 귤 시루, 맛있겠다.",
+            updatedAt = PreviewUpdatedAt,
             tags = listOf("기차", "예약", "KTX"),
             imageUrl = "",
             favorite = true,
@@ -248,9 +284,10 @@ private fun ModeraAnalyzedImageItemScheduleOnlyPreview() {
         ModeraAnalyzedImageItem(
             title = "성심당 케이크 리스트",
             description = "올해 성심당 케이크 메뉴 리스트로, 샤인머스켓 시루, 귤 시루, 맛있겠다.",
+            updatedAt = PreviewUpdatedAt,
             tags = listOf("기차", "예약", "KTX"),
             imageUrl = "",
-            favorite = true,
+            favorite = false,
             hasSchedule = true,
             onClick = {},
         )

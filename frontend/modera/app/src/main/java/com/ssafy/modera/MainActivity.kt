@@ -1,6 +1,7 @@
 package com.ssafy.modera
 
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -17,6 +18,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ssafy.modera.core.designsystem.theme.ModeraTheme
 import com.ssafy.modera.fcm.NotificationNavigationTarget
 import com.ssafy.modera.fcm.toNotificationNavigationTarget
+import com.ssafy.modera.media.extractSharedImageUris
 import com.ssafy.modera.ui.ModeraApp
 import com.ssafy.modera.ui.rememberModeraAppState
 import dagger.hilt.android.AndroidEntryPoint
@@ -30,6 +32,8 @@ class MainActivity : ComponentActivity() {
     private val keepSystemSplash = AtomicBoolean(true)
     private val pendingNotificationTarget =
         MutableStateFlow<NotificationNavigationTarget?>(null)
+    private val pendingSharedImageUris =
+        MutableStateFlow<List<Uri>?>(null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         val splashScreen = installSplashScreen()
@@ -40,6 +44,7 @@ class MainActivity : ComponentActivity() {
 
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        handleIncomingIntent(intent)
 
         setContent {
             var isSplashFinished by rememberSaveable {
@@ -47,7 +52,9 @@ class MainActivity : ComponentActivity() {
             }
 
             val notificationTarget by
-            pendingNotificationTarget.collectAsStateWithLifecycle()
+                pendingNotificationTarget.collectAsStateWithLifecycle()
+            val sharedImageUris by
+                pendingSharedImageUris.collectAsStateWithLifecycle()
 
             val view = LocalView.current
 
@@ -65,10 +72,14 @@ class MainActivity : ComponentActivity() {
                     val appState = rememberModeraAppState()
                     ModeraApp(
                         appState = appState,
-                        notificationNavigationTarget =
-                            notificationTarget,
+                        notificationNavigationTarget = notificationTarget,
                         onNotificationNavigationConsumed = {
                             pendingNotificationTarget.value = null
+                        },
+                        sharedImageUris = sharedImageUris,
+                        onSharedImagesConsumed = {
+                            pendingSharedImageUris.value = null
+                            clearShareIntentExtras()
                         },
                     )
                 } else {
@@ -84,7 +95,14 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
 
         setIntent(intent)
+        handleIncomingIntent(intent)
+    }
+
+    private fun handleIncomingIntent(
+        intent: Intent?,
+    ) {
         handleNotificationIntent(intent)
+        handleShareIntent(intent)
     }
 
     private fun handleNotificationIntent(
@@ -95,5 +113,31 @@ class MainActivity : ComponentActivity() {
             ?: return
 
         pendingNotificationTarget.value = target
+    }
+
+    private fun handleShareIntent(
+        intent: Intent?,
+    ) {
+        val uris = intent
+            ?.extractSharedImageUris()
+            .orEmpty()
+
+        if (uris.isEmpty()) return
+
+        pendingSharedImageUris.value = uris
+    }
+
+    private fun clearShareIntentExtras() {
+        val currentIntent = intent ?: return
+        if (
+            currentIntent.action != Intent.ACTION_SEND &&
+            currentIntent.action != Intent.ACTION_SEND_MULTIPLE
+        ) {
+            return
+        }
+
+        currentIntent.removeExtra(Intent.EXTRA_STREAM)
+        currentIntent.action = Intent.ACTION_MAIN
+        currentIntent.type = null
     }
 }

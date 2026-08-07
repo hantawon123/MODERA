@@ -1,0 +1,62 @@
+package com.ssafy.modera.feature.analyzedimage.related.images
+
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.ssafy.modera.core.common.result.Result
+import com.ssafy.modera.core.common.result.asResult
+import com.ssafy.modera.core.data.repository.analyzedImage.AnalyzedImageRepository
+import dagger.assisted.Assisted
+import dagger.assisted.AssistedFactory
+import dagger.assisted.AssistedInject
+import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
+
+@HiltViewModel(
+    assistedFactory = RelatedImagesViewModel.Factory::class,
+)
+class RelatedImagesViewModel @AssistedInject constructor(
+    analyzedImageRepository: AnalyzedImageRepository,
+    @Assisted val imageId: Long,
+) : ViewModel() {
+
+    val uiState: StateFlow<RelatedImagesUiState> =
+        analyzedImageRepository
+            .getRelatedImages(imageId)
+            .asResult()
+            .map { result ->
+                when (result) {
+                    Result.Loading -> {
+                        RelatedImagesUiState.Loading
+                    }
+
+                    is Result.Success -> {
+                        if (result.data.isEmpty()) {
+                            RelatedImagesUiState.Empty
+                        } else {
+                            RelatedImagesUiState.Success(
+                                relatedImages = result.data,
+                            )
+                        }
+                    }
+
+                    is Result.Error -> {
+                        RelatedImagesUiState.Error(result.exception)
+                    }
+                }
+            }
+            .stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(5_000),
+                initialValue = RelatedImagesUiState.Loading,
+            )
+
+    @AssistedFactory
+    interface Factory {
+        fun create(
+            imageId: Long,
+        ): RelatedImagesViewModel
+    }
+}

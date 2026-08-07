@@ -10,7 +10,9 @@ data class AnalyzedImageWithCategory(
     val category: CategoryEntity,
 )
 
-fun AnalyzedImageWithCategory.asExternalModel(): AnalyzedImageDetail =
+fun AnalyzedImageWithCategory.asExternalModel(
+    hasRelatedDocuments: Boolean,
+): AnalyzedImageDetail =
     AnalyzedImageDetail(
         id = analyzedImage.imageId,
         imageUrl = analyzedImage.imageUrl.orEmpty(),
@@ -22,7 +24,7 @@ fun AnalyzedImageWithCategory.asExternalModel(): AnalyzedImageDetail =
         tags = analyzedImage.tags,
         extractedTexts = analyzedImage.ocrRefinedText.toExtractedTexts(),
         keyInformation = analyzedImage.keyInformation,
-        isDocumented = analyzedImage.isDocumented,
+        isDocumented = hasRelatedDocuments,
         isCalendared = analyzedImage.isCalendared,
         updatedAt = analyzedImage.updatedAt,
     )

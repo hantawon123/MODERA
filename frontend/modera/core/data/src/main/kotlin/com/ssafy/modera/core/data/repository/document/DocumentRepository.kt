@@ -13,7 +13,11 @@ interface DocumentRepository : Syncable {
         documentId: Long,
     ): Flow<DocumentDetail>
 
-    fun getDocumentImages(
+    fun getDocumentsByImageId(
+        imageId: Long,
+    ): Flow<List<Document>>
+
+    fun getAnalyzedImagesByDocumentId(
         documentId: Long,
     ): Flow<List<AnalyzedImage>>
 

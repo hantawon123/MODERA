@@ -26,7 +26,7 @@ internal fun Intent.toNotificationNavigationTarget():
     return when (
         getStringExtra(FcmNotificationManager.EXTRA_RESOURCE)
     ) {
-        SyncResourceType.IMAGE.name -> {
+        SyncResourceType.IMAGE_UPLOAD.name -> {
             NotificationNavigationTarget.ImageDetail(
                 imageId = resourceId,
             )

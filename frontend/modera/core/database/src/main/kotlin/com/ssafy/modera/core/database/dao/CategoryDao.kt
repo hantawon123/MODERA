@@ -46,6 +46,15 @@ interface CategoryDao {
 
     @Query(
         """
+    UPDATE categories
+    SET isNew = 0
+    WHERE categoryId = :categoryId
+    """,
+    )
+    suspend fun clearNewCategoryFlag(categoryId: Long)
+
+    @Query(
+        """
         UPDATE categories
         SET isNew = 0
         WHERE isNew = 1

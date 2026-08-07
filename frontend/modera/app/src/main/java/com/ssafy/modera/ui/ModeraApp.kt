@@ -1,5 +1,6 @@
 package com.ssafy.modera.ui
 
+import android.net.Uri
 import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -24,6 +25,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -69,7 +71,9 @@ import com.ssafy.modera.feature.imageviewer.navigation.imageViewerEntry
 import com.ssafy.modera.feature.login.LoginRoute
 import com.ssafy.modera.feature.settings.navigation.navigateToSettings
 import com.ssafy.modera.feature.settings.navigation.settingsEntry
+import com.ssafy.modera.media.DEFAULT_MAX_IMAGE_COUNT
 import com.ssafy.modera.media.rememberGalleryPickerLauncher
+import com.ssafy.modera.media.toSelectedImage
 import com.ssafy.modera.navigation.BOTTOM_NAV_ITEMS
 import com.ssafy.modera.navigation.TOP_LEVEL_NAV_ITEMS
 import com.ssafy.modera.navigation.analyzedImageEntries
@@ -78,6 +82,8 @@ import com.ssafy.modera.navigation.moderaPredictivePopTransition
 import com.ssafy.modera.navigation.moderaPushTransition
 import com.ssafy.modera.session.AppSessionUiState
 import com.ssafy.modera.session.AppSessionViewModel
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 @Composable
 fun ModeraApp(
@@ -86,6 +92,8 @@ fun ModeraApp(
     windowAdaptiveInfo: WindowAdaptiveInfo = currentWindowAdaptiveInfo(),
     notificationNavigationTarget: NotificationNavigationTarget? = null,
     onNotificationNavigationConsumed: () -> Unit = {},
+    sharedImageUris: List<Uri>? = null,
+    onSharedImagesConsumed: () -> Unit = {},
     viewModel: MainViewModel = hiltViewModel(),
     sessionViewModel: AppSessionViewModel = hiltViewModel(),
 ) {
@@ -127,6 +135,8 @@ fun ModeraApp(
                     },
                     notificationNavigationTarget = notificationNavigationTarget,
                     onNotificationNavigationConsumed = onNotificationNavigationConsumed,
+                    sharedImageUris = sharedImageUris,
+                    onSharedImagesConsumed = onSharedImagesConsumed,
                     modifier = Modifier.fillMaxSize(),
                 )
             }
@@ -146,11 +156,14 @@ internal fun ModeraApp(
     modifier: Modifier = Modifier,
     notificationNavigationTarget: NotificationNavigationTarget? = null,
     onNotificationNavigationConsumed: () -> Unit = {},
+    sharedImageUris: List<Uri>? = null,
+    onSharedImagesConsumed: () -> Unit = {},
     windowAdaptiveInfo: WindowAdaptiveInfo = currentWindowAdaptiveInfo(),
 ) {
     ModeraSnackbarEffect(viewModel)
 
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val context = LocalContext.current
     val navigator = remember {
         Navigator(appState.navigationState)
     }
@@ -179,6 +192,22 @@ internal fun ModeraApp(
         onNotificationNavigationConsumed()
     }
 
+    LaunchedEffect(sharedImageUris) {
+        val uris = sharedImageUris
+            ?.take(DEFAULT_MAX_IMAGE_COUNT)
+            ?.takeIf { it.isNotEmpty() }
+            ?: return@LaunchedEffect
+
+        val images = withContext(Dispatchers.IO) {
+            uris.map { uri ->
+                uri.toSelectedImage(context.contentResolver)
+            }
+        }
+
+        viewModel.onImagesPicked(images)
+        navigator.navigate(HomeNavKey)
+        onSharedImagesConsumed()
+    }
 
     val handleBack = rememberModeraBackHandler(navigator)
 

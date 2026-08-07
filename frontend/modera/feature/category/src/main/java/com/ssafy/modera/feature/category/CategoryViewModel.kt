@@ -176,9 +176,9 @@ class CategoryViewModel @Inject constructor(
     }
 
     fun onCategoryTitleClick() {
-        viewModelScope.launch {
-            categoryRepository.clearNewCategoryFlags()
-        }
+//        viewModelScope.launch {
+//            categoryRepository.clearNewCategoryFlags()
+//        }
         screenState.update { it.copy(showCategorySheet = true) }
     }
 

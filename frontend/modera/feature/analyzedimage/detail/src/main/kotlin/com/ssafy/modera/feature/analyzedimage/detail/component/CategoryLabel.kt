@@ -19,16 +19,16 @@ internal fun CategoryLabel(
 ) {
     Box(
         modifier = modifier
-            .clip(RoundedCornerShape(8.dp))
+            .clip(RoundedCornerShape(12.dp))
             .background(ModeraTheme.colors.yellow700Bg)
             .padding(
-                horizontal = 12.dp,
-                vertical = 7.dp,
+                horizontal = 10.dp,
+                vertical = 3.dp,
             ),
     ) {
         Text(
             text = category,
-            style = ModeraTheme.typography.captionSB12.copy(
+            style = ModeraTheme.typography.bodyR14.copy(
                 color = ModeraTheme.colors.yellow800,
             ),
         )

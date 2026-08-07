@@ -8,7 +8,7 @@
     <string name="analyzed_image_detail_ocr_title">추출된 텍스트</string>
     <string name="analyzed_image_detail_document">문서</string>
     <string name="analyzed_image_detail_schedule">일정</string>
-    <string name="analyzed_image_detail_load_error">이미지 정보를 불러오지 못했습니다.</string>
+    <string name="analyzed_image_detail_load_error">삭제된 이미지 입니다.</string>
     <string name="analyzed_image_detail_add_favorite">즐겨찾기 등록</string>
     <string name="analyzed_image_detail_remove_favorite">즐겨찾기 해제</string>
 

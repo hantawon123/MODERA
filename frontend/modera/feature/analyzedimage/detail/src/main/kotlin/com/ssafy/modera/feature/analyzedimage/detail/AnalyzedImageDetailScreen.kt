@@ -210,7 +210,9 @@ private fun AnalyzedImageDetailScreen(
                     message = stringResource(
                         R.string.analyzed_image_detail_load_error,
                     ),
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(bottom = 80.dp),
                 )
             }
 

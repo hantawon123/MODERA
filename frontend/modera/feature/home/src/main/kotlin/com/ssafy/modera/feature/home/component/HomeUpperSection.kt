@@ -43,7 +43,7 @@ internal fun HomeUpperSection(
             .graphicsLayer { alpha = upperContentAlpha },
     ) {
         Row(
-            modifier = modifier
+            modifier = Modifier
                 .fillMaxWidth()
                 .padding(vertical = 8.dp),
             horizontalArrangement = Arrangement.End,

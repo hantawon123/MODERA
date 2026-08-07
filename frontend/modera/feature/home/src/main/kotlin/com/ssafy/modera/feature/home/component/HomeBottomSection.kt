@@ -7,8 +7,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.unit.dp
 import com.ssafy.modera.core.model.category.Category
+import com.ssafy.modera.feature.home.HomeScreenDefaults
 import com.ssafy.modera.feature.home.state.HomeUiState
 
 @Composable
@@ -31,7 +31,6 @@ internal fun HomeBottomSection(
                 onCategoryClick = onCategoryClick,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(top = 24.dp, bottom = 24.dp)
                     .graphicsLayer { alpha = categoryContentAlpha },
             )
         }
@@ -43,6 +42,7 @@ internal fun HomeBottomSection(
                 onRecentSearchDelete = onRecentSearchDelete,
                 onRecentSearchClearAll = onRecentSearchClearAll,
                 onSearchResultClick = onSearchResultClick,
+                modifier = Modifier.padding(horizontal = HomeScreenDefaults.HorizontalPadding),
             )
         }
     }

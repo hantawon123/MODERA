@@ -20,6 +20,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ssafy.modera.core.designsystem.component.Text
@@ -59,7 +60,10 @@ fun HomeRoute(
                 uiState = state,
                 onCalendarClick = onCalendarClick,
                 onSettingsClick = onSettingsClick,
-                onCategoryClick = onCategoryClick,
+                onCategoryClick = { category ->
+                    onCategoryClick(category)
+                    viewModel.clearNewCategoryFlag(category.id)
+                },
                 onSearchQueryChange = viewModel::onSearchQueryChanged,
                 onSearchBarFocusChange = viewModel::onSearchBarFocusChanged,
                 onSearchSubmit = viewModel::submitSearch,
@@ -115,16 +119,16 @@ private fun HomeSuccessScreen(
             .fillMaxSize()
             .background(ModeraTheme.colors.white)
             .statusBarTopPadding()
-            .padding(horizontal = HomeScreenDefaults.HorizontalPadding)
             .then(searchLayoutState.screenHeightModifier),
     ) {
         Column(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier.fillMaxSize()
         ) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(searchLayoutState.upperWeight)
+                    .zIndex(1f)
                     .then(
                         if (uiState.isSearchActive) {
                             Modifier.pointerInput(Unit) {
@@ -141,6 +145,8 @@ private fun HomeSuccessScreen(
                     upperContentAlpha = searchLayoutState.upperContentAlpha,
                     onCalendarClick = onCalendarClick,
                     onSettingsClick = onSettingsClick,
+                    modifier = Modifier
+                        .padding(horizontal = HomeScreenDefaults.HorizontalPadding),
                 )
             }
 
@@ -157,6 +163,7 @@ private fun HomeSuccessScreen(
                         onSearchSubmit()
                     }
                 },
+                modifier = Modifier.padding(horizontal = HomeScreenDefaults.HorizontalPadding),
             )
 
             HomeBottomSection(

@@ -175,7 +175,7 @@ fun CategoryScreen(
         label = "collapsedSearchBarTopSpacing",
     )
 
-    val headerNestedScrollConnection = remember {
+    val headerNestedScrollConnection = remember(showCategorySheet) {
         object : NestedScrollConnection {
             override fun onPreScroll(
                 available: Offset,
@@ -185,7 +185,7 @@ fun CategoryScreen(
                     headerExpandedState.value = true
                     return available
                 }
-                if (available.y < 0 && headerExpandedState.value) {
+                if (available.y < 0 && headerExpandedState.value && !showCategorySheet) {
                     headerExpandedState.value = false
                     return available
                 }
@@ -193,6 +193,14 @@ fun CategoryScreen(
             }
         }
     }
+
+    LaunchedEffect(showCategorySheet) {
+        if (showCategorySheet) {
+            isHeaderExpanded = true
+        }
+    }
+
+    val isCategoryTitleBarVisible = isHeaderExpanded || showCategorySheet
 
     Box(
         modifier = modifier
@@ -203,7 +211,7 @@ fun CategoryScreen(
             modifier = Modifier.fillMaxSize(),
         ) {
             AnimatedVisibility(
-                visible = isHeaderExpanded,
+                visible = isCategoryTitleBarVisible,
                 enter = expandVertically(expandFrom = Alignment.Top) + fadeIn(),
                 exit = shrinkVertically(shrinkTowards = Alignment.Top) + fadeOut(),
             ) {
@@ -218,122 +226,133 @@ fun CategoryScreen(
                 )
             }
 
-            ModeraSearchBar(
-                query = searchQuery,
-                onQueryChange = onSearchQueryChange,
-                placeholder = stringResource(R.string.category_search_placeholder),
-                mode = SearchBarMode.General,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(ModeraTheme.colors.white)
-                    .then(
-                        if (!isHeaderExpanded) Modifier.statusBarTopPadding()
-                        else Modifier,
-                    )
-                    .padding(
-                        top = collapsedSearchBarTopSpacing,
-                        start = CategoryScreenDefaults.HorizontalPadding,
-                        bottom = collapsedSearchBarTopSpacing,
-                        end = CategoryScreenDefaults.HorizontalPadding,
-                    ),
-            )
-
-            AnimatedVisibility(
-                visible = isHeaderExpanded,
-                enter = expandVertically(expandFrom = Alignment.Top) + fadeIn(),
-                exit = shrinkVertically(shrinkTowards = Alignment.Top) + fadeOut(),
-            ) {
-                CategoryCountSortSection(
-                    displayImageCount = displayImageCount,
-                    selectedSortType = selectedSortType,
-                    showSortPopup = showSortPopup,
-                    onSortClick = {
-                        focusManager.clearFocus()
-                        onSortClick()
-                    },
-                    onSortPopupDismiss = onSortPopupDismiss,
-                    onSortTypeSelect = onSortTypeSelect,
-                    onClearFocus = { focusManager.clearFocus() },
-                )
-            }
-
-            LazyColumn(
-                state = listState,
+            Box(
                 modifier = Modifier
                     .weight(1f)
-                    .fillMaxWidth()
-                    .nestedScroll(headerNestedScrollConnection),
+                    .fillMaxWidth(),
             ) {
-                if (!isSearching && analyzedImages.isEmpty()) {
-                    item(key = "list_empty") {
-                        RecommendScreen(
-                            title = stringResource(R.string.category_list_empty_title),
-                            subtitle = stringResource(R.string.category_list_empty_subtitle),
-                            image = img_pointing_character,
-                            modifier = Modifier.fillParentMaxSize(),
-                        )
-                    }
-                } else if (isSearching && analyzedImages.isEmpty()) {
-                    item(key = "search_empty") {
-                        EmptyScreen(
-                            message = stringResource(R.string.category_search_result_empty),
-                            modifier = Modifier
-                                .padding(
-                                    horizontal = CategoryScreenDefaults.HorizontalPadding,
-                                    vertical = 40.dp,
-                                )
-                                .clickable(
-                                    interactionSource = remember { MutableInteractionSource() },
-                                    indication = null,
-                                    onClick = { focusManager.clearFocus() },
-                                ),
-                        )
-                    }
-                } else {
-                    items(
-                        items = analyzedImages,
-                        key = { it.id },
-                    ) { analyzedImage ->
-                        ModeraAnalyzedImageItem(
-                            title = analyzedImage.title,
-                            description = analyzedImage.summary,
-                            updatedAt = analyzedImage.updatedAt,
-                            tags = analyzedImage.hashtags,
-                            imageUrl = analyzedImage.thumbnailUrl,
-                            favorite = analyzedImage.favorite,
-                            isDocumented = analyzedImage.isDocumented,
-                            hasSchedule = analyzedImage.hasSchedule,
-                            onClick = {
+                Column(
+                    modifier = Modifier.fillMaxSize(),
+                ) {
+                    ModeraSearchBar(
+                        query = searchQuery,
+                        onQueryChange = onSearchQueryChange,
+                        placeholder = stringResource(R.string.category_search_placeholder),
+                        mode = SearchBarMode.General,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(ModeraTheme.colors.white)
+                            .then(
+                                if (!isHeaderExpanded) Modifier.statusBarTopPadding()
+                                else Modifier,
+                            )
+                            .padding(
+                                top = collapsedSearchBarTopSpacing,
+                                start = CategoryScreenDefaults.HorizontalPadding,
+                                bottom = collapsedSearchBarTopSpacing,
+                                end = CategoryScreenDefaults.HorizontalPadding,
+                            ),
+                    )
+
+                    AnimatedVisibility(
+                        visible = isHeaderExpanded,
+                        enter = expandVertically(expandFrom = Alignment.Top) + fadeIn(),
+                        exit = shrinkVertically(shrinkTowards = Alignment.Top) + fadeOut(),
+                    ) {
+                        CategoryCountSortSection(
+                            displayImageCount = displayImageCount,
+                            selectedSortType = selectedSortType,
+                            showSortPopup = showSortPopup,
+                            onSortClick = {
                                 focusManager.clearFocus()
-                                onItemClick(analyzedImage.id)
+                                onSortClick()
                             },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = CategoryScreenDefaults.HorizontalPadding),
+                            onSortPopupDismiss = onSortPopupDismiss,
+                            onSortTypeSelect = onSortTypeSelect,
+                            onClearFocus = { focusManager.clearFocus() },
                         )
+                    }
+
+                    LazyColumn(
+                        state = listState,
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxWidth()
+                            .nestedScroll(headerNestedScrollConnection),
+                    ) {
+                        if (!isSearching && analyzedImages.isEmpty()) {
+                            item(key = "list_empty") {
+                                RecommendScreen(
+                                    title = stringResource(R.string.category_list_empty_title),
+                                    subtitle = stringResource(R.string.category_list_empty_subtitle),
+                                    image = img_pointing_character,
+                                    modifier = Modifier.fillParentMaxSize(),
+                                )
+                            }
+                        } else if (isSearching && analyzedImages.isEmpty()) {
+                            item(key = "search_empty") {
+                                EmptyScreen(
+                                    message = stringResource(R.string.category_search_result_empty),
+                                    modifier = Modifier
+                                        .padding(
+                                            horizontal = CategoryScreenDefaults.HorizontalPadding,
+                                            vertical = 40.dp,
+                                        )
+                                        .clickable(
+                                            interactionSource = remember { MutableInteractionSource() },
+                                            indication = null,
+                                            onClick = { focusManager.clearFocus() },
+                                        ),
+                                )
+                            }
+                        } else {
+                            items(
+                                items = analyzedImages,
+                                key = { it.id },
+                            ) { analyzedImage ->
+                                ModeraAnalyzedImageItem(
+                                    title = analyzedImage.title,
+                                    description = analyzedImage.summary,
+                                    updatedAt = analyzedImage.updatedAt,
+                                    tags = analyzedImage.hashtags,
+                                    imageUrl = analyzedImage.thumbnailUrl,
+                                    favorite = analyzedImage.favorite,
+                                    isDocumented = analyzedImage.isDocumented,
+                                    hasSchedule = analyzedImage.hasSchedule,
+                                    onClick = {
+                                        focusManager.clearFocus()
+                                        onItemClick(analyzedImage.id)
+                                    },
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = CategoryScreenDefaults.HorizontalPadding),
+                                )
+                            }
+                        }
                     }
                 }
+
+                CategoryTopSheet(
+                    visible = showCategorySheet,
+                    categories = categories,
+                    selectedCategoryId = selectedCategoryId,
+                    onCategoryClick = { onCategorySelect(it.id) },
+                    onDismissRequest = onCategorySheetDismiss,
+                    modifier = Modifier.fillMaxSize(),
+                )
+
+                ModeraScrollToTopButton(
+                    visible = showScrollToTop,
+                    onClick = {
+                        coroutineScope.launch {
+                            isHeaderExpanded = true
+                            listState.animateScrollToItem(0)
+                        }
+                    },
+                    modifier = Modifier.align(Alignment.BottomEnd),
+                )
             }
         }
-
-        CategoryTopSheet(
-            visible = showCategorySheet,
-            categories = categories,
-            selectedCategoryId = selectedCategoryId,
-            onCategoryClick = { onCategorySelect(it.id) },
-            onDismissRequest = onCategorySheetDismiss,
-        )
-
-        ModeraScrollToTopButton(
-            visible = showScrollToTop,
-            onClick = {
-                coroutineScope.launch {
-                    isHeaderExpanded = true
-                    listState.animateScrollToItem(0)
-                }
-            },
-            modifier = Modifier.align(Alignment.BottomEnd),
-        )
     }
 }
 

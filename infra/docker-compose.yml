@@ -1,0 +1,168 @@
+# 사용법: cp env.example .env → 값 채우기 → docker compose up -d --build
+# 보안 원칙: 외부 개방 포트 없음. 전부 127.0.0.1 바인딩 (ssh 터널로만 접근).
+#            Docker는 UFW를 우회하므로 "5432:5432" 같은 바인딩은 절대 금지.
+
+services:
+  nginx:
+    image: nginx:1.27-alpine
+    environment:
+      - TZ=Asia/Seoul
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8443:8443"
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - certbot-etc:/etc/letsencrypt:ro
+      - certbot-www:/var/www/certbot
+    restart: unless-stopped
+    networks:
+      - default
+      - shared-web
+
+  certbot:
+    image: certbot/certbot
+    profiles: ["tools"]
+    volumes:
+      - certbot-etc:/etc/letsencrypt
+      - certbot-www:/var/www/certbot
+
+  postgres:
+    build: ./postgres
+    environment:
+      TZ: Asia/Seoul
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      API_DB_PASSWORD: ${API_DB_PASSWORD}
+      ANALYSIS_DB_PASSWORD: ${ANALYSIS_DB_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./postgres/init:/docker-entrypoint-initdb.d:ro
+    ports:
+      - "127.0.0.1:5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    shm_size: 256mb
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    environment:
+      - TZ=Asia/Seoul
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redisdata:/data
+    ports:
+      - "127.0.0.1:6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+  redis-exporter:
+    image: oliver006/redis_exporter:latest
+    container_name: infra-redis-exporter
+    restart: unless-stopped
+    command:
+      - --redis.addr=redis://redis:6379
+      # 이벤트 스트림 길이·컨슈머그룹 PEL을 메트릭으로 노출한다.
+      # 이 프로젝트의 핵심 지표라 기본 옵션만으로는 부족하다.
+      - --check-streams=image-analysis,analysis-result
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: infra-node-exporter
+    restart: unless-stopped
+    # 호스트의 실제 파일시스템·프로세스 정보를 읽어야 하므로 읽기 전용으로 마운트한다.
+    # 컨테이너 안에서 보면 자기 자신의 좁은 세계만 보여 서버 지표가 안 나온다.
+    pid: host
+    volumes:
+      - /:/host:ro,rslave
+    command:
+      - --path.rootfs=/host
+      # 도커 오버레이 파일시스템은 실제 디스크가 아니라 노이즈다. 제외한다.
+      - --collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc|var/lib/docker/.+)($$|/)
+  loki:
+    image: grafana/loki:latest
+    container_name: infra-loki
+    restart: unless-stopped
+    volumes:
+      - loki-data:/loki
+    # 포트 미노출 - Grafana가 내부 네트워크로만 접근 
+      - ./loki/config.yml:/etc/loki/local-config.yaml:ro
+  promtail:
+    image: grafana/promtail:latest
+    container_name: infra-promtail
+    restart: unless-stopped
+    volumes:
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./promtail/config.yml:/etc/promtail/config.yml:ro
+    command: -config.file=/etc/promtail/config.yml
+
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    environment:
+      TZ: Asia/Seoul
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    volumes:
+      - miniodata:/data
+
+      - /etc/localtime:/etc/localtime:ro
+      - /usr/share/zoneinfo:/usr/share/zoneinfo:ro
+    ports:
+      - "127.0.0.1:9000:9000"
+      - "127.0.0.1:9001:9001"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:9000/minio/health/live || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: infra-prometheus
+    restart: unless-stopped
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.retention.time=7d
+    ports:
+      - "127.0.0.1:9090:9090"    # SSH 터널로만 접근 (Jenkins와 같은 방식)
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: infra-grafana
+    restart: unless-stopped
+    environment:
+      # nginx 하위 경로(/grafana/)로 서빙하려면 Grafana도 그 경로를 알아야
+      # 리다이렉트·정적 리소스 URL이 맞는다.
+      - GF_SERVER_ROOT_URL=https://i15d207.p.ssafy.io:8443/grafana/
+      - GF_SERVER_SERVE_FROM_SUB_PATH=true
+    volumes:
+      - grafana-data:/var/lib/grafana
+
+volumes:
+  pgdata:
+  redisdata:
+  miniodata:
+  certbot-etc:
+  certbot-www:
+  prometheus-data:
+  grafana-data:
+  loki-data:
+
+networks:
+  default:
+  shared-web:
+    external: true

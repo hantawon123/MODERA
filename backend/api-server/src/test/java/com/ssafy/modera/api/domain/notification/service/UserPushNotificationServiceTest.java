@@ -72,7 +72,7 @@ class UserPushNotificationServiceTest {
     }
 
     @Test
-    void sendsOneImageDeletionMessageWithAllDeletedImageIds() {
+    void preservesTheSelectedResourceWithoutRewritingIt() {
         when(tokenQueryRepository.findActiveTokens(7)).thenReturn(List.of("token-a"));
         when(pushMessageSender.send(org.mockito.ArgumentMatchers.anyList(),
                 org.mockito.ArgumentMatchers.anyMap()))
@@ -81,8 +81,8 @@ class UserPushNotificationServiceTest {
         service.sendDataChanged(
                 UUID.randomUUID(),
                 7,
-                UserDataChangeResource.IMAGE_DELETE_BATCH,
-                "[10,11,12]",
+                UserDataChangeResource.DOCUMENT_REANALYSIS,
+                "12",
                 OffsetDateTime.now());
 
         @SuppressWarnings("unchecked")
@@ -91,9 +91,8 @@ class UserPushNotificationServiceTest {
                 org.mockito.ArgumentMatchers.eq(List.of("token-a")), data.capture());
         assertThat(data.getValue())
                 .containsEntry("type", "DATA_CHANGED")
-                .containsEntry("resource", UserDataChangeResource.IMAGE)
-                .containsEntry("changeType", "DELETED")
-                .containsEntry("resourceIds", "[10,11,12]")
-                .doesNotContainKey("resourceId");
+                .containsEntry("resource", UserDataChangeResource.DOCUMENT_REANALYSIS)
+                .containsEntry("resourceId", "12")
+                .doesNotContainKeys("changeType", "resourceIds");
     }
 }

@@ -18,6 +18,7 @@ public record AnalysisCompletedPayload(
         String structuredType,
         String structuredFields,
         String analysisStatus,
-        String modelVersion
+        String modelVersion,
+        String triggerType
 ) {
 }

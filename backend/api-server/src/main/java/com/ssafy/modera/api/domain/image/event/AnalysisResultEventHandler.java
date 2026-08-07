@@ -91,7 +91,7 @@ public class AnalysisResultEventHandler {
         // 결과만 여기서 직접 완료 알림을 기록한다.
         if (payload.categoryName() == null || payload.categoryName().isBlank()) {
             userDataChangeOutboxService.record(
-                    payload.userId(), UserDataChangeResource.IMAGE,
+                    payload.userId(), imageAnalysisResource(payload.triggerType()),
                     String.valueOf(imageId));
         }
     }
@@ -142,6 +142,13 @@ public class AnalysisResultEventHandler {
                 "FAILED"
         );
         userDataChangeOutboxService.record(
-                payload.userId(), UserDataChangeResource.IMAGE, String.valueOf(imageId));
+                payload.userId(), imageAnalysisResource(payload.triggerType()),
+                String.valueOf(imageId));
+    }
+
+    private String imageAnalysisResource(String triggerType) {
+        return triggerType != null && !"INITIAL".equals(triggerType)
+                ? UserDataChangeResource.IMAGE_REANALYSIS
+                : UserDataChangeResource.IMAGE_UPLOAD;
     }
 }

@@ -91,7 +91,8 @@ public class AnalysisRetryScanner {
                 .stage(failed.getStage())
                 .status("PENDING")
                 .attempt(failed.getAttempt() + 1)
-                .triggerType(TRIGGER_RETRY)
+                .triggerType(failed.getTriggerType() == null
+                        ? TRIGGER_RETRY : failed.getTriggerType())
                 .queuedAt(OffsetDateTime.now())
                 .s3Key(failed.getS3Key())
                 .clientOcrRawText(failed.getClientOcrRawText())
@@ -130,7 +131,8 @@ public class AnalysisRetryScanner {
             }
             eventPublisher.publish(Streams.ANALYSIS_RESULT, EventTypes.ANALYSIS_FAILED, 1,
                     new AnalysisFailedPayload(retryJob.getImageId(), retryJob.getUserId(),
-                            ANALYSIS_REQUEST_ERROR, String.valueOf(e.getMessage()), true));
+                            ANALYSIS_REQUEST_ERROR, String.valueOf(e.getMessage()), true,
+                            retryJob.getTriggerType()));
         }
     }
 

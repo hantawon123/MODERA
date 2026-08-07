@@ -54,7 +54,7 @@ public class DocumentController {
             summary = "문서 생성",
             description = """
                     선택한 이미지의 분석 정보로 AI 문서를 만들어 **완성된 문서를 그대로 돌려준다.**
-                    생성이 끝날 때까지 응답이 나가지 않으므로 폴링이나 완료 알림이 필요 없다.
+                    생성이 끝날 때까지 응답이 나가지 않으며, 저장 완료 후 DOCUMENT_UPLOAD FCM도 발송한다.
 
                     LLM 생성이 수 초~수십 초 걸린다. 클라이언트 read 타임아웃을 넉넉히(90초 이상)
                     잡아야 하고, 그동안 로딩 화면을 유지하면 된다.
@@ -141,8 +141,8 @@ public class DocumentController {
             description = """
                     마크다운 본문 전문과 구성 이미지 ID를 함께 준다.
 
-                    regenerating이 true면 재분석이 진행 중이다 — 완료 알림이 아직 없어서, 재분석이
-                    끝났는지 확인하는 창구가 이 조회다. 재분석이 실패해도 문서 내용은 이전 상태
+                    regenerating이 true면 재분석이 진행 중이다. 완료 시 DOCUMENT_REANALYSIS
+                    FCM이 발송되며, 이 조회로도 완료 여부를 확인할 수 있다. 재분석이 실패해도 문서 내용은 이전 상태
                     그대로 남는다.
                     """
     )

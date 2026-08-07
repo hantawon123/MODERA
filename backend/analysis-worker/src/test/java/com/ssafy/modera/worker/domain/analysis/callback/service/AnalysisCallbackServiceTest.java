@@ -83,7 +83,8 @@ class AnalysisCallbackServiceTest {
                 EventTypes.INITIAL_CATEGORY_RESOLVED);
         assertThat(payload.getAllValues().get(0)).isInstanceOf(AnalysisCompletedPayload.class);
         assertThat(payload.getAllValues().get(1))
-                .isEqualTo(new InitialCategoryResolvedPayload(18, 7, 3, "영수증"));
+                .isEqualTo(new InitialCategoryResolvedPayload(
+                        18, 7, 3, "영수증", "INITIAL"));
         assertThat(job.getStatus()).isEqualTo("COMPLETED");
     }
 

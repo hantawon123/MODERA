@@ -342,7 +342,8 @@ public class ImageAnalysisConsumer {
             analysisJobRepository.save(job);
 
             AnalysisFailedPayload failedPayload = new AnalysisFailedPayload(
-                    imageId, payload.userId(), "ANALYSIS_REQUEST_ERROR", String.valueOf(e.getMessage()), true);
+                    imageId, payload.userId(), "ANALYSIS_REQUEST_ERROR",
+                    String.valueOf(e.getMessage()), true, job.getTriggerType());
             eventPublisher.publish(Streams.ANALYSIS_RESULT, EventTypes.ANALYSIS_FAILED, 1, failedPayload);
         }
     }

@@ -1,11 +1,14 @@
 package com.ssafy.modera.media
 
 import android.content.Intent
+import android.net.Uri
+import androidx.core.content.IntentCompat
+import kotlin.jvm.java
 
 /**
  * 갤러리/공유 시트에서 전달된 이미지 Uri 목록을 추출한다.
- * [Intent.ACTION_SEND], [Intent.ACTION_SEND_MULTIPLE] + `image/*` 만 처리한다.
  */
+
 fun Intent.extractSharedImageUris(
     maxItems: Int = DEFAULT_MAX_IMAGE_COUNT,
 ): List<Uri> {

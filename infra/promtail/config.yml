@@ -1,0 +1,28 @@
+# 도커 컨테이너 로그 파일을 읽어 Loki로 보낸다.
+# Prometheus가 메트릭을 긁는 것과 같은 역할을 로그에 대해 한다.
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+
+positions:
+  # 어디까지 읽었는지 기록 — 재시작해도 중복 전송하지 않는다
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+
+scrape_configs:
+  - job_name: docker
+    docker_sd_configs:
+      - host: unix:///var/run/docker.sock
+        refresh_interval: 10s
+    relabel_configs:
+      # 컨테이너 이름을 라벨로 (앞의 / 제거)
+      - source_labels: [__meta_docker_container_name]
+        regex: '/(.*)'
+        target_label: container
+      # 실제로 조회하는 컨테이너만 수집한다. 전체를 받으면 OpenSearch·Jenkins
+      # 로그가 대부분을 차지해 디스크가 빨리 찬다(전체 수집 시 약 1MB/분).
+      - source_labels: [container]
+        regex: '(modera-.*|ai-ai-service-1|infra-nginx-1)'
+        action: keep

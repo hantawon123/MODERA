@@ -28,6 +28,9 @@ public class FastApiAnalysisClient implements AnalysisClient {
     private static final String STAGE_FULL = "FULL";
     private static final String HEADER_INTERNAL_TOKEN = "X-Internal-Token";
 
+    /** 이미지당 AI가 추출하는 태그 상한. 10개는 목록 카드에 다 못 보여줘 5개로 줄였다. */
+    private static final int MAX_TAGS = 5;
+
     private final RestClient restClient;
     private final String internalToken;
     private final String callbackUrl;
@@ -62,7 +65,7 @@ public class FastApiAnalysisClient implements AnalysisClient {
                 job.getUserId(),
                 STAGE_FULL,
                 new AnalyzeInput(new ImageInput(s3Key), toOcrInput(clientOcr)),
-                new AnalyzeOptions(10, "ko"),
+                new AnalyzeOptions(MAX_TAGS, "ko"),
                 callbackUrl
         );
 

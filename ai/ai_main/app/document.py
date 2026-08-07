@@ -201,13 +201,16 @@ def render_markdown(document: dict[str, Any]) -> str:
     그린 뒤 이 문자열을 그 아래에 붙인다. 여기에 또 담으면 한 화면에 제목·요약이 두 번
     나온다. 두 값은 응답 JSON 의 title·summary 로 이미 나가므로 손실은 없다.
 
+    섹션은 h3(`###`) 로 찍는다. 앱이 그리는 제목·요약 블록보다 아래 단계여야 본문이
+    화면 안에서 하위 구조로 읽힌다.
+
     이미지 id 는 렌더에 넣지 않는다. 사용자에게 내부 id 는 의미가 없고, 출처 표기가
     본문 흐름을 끊는다. 근거 매핑은 응답 JSON 의 sections[].imageIds 로만 나간다.
     """
     lines: list[str] = []
 
     for section in document.get("sections") or []:
-        lines += [f"## {section['heading']}", ""]
+        lines += [f"### {section['heading']}", ""]
         if section.get("body"):
             lines += [section["body"], ""]
         if section.get("bullets"):

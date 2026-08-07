@@ -2,6 +2,7 @@ package com.ssafy.modera.core.network.model.search
 
 import com.ssafy.modera.core.model.analyzedimage.AnalyzedImage
 import kotlinx.serialization.Serializable
+import java.time.Instant
 
 @Serializable
 data class SemanticSearchImageResponse(
@@ -23,6 +24,8 @@ fun SemanticSearchImageResponse.asExternalModel(): AnalyzedImage =
         thumbnailUrl = thumbnailUrl.toAbsoluteUrl().orEmpty(),
         hashtags = tags,
         favorite = favorite,
+        updatedAt = runCatching { Instant.parse(uploadedAt).toEpochMilli() }
+            .getOrDefault(0L),
     )
 
 private fun String?.toAbsoluteUrl(): String? {

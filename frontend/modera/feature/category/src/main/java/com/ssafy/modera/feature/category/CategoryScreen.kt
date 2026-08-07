@@ -294,6 +294,7 @@ fun CategoryScreen(
                                 ModeraAnalyzedImageItem(
                                     title = analyzedImage.title,
                                     description = analyzedImage.summary,
+                                    updatedAt = analyzedImage.updatedAt,
                                     tags = analyzedImage.hashtags,
                                     imageUrl = analyzedImage.thumbnailUrl,
                                     favorite = analyzedImage.favorite,

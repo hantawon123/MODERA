@@ -21,18 +21,9 @@ fun SemanticSearchImageResponse.asExternalModel(): AnalyzedImage =
         id = imageId,
         title = title,
         summary = summary,
-        thumbnailUrl = thumbnailUrl.toAbsoluteUrl().orEmpty(),
+        thumbnailUrl = "https://i15d207.p.ssafy.io:8443/api/v1/images/${imageId}/thumbnail/raw",
         hashtags = tags,
         favorite = favorite,
         updatedAt = runCatching { Instant.parse(uploadedAt).toEpochMilli() }
             .getOrDefault(0L),
     )
-
-private fun String?.toAbsoluteUrl(): String? {
-    if (this.isNullOrBlank()) return null
-    return if (startsWith("http://") || startsWith("https://")) {
-        this
-    } else {
-        "https://i15d207.p.ssafy.io:8443/$this"
-    }
-}

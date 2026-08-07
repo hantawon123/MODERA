@@ -185,6 +185,12 @@ class HomeViewModel @Inject constructor(
         }
     }
 
+    fun clearNewCategoryFlag(categoryId: Long) {
+        viewModelScope.launch {
+            categoryRepository.clearNewCategoryFlag(categoryId)
+        }
+    }
+
     fun deactivateSearch() {
         searchState.update { state ->
             state.copy(

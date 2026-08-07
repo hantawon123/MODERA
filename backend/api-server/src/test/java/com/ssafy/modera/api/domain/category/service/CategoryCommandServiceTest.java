@@ -90,11 +90,12 @@ class CategoryCommandServiceTest {
     }
 
     @Test
-    void routesAReuploadCategoryToImageReanalysisResource() {
+    void routesReuploadCategoryToImageUploadResource() {
         var payload = new InitialCategoryResolvedPayload(18, 7, 3, "문서", "REUPLOAD");
 
         categoryCommandService.initialize(payload);
 
-        verify(userDataChangeOutboxService).record(7, "IMAGE_REANALYSIS", "18");
+        verify(userDataChangeOutboxService).record(7, "IMAGE_UPLOAD", "18");
     }
+
 }

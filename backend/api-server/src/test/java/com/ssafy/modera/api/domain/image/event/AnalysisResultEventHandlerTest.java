@@ -11,6 +11,7 @@ import com.ssafy.modera.api.domain.notification.outbox.UserDataChangeOutboxServi
 import com.ssafy.modera.api.domain.notification.outbox.UserDataChangeResource;
 import com.ssafy.modera.api.domain.schedule.service.ScheduleCreationService;
 import com.ssafy.modera.contract.payload.AnalysisCompletedPayload;
+import com.ssafy.modera.contract.payload.AnalysisFailedPayload;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -53,7 +54,8 @@ class AnalysisResultEventHandlerTest {
         when(userImageRepository.findByUserIdAndImageIdAndDelYn(7, 18, "N"))
                 .thenReturn(Optional.of(UserImage.builder()
                         .userId(7).imageId(18).build()));
-        when(imageAssetRepository.findByImageIdAndDelYn(18, "N"))
+        org.mockito.Mockito.lenient()
+                .when(imageAssetRepository.findByImageIdAndDelYn(18, "N"))
                 .thenReturn(Optional.of(ImageAsset.builder()
                         .imageId(18)
                         .fileName("image.jpg")
@@ -79,11 +81,22 @@ class AnalysisResultEventHandlerTest {
     }
 
     @Test
-    void routesReuploadAnalysisToReanalysisResource() {
+    void doesNotNotifyWhenImageAnalysisFails() {
+        eventHandler.handleFailed(new AnalysisFailedPayload(
+                18, 7, "AI_ERROR", "failed", false, "INITIAL"));
+
+        verify(userDataChangeOutboxService, never()).record(
+                org.mockito.ArgumentMatchers.anyInt(),
+                org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.anyString());
+    }
+
+    @Test
+    void routesReuploadCompletionToImageUploadResource() {
         eventHandler.handleCompleted(completed(null, "REUPLOAD"));
 
         verify(userDataChangeOutboxService).record(
-                7, UserDataChangeResource.IMAGE_REANALYSIS, "18");
+                7, UserDataChangeResource.IMAGE_UPLOAD, "18");
     }
 
     private AnalysisCompletedPayload completed(String categoryName) {

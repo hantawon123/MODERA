@@ -15,6 +15,7 @@ import com.airbnb.lottie.compose.animateLottieCompositionAsState
 import com.airbnb.lottie.compose.rememberLottieComposition
 import com.ssafy.modera.core.designsystem.theme.ModeraTheme
 import com.ssafy.modera.feature.onboading.impl.component.AnalysisResultSection
+import com.ssafy.modera.feature.onboading.impl.component.OnboardingFeaturePagerSection
 import com.ssafy.modera.feature.onboading.impl.component.OnboardingGuideSection
 import com.ssafy.modera.feature.onboading.impl.component.OnboardingSkipButton
 import com.ssafy.modera.feature.onboading.impl.component.PhotoRegisterSection
@@ -22,7 +23,9 @@ import com.ssafy.modera.feature.onboading.impl.component.PhotoRegisterSection
 @Composable
 fun OnboardingScreen(
     onSkipClick: () -> Unit,
-    onRegisterPhotoClick: () -> Unit,
+    onRegisterPhotoClick: (
+        onImagesPicked: () -> Unit,
+    ) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var phase by remember {
@@ -55,7 +58,11 @@ fun OnboardingScreen(
         lottieProgress = lottieProgress,
         lottieComposition = lottieComposition,
         onSkipClick = onSkipClick,
-        onRegisterPhotoClick = onRegisterPhotoClick,
+        onRegisterPhotoClick = {
+            onRegisterPhotoClick {
+                phase = OnboardingPhase.FeaturePager
+            }
+        },
         modifier = modifier,
     )
 }
@@ -87,6 +94,10 @@ private fun OnboardingContent(
         PhotoRegisterSection(
             phase = phase,
             onRegisterPhotoClick = onRegisterPhotoClick,
+        )
+
+        OnboardingFeaturePagerSection(
+            phase = phase,
         )
 
         OnboardingSkipButton(

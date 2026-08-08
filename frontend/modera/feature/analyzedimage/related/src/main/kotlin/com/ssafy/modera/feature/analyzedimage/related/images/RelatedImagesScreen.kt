@@ -134,6 +134,7 @@ private fun RelatedImagesContent(
             ModeraAnalyzedImageItem(
                 title = image.title,
                 description = image.summary,
+                updatedAt = image.updatedAt,
                 tags = image.hashtags,
                 imageUrl = image.thumbnailUrl,
                 favorite = image.favorite,

@@ -2,6 +2,7 @@ package com.ssafy.modera.core.network.model.analyzedimage
 
 import com.ssafy.modera.core.model.analyzedimage.AnalyzedImage
 import kotlinx.serialization.Serializable
+import java.time.Instant
 
 @Serializable
 data class AnalyzedImageResponse(
@@ -28,4 +29,9 @@ fun AnalyzedImageResponse.asExternalModel(): AnalyzedImage =
         favorite = favorite,
         isDocumented = isDocumented,
         hasSchedule = isCalendared,
+        updatedAt = uploadedAt
+            ?.let { value ->
+                runCatching { Instant.parse(value).toEpochMilli() }.getOrNull()
+            }
+            ?: 0L,
     )

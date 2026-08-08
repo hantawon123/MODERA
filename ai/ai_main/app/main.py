@@ -15,8 +15,8 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse, Response
 
 from . import (
-    app_images, app_library, category_icon, doc_selection, document, gemini_client,
-    internal_api, reanalyze, related, responses, search, storage,
+    app_images, app_library, category_icon, document, gemini_client,
+    internal_api, reanalyze, responses, search, storage,
 )
 from .config import get_settings
 from .deps import (
@@ -186,10 +186,6 @@ def _custom_openapi() -> dict[str, Any]:
 app.openapi = _custom_openapi  # type: ignore[method-assign]
 
 
-# 연관 이미지(연쇄 선택). 기능 전체가 related.py 안에 있어 여기는 이 한 줄만 닿는다.
-app.include_router(related.router, dependencies=[Depends(require_internal_token)])
-# 문서화 이미지 선택. 검색·격리는 related 를 재사용하고 화면 계약만 따로 든다.
-app.include_router(doc_selection.router, dependencies=[Depends(require_internal_token)])
 # 카테고리 재분석(결과가 맘에 안 들 때). 판정 코어는 category/stages 를 재사용한다.
 app.include_router(reanalyze.router, dependencies=[Depends(require_internal_token)])
 

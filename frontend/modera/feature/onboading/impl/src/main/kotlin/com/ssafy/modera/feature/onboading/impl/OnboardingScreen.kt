@@ -3,7 +3,6 @@ package com.ssafy.modera.feature.onboading.impl
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -18,12 +17,12 @@ import com.ssafy.modera.core.designsystem.theme.ModeraTheme
 import com.ssafy.modera.feature.onboading.impl.component.AnalysisResultSection
 import com.ssafy.modera.feature.onboading.impl.component.OnboardingGuideSection
 import com.ssafy.modera.feature.onboading.impl.component.OnboardingSkipButton
-import kotlinx.coroutines.delay
-import kotlin.time.Duration.Companion.milliseconds
+import com.ssafy.modera.feature.onboading.impl.component.PhotoRegisterSection
 
 @Composable
 fun OnboardingScreen(
     onSkipClick: () -> Unit,
+    onRegisterPhotoClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var phase by remember {
@@ -43,85 +42,20 @@ fun OnboardingScreen(
         iterations = 1,
     )
 
-    /*
-     * Greeting
-     * ↓
-     * Intro
-     * ↓
-     * Upload
-     */
-    LaunchedEffect(Unit) {
-        delay(GREETING_DURATION_MILLIS.milliseconds)
-
-        phase = OnboardingPhase.Intro
-
-        delay(INTRO_DURATION_MILLIS.milliseconds)
-
-        phase = OnboardingPhase.Upload
-    }
-
-    /*
-     * Upload
-     * ↓
-     * Analysis
-     * ↓
-     * CategoryHighlight
-     */
-    LaunchedEffect(
-        phase,
-        lottieProgress,
-    ) {
-        when {
-            phase == OnboardingPhase.Upload &&
-                    lottieProgress >= ANALYSIS_PHASE_PROGRESS -> {
-                phase = OnboardingPhase.Analysis
-            }
-
-            phase == OnboardingPhase.Analysis &&
-                    lottieProgress >= RESULT_PHASE_PROGRESS -> {
-                phase = OnboardingPhase.CategoryHighlight
-            }
-        }
-    }
-
-    /*
-     * Category
-     * ↓
-     * Hashtag
-     * ↓
-     * Summary
-     * ↓
-     * Related
-     */
-    LaunchedEffect(phase) {
-        when (phase) {
-            OnboardingPhase.CategoryHighlight -> {
-                delay(HIGHLIGHT_DURATION_MILLIS.milliseconds)
-
-                phase = OnboardingPhase.HashtagHighlight
-            }
-
-            OnboardingPhase.HashtagHighlight -> {
-                delay(HIGHLIGHT_DURATION_MILLIS.milliseconds)
-
-                phase = OnboardingPhase.SummaryHighlight
-            }
-
-            OnboardingPhase.SummaryHighlight -> {
-                delay(HIGHLIGHT_DURATION_MILLIS.milliseconds)
-
-                phase = OnboardingPhase.RelatedHighlight
-            }
-
-            else -> Unit
-        }
-    }
+    OnboardingPhaseEffect(
+        phase = phase,
+        lottieProgress = lottieProgress,
+        onPhaseChange = { newPhase ->
+            phase = newPhase
+        },
+    )
 
     OnboardingContent(
         phase = phase,
         lottieProgress = lottieProgress,
         lottieComposition = lottieComposition,
         onSkipClick = onSkipClick,
+        onRegisterPhotoClick = onRegisterPhotoClick,
         modifier = modifier,
     )
 }
@@ -132,6 +66,7 @@ private fun OnboardingContent(
     lottieProgress: Float,
     lottieComposition: com.airbnb.lottie.LottieComposition?,
     onSkipClick: () -> Unit,
+    onRegisterPhotoClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     BoxWithConstraints(
@@ -149,19 +84,16 @@ private fun OnboardingContent(
             phase = phase,
         )
 
+        PhotoRegisterSection(
+            phase = phase,
+            onRegisterPhotoClick = onRegisterPhotoClick,
+        )
+
         OnboardingSkipButton(
             onClick = onSkipClick,
         )
     }
 }
-
-private const val GREETING_DURATION_MILLIS = 900L
-private const val INTRO_DURATION_MILLIS = 1_300L
-
-private const val ANALYSIS_PHASE_PROGRESS = 0.33f
-private const val RESULT_PHASE_PROGRESS = 0.98f
-
-private const val HIGHLIGHT_DURATION_MILLIS = 1_600L
 
 @Preview(
     name = "Onboarding",
@@ -174,6 +106,7 @@ private fun OnboardingScreenPreview() {
     ModeraTheme {
         OnboardingScreen(
             onSkipClick = {},
+            onRegisterPhotoClick = {},
         )
     }
 }

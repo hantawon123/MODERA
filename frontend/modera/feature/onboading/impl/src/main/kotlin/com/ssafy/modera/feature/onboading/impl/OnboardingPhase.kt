@@ -9,6 +9,7 @@ internal enum class OnboardingPhase {
     HashtagHighlight,
     SummaryHighlight,
     RelatedHighlight,
+    PhotoRegister,
 }
 
 internal val OnboardingPhase.isResultPhase: Boolean

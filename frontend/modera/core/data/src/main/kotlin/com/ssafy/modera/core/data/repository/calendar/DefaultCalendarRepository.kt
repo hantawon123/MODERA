@@ -4,6 +4,7 @@ import com.ssafy.modera.core.common.network.Dispatcher
 import com.ssafy.modera.core.common.network.ModeraDispatcher
 import com.ssafy.modera.core.data.repository.analyzedImage.AnalyzedImageRepository
 import com.ssafy.modera.core.model.calendar.CalendarSchedule
+import com.ssafy.modera.core.model.calendar.sortedForDay
 import com.ssafy.modera.core.network.model.calendar.ScheduleResponse
 import com.ssafy.modera.core.network.model.calendar.SchedulesRequest
 import com.ssafy.modera.core.network.model.calendar.asExternalModel
@@ -38,6 +39,17 @@ class DefaultCalendarRepository @Inject constructor(
             ).map { schedule ->
                 schedule.asExternalModel(zoneId)
             },
+        )
+    }.flowOn(ioDispatcher)
+
+    override fun getSchedulesByImageId(
+        imageId: Long,
+    ): Flow<List<CalendarSchedule>> = flow {
+        emit(
+            fetchAllSchedules(SchedulesRequest())
+                .filter { schedule -> schedule.imageId == imageId }
+                .map { schedule -> schedule.asExternalModel(zoneId) }
+                .sortedForDay(),
         )
     }.flowOn(ioDispatcher)
 

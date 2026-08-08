@@ -141,6 +141,13 @@ class CalendarViewModel @Inject constructor(
         hasCalendarPermission.value = granted
     }
 
+    fun initializeFromNavigation(
+        selectedDate: LocalDate,
+    ) {
+        this.selectedDate.value = selectedDate
+        visibleMonth.value = YearMonth.from(selectedDate)
+    }
+
     fun onPreviousMonth() {
         visibleMonth.update { it.minusMonths(1) }
         selectedDate.update { it.minusMonths(1) }

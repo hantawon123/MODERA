@@ -21,7 +21,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -212,6 +214,10 @@ internal fun ModeraApp(
 
     val handleBack = rememberModeraBackHandler(navigator)
 
+    var onOnboardingImagesPicked by remember {
+        mutableStateOf<(() -> Unit)?>(null)
+    }
+
     val launchGalleryPicker = rememberGalleryPickerLauncher(
         onImagesPicked = { images ->
             if (images.isEmpty()) {
@@ -219,6 +225,9 @@ internal fun ModeraApp(
             }
 
             viewModel.onImagesPicked(images)
+
+            onOnboardingImagesPicked?.invoke()
+            onOnboardingImagesPicked = null
         },
     )
 
@@ -346,7 +355,10 @@ internal fun ModeraApp(
                                 onboardingEntry(
                                     navigator = navigator,
                                     onSkipClick = navigator::navigateToHome,
-                                    onRegisterPhotoClick = launchGalleryPicker,
+                                    onRegisterPhotoClick = { onImagesPicked ->
+                                        onOnboardingImagesPicked = onImagesPicked
+                                        launchGalleryPicker()
+                                    },
                                 )
 
                                 homeEntry(

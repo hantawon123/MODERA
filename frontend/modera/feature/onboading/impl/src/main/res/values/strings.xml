@@ -14,4 +14,12 @@
 
     <string name="onboarding_photo_register_title">직접 사진을 등록해볼까요?</string>
     <string name="onboarding_photo_register_button">사진 등록하기</string>
+
+    <string name="onboarding_feature_calendar_title_prefix">이미지에서 중요한 일정이 있다면\n캘린더에 </string>
+    <string name="onboarding_feature_calendar_title_highlight">자동 등록</string>
+    <string name="onboarding_feature_calendar_title_suffix"> 돼요!</string>
+
+    <string name="onboarding_feature_document_search">AI에 무엇이든 물어보세요사진을 바로 찾아드립니다!</string>
+    <string name="onboarding_feature_document_title">여러 자료를 한번에 묶어서 문서화!</string>
+    <string name="onboarding_feature_notification">이미지 분석이 완료되면 알림으로 알려드려요</string>
 </resources>

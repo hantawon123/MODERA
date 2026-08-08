@@ -24,6 +24,7 @@ import com.ssafy.modera.core.designsystem.component.Text
 import com.ssafy.modera.core.designsystem.theme.ModeraTheme
 import com.ssafy.modera.feature.onboading.impl.OnboardingPhase
 import com.ssafy.modera.feature.onboading.impl.R
+import com.ssafy.modera.feature.onboading.impl.isGuideVisible
 import com.ssafy.modera.feature.onboading.impl.isLottiePhase
 import com.ssafy.modera.feature.onboading.impl.rememberOnboardingAnimationState
 
@@ -38,12 +39,8 @@ internal fun BoxWithConstraintsScope.OnboardingGuideSection(
         screenHeight = maxHeight,
     )
 
-    /*
-     * PhotoRegister 진입 시
-     * 기존 Guide 전체를 자연스럽게 제거한다.
-     */
     AnimatedVisibility(
-        visible = phase != OnboardingPhase.PhotoRegister,
+        visible = phase.isGuideVisible,
         modifier = Modifier.matchParentSize(),
         exit = fadeOut(
             animationSpec = tween(

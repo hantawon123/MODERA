@@ -10,6 +10,7 @@ internal enum class OnboardingPhase {
     SummaryHighlight,
     RelatedHighlight,
     PhotoRegister,
+    FeaturePager,
 }
 
 internal val OnboardingPhase.isResultPhase: Boolean
@@ -30,4 +31,13 @@ internal val OnboardingPhase.isLottiePhase: Boolean
             -> true
 
         else -> false
+    }
+
+internal val OnboardingPhase.isGuideVisible: Boolean
+    get() = when (this) {
+        OnboardingPhase.PhotoRegister,
+        OnboardingPhase.FeaturePager,
+            -> false
+
+        else -> true
     }

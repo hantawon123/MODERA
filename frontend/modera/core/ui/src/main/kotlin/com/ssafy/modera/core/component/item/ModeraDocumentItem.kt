@@ -37,7 +37,16 @@ fun ModeraDocumentItem(
         )
 
         Spacer(
-            modifier = Modifier.height(4.dp),
+            modifier = Modifier.height(6.dp),
+        )
+
+        ModeraDocumentInfoRow(
+            imageCount = document.sourceImageCount,
+            updatedAt = document.updatedAt,
+        )
+
+        Spacer(
+            modifier = Modifier.height(12.dp),
         )
 
         Text(
@@ -46,15 +55,6 @@ fun ModeraDocumentItem(
             color = ModeraTheme.colors.gray700,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
-        )
-
-        Spacer(
-            modifier = Modifier.height(12.dp),
-        )
-
-        ModeraDocumentInfoRow(
-            imageCount = document.sourceImageCount,
-            updatedAt = document.updatedAt,
         )
     }
 }

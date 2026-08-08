@@ -44,7 +44,7 @@ private val AnalyzedImageDateFormatter: DateTimeFormatter =
     DateTimeFormatter.ofPattern("yyyy년 MM월 dd일", Locale.KOREA)
 
 /**
- * 분석 이미지 리스트 아이템 — 즐겨찾기/문서/일정 메타 row + 해시태그 row.
+ * 분석 이미지 리스트 아이템 — 제목 옆 즐겨찾기 아이콘 + 문서/일정 메타 row + 해시태그 row.
  */
 @Composable
 fun ModeraAnalyzedImageItem(
@@ -69,13 +69,30 @@ fun ModeraAnalyzedImageItem(
             .clickable(onClick = onClick)
             .padding(AnalyzedImageItemDefaults.ContentPadding),
     ) {
-        Text(
-            text = title,
-            style = ModeraTheme.typography.titleSB18,
-            color = ModeraTheme.colors.gray900,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            if (favorite) {
+                Icon(
+                    imageVector = ImageVector.vectorResource(ModeraIcons.StarFilled),
+                    contentDescription = stringResource(R.string.analyzed_image_item_favorite),
+                    modifier = Modifier.size(AnalyzedImageItemDefaults.MetaIconSize),
+                    tint = ModeraTheme.colors.yellow500,
+                )
+
+                Spacer(Modifier.width(4.dp))
+            }
+
+            Text(
+                text = title,
+                style = ModeraTheme.typography.bodySB16,
+                color = ModeraTheme.colors.gray900,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f),
+            )
+        }
         Spacer(Modifier.height(6.dp))
         Row(
             modifier = Modifier,
@@ -88,13 +105,12 @@ fun ModeraAnalyzedImageItem(
                     color = ModeraTheme.colors.gray400,
                 )
             }
-            if (favorite || isDocumented || hasSchedule) {
+            if (isDocumented || hasSchedule) {
                 if (dateTime.isNotEmpty()) {
                     Spacer(Modifier.width(14.dp))
                 }
 
                 AnalyzedImageMetaRow(
-                    favorite = favorite,
                     isDocumented = isDocumented,
                     hasSchedule = hasSchedule,
                 )
@@ -157,7 +173,6 @@ fun ModeraAnalyzedImageItem(
 
 @Composable
 private fun AnalyzedImageMetaRow(
-    favorite: Boolean,
     isDocumented: Boolean,
     hasSchedule: Boolean,
     modifier: Modifier = Modifier,
@@ -168,19 +183,7 @@ private fun AnalyzedImageMetaRow(
     ) {
         var needsDivider = false
 
-        if (favorite) {
-            AnalyzedImageMetaItem(
-                iconRes = ModeraIcons.StarFilled,
-                label = stringResource(R.string.analyzed_image_item_favorite),
-                iconTint = ModeraTheme.colors.yellow500,
-            )
-            needsDivider = true
-        }
-
         if (isDocumented) {
-            if (needsDivider) {
-                AnalyzedImageMetaDivider()
-            }
             AnalyzedImageMetaItem(
                 iconRes = ModeraIcons.FileDocument,
                 label = stringResource(R.string.analyzed_image_item_document),
@@ -223,7 +226,7 @@ private fun AnalyzedImageMetaItem(
 
         Text(
             text = label,
-            style = ModeraTheme.typography.captionR12,
+            style = ModeraTheme.typography.captionM12,
             color = textColor,
             modifier = Modifier.padding(horizontal = AnalyzedImageItemDefaults.MetaItemSpacing),
         )

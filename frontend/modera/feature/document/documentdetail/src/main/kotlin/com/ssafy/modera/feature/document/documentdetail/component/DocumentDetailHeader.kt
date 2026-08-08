@@ -59,6 +59,7 @@ internal fun DocumentDetailHeader(
         ModeraDocumentInfoRow(
             imageCount = document.imageCount,
             updatedAt = document.updatedAt,
+            isCountingVisible = false,
             contentColor = ModeraTheme.colors.gray500,
         )
 
@@ -70,6 +71,7 @@ internal fun DocumentDetailHeader(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             DocumentManageImagesButton(
+                imageCount = document.imageCount,
                 onClick = onManageImagesClick,
             )
 
@@ -84,6 +86,7 @@ internal fun DocumentDetailHeader(
 
 @Composable
 private fun DocumentManageImagesButton(
+    imageCount: Int,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -120,6 +123,7 @@ private fun DocumentManageImagesButton(
         Text(
             text = stringResource(
                 R.string.document_manage_screenshots,
+                imageCount,
             ),
             style = ModeraTheme.typography.bodyR14,
             color = ModeraTheme.colors.gray500,

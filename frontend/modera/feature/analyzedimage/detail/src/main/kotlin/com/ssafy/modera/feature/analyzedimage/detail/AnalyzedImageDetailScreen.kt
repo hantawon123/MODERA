@@ -371,7 +371,7 @@ private fun AnalyzedImageDetailContent(
                 image.updatedAt,
                 ModeraDateStyle.YEAR_MONTH_DAY_TIME
             ),
-            style = ModeraTheme.typography.captionR12,
+            style = ModeraTheme.typography.bodyR14,
             color = ModeraTheme.colors.gray500,
         )
 

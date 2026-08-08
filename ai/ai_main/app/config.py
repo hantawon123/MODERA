@@ -252,6 +252,13 @@ class Settings:
         # 아이콘 전용 버킷. key 는 "{categoryId}.png" 하나뿐이라 매핑 테이블이 없다.
         self.s3_category_icon_bucket = os.environ.get(
             "S3_CATEGORY_ICON_BUCKET", "category-thumbnails")
+        # 신규 카테고리일 때 분석 완료 콜백을 아이콘 생성만큼 늦추는 상한(초).
+        # 이 콜백이 앱에게는 '카테고리 생겼다' 신호라, 아이콘보다 먼저 나가면 앱이
+        # 빈 아이콘을 한 번 조회하고 끝난다(app/category_icon.py). 실제 생성 지연에
+        # 맞춰 조정하는 값이다 — 모델·품질·리전이 바뀌면 여기부터 만진다.
+        # 0 이면 기다리지 않는다. 기존 카테고리 분석은 이 값과 무관하게 즉시 통과.
+        self.category_icon_wait_seconds = float(
+            os.environ.get("CATEGORY_ICON_WAIT_SECONDS", "30"))
 
         # AGENT 태그 최대 개수 (10-1 options.maxTags 로 요청별 덮어쓰기 가능)
         self.default_max_tags = int(os.environ.get("DEFAULT_MAX_TAGS", "5"))

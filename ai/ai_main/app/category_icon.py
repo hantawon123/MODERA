@@ -188,6 +188,31 @@ def schedule_icon(category_id: int, name: str) -> None:
     task.add_done_callback(lambda _: _pending.pop(category_id, None))
 
 
+async def wait_pending(category_id: int | None, timeout: float) -> None:
+    """이 카테고리 아이콘이 올라갈 때까지만 기다린다(상한 timeout 초).
+
+    분석 완료 콜백(10-4)이 앱에게는 '카테고리 생겼다' 신호다. 앱은 그 신호를 받고
+    Spring 이 준 presigned URL 로 MinIO 를 **직접** 친다 — 아직 객체가 없으면
+    MinIO 가 404 를 주고 끝이다(이 파일의 조회 엔드포인트를 안 탄다. 즉석 생성
+    경로가 회선에 없다). 그래서 콜백 자체를 아이콘만큼 늦춘다.
+
+    실측(2026-08-08 23:32): 콜백 23:32:36 → 앱이 23:32:39/48/52 세 번 404 →
+    아이콘 완성 23:32:55. 20초 차이로 빈 자리가 남았다.
+
+    기존 카테고리는 `_pending` 에 없어 즉시 통과한다(대부분의 분석). 생성이
+    실패했거나 이미 끝났어도 done 콜백이 항목을 지웠으므로 역시 즉시 통과.
+    상한을 넘겨도 예외 없이 그냥 돌아온다 — 콜백을 막을 만큼 중요하지 않다.
+
+    ponytail: 호출자가 세마포어 슬롯을 쥔 채로 기다린다(MAX_CONCURRENT_STAGES=4).
+    신규 카테고리가 한꺼번에 몰리면 그만큼 큐가 밀린다. 실제로 밀리면 대기를
+    세마포어 밖으로 빼거나 슬롯 수를 올린다.
+    """
+    task = _pending.get(category_id) if category_id is not None else None
+    if task is None or timeout <= 0:
+        return
+    await asyncio.wait([task], timeout=timeout)
+
+
 @router.get("/api/v1/categories/{category_id}/icon",
             dependencies=[Depends(require_internal_token)],
             response_class=Response,

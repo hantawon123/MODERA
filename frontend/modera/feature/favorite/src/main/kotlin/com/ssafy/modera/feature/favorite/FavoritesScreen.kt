@@ -129,6 +129,7 @@ fun FavoritesScreen(
                         ModeraAnalyzedImageItem(
                             title = favorite.title,
                             description = favorite.summary,
+                            updatedAt = favorite.updatedAt,
                             tags = favorite.hashtags,
                             imageUrl = favorite.thumbnailUrl,
                             favorite = favorite.favorite,
@@ -177,6 +178,7 @@ private object FavoritesPreviewData {
         hashtags = listOf("기차", "예약", "KTX"),
         thumbnailUrl = "",
         favorite = true,
+        updatedAt = 1_767_225_600_000L,
     )
 
     val items = List(12) { index ->

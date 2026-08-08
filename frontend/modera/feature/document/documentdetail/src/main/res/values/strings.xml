@@ -6,7 +6,7 @@
     <string name="document_detail_load_error">문서 정보를 불러오지 못했습니다.</string>
     <string name="document_source_image_count">관련 %1$d개</string>
     <string name="document_updated_at">%1$s 업데이트</string>
-    <string name="document_manage_screenshots">스크린샷 관리</string>
+    <string name="document_manage_screenshots">스크린샷 %d개</string>
     <string name="document_manage_screenshots_information">스크린샷 관리 안내</string>
     <string name="document_manage_screenshots_tooltip">스크린샷을 추가하거나 제거하면\nAI가 문서를 다시 정리해요.</string>
     <string name="document_summary_title">문서 요약</string>

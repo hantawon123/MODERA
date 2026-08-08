@@ -49,4 +49,5 @@ fun AnalyzedImageEntity.asExternalModel(): AnalyzedImage =
         favorite = favorite,
         isDocumented = isDocumented,
         hasSchedule = isCalendared,
+        updatedAt = updatedAt,
     )

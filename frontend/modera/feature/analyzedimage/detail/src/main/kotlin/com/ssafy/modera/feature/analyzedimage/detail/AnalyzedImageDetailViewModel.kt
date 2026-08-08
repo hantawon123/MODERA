@@ -6,20 +6,26 @@ import androidx.lifecycle.viewModelScope
 import com.ssafy.modera.core.common.result.Result
 import com.ssafy.modera.core.common.result.asResult
 import com.ssafy.modera.core.data.repository.analyzedImage.AnalyzedImageRepository
+import com.ssafy.modera.core.data.repository.calendar.CalendarRepository
+import com.ssafy.modera.core.model.calendar.CalendarSchedule
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
+import java.time.LocalDate
 
 @HiltViewModel(
     assistedFactory = AnalyzedImageDetailViewModel.Factory::class,
 )
 class AnalyzedImageDetailViewModel @AssistedInject constructor(
     private val analyzedImageRepository: AnalyzedImageRepository,
+    private val calendarRepository: CalendarRepository,
     @Assisted private val imageId: Long,
 ) : ViewModel() {
 
@@ -27,6 +33,14 @@ class AnalyzedImageDetailViewModel @AssistedInject constructor(
         field = MutableStateFlow<AnalyzedImageDetailUiState>(
             AnalyzedImageDetailUiState.Loading,
         )
+
+    private val _relatedSchedulesDialog = MutableStateFlow<List<CalendarSchedule>?>(null)
+    val relatedSchedulesDialog: StateFlow<List<CalendarSchedule>?> = _relatedSchedulesDialog
+
+    private val navigateToCalendarChannel = Channel<LocalDate>(Channel.BUFFERED)
+    val navigateToCalendarDate = navigateToCalendarChannel.receiveAsFlow()
+
+    private var isRelatedScheduleLoading = false
 
     init {
         loadAnalyzedImageDetail()
@@ -183,6 +197,73 @@ class AnalyzedImageDetailViewModel @AssistedInject constructor(
                         }
                     }
                 }
+        }
+    }
+
+    fun onRelatedScheduleClick() {
+        if (isRelatedScheduleLoading) return
+
+        isRelatedScheduleLoading = true
+
+        viewModelScope.launch {
+            calendarRepository
+                .getSchedulesByImageId(imageId)
+                .asResult()
+                .collect { result ->
+                    when (result) {
+                        Result.Loading -> Unit
+
+                        is Result.Success -> {
+                            isRelatedScheduleLoading = false
+                            handleRelatedSchedules(result.data)
+                        }
+
+                        is Result.Error -> {
+                            isRelatedScheduleLoading = false
+                        }
+                    }
+                }
+        }
+    }
+
+    fun onRelatedScheduleSelected(
+        schedule: CalendarSchedule,
+    ) {
+        schedule.date?.let { date ->
+            navigateToCalendar(date)
+        }
+        dismissRelatedSchedulesDialog()
+    }
+
+    fun dismissRelatedSchedulesDialog() {
+        _relatedSchedulesDialog.value = null
+    }
+
+    private fun handleRelatedSchedules(
+        schedules: List<CalendarSchedule>,
+    ) {
+        val navigableSchedules = schedules.filter { schedule ->
+            schedule.date != null
+        }
+
+        when {
+            navigableSchedules.isEmpty() -> Unit
+
+            navigableSchedules.size == 1 -> {
+                navigateToCalendar(navigableSchedules.first().date!!)
+            }
+
+            else -> {
+                _relatedSchedulesDialog.value = navigableSchedules
+            }
+        }
+    }
+
+    private fun navigateToCalendar(
+        date: LocalDate,
+    ) {
+        viewModelScope.launch {
+            navigateToCalendarChannel.send(date)
         }
     }
 

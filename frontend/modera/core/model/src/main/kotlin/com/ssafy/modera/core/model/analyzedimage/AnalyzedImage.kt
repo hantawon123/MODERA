@@ -9,4 +9,5 @@ data class AnalyzedImage(
     val favorite: Boolean = false,
     val isDocumented: Boolean = false,
     val hasSchedule: Boolean = false,
+    val updatedAt: Long = 0L,
 )

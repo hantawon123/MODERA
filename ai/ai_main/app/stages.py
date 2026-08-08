@@ -790,6 +790,13 @@ async def _index_as_other(
     except Exception as e:
         logger.warning("검색 색인 실패 imageId=%s: %s", image_id, e)
 
+    # '기타' 아이콘 자가 생성. 정보성 카테고리는 AGENT resolution(created=True)에서
+    # schedule_icon 을 타지만, '기타' 는 이 우회 경로가 유일한 관문이라 여기서
+    # 걸지 않으면 아이콘이 영구 결손된다(나머지 12종은 채워지는데 '기타'만 빈다).
+    # 멱등이라 매 비정보성 이미지마다 불러도 첫 1회만 생성한다
+    # (_pending 가드 + ensure_icon 의 object_exists 확인).
+    category_icon.schedule_icon(search.stable_id(OTHER_CATEGORY), OTHER_CATEGORY)
+
     job_store.update(job_id, "EMPTY", result=result, stage="INDEXING")
 
 

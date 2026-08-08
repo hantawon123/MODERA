@@ -20,6 +20,7 @@ import com.ssafy.modera.core.component.item.ModeraAnalyzedImageItem
 import com.ssafy.modera.core.designsystem.component.Text
 import com.ssafy.modera.core.designsystem.theme.ModeraTheme
 import com.ssafy.modera.core.model.analyzedimage.AnalyzedImage
+import com.ssafy.modera.feature.home.HomeScreenDefaults
 import com.ssafy.modera.feature.home.R
 
 @Composable
@@ -62,6 +63,7 @@ internal fun SearchResultSection(
                     style = ModeraTheme.typography.bodyR14,
                     color = ModeraTheme.colors.gray500,
                     textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(horizontal = HomeScreenDefaults.HorizontalPadding),
                 )
 
                 Spacer(Modifier.height(20.dp))

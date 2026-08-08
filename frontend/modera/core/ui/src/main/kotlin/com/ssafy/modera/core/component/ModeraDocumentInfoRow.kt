@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.vectorResource
@@ -27,6 +28,7 @@ fun ModeraDocumentInfoRow(
     imageCount: Int,
     updatedAt: Long,
     modifier: Modifier = Modifier,
+    contentColor: Color = ModeraTheme.colors.gray400,
 ) {
     Row(
         modifier = modifier.fillMaxWidth(),
@@ -39,6 +41,7 @@ fun ModeraDocumentInfoRow(
                 R.string.document_source_image_count,
                 imageCount,
             ),
+            contentColor = contentColor,
         )
 
         InfoItem(
@@ -50,6 +53,7 @@ fun ModeraDocumentInfoRow(
                     style = ModeraDateStyle.SMART,
                 ),
             ),
+            contentColor = contentColor,
         )
     }
 }
@@ -58,6 +62,7 @@ fun ModeraDocumentInfoRow(
 private fun InfoItem(
     icon: Int,
     text: String,
+    contentColor: Color,
     modifier: Modifier = Modifier,
 ) {
     Row(
@@ -69,13 +74,13 @@ private fun InfoItem(
             imageVector = ImageVector.vectorResource(icon),
             contentDescription = null,
             modifier = Modifier.size(16.dp),
-            tint = ModeraTheme.colors.gray700,
+            tint = contentColor,
         )
 
         Text(
             text = text,
             style = ModeraTheme.typography.captionR12,
-            color = ModeraTheme.colors.gray700,
+            color = contentColor,
             maxLines = 1,
         )
     }

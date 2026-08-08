@@ -118,6 +118,27 @@ class Settings:
         # 문서까지 딸려온다. 질의 토큰의 이 비율 이상이 있는 문서만 매칭한다.
         # OpenSearch minimum_should_match 표기("75%", "2<75%" 등)를 그대로 받는다.
         self.search_min_should_match = os.environ.get("SEARCH_MIN_SHOULD_MATCH", "75%")
+        # BM25 질의 스트립(F4c). 문장형 질의의 무변별 토큰을 BM25 질의에서 걷어낸다.
+        # "싸피와 관련된 사진"의 '관련된·사진'은 스크린샷 라이브러리에서 변별력이
+        # 0인데 minimum_should_match 의 분모만 부풀려 정답을 차단한다(실측 8/08:
+        # nori 8토큰 중 75%=6개 요구, 정답 문서엔 3개 → 0건. '관련된·사진'을 걷으면
+        # 75% 그대로 정답만 1건). 시맨틱 임베딩은 항상 **원문**을 쓴다 — 문맥은
+        # 벡터에 도움이 된다. 쉼표 구분, 빈 값이면 스트립을 끈다.
+        self.search_query_stopwords = frozenset(
+            w.strip() for w in os.environ.get(
+                "SEARCH_QUERY_STOPWORDS",
+                "사진,사진들,이미지,스크린샷,스샷,캡처,캡쳐,화면,"
+                "관련,관련된,관련한,관한,대한,대해,대해서,"
+                "찾아줘,찾아봐,찾아,검색,검색해,검색해줘,보여줘,보여줘요,"
+                "알려줘,알려줘요,좀",
+            ).split(",") if w.strip()
+        )
+        # 하이브리드 후보풀 BM25 의 완화 msm. 풀은 리콜 담당이고 정밀도는 융합 전
+        # 코사인 게이트가 지키므로 본검색(SEARCH_MIN_SHOULD_MATCH)보다 느슨하게
+        # 잡는다(기본 "1" = 토큰 하나만 걸려도 후보). 임베딩 없는 문서는 게이트를
+        # 면제받으므로 strict 매칭을 따로 요구해 이 완화의 영향권 밖에 둔다
+        # (search._bm25_pool_body 의 named query 참고).
+        self.search_hybrid_pool_msm = os.environ.get("SEARCH_HYBRID_POOL_MSM", "1")
         # 검색용 로컬 임베딩(자연어/시맨틱 검색). 카테고리 판정용 gemini-embedding-2(768,
         # pgvector)와는 완전히 별개다. knn_vector 필드 차원은 이 모델 출력과 일치해야 한다.
         # bge-m3 는 dense 1024 차원. 색인과 질의를 반드시 같은 모델로 임베딩해야 비교가 성립한다.

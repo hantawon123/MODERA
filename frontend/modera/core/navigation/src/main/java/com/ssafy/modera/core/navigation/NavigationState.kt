@@ -19,11 +19,26 @@ import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 fun rememberNavigationState(
     startKey: NavKey,
     topLevelKeys: Set<NavKey>,
+    initialDestination: NavKey = startKey,
 ): NavigationState {
     val topLevelStack = rememberNavBackStack(startKey)
-    val subStacks = topLevelKeys.associateWith { key -> rememberNavBackStack(key) }
+    val subStacks = topLevelKeys.associateWith { key ->
+        if (
+            key == startKey &&
+            initialDestination != startKey
+        ) {
+            rememberNavBackStack(
+                key,
+                initialDestination,
+            )
+        } else {
+            rememberNavBackStack(
+                key,
+            )
+        }
+    }
 
-    return remember(startKey, topLevelKeys) {
+    return remember(startKey, topLevelKeys, initialDestination) {
         NavigationState(
             startKey = startKey,
             topLevelStack = topLevelStack,

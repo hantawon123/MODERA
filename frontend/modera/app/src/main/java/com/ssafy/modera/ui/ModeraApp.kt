@@ -21,7 +21,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -69,6 +71,7 @@ import com.ssafy.modera.feature.home.navigation.homeEntry
 import com.ssafy.modera.feature.home.navigation.navigateToHomeTab
 import com.ssafy.modera.feature.imageviewer.navigation.imageViewerEntry
 import com.ssafy.modera.feature.login.LoginRoute
+import com.ssafy.modera.feature.onboarding.impl.navigation.onboardingEntry
 import com.ssafy.modera.feature.settings.navigation.navigateToSettings
 import com.ssafy.modera.feature.settings.navigation.settingsEntry
 import com.ssafy.modera.media.DEFAULT_MAX_IMAGE_COUNT
@@ -211,6 +214,10 @@ internal fun ModeraApp(
 
     val handleBack = rememberModeraBackHandler(navigator)
 
+    var onOnboardingImagesPicked by remember {
+        mutableStateOf<(() -> Unit)?>(null)
+    }
+
     val launchGalleryPicker = rememberGalleryPickerLauncher(
         onImagesPicked = { images ->
             if (images.isEmpty()) {
@@ -218,7 +225,9 @@ internal fun ModeraApp(
             }
 
             viewModel.onImagesPicked(images)
-            navigator.navigate(HomeNavKey)
+
+            onOnboardingImagesPicked?.invoke()
+            onOnboardingImagesPicked = null
         },
     )
 
@@ -343,6 +352,16 @@ internal fun ModeraApp(
                             )
 
                             val entryProvider = entryProvider {
+                                onboardingEntry(
+                                    navigator = navigator,
+                                    onSkipClick = navigator::navigateToHome,
+                                    onAnalysisResultClick = navigator::navigateToHome,
+                                    onRegisterPhotoClick = { onImagesPicked ->
+                                        onOnboardingImagesPicked = onImagesPicked
+                                        launchGalleryPicker()
+                                    },
+                                )
+
                                 homeEntry(
                                     onCategoryClick = navigator::navigateToCategoryTab,
                                     onCalendarClick = navigator::navigateToCalendar,

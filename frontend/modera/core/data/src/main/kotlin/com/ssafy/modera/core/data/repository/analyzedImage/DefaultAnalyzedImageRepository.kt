@@ -70,13 +70,17 @@ class DefaultAnalyzedImageRepository @Inject constructor(
 
     override fun getRelatedImages(
         imageId: Long,
-    ): Flow<List<AnalyzedImage>> =
-        analyzedImageDao
-            .getAnalyzedImageEntities(
-                categoryId = null,
-                favorite = null,
-                keyword = null,
-            ).map { it.map(AnalyzedImageEntity::asExternalModel) }
+    ): Flow<List<AnalyzedImage>> = flow {
+        val relatedImages = analyzedImageClient
+            .fetchRelatedImages(
+                imageId = imageId,
+            )
+            .map { response ->
+                response.asExternalModel()
+            }
+
+        emit(relatedImages)
+    }
 
     override fun getDocumentRecommendedImages(
         selectedImageIds: List<Long>,

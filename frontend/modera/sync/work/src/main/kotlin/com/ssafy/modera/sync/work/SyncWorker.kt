@@ -4,6 +4,8 @@ import android.content.Context
 import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
+import com.ssafy.modera.core.common.sync.SyncCompletedEvent
+import com.ssafy.modera.core.common.sync.SyncCompletionNotifier
 import com.ssafy.modera.core.data.repository.analyzedImage.AnalyzedImageRepository
 import com.ssafy.modera.core.data.repository.document.DocumentRepository
 import dagger.assisted.Assisted
@@ -17,6 +19,7 @@ class SyncWorker @AssistedInject constructor(
     @Assisted workerParameters: WorkerParameters,
     private val analyzedImageRepository: AnalyzedImageRepository,
     private val documentRepository: DocumentRepository,
+    private val syncCompletionNotifier: SyncCompletionNotifier,
 ) : CoroutineWorker(
     appContext = appContext,
     params = workerParameters,
@@ -58,11 +61,18 @@ class SyncWorker @AssistedInject constructor(
 
             }
 
-            if (synced) {
-                Result.success()
-            } else {
-                Result.failure()
+            if (!synced) {
+                return Result.failure()
             }
+
+            syncCompletionNotifier.notifyCompleted(
+                event = SyncCompletedEvent(
+                    resource = resource.toCompletedResource(),
+                    resourceId = resourceId,
+                ),
+            )
+
+            Result.success()
         } catch (exception: CancellationException) {
             throw exception
         } catch (exception: IOException) {

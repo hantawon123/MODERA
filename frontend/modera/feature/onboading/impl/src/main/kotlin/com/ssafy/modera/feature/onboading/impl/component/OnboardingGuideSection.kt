@@ -51,9 +51,6 @@ internal fun BoxWithConstraintsScope.OnboardingGuideSection(
         Box(
             modifier = Modifier.fillMaxSize(),
         ) {
-            /*
-             * Gradient
-             */
             PulsingGradientCircle(
                 modifier = Modifier
                     .align(Alignment.TopCenter)
@@ -63,9 +60,6 @@ internal fun BoxWithConstraintsScope.OnboardingGuideSection(
                     .fillMaxWidth(),
             )
 
-            /*
-             * 반가워요!
-             */
             Text(
                 text = stringResource(
                     R.string.onboarding_greeting,
@@ -83,9 +77,6 @@ internal fun BoxWithConstraintsScope.OnboardingGuideSection(
                 textAlign = TextAlign.Center,
             )
 
-            /*
-             * 사용 방법에 대해 간단하게 살펴볼까요?
-             */
             Text(
                 text = stringResource(
                     R.string.onboarding_intro_description,
@@ -103,9 +94,6 @@ internal fun BoxWithConstraintsScope.OnboardingGuideSection(
                 textAlign = TextAlign.Center,
             )
 
-            /*
-             * 잊고 있었던 스크린샷들을 올려보세요!
-             */
             Text(
                 text = stringResource(
                     R.string.onboarding_upload_title,
@@ -128,10 +116,6 @@ internal fun BoxWithConstraintsScope.OnboardingGuideSection(
                 textAlign = TextAlign.Center,
             )
 
-            /*
-             * AI가 사진을 분석해서
-             * 정리해드립니다!
-             */
             Text(
                 text = stringResource(
                     R.string.onboarding_analysis_title,
@@ -155,9 +139,6 @@ internal fun BoxWithConstraintsScope.OnboardingGuideSection(
                 textAlign = TextAlign.Center,
             )
 
-            /*
-             * Scanning Lottie
-             */
             if (
                 phase.isLottiePhase &&
                 lottieComposition != null

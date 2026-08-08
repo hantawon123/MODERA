@@ -37,6 +37,7 @@ import com.ssafy.modera.core.designsystem.theme.ModeraTheme
 import com.ssafy.modera.feature.onboading.impl.OnboardingPhase
 import com.ssafy.modera.feature.onboading.impl.R
 import kotlinx.coroutines.delay
+import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
 internal fun BoxWithConstraintsScope.OnboardingFeaturePagerSection(
@@ -66,7 +67,7 @@ internal fun BoxWithConstraintsScope.OnboardingFeaturePagerSection(
         }
 
         while (true) {
-            delay(AUTO_SCROLL_DELAY_MILLIS)
+            delay(AUTO_SCROLL_DELAY_MILLIS.milliseconds)
 
             /*
              * 사용자가 직접 스와이프 중이면

@@ -59,7 +59,7 @@ internal fun rememberOnboardingAnimationState(
     val greetingAlpha by animateFloatAsState(
         targetValue = when (phase) {
             OnboardingPhase.Greeting,
-            OnboardingPhase.Intro,
+            OnboardingPhase.Intro
                 -> 1f
 
             else -> 0f
@@ -92,7 +92,6 @@ internal fun rememberOnboardingAnimationState(
     val introDescriptionAlpha by animateFloatAsState(
         targetValue = when (phase) {
             OnboardingPhase.Intro,
-            OnboardingPhase.Upload,
                 -> 1f
 
             else -> 0f
@@ -129,7 +128,6 @@ internal fun rememberOnboardingAnimationState(
     val uploadTitleAlpha by animateFloatAsState(
         targetValue = when (phase) {
             OnboardingPhase.Upload,
-            OnboardingPhase.Analysis,
                 -> 1f
 
             else -> 0f

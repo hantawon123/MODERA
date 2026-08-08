@@ -13,4 +13,14 @@
     <string name="settings_logout_dialog_confirm">로그아웃</string>
     <string name="settings_logout_dialog_cancel">취소</string>
     <string name="settings_navigate">이동</string>
+
+
+    <string name="settings_permission_section">권한 설정</string>
+    <string name="settings_notification">알림</string>
+    <string name="settings_notification_description">이미지 분석이 끝나면 알려드려요</string>
+    <string name="settings_calendar_permission">캘린더 연동</string>
+    <string name="settings_calendar_permission_description">기존 캘린더 일정을 연동해드려요</string>
+
+    <string name="settings_permission_allowed">허용됨</string>
+    <string name="settings_permission_blocked">차단됨</string>
 </resources>

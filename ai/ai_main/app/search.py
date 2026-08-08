@@ -9,6 +9,7 @@ SDK(opensearch-py) 의존성을 이 파일에만 가둔다.
 """
 
 import logging
+import re
 import time
 import zlib
 from functools import lru_cache
@@ -498,6 +499,41 @@ def parse_sort(sort: str | None, allowed: set[str], default: str) -> list[dict[s
     return order
 
 
+# ── BM25 질의 스트립 (F4c) ────────────────────────────────────────────────
+# 스트립한 단어 뒤에 붙어 있을 수 있는 조사 꼬리("사진을", "이미지랑" 등).
+# 단어 자체가 목록에 있을 때만 꼬리를 인정한다 — "싸피와"의 '와'는 건드리지
+# 않는다(싸피는 무변별어가 아니므로 토큰 전체가 보존된다).
+_JOSA_TAIL = "(?:을|를|이|가|은|는|과|와|도|만|의|로|으로|랑|이랑|하고)?"
+
+
+@lru_cache(maxsize=1)
+def _stopword_pattern(stopwords: frozenset[str]) -> re.Pattern[str] | None:
+    """무변별어(+선택 조사 꼬리) 전체일치 패턴. 설정이 비면 None(스트립 끔)."""
+    if not stopwords:
+        return None
+    # 긴 단어 우선 — "관련된"이 "관련"+("된"은 조사 아님)으로 반쪽 매칭되지 않게.
+    alts = "|".join(re.escape(w) for w in sorted(stopwords, key=len, reverse=True))
+    return re.compile(rf"(?:{alts}){_JOSA_TAIL}")
+
+
+def _strip_query(query: str) -> str:
+    """BM25 질의에서 무변별 토큰을 걷어낸다. 시맨틱(임베딩) 질의에는 쓰지 않는다.
+
+    '관련된·사진·보여줘' 같은 토큰은 스크린샷 라이브러리에서 변별력이 0인데,
+    nori 형태소 수만 늘려 minimum_should_match 의 분모를 부풀린다. 실측(8/08,
+    OpenSearch 2.17+nori): "싸피와 관련된 사진" → 8토큰, 75%=6개 요구, 정답
+    문서엔 3개(싸·아·피)뿐이라 0건. '관련된 사진'을 걷으면 75% 그대로 정답만 남는다.
+
+    전부 걷히면(질의가 통째로 무변별어: "사진 보여줘") 원문을 그대로 돌려준다 —
+    빈 BM25 질의를 만들지 않는다.
+    """
+    pattern = _stopword_pattern(get_settings().search_query_stopwords)
+    if pattern is None:
+        return query
+    kept = [t for t in query.split() if not pattern.fullmatch(t)]
+    return " ".join(kept) if kept else query
+
+
 # 명세 8-1 scope: 검색 대상 필드를 좁힌다.
 _SCOPE_FIELDS = {
     "ALL": ["title^2", "summary", "tags", "raw_text"],
@@ -603,9 +639,17 @@ def _run_hybrid_or_bm25(
     qvec = embedder.embed(query)
     if qvec is not None:
         try:
-            return _hybrid_search(
+            hits, total = _hybrid_search(
                 settings, user_id, query, qvec, category, tag, size, page
             )
+            # 승격 단조성 가드: F4b 승격(약한 결과 보강)은 보강이지 대체가 아니다.
+            # 프로브가 이미 찾은 결과를 코사인 게이트가 전부 컷해 빈 결과가 되면
+            # 승격 전 결과를 그대로 쓴다 — 정확 일치를 찾아 놓고 지우는 개악 방지.
+            # 프로브가 빈 결과였다면 폴백도 비어 있으므로, 무관 질의에 "결과 없음"
+            # 을 돌려주는 F3 억지 매칭 차단은 그대로 동작한다.
+            if total == 0 and bm25_fallback is not None and bm25_fallback[1] > 0:
+                return bm25_fallback
+            return hits, total
         except Exception:
             logger.exception("하이브리드 검색 실패 → BM25 폴백")
     if bm25_fallback is not None:
@@ -660,6 +704,9 @@ def _bm25_search(
     서버측 from/size 페이징이라 total 이 정확하고, _score 스케일도 그대로다.
     scope=OCR/TAG, 필드 정렬, 내부 엔드포인트, 모델 미로드가 모두 여기로 온다.
     """
+    # 문장형 질의의 무변별 토큰 제거(F4c). 모든 어휘 매칭 경로(직접 BM25·cascade
+    # 프로브·scope=OCR/TAG·내부 bm25 모드)가 같은 스트립을 거쳐 동작이 일관된다.
+    query = _strip_query(query)
     bool_query: dict[str, Any] = {
         "must": [{
             "multi_match": {
@@ -703,18 +750,39 @@ def _bm25_pool_body(
     settings: Any, query: str, filters: list[dict[str, Any]], n: int
 ) -> dict[str, Any]:
     """하이브리드용 BM25 후보풀. 요청 size 가 아니라 고정 풀 크기 N 을 받아
-    page 와 무관하게 같은 후보집합을 만든다(페이지 간 total 안정)."""
+    page 와 무관하게 같은 후보집합을 만든다(페이지 간 total 안정).
+
+    풀은 리콜 담당이라 msm 을 본검색보다 완화한다(기본 "1"). 본검색 msm(75%)을
+    풀에도 그대로 쓰면, 승격의 계기였던 그 msm 이 승격 후에도 어휘 신호를 통째로
+    죽인다 — "싸피와 관련된 사진"의 정답이 '싸피' 정확 일치인데 융합에 0으로
+    기여하는 사고(실측 8/08). 완화로 새는 정크는 융합 전 코사인 게이트가 거른다.
+
+    단, **임베딩 없는 문서는 게이트를 면제**받으므로(레거시 하위호환) 완화가
+    그대로 정크 유입이 된다. 그래서 strict(본검색 msm) 매칭 여부를 named query
+    (matched_queries)로 함께 실어 보내고, _hybrid_search 의 생존 판정이 무임베딩
+    문서에 strict 를 요구한다. dis_max 는 두 가지가 같은 질의라 점수가 동일해
+    (msm 은 필터일 뿐 점수에 불관여) 기존 BM25 점수 스케일이 유지된다.
+    """
+    query = _strip_query(query)
+
+    def _mm(msm: str, name: str | None = None) -> dict[str, Any]:
+        body: dict[str, Any] = {
+            "query": query,
+            "fields": _SCOPE_FIELDS["ALL"],
+            "minimum_should_match": msm,
+        }
+        if name:
+            body["_name"] = name
+        return {"multi_match": body}
+
     return {
         "from": 0,
         "size": n,
         "query": {"bool": {
-            "must": [{
-                "multi_match": {
-                    "query": query,
-                    "fields": _SCOPE_FIELDS["ALL"],
-                    "minimum_should_match": settings.search_min_should_match,
-                },
-            }],
+            "must": [{"dis_max": {"queries": [
+                _mm(settings.search_min_should_match, name="strict"),
+                _mm(settings.search_hybrid_pool_msm),
+            ]}}],
             "filter": filters,
         }},
         # 동점 문서의 rank 를 결정적으로 만들기 위한 2차 정렬.
@@ -794,7 +862,11 @@ def _hybrid_search(
         if iid is None:
             continue
         bm25_ids.append(iid)
-        docs.setdefault(iid, {"src": src})["bm25"] = h.get("_score") or 0.0
+        entry = docs.setdefault(iid, {"src": src})
+        entry["bm25"] = h.get("_score") or 0.0
+        # 본검색 msm(75%)까지 통과했는지. 완화 msm 으로만 걸린 문서와 구분해
+        # 무임베딩 문서의 게이트 면제 조건으로 쓴다(_bm25_pool_body 참고).
+        entry["strict"] = "strict" in (h.get("matched_queries") or [])
     for h in knn_hits:
         src = h["_source"]
         iid = src.get("image_id")
@@ -816,9 +888,13 @@ def _hybrid_search(
             if cos >= settings.search_knn_min_cosine:
                 survivors.append(iid)
         else:
-            # 임베딩 없는 레거시 문서: 시맨틱 게이트를 면제하고 어휘 점수로만 거른다.
+            # 임베딩 없는 레거시 문서: 시맨틱 게이트를 면제하는 대신 strict
+            # (본검색 msm) 매칭을 요구한다. 완화 msm 으로만 걸린 무임베딩 문서까지
+            # 살리면 코사인 컷을 못 거치는 정크('와' 조사 하나 매칭 등, 실측)가
+            # 결과에 그대로 들어온다. strict 요구는 풀 완화 이전의 생존 집합과
+            # 정확히 같아 하위호환이다.
             d["cos"] = None
-            if d.get("bm25", 0.0) >= settings.search_bm25_min_score:
+            if d.get("strict") and d.get("bm25", 0.0) >= settings.search_bm25_min_score:
                 survivors.append(iid)
     if not survivors:
         return [], 0  # 억지 매칭 차단 → 결과 없음

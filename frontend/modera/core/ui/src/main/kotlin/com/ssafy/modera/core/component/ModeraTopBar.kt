@@ -31,6 +31,7 @@ import com.ssafy.modera.core.util.statusBarTopPadding
 fun ModeraTopBar(
     onBackClick: () -> Unit,
     modifier: Modifier = Modifier,
+    includeStatusBarPadding: Boolean = true,
     leftContent: @Composable () -> Unit = {
         Icon(
             imageVector = ImageVector.vectorResource(R.drawable.ic_arrow_left_24),
@@ -47,8 +48,14 @@ fun ModeraTopBar(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .statusBarTopPadding()
-            .padding(vertical = 14.dp, horizontal = 10.dp),
+            .then(
+                if (includeStatusBarPadding) {
+                    Modifier.statusBarTopPadding()
+                } else {
+                    Modifier
+                },
+            )
+            .padding(vertical = ModeraTopBarDefaults.VerticalPadding, horizontal = 10.dp),
         contentAlignment = Alignment.Center,
     ) {
         Box(
@@ -81,6 +88,8 @@ fun ModeraTopBar(
 
 object ModeraTopBarDefaults {
     val IconSize = 24.dp
+    val VerticalPadding = 14.dp
+    val ContentHeight = VerticalPadding * 2 + IconSize
 }
 
 @Preview(showBackground = true, name = "ModeraTopBar - 더보기")

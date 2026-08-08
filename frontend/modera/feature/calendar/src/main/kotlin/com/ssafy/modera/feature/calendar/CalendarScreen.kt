@@ -42,11 +42,16 @@ import java.time.YearMonth
 fun CalendarRoute(
     onBackClick: () -> Unit,
     onScheduleClick: (CalendarSchedule) -> Unit = {},
+    selectedDate: LocalDate? = null,
     modifier: Modifier = Modifier,
     viewModel: CalendarViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
+
+    LaunchedEffect(selectedDate) {
+        selectedDate?.let(viewModel::initializeFromNavigation)
+    }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission(),

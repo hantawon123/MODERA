@@ -11,6 +11,10 @@ interface CalendarRepository {
         to: LocalDate,
     ): Flow<List<CalendarSchedule>>
 
+    fun getSchedulesByImageId(
+        imageId: Long,
+    ): Flow<List<CalendarSchedule>>
+
     fun registerSchedule(
         scheduleId: Long,
         imageId: Long,

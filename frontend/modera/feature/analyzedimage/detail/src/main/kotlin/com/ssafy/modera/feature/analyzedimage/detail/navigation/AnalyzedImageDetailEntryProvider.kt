@@ -19,6 +19,7 @@ fun EntryProviderScope<NavKey>.analyzedImageDetailEntry(
     sharedTransitionScope: SharedTransitionScope,
     onImageClick: (String) -> Unit,
     onCreateDocumentClick: (AnalyzedImage) -> Unit,
+    onNavigateToCalendar: (java.time.LocalDate) -> Unit,
 ) {
     entry<AnalyzedImageDetailNavKey> { key ->
         val imageId = key.imageId
@@ -37,10 +38,8 @@ fun EntryProviderScope<NavKey>.analyzedImageDetailEntry(
             animatedVisibilityScope = LocalNavAnimatedContentScope.current,
             onImageClick = onImageClick,
             onCreateDocumentClick = onCreateDocumentClick,
+            onNavigateToCalendar = onNavigateToCalendar,
             onRelatedDocumentClick = navigator::navigateToRelatedDocuments,
-            onRelatedScheduleClick = {
-                // TODO 일정 화면 이동
-            },
             onRelatedImagesClick = navigator::navigateToRelatedImages,
         )
     }

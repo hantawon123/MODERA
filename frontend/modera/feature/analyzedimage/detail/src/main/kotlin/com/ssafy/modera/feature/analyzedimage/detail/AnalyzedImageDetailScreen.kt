@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -44,6 +45,7 @@ import com.ssafy.modera.core.designsystem.icon.ModeraIcons
 import com.ssafy.modera.core.designsystem.theme.ModeraTheme
 import com.ssafy.modera.core.model.analyzedimage.AnalyzedImage
 import com.ssafy.modera.core.model.analyzedimage.AnalyzedImageDetail
+import com.ssafy.modera.core.model.calendar.CalendarSchedule
 import com.ssafy.modera.core.ui.ErrorScreen
 import com.ssafy.modera.core.ui.LoadingScreen
 import com.ssafy.modera.feature.analyzedimage.detail.component.AnalysisSummarySection
@@ -54,8 +56,10 @@ import com.ssafy.modera.feature.analyzedimage.detail.component.CategoryLabel
 import com.ssafy.modera.feature.analyzedimage.detail.component.ExtractedTextSection
 import com.ssafy.modera.feature.analyzedimage.detail.component.ImageSection
 import com.ssafy.modera.feature.analyzedimage.detail.component.KeyInformationSection
+import com.ssafy.modera.feature.analyzedimage.detail.component.RelatedSchedulesDialog
 import com.ssafy.modera.feature.detail.AnalyzedImageDetailScreenPreviewData
 import com.ssafy.modera.feature.detail.AnalyzedImageDetailScreenPreviewParameterProvider
+import java.time.LocalDate
 
 private val TopBarTitleScrollThreshold = 96.dp
 
@@ -67,15 +71,21 @@ internal fun AnalyzedImageDetailScreen(
     onBackClick: () -> Unit,
     onImageClick: (String) -> Unit,
     onCreateDocumentClick: (AnalyzedImage) -> Unit,
-    onRelatedScheduleClick: () -> Unit,
+    onNavigateToCalendar: (LocalDate) -> Unit,
     onRelatedDocumentClick: (Long, String) -> Unit,
     onRelatedImagesClick: (Long, String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val relatedSchedulesDialog by viewModel.relatedSchedulesDialog.collectAsStateWithLifecycle()
+
+    LaunchedEffect(viewModel) {
+        viewModel.navigateToCalendarDate.collect(onNavigateToCalendar)
+    }
 
     AnalyzedImageDetailScreen(
         uiState = uiState,
+        relatedSchedulesDialog = relatedSchedulesDialog,
         sharedTransitionScope = sharedTransitionScope,
         animatedVisibilityScope = animatedVisibilityScope,
         onBackClick = onBackClick,
@@ -83,7 +93,9 @@ internal fun AnalyzedImageDetailScreen(
         onFavoriteClick = viewModel::toggleAnalyzedImageFavorite,
         onCreateDocumentClick = onCreateDocumentClick,
         onRelatedDocumentClick = onRelatedDocumentClick,
-        onScheduleClick = onRelatedScheduleClick,
+        onScheduleClick = viewModel::onRelatedScheduleClick,
+        onRelatedScheduleSelected = viewModel::onRelatedScheduleSelected,
+        onDismissRelatedSchedulesDialog = viewModel::dismissRelatedSchedulesDialog,
         onReanalyzeClick = viewModel::reanalyzeImage,
         onDeleteClick = {
             viewModel.deleteAnalyzedImage { onBackClick() }
@@ -96,6 +108,7 @@ internal fun AnalyzedImageDetailScreen(
 @Composable
 private fun AnalyzedImageDetailScreen(
     uiState: AnalyzedImageDetailUiState,
+    relatedSchedulesDialog: List<CalendarSchedule>?,
     sharedTransitionScope: SharedTransitionScope,
     animatedVisibilityScope: AnimatedVisibilityScope,
     onBackClick: () -> Unit,
@@ -103,6 +116,8 @@ private fun AnalyzedImageDetailScreen(
     onFavoriteClick: () -> Unit,
     onCreateDocumentClick: (AnalyzedImage) -> Unit,
     onScheduleClick: () -> Unit,
+    onRelatedScheduleSelected: (CalendarSchedule) -> Unit,
+    onDismissRelatedSchedulesDialog: () -> Unit,
     onReanalyzeClick: () -> Unit,
     onDeleteClick: () -> Unit,
     onRelatedDocumentClick: (Long, String) -> Unit,
@@ -262,6 +277,14 @@ private fun AnalyzedImageDetailScreen(
                     onDismiss = { dialog = null },
                 )
             }
+        }
+
+        relatedSchedulesDialog?.let { schedules ->
+            RelatedSchedulesDialog(
+                schedules = schedules,
+                onScheduleClick = onRelatedScheduleSelected,
+                onDismiss = onDismissRelatedSchedulesDialog,
+            )
         }
     }
 }
@@ -469,6 +492,7 @@ private fun AnalyzedImageDetailScreenPreview(
             ) {
                 AnalyzedImageDetailScreen(
                     uiState = uiState,
+                    relatedSchedulesDialog = null,
                     sharedTransitionScope = this@SharedTransitionLayout,
                     animatedVisibilityScope = this@AnimatedVisibility,
                     onBackClick = {},
@@ -490,6 +514,8 @@ private fun AnalyzedImageDetailScreenPreview(
                     },
                     onCreateDocumentClick = {},
                     onScheduleClick = {},
+                    onRelatedScheduleSelected = {},
+                    onDismissRelatedSchedulesDialog = {},
                     onReanalyzeClick = {},
                     onDeleteClick = {},
                     onRelatedDocumentClick = { _, _ -> },

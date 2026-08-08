@@ -1213,6 +1213,15 @@ async def _execute_stage(request: AnalyzeRequest) -> None:
     job_registry.mark(request.job_id, stage, status)
     logger.info("단계 종료 jobId=%s imageId=%s stage=%s status=%s",
                 request.job_id, request.image_id, stage, status)
+    # 아래 대기 전에 찍는다 — 아이콘을 기다린 시간이 분석 소요시간으로 새면
+    # Spring 쪽 집계가 최대 CATEGORY_ICON_WAIT_SECONDS 만큼 부풀어 오른다.
+    completed_at = now_iso()
+
+    # 이 콜백이 앱에게는 '카테고리 생겼다' 신호다. 아이콘이 아직 만들어지는
+    # 중이면 그만큼만 붙잡는다 — 먼저 보내면 앱이 빈 아이콘을 한 번 조회하고
+    # 끝난다. 진행 중인 생성이 없으면(= 기존 카테고리) 즉시 통과한다.
+    await category_icon.wait_pending(
+        (result or {}).get("categoryId"), settings.category_icon_wait_seconds)
 
     payload = CallbackRequest(
         job_id=request.job_id,
@@ -1222,6 +1231,6 @@ async def _execute_stage(request: AnalyzeRequest) -> None:
         result=result,
         error=error,
         model_version=model_version,
-        completed_at=now_iso(),
+        completed_at=completed_at,
     )
     await spring_client.post_callback(payload, request.callback_url)

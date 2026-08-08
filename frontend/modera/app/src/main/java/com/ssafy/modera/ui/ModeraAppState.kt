@@ -11,6 +11,7 @@ import com.ssafy.modera.feature.category.navigation.rememberCategoryTabControlle
 import com.ssafy.modera.feature.home.HomeTabController
 import com.ssafy.modera.feature.home.navigation.HomeNavKey
 import com.ssafy.modera.feature.home.navigation.rememberHomeTabController
+import com.ssafy.modera.feature.onboading.api.navigation.OnboardingNavKey
 import com.ssafy.modera.navigation.TOP_LEVEL_NAV_ITEMS
 import kotlinx.coroutines.CoroutineScope
 
@@ -18,7 +19,10 @@ import kotlinx.coroutines.CoroutineScope
 fun rememberModeraAppState(
     coroutineScope: CoroutineScope = rememberCoroutineScope(),
 ): ModeraAppState {
-    val navigationState = rememberNavigationState(HomeNavKey, TOP_LEVEL_NAV_ITEMS.keys)
+    val navigationState = rememberNavigationState(
+        HomeNavKey, TOP_LEVEL_NAV_ITEMS.keys,
+        OnboardingNavKey
+    )
     val homeTabController = rememberHomeTabController()
     val categoryTabController = rememberCategoryTabController()
 

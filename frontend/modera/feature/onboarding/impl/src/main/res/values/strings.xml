@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="onboarding_skip">건너뛰기</string>
+    <string name="onboarding_greeting">반가워요!</string>
+    <string name="onboarding_intro_description">사용 방법에 대해 간단하게 살펴볼까요?</string>
+    <string name="onboarding_upload_title">잊고 있었던 스크린샷들을 올려보세요!</string>
+    <string name="onboarding_analysis_title">AI가 사진을 분석해서\n정리해드립니다!</string>
+    <string name="onboarding_analysis_category">카테고리 분류</string>
+    <string name="onboarding_analysis_hashtag">해시태그</string>
+    <string name="onboarding_analysis_summary">요약</string>
+    <string name="onboarding_analysis_related">연관된 이미지까지!</string>
+
+    <string name="onboarding_related_material">연관된 자료까지</string>
+
+    <string name="onboarding_photo_register_title">직접 사진을 등록해볼까요?</string>
+    <string name="onboarding_photo_register_button">사진 등록하기</string>
+
+    <string name="onboarding_feature_calendar_title_prefix">이미지에서 중요한 일정을 발견하면\n캘린더에</string>
+    <string name="onboarding_feature_calendar_title_highlight">자동으로 등록</string>
+    <string name="onboarding_feature_calendar_title_suffix">해드려요!</string>
+    <string name="onboarding_feature_document_search">AI에게 물어보면\n원하는 사진을 바로 찾아드려요!</string>
+    <string name="onboarding_feature_document_title">여러 자료도 한 번에 모아\n문서로 정리해드려요!</string>
+
+    <string name="onboarding_feature_notification">이미지 분석이 완료되면 알림으로 알려드려요</string>
+    <string name="onboarding_analysis_analyzing">분석 중...</string>
+    <string name="onboarding_analysis_completed">분석 완료! 결과를 볼까요?</string>
+</resources>

@@ -1,10 +1,5 @@
 package com.ssafy.modera.feature.category.component
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -32,6 +27,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.ssafy.modera.core.designsystem.component.HorizontalDivider
 import com.ssafy.modera.core.designsystem.component.Text
@@ -47,72 +43,68 @@ fun CategoryTopSheet(
     onCategoryClick: (CategorySheetItem) -> Unit,
     onDismissRequest: () -> Unit,
     modifier: Modifier = Modifier,
+    topInset: Dp = 0.dp,
 ) {
-    AnimatedVisibility(
-        visible = visible,
-        enter = fadeIn(),
-        exit = fadeOut(),
+    if (!visible) return
+
+    Box(
+        modifier = modifier.fillMaxSize(),
     ) {
         Box(
-            modifier = modifier
+            modifier = Modifier
                 .fillMaxSize()
+                .padding(top = topInset)
                 .background(Color.Black.copy(alpha = 0.35f))
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null,
                     onClick = onDismissRequest,
                 ),
+        )
+
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = topInset)
+                .clip(
+                    RoundedCornerShape(
+                        bottomStart = 20.dp,
+                        bottomEnd = 20.dp,
+                    ),
+                )
+                .background(ModeraTheme.colors.white)
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    onClick = {},
+                )
+                .padding(bottom = 12.dp),
         ) {
-            AnimatedVisibility(
-                visible = visible,
-                enter = slideInVertically(initialOffsetY = { -it }),
-                exit = slideOutVertically(targetOffsetY = { -it }),
-                modifier = Modifier.align(Alignment.TopCenter),
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(2),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = CategoryTopSheetDefaults.MaxHeight),
+                contentPadding = PaddingValues(
+                    horizontal = CategoryTopSheetDefaults.HorizontalPadding,
+                    vertical = 8.dp,
+                ),
+                horizontalArrangement = Arrangement.spacedBy(
+                    CategoryTopSheetDefaults.ColumnSpacing,
+                ),
             ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(
-                            RoundedCornerShape(
-                                bottomStart = 20.dp,
-                                bottomEnd = 20.dp,
-                            ),
-                        )
-                        .background(ModeraTheme.colors.white)
-                        .clickable(
-                            interactionSource = remember { MutableInteractionSource() },
-                            indication = null,
-                            onClick = {},
-                        )
-                        .padding(bottom = 12.dp),
-                ) {
-                    LazyVerticalGrid(
-                        columns = GridCells.Fixed(2),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .heightIn(max = CategoryTopSheetDefaults.MaxHeight),
-                        contentPadding = PaddingValues(
-                            horizontal = CategoryTopSheetDefaults.HorizontalPadding,
-                            vertical = 8.dp,
-                        ),
-                        horizontalArrangement = Arrangement.spacedBy(
-                            CategoryTopSheetDefaults.ColumnSpacing,
-                        ),
-                    ) {
-                        itemsIndexed(
-                            items = categories,
-                            key = { _, category -> category.id },
-                        ) { _, category ->
-                            CategoryTopSheetItem(
-                                item = category,
-                                selected = category.id == selectedCategoryId,
-                                onClick = {
-                                    onCategoryClick(category)
-                                    onDismissRequest()
-                                },
-                            )
-                        }
-                    }
+                itemsIndexed(
+                    items = categories,
+                    key = { _, category -> category.id },
+                ) { _, category ->
+                    CategoryTopSheetItem(
+                        item = category,
+                        selected = category.id == selectedCategoryId,
+                        onClick = {
+                            onCategoryClick(category)
+                            onDismissRequest()
+                        },
+                    )
                 }
             }
         }

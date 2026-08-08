@@ -1,11 +1,5 @@
 package com.ssafy.modera.feature.category
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -22,18 +16,11 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
-import androidx.compose.ui.input.nestedscroll.NestedScrollSource
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -45,6 +32,7 @@ import com.ssafy.modera.core.component.ModeraScrollToTopButton
 import com.ssafy.modera.core.component.ModeraSearchBar
 import com.ssafy.modera.core.component.ModeraSortSection
 import com.ssafy.modera.core.component.ModeraTopBar
+import com.ssafy.modera.core.component.ModeraTopBarDefaults
 import com.ssafy.modera.core.component.SearchBarMode
 import com.ssafy.modera.core.component.item.ModeraAnalyzedImageItem
 import com.ssafy.modera.core.component.rememberShowScrollToTop
@@ -61,7 +49,7 @@ import com.ssafy.modera.core.ui.ErrorScreen
 import com.ssafy.modera.core.ui.LoadingScreen
 import com.ssafy.modera.core.ui.R.drawable.img_pointing_character
 import com.ssafy.modera.core.ui.RecommendScreen
-import com.ssafy.modera.core.util.statusBarTopPadding
+import com.ssafy.modera.core.util.rememberRawStatusBarTopPadding
 import com.ssafy.modera.feature.category.component.CategoryTopSheet
 import kotlinx.coroutines.launch
 
@@ -166,55 +154,27 @@ fun CategoryScreen(
             }
     }
 
-    val headerExpandedState = rememberSaveable { mutableStateOf(true) }
-    var isHeaderExpanded by headerExpandedState
-    val collapsedSearchBarTopSpacing by animateDpAsState(
-        targetValue =
-            if (isHeaderExpanded) 0.dp
-            else CategoryScreenDefaults.CollapsedSearchBarTopSpacing,
-        label = "collapsedSearchBarTopSpacing",
-    )
-
-    val headerNestedScrollConnection = remember(showCategorySheet) {
-        object : NestedScrollConnection {
-            override fun onPreScroll(
-                available: Offset,
-                source: NestedScrollSource,
-            ): Offset {
-                if (available.y > 0 && !headerExpandedState.value) {
-                    headerExpandedState.value = true
-                    return available
-                }
-                if (available.y < 0 && headerExpandedState.value && !showCategorySheet) {
-                    headerExpandedState.value = false
-                    return available
-                }
-                return Offset.Zero
-            }
-        }
-    }
+    val statusBarTopPadding = rememberRawStatusBarTopPadding()
+    val categoryTopSheetInset = statusBarTopPadding + ModeraTopBarDefaults.ContentHeight
 
     LaunchedEffect(showCategorySheet) {
         if (showCategorySheet) {
-            isHeaderExpanded = true
+            listState.animateScrollToItem(0)
         }
     }
-
-    val isCategoryTitleBarVisible = isHeaderExpanded || showCategorySheet
 
     Box(
         modifier = modifier
             .fillMaxSize()
             .background(ModeraTheme.colors.white),
     ) {
-        Column(
-            modifier = Modifier.fillMaxSize(),
+        LazyColumn(
+            state = listState,
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(top = statusBarTopPadding),
         ) {
-            AnimatedVisibility(
-                visible = isCategoryTitleBarVisible,
-                enter = expandVertically(expandFrom = Alignment.Top) + fadeIn(),
-                exit = shrinkVertically(shrinkTowards = Alignment.Top) + fadeOut(),
-            ) {
+            item(key = "category_title") {
                 CategoryTitleBar(
                     displayCategoryTitle = displayCategoryTitle,
                     onCategoryTitleClick = {
@@ -226,138 +186,112 @@ fun CategoryScreen(
                 )
             }
 
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth(),
-            ) {
-                Column(
-                    modifier = Modifier.fillMaxSize(),
-                ) {
-                    ModeraSearchBar(
-                        query = searchQuery,
-                        onQueryChange = onSearchQueryChange,
-                        placeholder = stringResource(R.string.category_search_placeholder),
-                        mode = SearchBarMode.General,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .background(ModeraTheme.colors.white)
-                            .then(
-                                if (!isHeaderExpanded) Modifier.statusBarTopPadding()
-                                else Modifier,
-                            )
-                            .padding(
-                                top = collapsedSearchBarTopSpacing,
-                                start = CategoryScreenDefaults.HorizontalPadding,
-                                bottom = collapsedSearchBarTopSpacing,
-                                end = CategoryScreenDefaults.HorizontalPadding,
-                            ),
-                    )
-
-                    AnimatedVisibility(
-                        visible = isHeaderExpanded,
-                        enter = expandVertically(expandFrom = Alignment.Top) + fadeIn(),
-                        exit = shrinkVertically(shrinkTowards = Alignment.Top) + fadeOut(),
-                    ) {
-                        CategoryCountSortSection(
-                            displayImageCount = displayImageCount,
-                            selectedSortType = selectedSortType,
-                            showSortPopup = showSortPopup,
-                            onSortClick = {
-                                focusManager.clearFocus()
-                                onSortClick()
-                            },
-                            onSortPopupDismiss = onSortPopupDismiss,
-                            onSortTypeSelect = onSortTypeSelect,
-                            onClearFocus = { focusManager.clearFocus() },
-                        )
-                    }
-
-                    LazyColumn(
-                        state = listState,
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxWidth()
-                            .nestedScroll(headerNestedScrollConnection),
-                    ) {
-                        if (!isSearching && analyzedImages.isEmpty()) {
-                            item(key = "list_empty") {
-                                RecommendScreen(
-                                    title = stringResource(R.string.category_list_empty_title),
-                                    subtitle = stringResource(R.string.category_list_empty_subtitle),
-                                    image = img_pointing_character,
-                                    modifier = Modifier.fillParentMaxSize(),
-                                )
-                            }
-                        } else if (isSearching && analyzedImages.isEmpty()) {
-                            item(key = "search_empty") {
-                                EmptyScreen(
-                                    message = stringResource(R.string.category_search_result_empty),
-                                    modifier = Modifier
-                                        .padding(
-                                            horizontal = CategoryScreenDefaults.HorizontalPadding,
-                                            vertical = 40.dp,
-                                        )
-                                        .clickable(
-                                            interactionSource = remember { MutableInteractionSource() },
-                                            indication = null,
-                                            onClick = { focusManager.clearFocus() },
-                                        ),
-                                )
-                            }
-                        } else {
-                            items(
-                                items = analyzedImages,
-                                key = { it.id },
-                            ) { analyzedImage ->
-                                ModeraAnalyzedImageItem(
-                                    title = analyzedImage.title,
-                                    description = analyzedImage.summary,
-                                    updatedAt = analyzedImage.updatedAt,
-                                    tags = analyzedImage.hashtags,
-                                    imageUrl = analyzedImage.thumbnailUrl,
-                                    favorite = analyzedImage.favorite,
-                                    isDocumented = analyzedImage.isDocumented,
-                                    hasSchedule = analyzedImage.hasSchedule,
-                                    onClick = {
-                                        focusManager.clearFocus()
-                                        onItemClick(analyzedImage.id)
-                                    },
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(horizontal = CategoryScreenDefaults.HorizontalPadding),
-                                )
-                            }
-                        }
-                    }
-                }
-
-                CategoryTopSheet(
-                    visible = showCategorySheet,
-                    categories = categories,
-                    selectedCategoryId = selectedCategoryId,
-                    onCategoryClick = { onCategorySelect(it.id) },
-                    onDismissRequest = onCategorySheetDismiss,
-                    modifier = Modifier.fillMaxSize(),
-                )
-
-                ModeraScrollToTopButton(
-                    visible = showScrollToTop,
-                    onClick = {
-                        coroutineScope.launch {
-                            isHeaderExpanded = true
-                            listState.animateScrollToItem(0)
-                        }
-                    },
-                    modifier = Modifier.align(Alignment.BottomEnd),
+            stickyHeader(key = "search_bar") {
+                ModeraSearchBar(
+                    query = searchQuery,
+                    onQueryChange = onSearchQueryChange,
+                    placeholder = stringResource(R.string.category_search_placeholder),
+                    mode = SearchBarMode.General,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(ModeraTheme.colors.white)
+                        .padding(
+                            horizontal = CategoryScreenDefaults.HorizontalPadding,
+                            vertical = CategoryScreenDefaults.CollapsedSearchBarTopSpacing,
+                        ),
                 )
             }
+
+            item(key = "count_sort") {
+                CategoryCountSortSection(
+                    displayImageCount = displayImageCount,
+                    selectedSortType = selectedSortType,
+                    showSortPopup = showSortPopup,
+                    onSortClick = {
+                        focusManager.clearFocus()
+                        onSortClick()
+                    },
+                    onSortPopupDismiss = onSortPopupDismiss,
+                    onSortTypeSelect = onSortTypeSelect,
+                    onClearFocus = { focusManager.clearFocus() },
+                )
+            }
+
+            if (!isSearching && analyzedImages.isEmpty()) {
+                item(key = "list_empty") {
+                    RecommendScreen(
+                        title = stringResource(R.string.category_list_empty_title),
+                        subtitle = stringResource(R.string.category_list_empty_subtitle),
+                        image = img_pointing_character,
+                        modifier = Modifier.fillParentMaxSize(),
+                    )
+                }
+            } else if (isSearching && analyzedImages.isEmpty()) {
+                item(key = "search_empty") {
+                    EmptyScreen(
+                        message = stringResource(R.string.category_search_result_empty),
+                        modifier = Modifier
+                            .padding(
+                                horizontal = CategoryScreenDefaults.HorizontalPadding,
+                                vertical = 40.dp,
+                            )
+                            .clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null,
+                                onClick = { focusManager.clearFocus() },
+                            ),
+                    )
+                }
+            } else {
+                items(
+                    items = analyzedImages,
+                    key = { it.id },
+                ) { analyzedImage ->
+                    ModeraAnalyzedImageItem(
+                        title = analyzedImage.title,
+                        description = analyzedImage.summary,
+                        updatedAt = analyzedImage.updatedAt,
+                        tags = analyzedImage.hashtags,
+                        imageUrl = analyzedImage.thumbnailUrl,
+                        favorite = analyzedImage.favorite,
+                        isDocumented = analyzedImage.isDocumented,
+                        hasSchedule = analyzedImage.hasSchedule,
+                        onClick = {
+                            focusManager.clearFocus()
+                            onItemClick(analyzedImage.id)
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = CategoryScreenDefaults.HorizontalPadding),
+                    )
+                }
+            }
         }
+
+        CategoryTopSheet(
+            visible = showCategorySheet,
+            categories = categories,
+            selectedCategoryId = selectedCategoryId,
+            onCategoryClick = { onCategorySelect(it.id) },
+            onDismissRequest = onCategorySheetDismiss,
+            topInset = categoryTopSheetInset,
+            modifier = Modifier.fillMaxSize(),
+        )
+
+        ModeraScrollToTopButton(
+            visible = showScrollToTop,
+            onClick = {
+                coroutineScope.launch {
+                    listState.animateScrollToItem(0)
+                }
+            },
+            modifier = Modifier.align(Alignment.BottomEnd),
+        )
     }
 }
 
 @Composable
-private fun CategoryTitleBar(
+internal fun CategoryTitleBar(
     displayCategoryTitle: String,
     onCategoryTitleClick: () -> Unit,
     clearFocusInteractionSource: MutableInteractionSource,
@@ -376,6 +310,7 @@ private fun CategoryTitleBar(
     ) {
         ModeraTopBar(
             onBackClick = {},
+            includeStatusBarPadding = false,
             leftContent = {
                 Row(
                     modifier = Modifier
@@ -405,7 +340,7 @@ private fun CategoryTitleBar(
 }
 
 @Composable
-private fun CategoryCountSortSection(
+internal fun CategoryCountSortSection(
     displayImageCount: Long,
     selectedSortType: AnalyzedImageSortType,
     showSortPopup: Boolean,

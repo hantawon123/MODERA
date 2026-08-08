@@ -10,6 +10,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.airbnb.lottie.compose.LottieCompositionSpec
 import com.airbnb.lottie.compose.animateLottieCompositionAsState
 import com.airbnb.lottie.compose.rememberLottieComposition
@@ -19,6 +21,7 @@ import com.ssafy.modera.feature.onboarding.impl.component.OnboardingFeaturePager
 import com.ssafy.modera.feature.onboarding.impl.component.OnboardingGuideSection
 import com.ssafy.modera.feature.onboarding.impl.component.OnboardingSkipButton
 import com.ssafy.modera.feature.onboarding.impl.component.PhotoRegisterSection
+import com.ssafy.modera.feature.onboarding.impl.model.OnboardingAnalysisState
 
 @Composable
 fun OnboardingScreen(
@@ -26,11 +29,12 @@ fun OnboardingScreen(
     onRegisterPhotoClick: (
         onImagesPicked: () -> Unit,
     ) -> Unit,
+    onAnalysisResultClick: () -> Unit,
     modifier: Modifier = Modifier,
+    viewModel: OnboardingViewModel = hiltViewModel(),
 ) {
-    var phase by remember {
-        mutableStateOf(OnboardingPhase.Greeting)
-    }
+    var phase by remember { mutableStateOf(OnboardingPhase.Greeting) }
+    val analysisState by viewModel.analysisState.collectAsStateWithLifecycle()
 
     val lottieComposition by rememberLottieComposition(
         LottieCompositionSpec.RawRes(
@@ -48,21 +52,22 @@ fun OnboardingScreen(
     OnboardingPhaseEffect(
         phase = phase,
         lottieProgress = lottieProgress,
-        onPhaseChange = { newPhase ->
-            phase = newPhase
-        },
+        onPhaseChange = { newPhase -> phase = newPhase },
     )
 
     OnboardingContent(
         phase = phase,
+        analysisState = analysisState,
         lottieProgress = lottieProgress,
         lottieComposition = lottieComposition,
         onSkipClick = onSkipClick,
         onRegisterPhotoClick = {
             onRegisterPhotoClick {
+                viewModel.onAnalysisStarted()
                 phase = OnboardingPhase.FeaturePager
             }
         },
+        onAnalysisResultClick = onAnalysisResultClick,
         modifier = modifier,
     )
 }
@@ -70,9 +75,11 @@ fun OnboardingScreen(
 @Composable
 private fun OnboardingContent(
     phase: OnboardingPhase,
+    analysisState: OnboardingAnalysisState,
     lottieProgress: Float,
     lottieComposition: com.airbnb.lottie.LottieComposition?,
     onSkipClick: () -> Unit,
+    onAnalysisResultClick: () -> Unit,
     onRegisterPhotoClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -98,6 +105,8 @@ private fun OnboardingContent(
 
         OnboardingFeaturePagerSection(
             phase = phase,
+            onAnalysisResultClick = onAnalysisResultClick,
+            analysisState = analysisState,
         )
 
         OnboardingSkipButton(
@@ -106,17 +115,13 @@ private fun OnboardingContent(
     }
 }
 
-@Preview(
-    name = "Onboarding",
-    showBackground = true,
-    widthDp = 393,
-    heightDp = 852,
-)
+@Preview(name = "Onboarding", showBackground = true)
 @Composable
 private fun OnboardingScreenPreview() {
     ModeraTheme {
         OnboardingScreen(
             onSkipClick = {},
+            onAnalysisResultClick = {},
             onRegisterPhotoClick = {},
         )
     }

@@ -355,6 +355,7 @@ internal fun ModeraApp(
                                 onboardingEntry(
                                     navigator = navigator,
                                     onSkipClick = navigator::navigateToHome,
+                                    onAnalysisResultClick = navigator::navigateToHome,
                                     onRegisterPhotoClick = { onImagesPicked ->
                                         onOnboardingImagesPicked = onImagesPicked
                                         launchGalleryPicker()

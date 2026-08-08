@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -28,12 +29,14 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import com.airbnb.lottie.compose.LottieAnimation
 import com.airbnb.lottie.compose.LottieCompositionSpec
 import com.airbnb.lottie.compose.animateLottieCompositionAsState
 import com.airbnb.lottie.compose.rememberLottieComposition
 import com.ssafy.modera.core.designsystem.component.Text
 import com.ssafy.modera.core.designsystem.theme.ModeraTheme
+import com.ssafy.modera.feature.onboarding.impl.model.OnboardingAnalysisState
 import com.ssafy.modera.feature.onboarding.impl.OnboardingPhase
 import com.ssafy.modera.feature.onboarding.impl.R
 import kotlinx.coroutines.delay
@@ -42,6 +45,8 @@ import kotlin.time.Duration.Companion.milliseconds
 @Composable
 internal fun BoxWithConstraintsScope.OnboardingFeaturePagerSection(
     phase: OnboardingPhase,
+    onAnalysisResultClick: () -> Unit,
+    analysisState: OnboardingAnalysisState,
 ) {
     val screenHeight = maxHeight
 
@@ -98,10 +103,7 @@ internal fun BoxWithConstraintsScope.OnboardingFeaturePagerSection(
     AnimatedVisibility(
         visible = phase == OnboardingPhase.FeaturePager,
         modifier = Modifier.matchParentSize(),
-        enter = fadeIn(
-            animationSpec = tween(
-                durationMillis = SECTION_ENTER_DURATION_MILLIS,
-            ),
+        enter = fadeIn(animationSpec = tween(durationMillis = SECTION_ENTER_DURATION_MILLIS),
         ),
     ) {
         Box(
@@ -131,29 +133,17 @@ internal fun BoxWithConstraintsScope.OnboardingFeaturePagerSection(
                 currentPage = pagerState.currentPage,
                 modifier = Modifier
                     .align(Alignment.TopCenter)
-                    .offset(
-                        y = screenHeight * INDICATOR_Y_RATIO,
-                    ),
+                    .offset(y = screenHeight * INDICATOR_Y_RATIO),
             )
 
-            /*
-             * 하단 고정 문구
-             */
-            Text(
-                text = stringResource(
-                    R.string.onboarding_feature_notification,
-                ),
+            AnalysisStatusFloatingPill(
+                analysisState = analysisState,
+                onClick = onAnalysisResultClick,
                 modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .offset(
-                        y = screenHeight * FOOTER_Y_RATIO,
-                    )
-                    .padding(
-                        horizontal = 24.dp,
-                    ),
-                style = ModeraTheme.typography.bodyR16,
-                color = ModeraTheme.colors.yellow700,
-                textAlign = TextAlign.Center,
+                    .align(Alignment.BottomCenter)
+                    .navigationBarsPadding()
+                    .padding(bottom = ANALYSIS_STATUS_BOTTOM_PADDING)
+                    .zIndex(1f),
             )
         }
     }
@@ -345,7 +335,7 @@ private const val LAST_PAGE_INDEX =
 private const val TITLE_Y_RATIO = 0.155f
 private const val LOTTIE_Y_RATIO = 0.27f
 private const val INDICATOR_Y_RATIO = 0.795f
-private const val FOOTER_Y_RATIO = 0.885f
+private val ANALYSIS_STATUS_BOTTOM_PADDING = 40.dp
 
 private val LOTTIE_SIZE = 300.dp
 

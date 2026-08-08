@@ -9,13 +9,15 @@ import com.ssafy.modera.feature.onboarding.impl.OnboardingScreen
 fun EntryProviderScope<NavKey>.onboardingEntry(
     navigator: Navigator,
     onSkipClick: () -> Unit,
+    onAnalysisResultClick: () -> Unit,
     onRegisterPhotoClick: (
         onImagesPicked: () -> Unit,
-    ) -> Unit
+    ) -> Unit,
 ) {
     entry<OnboardingNavKey> {
         OnboardingScreen(
             onSkipClick = onSkipClick,
+            onAnalysisResultClick = onAnalysisResultClick,
             onRegisterPhotoClick = onRegisterPhotoClick,
         )
     }

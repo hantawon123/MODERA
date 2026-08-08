@@ -11,7 +11,7 @@ private const val INTRO_DURATION_MILLIS = 1_300L
 private const val ANALYSIS_PHASE_PROGRESS = 0.33f
 private const val RESULT_PHASE_PROGRESS = 0.98f
 
-private const val HIGHLIGHT_DURATION_MILLIS = 1_600L
+private const val HIGHLIGHT_DURATION_MILLIS = 1_000L
 private const val RELATED_DURATION_MILLIS = 1_800L
 
 @Composable

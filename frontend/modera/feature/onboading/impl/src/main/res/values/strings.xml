@@ -11,4 +11,7 @@
     <string name="onboarding_analysis_related">연관자료 보기</string>
 
     <string name="onboarding_related_material">연관 자료 보기</string>
+
+    <string name="onboarding_photo_register_title">직접 사진을 등록해볼까요?</string>
+    <string name="onboarding_photo_register_button">사진 등록하기</string>
 </resources>

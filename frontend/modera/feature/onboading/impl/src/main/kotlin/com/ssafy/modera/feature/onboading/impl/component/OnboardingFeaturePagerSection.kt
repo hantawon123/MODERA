@@ -236,11 +236,13 @@ private fun FeaturePageTitle(
                             color = ModeraTheme.colors.yellow700,
                         ),
                 ) {
+                    append(" ")
                     append(
                         stringResource(
                             R.string.onboarding_feature_calendar_title_highlight,
                         ),
                     )
+                    append(" ")
                 }
 
                 withStyle(

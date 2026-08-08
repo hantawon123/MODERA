@@ -30,11 +30,18 @@ public class SimilarImageRepository {
     private static final double SINGLE_MIN_SCORE = 0.78;
 
     /**
-     * 다중 기준(centroid) 검색의 최소 코사인 유사도. 단일과 분리한 이유:
-     * centroid는 기준이 늘수록 어느 개별 문서와도 멀어져 점수가 전체적으로
-     * 내려가므로, 단일 기준으로 올린 하한을 그대로 쓰면 기준 3~4장부터 추천이
-     * 말라붙는다. 다중 쪽은 상위 N 컷(LIMIT)이 이미 정크 노출을 제한하고 있어
-     * 하한을 올릴 압력도 낮다 — 기존 값을 유지한다.
+     * 다중 기준 검색의 최소 코사인 유사도. 후보가 <b>기준 이미지 중 한 장과의
+     * 최대 유사도</b>로 이 값을 넘어야 살아남는다(컷). 순위는 centroid 코사인이다.
+     *
+     * <p>컷을 centroid로 하지 않는 이유: centroid는 기준이 늘수록 어느 개별
+     * 문서와도 멀어져서, 같은 임계값이 기준 1장일 때와 4장일 때 전혀 다른
+     * 세기로 걸린다 — k에 따라 캘리브레이션이 무효가 된다. 최대 유사도는 k와
+     * 무관하므로 임계값을 한 번만 정하면 된다.
+     *
+     * <p>단일 검색(0.78)보다 낮게 두는 이유: 문서화 추천은 상위 N 컷(LIMIT)이
+     * 이미 정크 노출을 제한하고 있고, "이것도 관련 있어요" 목록은 비우는 것보다
+     * 후하게 보여주는 쪽이 낫다. 정크가 눈에 띄면 이 값을 단일과 같은 기준으로
+     * 올린다(이제 의미가 단일 검색과 같은 쌍 단위 유사도라 그대로 비교 가능).
      */
     private static final double MULTI_MIN_SCORE = 0.65;
 
@@ -93,8 +100,11 @@ public class SimilarImageRepository {
      * 되어, 개별 이미지 어느 하나가 아니라 공통 주제에 가까운 것이 잡힌다. 이미지별로
      * 검색해 합치는 방식보다 쿼리가 하나로 끝나고 순위 병합 규칙도 필요 없다.
      *
+     * <p><b>순위와 컷을 분리한다.</b> 순위는 centroid 코사인(공통 주제 가까운 순),
+     * 컷은 기준 중 한 장과의 최대 코사인 ≥ MULTI_MIN_SCORE(임계값 의미가 기준 수와
+     * 무관 — 상수 주석 참고). 기준이 1장이면 centroid = 그 벡터라 두 기준이 같아진다.
+     *
      * - 기준 이미지들 자신은 결과에서 제외
-     * - 유사도 하한은 MULTI_MIN_SCORE — 단일 검색보다 낮다(상수 주석 참고)
      * - 기준 이미지 전부에 임베딩이 없으면 AVG가 NULL이 되어 0건이다(비정보성만 고른 경우)
      */
     public List<SimilarImageRow> findSimilarToAll(List<Integer> imageIds, int userId, int limit) {
@@ -123,7 +133,10 @@ public class SimilarImageRepository {
                        1 - (c.embedding <=> b.embedding) AS score
                 FROM candidates c, base b
                 WHERE b.embedding IS NOT NULL
-                  AND 1 - (c.embedding <=> b.embedding) >= ?
+                  AND EXISTS (
+                      SELECT 1 FROM latest l
+                      WHERE 1 - (c.embedding <=> l.embedding) >= ?
+                  )
                 ORDER BY c.embedding <=> b.embedding
                 LIMIT ?
                 """;

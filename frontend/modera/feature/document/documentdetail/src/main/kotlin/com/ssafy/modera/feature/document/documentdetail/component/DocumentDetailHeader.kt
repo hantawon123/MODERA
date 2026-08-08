@@ -59,6 +59,7 @@ internal fun DocumentDetailHeader(
         ModeraDocumentInfoRow(
             imageCount = document.imageCount,
             updatedAt = document.updatedAt,
+            contentColor = ModeraTheme.colors.gray500,
         )
 
         Spacer(modifier = Modifier.height(16.dp))

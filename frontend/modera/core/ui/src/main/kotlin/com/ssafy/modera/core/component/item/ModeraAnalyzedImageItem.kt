@@ -20,6 +20,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
@@ -40,7 +41,7 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 private val AnalyzedImageDateFormatter: DateTimeFormatter =
-    DateTimeFormatter.ofPattern("yyyy.MM.dd", Locale.KOREA)
+    DateTimeFormatter.ofPattern("yyyy년 MM월 dd일", Locale.KOREA)
 
 /**
  * 분석 이미지 리스트 아이템 — 즐겨찾기/문서/일정 메타 row + 해시태그 row.
@@ -161,47 +162,82 @@ private fun AnalyzedImageMetaRow(
     hasSchedule: Boolean,
     modifier: Modifier = Modifier,
 ) {
-    val labels = buildList {
-        if (isDocumented) {
-            add(stringResource(R.string.analyzed_image_item_document))
-        }
-        if (hasSchedule) {
-            add(stringResource(R.string.analyzed_image_item_schedule))
-        }
-    }
-
     Row(
         modifier = modifier,
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        var needsDivider = false
+
         if (favorite) {
-            Icon(
-                imageVector = ImageVector.vectorResource(ModeraIcons.StarFilled),
-                contentDescription = stringResource(R.string.analyzed_image_item_favorite),
-                modifier = Modifier.size(AnalyzedImageItemDefaults.MetaIconSize),
-                tint = ModeraTheme.colors.yellow500,
+            AnalyzedImageMetaItem(
+                iconRes = ModeraIcons.StarFilled,
+                label = stringResource(R.string.analyzed_image_item_favorite),
+                iconTint = ModeraTheme.colors.yellow500,
             )
+            needsDivider = true
         }
 
-        if (labels.isNotEmpty()) {
-            if (favorite) {
-                Text(
-                    text = stringResource(R.string.analyzed_image_item_meta_divider),
-                    style = ModeraTheme.typography.captionR12,
-                    color = ModeraTheme.colors.gray300,
-                    modifier = Modifier.padding(horizontal = AnalyzedImageItemDefaults.MetaItemSpacing),
-                )
+        if (isDocumented) {
+            if (needsDivider) {
+                AnalyzedImageMetaDivider()
             }
+            AnalyzedImageMetaItem(
+                iconRes = ModeraIcons.FileDocument,
+                label = stringResource(R.string.analyzed_image_item_document),
+                iconTint = ModeraTheme.colors.gray400,
+            )
+            needsDivider = true
+        }
 
-            Text(
-                text = labels.joinToString(
-                    separator = stringResource(R.string.analyzed_image_item_meta_separator),
-                ),
-                style = ModeraTheme.typography.captionR12,
-                color = ModeraTheme.colors.gray400,
+        if (hasSchedule) {
+            if (needsDivider) {
+                AnalyzedImageMetaDivider()
+            }
+            AnalyzedImageMetaItem(
+                iconRes = ModeraIcons.CalendarNumber,
+                label = stringResource(R.string.analyzed_image_item_schedule),
+                iconTint = ModeraTheme.colors.gray400,
             )
         }
     }
+}
+
+@Composable
+private fun AnalyzedImageMetaItem(
+    iconRes: Int,
+    label: String,
+    iconTint: Color,
+    modifier: Modifier = Modifier,
+    textColor: Color = ModeraTheme.colors.gray400,
+) {
+    Row(
+        modifier = modifier,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            imageVector = ImageVector.vectorResource(iconRes),
+            contentDescription = label,
+            modifier = Modifier.size(AnalyzedImageItemDefaults.MetaIconSize),
+            tint = iconTint,
+        )
+
+        Text(
+            text = label,
+            style = ModeraTheme.typography.captionR12,
+            color = textColor,
+            modifier = Modifier.padding(horizontal = AnalyzedImageItemDefaults.MetaItemSpacing),
+        )
+    }
+}
+
+@Composable
+private fun AnalyzedImageMetaDivider() {
+    Text(
+        text = stringResource(R.string.analyzed_image_item_meta_divider),
+        style = ModeraTheme.typography.captionR12,
+        color = ModeraTheme.colors.gray300,
+        modifier = Modifier.padding(horizontal = AnalyzedImageItemDefaults.MetaItemSpacing),
+    )
 }
 
 private fun Long.toAnalyzedImageDateTime(): String {
@@ -223,7 +259,7 @@ object AnalyzedImageItemDefaults {
     val ThumbnailShape = RoundedCornerShape(4.dp)
 }
 
-private const val PreviewUpdatedAt = 1_767_225_600_000L // 2026.01.01
+private const val PreviewUpdatedAt = 1_767_225_600_000L // 2026년 01월 01일
 
 @Preview(showBackground = true, widthDp = 360)
 @Composable

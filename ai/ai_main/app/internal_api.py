@@ -18,7 +18,6 @@ from . import document, gemini_client, search
 from .config import get_settings
 from .deps import _error, require_internal_token
 from .jobs import job_registry
-from .related import ImageSearchCompletedEvent, ImageSearchPayload
 from .schemas import (
     AnalyzeAccepted,
     AnalyzeRequest,
@@ -28,6 +27,8 @@ from .schemas import (
     EmbedRequest,
     EmbedResponse,
     EmbeddingItem,
+    ImageSearchCompletedEvent,
+    ImageSearchPayload,
     ParsedConditions,
     QueryParseRequest,
     QueryParseResponse,
@@ -181,7 +182,8 @@ async def keyword_search(request: SearchRequest):
 
 # ── 5-5 자연어 기반 AI 이미지 검색 ────────────────────────────────────────
 class SemanticSearchRequest(CamelModel):
-    # 0 이하 차단 이유는 related.RelatedSearchRequest 와 같다(0 = 전역 시드 소유자).
+    # 0 이하 차단: 0 은 카테고리 벡터 저장소의 전역 시드 소유자(SEED_USER_ID)로
+    # 쓰이는 값이라 실제 사용자로 들어와선 안 된다(main.resolve_user_id 와 같은 이유).
     user_id: int = Field(gt=0)
     query: str
     # analysis-worker 가 Redis 이벤트에서 그대로 실어 보낸다. 없으면 서버가 만든다.
@@ -198,7 +200,7 @@ class SemanticSearchRequest(CamelModel):
 async def semantic_search(request: SemanticSearchRequest):
     """명세 5-5 의 AI 구간. analysis-worker 가 IMAGE_SEMANTIC_SEARCH_REQUESTED
     이벤트를 받아 이걸 부르고, 응답(IMAGE_SEARCH_COMPLETED 봉투)을 결과
-    스트림에 그대로 싣는다 — 연관 이미지·문서화 후보와 같은 봉투다.
+    스트림에 그대로 싣는다.
 
     검색은 /internal/v1/search 의 기본 모드와 같은 cascade(F4): BM25 먼저,
     빈 결과면 시맨틱(하이브리드) 승격. "문장 또는 단어" 모두 이 경로 하나로

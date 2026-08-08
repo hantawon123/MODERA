@@ -95,6 +95,8 @@ dependencies {
     implementation(projects.feature.document.documentcreate)
     implementation(projects.feature.login)
     implementation(projects.feature.settings)
+    implementation(projects.feature.onboading.api)
+    implementation(projects.feature.onboading.impl)
     implementation(projects.sync.work)
 
     implementation(libs.androidx.activity.compose)

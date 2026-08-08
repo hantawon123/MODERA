@@ -8,7 +8,7 @@ android {
 }
 
 dependencies {
-    implementation(projects.feature.analyzedimage.api)
+    implementation(projects.feature.onboading.api)
 
     implementation(libs.lottie.compose)
     implementation(libs.coil.kt)

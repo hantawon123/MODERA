@@ -69,6 +69,7 @@ import com.ssafy.modera.feature.home.navigation.homeEntry
 import com.ssafy.modera.feature.home.navigation.navigateToHomeTab
 import com.ssafy.modera.feature.imageviewer.navigation.imageViewerEntry
 import com.ssafy.modera.feature.login.LoginRoute
+import com.ssafy.modera.feature.onboading.impl.navigation.onboardingEntry
 import com.ssafy.modera.feature.settings.navigation.navigateToSettings
 import com.ssafy.modera.feature.settings.navigation.settingsEntry
 import com.ssafy.modera.media.DEFAULT_MAX_IMAGE_COUNT
@@ -218,7 +219,6 @@ internal fun ModeraApp(
             }
 
             viewModel.onImagesPicked(images)
-            navigator.navigate(HomeNavKey)
         },
     )
 
@@ -343,6 +343,12 @@ internal fun ModeraApp(
                             )
 
                             val entryProvider = entryProvider {
+                                onboardingEntry(
+                                    navigator = navigator,
+                                    onSkipClick = navigator::navigateToHome,
+                                    onRegisterPhotoClick = launchGalleryPicker,
+                                )
+
                                 homeEntry(
                                     onCategoryClick = navigator::navigateToCategoryTab,
                                     onCalendarClick = navigator::navigateToCalendar,

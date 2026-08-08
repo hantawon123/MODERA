@@ -28,6 +28,7 @@ fun ModeraDocumentInfoRow(
     imageCount: Int,
     updatedAt: Long,
     modifier: Modifier = Modifier,
+    isCountingVisible: Boolean = true,
     contentColor: Color = ModeraTheme.colors.gray400,
 ) {
     Row(
@@ -35,14 +36,16 @@ fun ModeraDocumentInfoRow(
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        InfoItem(
-            icon = ModeraIcons.Image,
-            text = stringResource(
-                R.string.document_source_image_count,
-                imageCount,
-            ),
-            contentColor = contentColor,
-        )
+        if (isCountingVisible) {
+            InfoItem(
+                icon = ModeraIcons.Image,
+                text = stringResource(
+                    R.string.document_source_image_count,
+                    imageCount,
+                ),
+                contentColor = contentColor,
+            )
+        }
 
         InfoItem(
             icon = ModeraIcons.Clock,

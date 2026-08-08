@@ -86,6 +86,9 @@ internal fun BoxWithConstraintsScope.OnboardingFeaturePagerSection(
 
             pagerState.animateScrollToPage(
                 page = currentPage + 1,
+                animationSpec = tween(
+                    durationMillis = PAGE_SCROLL_DURATION_MILLIS,
+                ),
             )
 
             return@LaunchedEffect
@@ -357,3 +360,4 @@ private const val AUTO_SCROLL_DELAY_MILLIS = 4_200L
 
 private const val SECTION_ENTER_DURATION_MILLIS = 400
 private const val INDICATOR_ANIMATION_DURATION_MILLIS = 220
+private const val PAGE_SCROLL_DURATION_MILLIS = 600

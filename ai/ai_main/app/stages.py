@@ -541,6 +541,22 @@ def _existing_tag_names(
     return names[:limit]
 
 
+def document_vector_text(title: str, tags: list[str], summary: str) -> str:
+    """검색 적재용 문서 벡터(documentVector)의 임베딩 원문.
+
+    요약만 임베딩하면 문체·표현이 유사도를 지배해서, 같은 주제(같은 대회의
+    공고와 강좌, 같은 여행의 항공권과 숙소)인데 요약 초점이 다르면 코사인이
+    0.6 초반까지 떨어진다 — 연관 이미지 임계값을 어떻게 잡아도 이 위가 천장이
+    되는 실측 한계(2026-08-09, 쌍 2,218개 대조). 제목(압축된 주제)과 태그
+    (주제 키워드)를 앞에 세워 주제 신호를 굵게 만든다.
+
+    이 조합식은 재임베딩 백필 스크립트가 그대로 재사용한다 — 여기와 다르게
+    조합하면 기존 이미지와 새 이미지가 다른 공간에 흩어진다.
+    """
+    parts = [title, ", ".join(t for t in tags if t), summary]
+    return "\n".join(p.strip() for p in parts if p and p.strip())
+
+
 def _merge_refined(raw_text: str, generated: dict[str, Any]) -> str:
     """diff 출력(refined_lines)을 OCR 원문에 병합해 교정 전문을 복원한다.
 
@@ -625,21 +641,26 @@ async def run_agent_core(
 
     summary = generated.get("summary", "") or generated.get("title", "")
     proposed = (generated.get("categories") or ["기타"])[0]
+    tags = [str(t) for t in (generated.get("tags") or [])][:max_tags]
 
-    # 요약 임베딩: 카테고리 판정에 쓰고, 검색 적재용으로 콜백에도 실어 보낸다.
+    # 슬롯 0 요약 임베딩: 카테고리 판정·centroid 누적용. 기존 카테고리 벡터
+    # 저장소가 전부 요약 임베딩으로 쌓여 있어 재료를 바꾸면 공간이 갈라진다.
+    # 슬롯 1 문서 벡터: 검색 적재용(콜백 documentVector). 제목+태그+요약 합성
+    # (document_vector_text) — 연관 이미지 유사도의 주제 응집도를 올린다.
     # AGENT 가 후보에 없는 새 이름을 제안한 경우(희귀 경로)에는 이름 중복 관문용
     # 이름 임베딩(제안 + 후보 전부)을 같은 배치에 실어 보낸다 — 추가 호출 0회.
+    doc_text = document_vector_text(generated.get("title", ""), tags, summary)
     proposed_key = normalize_name(proposed)
     name_matched = any(normalize_name(c.name) == proposed_key for c in candidates)
     name_slots: list[str] = []
     if not name_matched and candidates:
         name_slots = [proposed] + [c.name for c in candidates]
     embedding_model, vectors = await asyncio.to_thread(
-        gemini_client.embed, [summary] + name_slots, "DOCUMENT"
+        gemini_client.embed, [summary, doc_text] + name_slots, "DOCUMENT"
     )
     name_vectors = {
         normalize_name(name): vec
-        for name, vec in zip(name_slots, vectors[1:])
+        for name, vec in zip(name_slots, vectors[2:])
     }
     # 순수 계산이라 스레드로 안 넘긴다(외부 호출이 없다 — 벡터는 위에서 준비했다).
     resolution: CategoryResolution = resolve_category(
@@ -683,7 +704,6 @@ async def run_agent_core(
             category_store.upsert_category_vector, user_id, resolution.name, vectors[0]
         )
 
-    tags = [str(t) for t in (generated.get("tags") or [])][:max_tags]
     return {
         "title": generated.get("title", ""),
         "summary": summary,
@@ -706,10 +726,10 @@ async def run_agent_core(
         # 명세 6-2 categories[].confidence 로 내려줄 값
         "categoryConfidence": round(resolution.similarity, 3),
         # 검색용 문서 임베딩. Spring 이 pgvector 등에 그대로 적재한다.
-        # (요약 텍스트 기준. purpose=DOCUMENT 로 생성)
-        "documentVector": vectors[0],
+        # (제목+태그+요약 합성 기준 — document_vector_text. purpose=DOCUMENT)
+        "documentVector": vectors[1],
         "embeddingModel": embedding_model,
-        "embeddingDimension": len(vectors[0]),
+        "embeddingDimension": len(vectors[1]),
         # 앱 상세화면 "추출된 텍스트"용. 융합 경로에서 모델이 이미지를 보고 교정한
         # 화면 텍스트다(요약 아님). rawText 는 오인식이 그대로라 폴백으로 쓰지 않는다.
         "ocrRefinedText": (generated.get("refined_text") or "").strip() or None,

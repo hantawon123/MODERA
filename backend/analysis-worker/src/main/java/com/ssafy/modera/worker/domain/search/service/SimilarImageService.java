@@ -20,7 +20,7 @@ public class SimilarImageService {
     private static final int DEFAULT_LIMIT = 10;
 
     /**
-     * 단일 기준 검색. 개수 상한이 없다 — 유사도 하한(MIN_SCORE)을 넘는 것을 전부 돌려준다.
+     * 단일 기준 검색. 개수 상한이 없다 — 유사도 하한(SINGLE_MIN_SCORE)을 넘는 것을 전부 돌려준다.
      * 결과 크기는 LIMIT이 아니라 그 하한으로 조절한다.
      */
     public List<SimilarImageRow> findSimilar(int imageId, int userId) {

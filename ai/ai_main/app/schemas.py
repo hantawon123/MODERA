@@ -341,6 +341,25 @@ class SearchResponse(CamelModel):
     hits: list[SearchHit] = []
 
 
+class ImageSearchPayload(CamelModel):
+    """IMAGE_SEARCH_COMPLETED 봉투의 payload. 자연어 검색(5-5)이 쓴다."""
+    correlation_id: str
+    total: int
+    page: int = 0
+    size: int = 10
+    hits: list[SearchHit] = []
+
+
+class ImageSearchCompletedEvent(CamelModel):
+    """Spring analysis-worker 가 받는 이벤트 봉투. 원래 연관 이미지·문서화 후보
+    엔드포인트(related.py·doc_selection.py)와 공유하던 계약인데, 그 기능이 Spring
+    pgvector 자체 구현으로 확정되면서(2026-08-09) 지금은 자연어 검색만 쓴다.
+    eventType 문자열은 Spring 쪽 역직렬화 계약이라 바꾸면 안 된다."""
+    event_type: Literal["IMAGE_SEARCH_COMPLETED"] = "IMAGE_SEARCH_COMPLETED"
+    version: int = 1
+    payload: ImageSearchPayload
+
+
 # ── 앱 API (Spring 우회 구간) ─────────────────────────────────────────────
 # 팀 API 명세의 외부 API 형식을 따른다. Spring 이 복귀했을 때 앱이 응답 모델을
 # 그대로 재사용할 수 있도록, 이 서비스가 채우지 못하는 값도 필드는 유지하고

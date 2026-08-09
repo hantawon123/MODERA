@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="navigation_icon">navigation icon</string>
+    <string name="text_field_error">잘못된 입력입니다</string>
+    <string name="loading_wheel">로딩중 입니다</string>
+    <string name="category_shopping">쇼핑</string>
+    <string name="category_food">음식</string>
+    <string name="category_travel">여행</string>
+    <string name="category_reservation">예약</string>
+    <string name="category_discount">할인</string>
+    <string name="category_finance">금융</string>
+    <string name="category_beauty">미용</string>
+    <string name="category_learning">학습</string>
+    <string name="category_job">취업</string>
+    <string name="category_it">IT</string>
+    <string name="category_news">뉴스</string>
+    <string name="category_real_estate">부동산</string>
+    <string name="category_health">건강</string>
+    <string name="category_entertainment">엔터</string>
+    <string name="category_automotive">자동차</string>
+    <string name="category_pet">반려동물</string>
+    <string name="category_etc">기타</string>
+    <string name="logo_content_description">Modera 로고</string>
+</resources>

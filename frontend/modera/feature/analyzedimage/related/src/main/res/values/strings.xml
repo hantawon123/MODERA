@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="related_source_title_format">“%1$s”</string>
+
+    <string name="related_images_title">연관 자료</string>
+    <string name="related_images_header_suffix">의 연관 자료</string>
+    <string name="related_images_empty_message">연관 이미지가 없습니다.</string>
+    <string name="related_images_error_message">연관 이미지를 불러오지 못했습니다.</string>
+
+    <string name="related_documents_title">연관 문서</string>
+    <string name="related_documents_header_suffix">의 연관 문서</string>
+    <string name="related_documents_empty_message">연관 문서가 없습니다.</string>
+    <string name="related_documents_error_message">연관 문서를 불러오지 못했습니다.</string>
+</resources>

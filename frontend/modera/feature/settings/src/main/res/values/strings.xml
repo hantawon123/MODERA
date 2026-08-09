@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_title">설정</string>
+    <string name="settings_my_account">내 계정</string>
+    <string name="settings_email_unavailable">이메일 정보를 불러올 수 없어요</string>
+    <string name="settings_app_section">앱 설정</string>
+    <string name="settings_version_info">버전 정보</string>
+    <string name="settings_version_update_available">최신 버전으로 업데이트할 수 있어요.</string>
+    <string name="settings_open_source_license">오픈소스 라이선스</string>
+    <string name="settings_terms_and_policies">약관 및 정책</string>
+    <string name="settings_logout">로그아웃</string>
+    <string name="settings_logout_dialog_title">로그아웃하시겠습니까</string>
+    <string name="settings_logout_dialog_confirm">로그아웃</string>
+    <string name="settings_logout_dialog_cancel">취소</string>
+    <string name="settings_navigate">이동</string>
+
+
+    <string name="settings_permission_section">권한 설정</string>
+    <string name="settings_notification">알림</string>
+    <string name="settings_notification_description">이미지 분석이 끝나면 알려드려요</string>
+    <string name="settings_calendar_permission">캘린더 연동</string>
+    <string name="settings_calendar_permission_description">기존 캘린더 일정을 연동해드려요</string>
+
+    <string name="settings_permission_allowed">허용됨</string>
+    <string name="settings_permission_blocked">차단됨</string>
+</resources>

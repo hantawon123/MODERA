@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="sort_menu_content_description">정렬 메뉴 열기</string>
+    <string name="analyzed_image_item_favorite">즐겨찾기</string>
+    <string name="analyzed_image_item_document">문서</string>
+    <string name="analyzed_image_item_schedule">일정</string>
+    <string name="analyzed_image_item_meta_divider">|</string>
+    <string name="analyzed_image_item_meta_separator"> · </string>
+    <string name="scroll_to_top_description">맨 위로 이동</string>
+
+    <string name="document_source_image_count">스크린샷 %1$d개</string>
+    <string name="document_updated_at">%1$s 업데이트</string>
+
+    <string name="document_creating_title">해당 자료를 바탕으로 문서화를 진행합니다</string>
+    <string name="document_creating_description">아래 내용들로 문서를 만들고 있어요</string>
+    <string name="document_creating_image_title">“%1$s”</string>
+    <string name="document_creating_progress">자료를 정리하고 있어요</string>
+</resources>

@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+option java_package = "com.ssafy.modera.core.datastore.proto";
+option java_multiple_files = true;
+
+message CategoryProto {
+  int64 id = 1;
+  string title = 2;
+  string thumbnail_url = 3;
+  int32 item_count = 4;
+  bool is_new = 5;
+}
+
+message CategoriesCache {
+  repeated CategoryProto categories = 1;
+}

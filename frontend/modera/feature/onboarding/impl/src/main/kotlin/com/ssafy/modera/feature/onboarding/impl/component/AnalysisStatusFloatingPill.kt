@@ -333,8 +333,8 @@ private const val TEXT_EXIT_DURATION_MILLIS = 120
 
 private const val HEARTBEAT_START_DELAY_MILLIS = 650L
 
-private const val HEARTBEAT_FIRST_SCALE = 1.1f
-private const val HEARTBEAT_SECOND_SCALE = 1.9f
+private const val HEARTBEAT_FIRST_SCALE = 1.09f
+private const val HEARTBEAT_SECOND_SCALE = 1.08f
 
 private const val HEARTBEAT_EXPAND_DURATION_MILLIS = 110
 private const val HEARTBEAT_RETURN_DURATION_MILLIS = 140

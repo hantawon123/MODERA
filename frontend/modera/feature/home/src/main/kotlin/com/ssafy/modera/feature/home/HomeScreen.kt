@@ -163,7 +163,9 @@ private fun HomeSuccessScreen(
                         onSearchSubmit()
                     }
                 },
-                modifier = Modifier.padding(horizontal = HomeScreenDefaults.HorizontalPadding),
+                modifier = Modifier
+                    .padding(horizontal = HomeScreenDefaults.HorizontalPadding)
+                    .padding(top = if (uiState.isSearchActive) 20.dp else 0.dp),
             )
 
             HomeBottomSection(

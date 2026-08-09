@@ -1,5 +1,14 @@
 package com.ssafy.modera.feature.onboarding.impl.component
 
+import android.graphics.Color
+import android.media.AudioManager
+import android.media.MediaPlayer
+import android.net.Uri
+import android.view.View
+import android.view.ViewGroup
+import android.widget.FrameLayout
+import android.widget.VideoView
+import androidx.annotation.RawRes
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
@@ -20,27 +29,30 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.zIndex
-import com.airbnb.lottie.compose.LottieAnimation
-import com.airbnb.lottie.compose.LottieCompositionSpec
-import com.airbnb.lottie.compose.animateLottieCompositionAsState
-import com.airbnb.lottie.compose.rememberLottieComposition
 import com.ssafy.modera.core.designsystem.component.Text
 import com.ssafy.modera.core.designsystem.theme.ModeraTheme
-import com.ssafy.modera.feature.onboarding.impl.model.OnboardingAnalysisState
 import com.ssafy.modera.feature.onboarding.impl.OnboardingPhase
 import com.ssafy.modera.feature.onboarding.impl.R
-import kotlinx.coroutines.delay
-import kotlin.time.Duration.Companion.milliseconds
+import com.ssafy.modera.feature.onboarding.impl.model.OnboardingAnalysisState
+import kotlinx.coroutines.launch
 
 @Composable
 internal fun BoxWithConstraintsScope.OnboardingFeaturePagerSection(
@@ -49,6 +61,7 @@ internal fun BoxWithConstraintsScope.OnboardingFeaturePagerSection(
     analysisState: OnboardingAnalysisState,
 ) {
     val screenHeight = maxHeight
+    val coroutineScope = rememberCoroutineScope()
 
     val pagerState = rememberPagerState(
         initialPage = 0,
@@ -56,49 +69,6 @@ internal fun BoxWithConstraintsScope.OnboardingFeaturePagerSection(
             FEATURE_PAGE_COUNT
         },
     )
-
-    /*
-     * 사용자가 넘기지 않으면 일정 시간 후
-     * 다음 페이지로 자동 이동.
-     *
-     * 사용자가 직접 스와이프하는 것도 그대로 허용한다.
-     */
-    LaunchedEffect(
-        phase,
-        pagerState.settledPage,
-    ) {
-        if (phase != OnboardingPhase.FeaturePager) {
-            return@LaunchedEffect
-        }
-
-        while (true) {
-            delay(AUTO_SCROLL_DELAY_MILLIS.milliseconds)
-
-            /*
-             * 사용자가 직접 스와이프 중이면
-             * 자동 이동하지 않고 다시 기다린다.
-             */
-            if (pagerState.isScrollInProgress) {
-                continue
-            }
-
-            val currentPage =
-                pagerState.settledPage
-
-            if (currentPage >= LAST_PAGE_INDEX) {
-                return@LaunchedEffect
-            }
-
-            pagerState.animateScrollToPage(
-                page = currentPage + 1,
-                animationSpec = tween(
-                    durationMillis = PAGE_SCROLL_DURATION_MILLIS,
-                ),
-            )
-
-            return@LaunchedEffect
-        }
-    }
 
     AnimatedVisibility(
         visible = phase == OnboardingPhase.FeaturePager,
@@ -114,6 +84,8 @@ internal fun BoxWithConstraintsScope.OnboardingFeaturePagerSection(
              *
              * userScrollEnabled를 막지 않았기 때문에
              * 사용자가 직접 좌우로 넘길 수 있다.
+             *
+             * 자동 이동은 각 페이지 영상 재생 완료 시점에 수행한다.
              */
             HorizontalPager(
                 state = pagerState,
@@ -123,6 +95,25 @@ internal fun BoxWithConstraintsScope.OnboardingFeaturePagerSection(
                     page = page,
                     isActive = pagerState.settledPage == page,
                     screenHeight = screenHeight,
+                    onVideoFinished = onVideoFinished@{
+                        if (
+                            phase != OnboardingPhase.FeaturePager ||
+                            page != pagerState.settledPage ||
+                            pagerState.isScrollInProgress ||
+                            page >= LAST_PAGE_INDEX
+                        ) {
+                            return@onVideoFinished
+                        }
+
+                        coroutineScope.launch {
+                            pagerState.animateScrollToPage(
+                                page = page + 1,
+                                animationSpec = tween(
+                                    durationMillis = PAGE_SCROLL_DURATION_MILLIS,
+                                ),
+                            )
+                        }
+                    },
                 )
             }
 
@@ -154,20 +145,8 @@ private fun FeaturePagerPage(
     page: Int,
     isActive: Boolean,
     screenHeight: androidx.compose.ui.unit.Dp,
+    onVideoFinished: () -> Unit,
 ) {
-    val composition by rememberLottieComposition(
-        LottieCompositionSpec.RawRes(
-            R.raw.lottie_scanning_screen,
-        ),
-    )
-
-    val progress by animateLottieCompositionAsState(
-        composition = composition,
-        isPlaying = isActive,
-        restartOnPlay = true,
-        iterations = 1,
-    )
-
     Box(
         modifier = Modifier.fillMaxSize(),
     ) {
@@ -184,20 +163,123 @@ private fun FeaturePagerPage(
                 ),
         )
 
-        LottieAnimation(
-            composition = composition,
-            progress = {
-                progress
-            },
-            modifier = Modifier
-                .align(Alignment.TopCenter)
-                .offset(
-                    y = screenHeight * LOTTIE_Y_RATIO,
+        key(isActive) {
+            if (isActive) {
+                val videoMaxHeight =
+                    screenHeight -
+                        (screenHeight * VIDEO_Y_RATIO) -
+                        VIDEO_BOTTOM_CLEARANCE
+
+                FeaturePagerVideo(
+                    videoRes = when (page) {
+                        CALENDAR_PAGE_INDEX -> R.raw.calendar
+                        SEARCH_PAGE_INDEX -> R.raw.search
+                        else -> R.raw.document
+                    },
+                    maxHeight = videoMaxHeight,
+                    onVideoFinished = onVideoFinished,
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .offset(
+                            y = screenHeight * VIDEO_Y_RATIO,
+                        ),
                 )
-                .width(LOTTIE_SIZE)
-                .aspectRatio(1f),
-        )
+            }
+        }
     }
+}
+
+@Composable
+private fun FeaturePagerVideo(
+    @RawRes videoRes: Int,
+    maxHeight: Dp,
+    onVideoFinished: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val context = LocalContext.current
+    val onVideoFinishedState = rememberUpdatedState(onVideoFinished)
+    var aspectRatio by remember {
+        mutableFloatStateOf(DEFAULT_VIDEO_ASPECT_RATIO)
+    }
+
+    val videoUri = remember(videoRes) {
+        Uri.parse("android.resource://${context.packageName}/$videoRes")
+    }
+
+    val videoWidth = minOf(
+        VIDEO_WIDTH,
+        maxHeight * aspectRatio,
+    )
+
+    /*
+     * VideoView(SurfaceView) 깜빡임을 막기 위해
+     * 같은 View 계층의 흰 커버로 가렸다가 첫 프레임 후 fade-out 한다.
+     */
+    AndroidView(
+        factory = { viewContext ->
+            val cover = View(viewContext).apply {
+                setBackgroundColor(Color.WHITE)
+            }
+
+            val videoView = VideoView(viewContext).apply {
+                setAudioFocusRequest(AudioManager.AUDIOFOCUS_NONE)
+                setOnPreparedListener { mediaPlayer ->
+                    val width = mediaPlayer.videoWidth
+                    val height = mediaPlayer.videoHeight
+                    if (width > 0 && height > 0) {
+                        aspectRatio = width.toFloat() / height.toFloat()
+                    }
+
+                    mediaPlayer.isLooping = false
+                    mediaPlayer.setVolume(0f, 0f)
+                    mediaPlayer.setOnInfoListener { _, what, _ ->
+                        if (what == MediaPlayer.MEDIA_INFO_VIDEO_RENDERING_START) {
+                            cover.animate()
+                                .alpha(0f)
+                                .setDuration(VIDEO_REVEAL_DURATION_MILLIS.toLong())
+                                .withEndAction {
+                                    cover.visibility = View.GONE
+                                }
+                                .start()
+                            true
+                        } else {
+                            false
+                        }
+                    }
+                    start()
+                }
+                setOnCompletionListener {
+                    onVideoFinishedState.value()
+                }
+                setVideoURI(videoUri)
+            }
+
+            FrameLayout(viewContext).apply {
+                setBackgroundColor(Color.WHITE)
+                addView(
+                    videoView,
+                    FrameLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                    ),
+                )
+                addView(
+                    cover,
+                    FrameLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                    ),
+                )
+                tag = videoView
+            }
+        },
+        modifier = modifier
+            .width(videoWidth)
+            .aspectRatio(aspectRatio),
+        onRelease = { container ->
+            (container.tag as? VideoView)?.stopPlayback()
+        },
+    )
 }
 
 @Composable
@@ -332,22 +414,23 @@ private const val DOCUMENT_PAGE_INDEX = 2
 private const val LAST_PAGE_INDEX =
     FEATURE_PAGE_COUNT - 1
 
-private const val TITLE_Y_RATIO = 0.155f
-private const val LOTTIE_Y_RATIO = 0.27f
-private const val INDICATOR_Y_RATIO = 0.795f
+private const val INDICATOR_Y_RATIO = 0.105f
+private const val TITLE_Y_RATIO = 0.145f
+private const val VIDEO_Y_RATIO = 0.25f
 private val ANALYSIS_STATUS_BOTTOM_PADDING = 40.dp
 
-private val LOTTIE_SIZE = 300.dp
+/*
+ * 하단 AnalysisStatus 버튼(최대 56dp) + padding + 여유 공간.
+ */
+private val VIDEO_BOTTOM_CLEARANCE = 120.dp
+
+private val VIDEO_WIDTH = 300.dp
+private const val DEFAULT_VIDEO_ASPECT_RATIO = 1078f / 1924f
 
 private val INDICATOR_SIZE = 10.dp
 private val INDICATOR_HORIZONTAL_SPACING = 5.dp
 
-/*
- * 첨부 Lottie가 약 3.4초라
- * 재생 후 약간 머무른 뒤 넘어가도록 4.2초.
- */
-private const val AUTO_SCROLL_DELAY_MILLIS = 4_200L
-
 private const val SECTION_ENTER_DURATION_MILLIS = 400
 private const val INDICATOR_ANIMATION_DURATION_MILLIS = 220
 private const val PAGE_SCROLL_DURATION_MILLIS = 600
+private const val VIDEO_REVEAL_DURATION_MILLIS = 180

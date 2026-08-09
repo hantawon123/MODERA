@@ -1,2 +1,0 @@
-test issue for Jira setting
-test2

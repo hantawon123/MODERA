@@ -1,7 +1,10 @@
 package com.ssafy.modera.di
 
 import android.content.Context
+import android.os.Build.VERSION.SDK_INT
 import coil.ImageLoader
+import coil.decode.GifDecoder
+import coil.decode.ImageDecoderDecoder
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -25,6 +28,13 @@ object ImageLoaderModule {
                 okHttpClient.newBuilder()
                     .build(),
             )
+            .components {
+                if (SDK_INT >= 28) {
+                    add(ImageDecoderDecoder.Factory())
+                } else {
+                    add(GifDecoder.Factory())
+                }
+            }
             .crossfade(true)
             .build()
 }

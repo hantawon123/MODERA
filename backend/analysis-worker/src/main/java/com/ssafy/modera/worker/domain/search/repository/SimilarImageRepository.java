@@ -35,8 +35,12 @@ public class SimilarImageRepository {
      * AI 레포)이 적용된 공간 전제다.</b> 백필 전 구공간에 이 값을 쓰면 다시
      * strict 해진다. 조정할 일이 생기면 감으로 만지지 말고 같은 방법(쌍 분포 +
      * 경계 구간 요약문 대조)으로 재실측할 것.
+     *
+     * <p>0.65 (2026-08-09 재완화, 팀 결정): 시연에서 후보가 마르는 것보다 정크
+     * 혼입이 낫다는 판단 — 리콜 우선. 위 실측 기준 무관 baseline p90(0.684)보다
+     * 낮아 무관 혼입이 늘어나는 것을 알고 내린 값이다.
      */
-    private static final double SINGLE_MIN_SCORE = 0.72;
+    private static final double SINGLE_MIN_SCORE = 0.65;
 
     /**
      * 다중 기준 검색의 최소 코사인 유사도. 후보가 <b>기준 이미지 중 한 장과의
@@ -52,8 +56,11 @@ public class SimilarImageRepository {
      * 단일보다 낮게 두는 이유 — 고르는 화면이라 후보가 마르는 비용이 정크
      * 몇 개보다 크고(무관 후보는 안 고르면 끝), 상위 N 컷(LIMIT)이 노출을 이미
      * 제한하며, centroid 순위가 진짜 연관을 앞에 세워 혼재 구간은 꼬리에만 남는다.
+     *
+     * <p>0.65 (2026-08-09 재완화, 팀 결정): SINGLE_MIN_SCORE 와 함께 리콜 우선으로
+     * 하향 — 단일과 같은 값이 됐다.
      */
-    private static final double MULTI_MIN_SCORE = 0.68;
+    private static final double MULTI_MIN_SCORE = 0.65;
 
     private final JdbcTemplate jdbcTemplate;
 

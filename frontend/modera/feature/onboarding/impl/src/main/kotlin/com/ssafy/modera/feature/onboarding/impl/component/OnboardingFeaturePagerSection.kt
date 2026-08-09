@@ -1,13 +1,14 @@
 package com.ssafy.modera.feature.onboarding.impl.component
 
-import android.graphics.Color
-import android.media.AudioManager
+import android.graphics.SurfaceTexture
+import android.media.AudioAttributes
 import android.media.MediaPlayer
 import android.net.Uri
+import android.view.Surface
+import android.view.TextureView
 import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
-import android.widget.VideoView
 import androidx.annotation.RawRes
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
@@ -47,6 +48,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.zIndex
+import android.graphics.Color as AndroidColor
 import com.ssafy.modera.core.designsystem.component.Text
 import com.ssafy.modera.core.designsystem.theme.ModeraTheme
 import com.ssafy.modera.feature.onboarding.impl.OnboardingPhase
@@ -211,53 +213,111 @@ private fun FeaturePagerVideo(
         maxHeight * aspectRatio,
     )
 
-    /*
-     * VideoView(SurfaceView) 깜빡임을 막기 위해
-     * 같은 View 계층의 흰 커버로 가렸다가 첫 프레임 후 fade-out 한다.
-     */
     AndroidView(
         factory = { viewContext ->
+            val mediaPlayer = MediaPlayer()
             val cover = View(viewContext).apply {
-                setBackgroundColor(Color.WHITE)
+                setBackgroundColor(AndroidColor.WHITE)
+            }
+            val textureView = TextureView(viewContext).apply {
+                alpha = 0f
             }
 
-            val videoView = VideoView(viewContext).apply {
-                setAudioFocusRequest(AudioManager.AUDIOFOCUS_NONE)
-                setOnPreparedListener { mediaPlayer ->
-                    val width = mediaPlayer.videoWidth
-                    val height = mediaPlayer.videoHeight
-                    if (width > 0 && height > 0) {
-                        aspectRatio = width.toFloat() / height.toFloat()
+            fun revealVideo() {
+                textureView.animate()
+                    .alpha(1f)
+                    .setDuration(VIDEO_REVEAL_DURATION_MILLIS.toLong())
+                    .start()
+                cover.animate()
+                    .alpha(0f)
+                    .setDuration(VIDEO_REVEAL_DURATION_MILLIS.toLong())
+                    .withEndAction {
+                        cover.visibility = View.GONE
                     }
+                    .start()
+            }
 
-                    mediaPlayer.isLooping = false
-                    mediaPlayer.setVolume(0f, 0f)
-                    mediaPlayer.setOnInfoListener { _, what, _ ->
-                        if (what == MediaPlayer.MEDIA_INFO_VIDEO_RENDERING_START) {
-                            cover.animate()
-                                .alpha(0f)
-                                .setDuration(VIDEO_REVEAL_DURATION_MILLIS.toLong())
-                                .withEndAction {
-                                    cover.visibility = View.GONE
+            var playbackSurface: Surface? = null
+
+            textureView.surfaceTextureListener =
+                object : TextureView.SurfaceTextureListener {
+                    override fun onSurfaceTextureAvailable(
+                        surface: SurfaceTexture,
+                        width: Int,
+                        height: Int,
+                    ) {
+                        runCatching {
+                            playbackSurface?.release()
+                            playbackSurface = Surface(surface)
+                            mediaPlayer.setSurface(playbackSurface)
+                            mediaPlayer.setAudioAttributes(
+                                AudioAttributes.Builder()
+                                    .setContentType(
+                                        AudioAttributes.CONTENT_TYPE_MOVIE,
+                                    )
+                                    .setUsage(AudioAttributes.USAGE_MEDIA)
+                                    .build(),
+                            )
+                            mediaPlayer.setDataSource(viewContext, videoUri)
+                            mediaPlayer.isLooping = false
+                            mediaPlayer.setVolume(0f, 0f)
+                            mediaPlayer.setOnPreparedListener { player ->
+                                textureView.post {
+                                    val videoWidthPx = player.videoWidth
+                                    val videoHeightPx = player.videoHeight
+                                    if (videoWidthPx > 0 && videoHeightPx > 0) {
+                                        aspectRatio =
+                                            videoWidthPx.toFloat() / videoHeightPx.toFloat()
+                                    }
+                                    player.start()
                                 }
-                                .start()
-                            true
-                        } else {
-                            false
+                            }
+                            mediaPlayer.setOnInfoListener { _, what, _ ->
+                                if (
+                                    what ==
+                                    MediaPlayer.MEDIA_INFO_VIDEO_RENDERING_START
+                                ) {
+                                    textureView.post {
+                                        revealVideo()
+                                    }
+                                    true
+                                } else {
+                                    false
+                                }
+                            }
+                            mediaPlayer.setOnCompletionListener {
+                                textureView.post {
+                                    onVideoFinishedState.value()
+                                }
+                            }
+                            mediaPlayer.prepareAsync()
                         }
                     }
-                    start()
+
+                    override fun onSurfaceTextureSizeChanged(
+                        surface: SurfaceTexture,
+                        width: Int,
+                        height: Int,
+                    ) = Unit
+
+                    override fun onSurfaceTextureDestroyed(
+                        surface: SurfaceTexture,
+                    ): Boolean {
+                        mediaPlayer.setSurface(null)
+                        playbackSurface?.release()
+                        playbackSurface = null
+                        return true
+                    }
+
+                    override fun onSurfaceTextureUpdated(
+                        surface: SurfaceTexture,
+                    ) = Unit
                 }
-                setOnCompletionListener {
-                    onVideoFinishedState.value()
-                }
-                setVideoURI(videoUri)
-            }
 
             FrameLayout(viewContext).apply {
-                setBackgroundColor(Color.WHITE)
+                setBackgroundColor(AndroidColor.WHITE)
                 addView(
-                    videoView,
+                    textureView,
                     FrameLayout.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT,
                         ViewGroup.LayoutParams.MATCH_PARENT,
@@ -270,14 +330,23 @@ private fun FeaturePagerVideo(
                         ViewGroup.LayoutParams.MATCH_PARENT,
                     ),
                 )
-                tag = videoView
+                tag = mediaPlayer
             }
         },
         modifier = modifier
             .width(videoWidth)
-            .aspectRatio(aspectRatio),
+            .aspectRatio(aspectRatio)
+            .background(ModeraTheme.colors.white),
         onRelease = { container ->
-            (container.tag as? VideoView)?.stopPlayback()
+            (container.tag as? MediaPlayer)?.let { player ->
+                runCatching {
+                    if (player.isPlaying) {
+                        player.stop()
+                    }
+                    player.reset()
+                    player.release()
+                }
+            }
         },
     )
 }

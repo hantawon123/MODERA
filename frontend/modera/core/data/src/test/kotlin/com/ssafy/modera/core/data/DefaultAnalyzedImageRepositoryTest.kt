@@ -267,6 +267,6 @@ class DefaultAnalyzedImageRepositoryTest {
 
     private companion object {
         const val BASE_URL =
-            "https://i15d207.p.ssafy.io"
+            "https://api.example.com"
     }
 }

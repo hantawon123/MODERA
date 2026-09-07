@@ -1,5 +1,7 @@
 package com.ssafy.modera.core.network
 
+import okhttp3.HttpUrl.Companion.toHttpUrl
+
 import com.ssafy.modera.core.datastore.AuthSessionStore
 import okhttp3.Interceptor
 import okhttp3.Response
@@ -14,7 +16,7 @@ internal class AccessTokenInterceptor @Inject constructor(
 
         if (
             token.isBlank() ||
-            request.url.host != API_HOST
+            (request.url.host != API_ORIGIN.host || request.url.port != API_ORIGIN.port || request.url.scheme != API_ORIGIN.scheme)
         ) {
             return chain.proceed(request)
         }
@@ -28,6 +30,6 @@ internal class AccessTokenInterceptor @Inject constructor(
     }
 
     private companion object {
-        const val API_HOST = "i15d207.p.ssafy.io"
+        val API_ORIGIN = BuildConfig.API_BASE_URL.toHttpUrl()
     }
 }

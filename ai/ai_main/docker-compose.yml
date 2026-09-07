@@ -42,7 +42,7 @@ services:
       - opensearch
     ports:
       # 9200 과 같은 원칙: 외부에 열지 않는다. SSH 터널로만 접근.
-      #   ssh -i <key>.pem -L 5601:127.0.0.1:5601 -N ubuntu@i15d207.p.ssafy.io
+      #   ssh -i <key>.pem -L 5601:127.0.0.1:5601 -N ubuntu@api.example.com
       # 브라우저에서 http://localhost:5601, 로그인은 admin / .env 의 비밀번호.
       - "127.0.0.1:5601:5601"
 
@@ -71,14 +71,14 @@ services:
       - opensearch
     ports:
       # 9200/5601 과 같은 원칙: 외부에 열지 않는다. 앱의 정규 경로는 nginx 경유
-      # https(https://i15d207.p.ssafy.io/api/v1/...)이고, nginx 는 shared-web
+      # https(https://api.example.com/api/v1/...)이고, nginx 는 shared-web
       # 네트워크로 ai-service:8000 에 직접 닿으므로 이 매핑과 무관하다.
       #
       # 통합 테스트 기간에 "8000:8000" 으로 외부에 열어 뒀었는데, APP_API_AUTH=false
       # 라 토큰 없이 전 세계에 노출된 상태였고 실제로 스캐너 봇 유입이 확인돼
       # 닫는다(2026-08-08). 앱은 8443(Spring)만 쓰므로 직접 호출 대상이 없다.
       # 개발 중 직접 접근이 필요하면 SSH 터널을 쓴다:
-      #   ssh -i <key>.pem -L 8000:127.0.0.1:8000 -N ubuntu@i15d207.p.ssafy.io
+      #   ssh -i <key>.pem -L 8000:127.0.0.1:8000 -N ubuntu@api.example.com
       - "127.0.0.1:8000:8000"
 
 # infra 프로젝트(nginx·MinIO)가 먼저 떠 있어야 한다. 이 compose 가 만들지 않는다.

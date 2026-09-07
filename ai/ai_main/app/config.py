@@ -294,11 +294,9 @@ class Settings:
         # transport="rest" 로 고정한다.
         # ⚠️ 생성 경로는 이 값을 쓰지 않는다 — Agent Platform 은 SDK 가 호스트를
         # 조립하고, 여기에 값을 물려주면 그 조립을 덮어쓴다. GMS_KEY 와 짝이다.
-        # 빈 값(GEMINI_BASE_URL=)도 기본값으로 떨어뜨린다. env_file 은 빈 문자열을
-        # "설정됨" 으로 넘기므로 os.environ.get 의 기본값이 먹지 않는다.
+        # 실제 AI 호출에는 배포 환경에서 GEMINI_BASE_URL을 반드시 주입한다.
         self.gemini_base_url = (
-            os.environ.get("GEMINI_BASE_URL")
-            or "https://gms.ssafy.io/gmsapi/generativelanguage.googleapis.com"
+            "https://ai.example.com" if self.mock_ai else _required("GEMINI_BASE_URL")
         ).rstrip("/")
 
         # Gemini thinking(내부 추론) 제어 — thinking 토큰은 **출력 단가로 과금**된다.

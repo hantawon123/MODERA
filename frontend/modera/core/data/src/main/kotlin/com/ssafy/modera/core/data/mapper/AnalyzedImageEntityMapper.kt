@@ -1,5 +1,7 @@
 package com.ssafy.modera.core.data.mapper
 
+import com.ssafy.modera.core.network.BuildConfig
+
 import com.ssafy.modera.core.database.model.AnalyzedImageEntity
 import com.ssafy.modera.core.database.model.CategoryEntity
 import com.ssafy.modera.core.network.model.analyzedimage.AnalyzedImageDetailResponse
@@ -9,8 +11,8 @@ fun AnalyzedImageDetailResponse.asEntity(): AnalyzedImageEntity =
     AnalyzedImageEntity(
         imageId = imageId,
         categoryId = categoryId,
-        imageUrl = "https://i15d207.p.ssafy.io:8443/api/v1/images/${imageId}/file/raw",
-        thumbnailUrl = "https://i15d207.p.ssafy.io:8443/api/v1/images/${imageId}/thumbnail/raw",
+        imageUrl = "${BuildConfig.API_BASE_URL}api/v1/images/${imageId}/file/raw",
+        thumbnailUrl = "${BuildConfig.API_BASE_URL}api/v1/images/${imageId}/thumbnail/raw",
         title = title,
         summary = summary,
         favorite = favorite,
@@ -31,6 +33,6 @@ fun AnalyzedImageDetailResponse.asCategoryEntity(
     CategoryEntity(
         categoryId = categoryId,
         name = category,
-        thumbnailUrl = "https://i15d207.p.ssafy.io:8443/api/v1/categories/${categoryId}/thumbnail",
+        thumbnailUrl = "${BuildConfig.API_BASE_URL}api/v1/categories/${categoryId}/thumbnail",
         isNew = isNew,
     )

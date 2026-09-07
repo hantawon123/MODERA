@@ -173,7 +173,7 @@ RESULT_DIR=/home/ubuntu/k6/results/e3-before /home/ubuntu/k6/run-search-under-pi
 
 1. ssh 터널로 서버 Prometheus와 결과 디렉터리를 연다
    ```bash
-   ssh -i I15D207T.pem -L 19090:localhost:9090 ubuntu@i15d207.p.ssafy.io
+   ssh -i I15D207T.pem -L 19090:localhost:9090 ubuntu@api.example.com
    ```
 2. `manifest.tsv`의 구간별로 Prometheus API를 조회해 지표를 뽑는다. 실험별 핵심:
    - E1: `histogram_quantile(0.95, …http_server_requests_seconds_bucket…)` (uri별),

@@ -1213,14 +1213,14 @@ centroid 방식이라 개별 이미지가 아니라 공통 주제에 가까운 �
       {
         "categoryId": 1744084819,
         "name": "공부",
-        "categoryImageUrl": "https://i15d207.p.ssafy.io/category-thumbnails/1744084819.png",
+        "categoryImageUrl": "https://api.example.com/category-thumbnails/1744084819.png",
         "imageCount": 42,
         "latestUpdatedAt": "2026-07-17T06:00:00.000Z"
       },
       {
         "categoryId": 1735462011,
         "name": "음식",
-        "categoryImageUrl": "https://i15d207.p.ssafy.io/category-thumbnails/1735462011.png",
+        "categoryImageUrl": "https://api.example.com/category-thumbnails/1735462011.png",
         "imageCount": 52,
         "latestUpdatedAt": "2026-07-18T06:00:00.000Z"
       }

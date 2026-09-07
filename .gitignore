@@ -1,0 +1,3 @@
+
+# Generated load-test accounts and bearer tokens must stay local.
+/backend/ops/k6/generated/

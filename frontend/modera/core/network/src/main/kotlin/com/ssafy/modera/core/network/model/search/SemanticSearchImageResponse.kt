@@ -1,5 +1,7 @@
 package com.ssafy.modera.core.network.model.search
 
+import com.ssafy.modera.core.network.BuildConfig
+
 import com.ssafy.modera.core.model.analyzedimage.AnalyzedImage
 import kotlinx.serialization.Serializable
 
@@ -30,6 +32,6 @@ private fun String?.toAbsoluteUrl(): String? {
     return if (startsWith("http://") || startsWith("https://")) {
         this
     } else {
-        "https://i15d207.p.ssafy.io:8443/$this"
+        "${BuildConfig.API_BASE_URL}$this"
     }
 }

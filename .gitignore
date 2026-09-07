@@ -82,3 +82,6 @@ opensearch-data/
 # ── 테스트 ────────────────────────────────────────────────────────────────
 # ai_main 테스트 폴더
 ai/ai_main/test/
+
+# Generated load-test accounts and bearer tokens must stay local.
+/backend/ops/k6/generated/

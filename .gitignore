@@ -85,3 +85,18 @@ ai/ai_main/test/
 
 # Generated load-test accounts and bearer tokens must stay local.
 /backend/ops/k6/generated/
+
+# Deployment credentials and generated authenticated fixtures stay local.
+.env
+.env.*
+!.env.example
+!.env.local.example
+!.env.sample
+*.pem
+*.p12
+*.pfx
+*.jks
+*.keystore
+*firebase-adminsdk*.json
+*service-account*.json
+/backend/ops/k6/generated/

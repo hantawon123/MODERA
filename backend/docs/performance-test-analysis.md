@@ -8,7 +8,7 @@
 
 ## 2. 테스트 환경
 
-- 대상 서버: `i15d207.p.ssafy.io`
+- 대상 서버: `api.example.com`
 - API 컨테이너: `modera-api`
 - Worker 컨테이너: `modera-worker`
 - 데이터 저장소: PostgreSQL, Redis, MinIO
@@ -243,7 +243,7 @@ API별로 다음 조건을 모두 만족하는 최대 제안 처리량을 탐색
 - AI 분석 평균: 22.07초
 - AI 분석 p95: 약 1분 32초
 
-평균과 p95 차이가 매우 크며 일부 분석 요청이 약 90초까지 지연됐다. Worker 로그에서 외부 AI 서비스 `gms.ssafy.io`에 대한 90초 read timeout과 DNS 관련 경고가 확인됐다.
+평균과 p95 차이가 매우 크며 일부 분석 요청이 약 90초까지 지연됐다. Worker 로그에서 외부 AI 서비스 `ai.example.com`에 대한 90초 read timeout과 DNS 관련 경고가 확인됐다.
 
 HTTP 단계가 성공해도 AI 결과가 빈 값 또는 fallback 결과일 수 있으므로, HTTP 성공률만으로 분석 품질 성공률을 판단하면 안 된다. 분석 결과 상태를 `COMPLETED`, `FAILED`, `TIMED_OUT`, `EMPTY` 등으로 구분해 별도 집계할 필요가 있다.
 

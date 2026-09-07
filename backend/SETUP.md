@@ -34,7 +34,7 @@ IDE는 자유(IntelliJ, VS Code 등). IntelliJ라면 `backend/` 폴더를 Gradle
 ## 1. 클론 & 브랜치
 
 ```bash
-git clone https://lab.ssafy.com/s15-webmobile4-sub1/S15P11D207.git
+git clone https://github.com/hantawon123/MODERA.git
 cd S15P11D207
 git checkout feature/soa-setup   # 또는 이 작업이 머지된 이후의 develop/backend
 cd backend

@@ -6,13 +6,15 @@ services:
   nginx:
     image: nginx:1.27-alpine
     environment:
+      - PUBLIC_HOST=${PUBLIC_HOST:?Set PUBLIC_HOST}
+      - NGINX_ENVSUBST_FILTER=^PUBLIC_HOST$
       - TZ=Asia/Seoul
     ports:
       - "80:80"
       - "443:443"
       - "8443:8443"
     volumes:
-      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./nginx/templates:/etc/nginx/templates:ro
       - certbot-etc:/etc/letsencrypt:ro
       - certbot-www:/var/www/certbot
     restart: unless-stopped
@@ -147,7 +149,7 @@ services:
     environment:
       # nginx 하위 경로(/grafana/)로 서빙하려면 Grafana도 그 경로를 알아야
       # 리다이렉트·정적 리소스 URL이 맞는다.
-      - GF_SERVER_ROOT_URL=https://i15d207.p.ssafy.io:8443/grafana/
+      - GF_SERVER_ROOT_URL=${GRAFANA_ROOT_URL:?Set GRAFANA_ROOT_URL}
       - GF_SERVER_SERVE_FROM_SUB_PATH=true
     volumes:
       - grafana-data:/var/lib/grafana

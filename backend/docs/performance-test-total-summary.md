@@ -20,7 +20,7 @@
 
 ### 2.1 시스템 구성
 
-- 대상 서버: `i15d207.p.ssafy.io`
+- 대상 서버: `api.example.com`
 - API 컨테이너: `modera-api`
 - Worker 컨테이너: `modera-worker`
 - 저장소: API PostgreSQL, Worker PostgreSQL, Redis, MinIO
@@ -147,7 +147,7 @@ v2에는 유사 이미지와 시맨틱 검색이 추가돼 흐름이 5개에서 
 | 2명·5장 | 평균 11.64초, p95 14.04초 | 평균 11.25초 | 소규모 동시 처리 정상 |
 | 5명·20장 | 평균 22.50초, p95 약 1분 33초, 최대 약 1분 40초 | 평균 22.07초, p95 약 1분 32초 | 큰 tail latency 발생 |
 
-5명·20장 구간에서는 외부 AI `gms.ssafy.io`에 대한 90초 read timeout과 DNS 경고가 확인됐다. HTTP 요청 성공만으로 분석 품질까지 성공했다고 판단할 수 없으므로 `COMPLETED`, `FAILED`, `TIMED_OUT`, `EMPTY` 상태를 분리 집계해야 한다.
+5명·20장 구간에서는 외부 AI `ai.example.com`에 대한 90초 read timeout과 DNS 경고가 확인됐다. HTTP 요청 성공만으로 분석 품질까지 성공했다고 판단할 수 없으므로 `COMPLETED`, `FAILED`, `TIMED_OUT`, `EMPTY` 상태를 분리 집계해야 한다.
 
 ## 6. Mock AI 전체 백엔드 파이프라인
 

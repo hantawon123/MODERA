@@ -4,8 +4,8 @@
 # ⚠️ Jenkins 는 이 파일을 배포하지 않는다(AI Deploy 단계는 ai/ai_main/docker-compose.yml
 #    만 복사한다). 고친 뒤에는 서버에 직접 반영해야 한다:
 #
-#      scp infra/nginx/conf.d/default.conf ubuntu@i15d207.p.ssafy.io:/home/ubuntu/infra/nginx/conf.d/
-#      ssh ubuntu@i15d207.p.ssafy.io 'docker exec infra-nginx-1 nginx -t && docker exec infra-nginx-1 nginx -s reload'
+#      scp infra/nginx/conf.d/default.conf ubuntu@${PUBLIC_HOST}:/home/ubuntu/infra/nginx/conf.d/
+#      ssh ubuntu@${PUBLIC_HOST} 'docker exec infra-nginx-1 nginx -t && docker exec infra-nginx-1 nginx -s reload'
 #
 #    nginx -t 를 반드시 먼저 통과시킬 것. upstream 호스트명이 해석되지 않으면 nginx 가
 #    설정 로드를 거부하고, 그 상태로 reload 하면 프록시 전체가 죽는다.
@@ -13,7 +13,7 @@
 
 server {
     listen 80;
-    server_name i15d207.p.ssafy.io;
+    server_name ${PUBLIC_HOST};
 
     location /.well-known/acme-challenge/ {
         root /var/www/certbot;
@@ -27,10 +27,10 @@ server {
 server {
     listen 443 ssl;
     http2 on;
-    server_name i15d207.p.ssafy.io;
+    server_name ${PUBLIC_HOST};
 
-    ssl_certificate     /etc/letsencrypt/live/i15d207.p.ssafy.io/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/i15d207.p.ssafy.io/privkey.pem;
+    ssl_certificate     /etc/letsencrypt/live/${PUBLIC_HOST}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/${PUBLIC_HOST}/privkey.pem;
 
     # Docker 내장 DNS. proxy_pass 에 호스트명을 글자로 그대로 쓰면 nginx 는 설정을
     # 읽는 순간 1회만 DNS 를 조회하고 그 IP 를 굳혀 버린다. Jenkins 배포로 컨테이너가
@@ -101,7 +101,7 @@ server {
     }
 
     # ── MinIO (presigned 업로드/조회) ────────────────────────────────────
-    # S3_PUBLIC_ENDPOINT=https://i15d207.p.ssafy.io (prefix 없음) 이 여기로 온다.
+    # S3_PUBLIC_ENDPOINT=https://${PUBLIC_HOST} (prefix 없음) 이 여기로 온다.
     # 앱이 presigned PUT/GET 으로 직접 붙으므로 AI 서버를 거치지 않는다.
     #
     # ⚠️ prefix 를 두면 안 된다. SigV4 는 경로(canonical URI)까지 서명하는데,
@@ -193,10 +193,10 @@ server {
 server {
     listen 8443 ssl;
     http2 on;
-    server_name i15d207.p.ssafy.io;
+    server_name ${PUBLIC_HOST};
 
-    ssl_certificate     /etc/letsencrypt/live/i15d207.p.ssafy.io/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/i15d207.p.ssafy.io/privkey.pem;
+    ssl_certificate     /etc/letsencrypt/live/${PUBLIC_HOST}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/${PUBLIC_HOST}/privkey.pem;
 
     # Docker 내장 DNS. proxy_pass에 변수를 쓰면 nginx가 기동 시점이 아니라 요청 시점에
     # 호스트명을 다시 해석한다. Jenkins 배포로 컨테이너가 재생성되며 IP가 바뀌어도

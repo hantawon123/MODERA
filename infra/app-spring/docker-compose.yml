@@ -20,7 +20,7 @@ services:
       - S3_ACCESS_KEY=${S3_ACCESS_KEY}
       - S3_SECRET_KEY=${S3_SECRET_KEY}
       - MINIO_WEBHOOK_TOKEN=${MINIO_WEBHOOK_TOKEN}
-      - SERVER_URL=https://i15d207.p.ssafy.io:8443
+      - SERVER_URL=${SERVER_URL:?Set SERVER_URL}
       - INTERNAL_TOKEN=${INTERNAL_TOKEN}
       - WORKER_BASE_URL=http://modera-worker:8081
       - AI_SERVER_URL=http://ai-ai-service-1:8000

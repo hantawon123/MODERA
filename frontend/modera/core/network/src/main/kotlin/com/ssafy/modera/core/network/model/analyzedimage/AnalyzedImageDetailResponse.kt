@@ -1,5 +1,7 @@
 package com.ssafy.modera.core.network.model.analyzedimage
 
+import com.ssafy.modera.core.network.BuildConfig
+
 import com.ssafy.modera.core.model.analyzedimage.AnalyzedImageCategory
 import com.ssafy.modera.core.model.analyzedimage.AnalyzedImageDetail
 import com.ssafy.modera.core.model.analyzedimage.ImageAnalysisStatus
@@ -47,6 +49,6 @@ fun AnalyzedImageDetailResponse.asExternalModel(): AnalyzedImageDetail =
             categories.first().categoryId,
             categories.first().name
         ),
-        imageUrl = "https://i15d207.p.ssafy.io$imageUrl",
+        imageUrl = "${BuildConfig.MEDIA_BASE_URL.trimEnd('/')}$imageUrl",
         updatedAt = Instant.parse(updatedAt).toEpochMilli(),
     )

@@ -1,5 +1,7 @@
 package com.ssafy.modera.core.network.model.category
 
+import com.ssafy.modera.core.network.BuildConfig
+
 import com.ssafy.modera.core.model.category.Category
 import kotlinx.serialization.Serializable
 
@@ -17,7 +19,7 @@ fun CategoryResponse.asExternalModel(): Category =
     Category(
         id = categoryId,
         title = name,
-        thumbnailUrl = "https://i15d207.p.ssafy.io$thumbnailUrl",
+        thumbnailUrl = "${BuildConfig.MEDIA_BASE_URL.trimEnd('/')}$thumbnailUrl",
         itemCount = imageCount,
         tags = tags.map { tag ->
             tag.name

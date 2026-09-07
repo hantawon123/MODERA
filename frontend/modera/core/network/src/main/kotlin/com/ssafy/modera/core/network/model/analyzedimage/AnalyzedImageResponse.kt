@@ -1,5 +1,7 @@
 package com.ssafy.modera.core.network.model.analyzedimage
 
+import com.ssafy.modera.core.network.BuildConfig
+
 import com.ssafy.modera.core.model.analyzedimage.AnalyzedImage
 import com.ssafy.modera.core.model.analyzedimage.ImageAnalysisStatus
 import kotlinx.serialization.Serializable
@@ -23,7 +25,7 @@ fun AnalyzedImageResponse.asExternalModel(): AnalyzedImage =
         id = imageId,
         title = title,
         summary = summary,
-        thumbnailUrl = "https://i15d207.p.ssafy.io${thumbnailUrl.orEmpty()}",
+        thumbnailUrl = "${BuildConfig.MEDIA_BASE_URL.trimEnd('/')}${thumbnailUrl.orEmpty()}",
         hashtags = tags.map { it.name },
         status = when (status) {
             "QUEUED" -> ImageAnalysisStatus.QUEUED

@@ -53,7 +53,7 @@ internal object NetworkModule {
         okHttpClient: OkHttpClient,
     ): Retrofit =
         Retrofit.Builder()
-            .baseUrl("https://i15d207.p.ssafy.io/")
+            .baseUrl("${BuildConfig.MEDIA_BASE_URL.trimEnd('/')}/")
             .client(okHttpClient)
             .addConverterFactory(
                 json.asConverterFactory(

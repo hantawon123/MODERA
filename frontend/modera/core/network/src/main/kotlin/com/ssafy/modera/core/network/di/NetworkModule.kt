@@ -103,7 +103,7 @@ internal object NetworkModule {
         okHttpClient: OkHttpClient,
     ): Retrofit =
         Retrofit.Builder()
-            .baseUrl("https://api.example.com:8443/")
+            .baseUrl("${BuildConfig.API_BASE_URL}")
             .client(okHttpClient)
             .addConverterFactory(
                 json.asConverterFactory(
@@ -123,7 +123,7 @@ internal object NetworkModule {
         @AuthHttpClient okHttpClient: OkHttpClient,
     ): Retrofit =
         Retrofit.Builder()
-            .baseUrl("https://api.example.com:8443/")
+            .baseUrl("${BuildConfig.API_BASE_URL}")
             .client(okHttpClient)
             .addConverterFactory(
                 json.asConverterFactory("application/json".toMediaType()),

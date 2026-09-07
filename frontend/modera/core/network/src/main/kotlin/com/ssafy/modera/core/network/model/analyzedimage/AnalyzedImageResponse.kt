@@ -1,5 +1,7 @@
 package com.ssafy.modera.core.network.model.analyzedimage
 
+import com.ssafy.modera.core.network.BuildConfig
+
 import com.ssafy.modera.core.model.analyzedimage.AnalyzedImage
 import kotlinx.serialization.Serializable
 import java.time.Instant
@@ -24,7 +26,7 @@ fun AnalyzedImageResponse.asExternalModel(): AnalyzedImage =
         id = imageId,
         title = title,
         summary = summary,
-        thumbnailUrl = "https://i15d207.p.ssafy.io:8443/api/v1/images/${imageId}/thumbnail/raw",
+        thumbnailUrl = "${BuildConfig.API_BASE_URL}api/v1/images/${imageId}/thumbnail/raw",
         hashtags = tags,
         favorite = favorite,
         isDocumented = isDocumented,

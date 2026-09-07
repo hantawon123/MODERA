@@ -112,7 +112,7 @@ class DefaultCategoryRepositoryTest {
             assertEquals(3L, category.id)
             assertEquals("공부", category.title)
             assertEquals(
-                "https://i15d207.p.ssafy.io:8443/thumbnails/1024.jpg",
+                "https://api.example.com:8443/thumbnails/1024.jpg",
                 category.thumbnailUrl,
             )
             assertEquals(42, category.itemCount)

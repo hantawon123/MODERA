@@ -79,3 +79,5 @@ Thumbs.db
 *.log
 logs/
 opensearch-data/
+# Generated load-test accounts and bearer tokens must stay local.
+/backend/ops/k6/generated/
